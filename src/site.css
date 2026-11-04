@@ -291,3 +291,117 @@ button:disabled{opacity:.35;cursor:not-allowed}
 /* iOS: la lengüeta de inventario debe seguir el dedo, no desplazar
    lateralmente la caja mientras se arrastra hacia la mesa. */
 .piece-card .grip{touch-action:none;-webkit-user-select:none;user-select:none}
+
+
+/* DEV 0.7.0 — una única caja realista con corcho blanco troquelado. */
+.tray{transition:height .18s ease;overflow:hidden}
+.tray.case-open{
+  display:flex;flex-direction:column;flex:0 0 auto;
+  height:min(51dvh,470px);min-height:318px;max-height:none;
+  background:linear-gradient(#172b33,#0a161b);
+  padding-bottom:calc(7px + env(safe-area-inset-bottom,0px));
+}
+.tray:not(.case-open){
+  display:flex;flex-direction:column;flex:0 0 auto;
+  height:158px;min-height:140px;max-height:none;
+}
+.case-title{min-width:0;display:flex;flex-direction:column;gap:1px}
+.case-title .case-kicker{color:#5ee8cf;font-size:8px;letter-spacing:1.2px;font-weight:950}
+.case-title strong{font-size:13px;color:#e9f4f1;letter-spacing:.2px;line-height:1.1}
+.case-title small{color:#acc7c4;font-size:10px;letter-spacing:0;font-weight:750}
+.case-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:nowrap}
+.case-actions .mini{padding:6px 8px;min-height:36px;font-size:11px}
+#caseToggle{background:#e9dfb7;color:#243d39;border:1px solid #f3e9c5;box-shadow:0 2px 8px #0004}
+.case-shell{
+  position:relative;display:flex;flex-direction:column;min-height:0;flex:1;
+  background:linear-gradient(150deg,#151d23,#3a4145 50%,#13191e);
+  border:5px solid #354047;border-top:6px solid #6a7377;
+  border-radius:17px;box-shadow:inset 0 0 0 2px #161c20,inset 0 0 28px #0009,0 3px 9px #0007;
+  overflow:hidden;margin-top:5px;
+}
+.case-lid{flex:none;min-height:22px;display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:3px 12px;background:linear-gradient(90deg,#30383e,#4f5a5c,#343d42);
+  color:#d8e3dd;font-size:8px;font-weight:950;letter-spacing:1.2px;
+  text-shadow:0 1px 2px #060f10}
+.case-lid:before,.case-lid:after{content:"";background:#b7c5bf;height:3px;width:18px;border-radius:4px;opacity:.6}
+.case-lid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pieces.foam-insert{
+  position:relative;flex:1;min-height:0;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-auto-rows:minmax(111px,1fr);
+  gap:8px;padding:12px 10px;
+  overflow:auto;overscroll-behavior:contain;touch-action:pan-y;
+  background:
+    radial-gradient(circle at 13% 19%,#fff8 0 1px,transparent 1.5px) 0 0/10px 10px,
+    radial-gradient(circle at 67% 53%,#5c696025 0 1px,transparent 1.5px) 0 0/8px 8px,
+    repeating-linear-gradient(130deg,#ffffffe5 0 5px,#e7e9e5 6px,#f2f1ea 11px);
+  box-shadow:inset 0 0 22px #52616144,inset 0 0 0 3px #ffffff80;
+}
+.foam-pocket{
+  position:relative;min-width:0;width:100%;height:113px;overflow:hidden;
+  padding:5px 3px 4px;border:0;border-radius:12px;
+  background:radial-gradient(ellipse at 50% 45%,#bbc1be6b 0,#e0e5e180 62%,#f8f8f4b8 100%);
+  box-shadow:inset 1px 1px 5px #9daba580,inset -1px -1px 5px #fffffff0;
+  color:#203639;display:flex;flex-direction:column;justify-content:space-between;align-items:center;
+  text-align:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.foam-pocket:active{cursor:grabbing}
+.foam-pocket.selected{outline:2px solid #1aa991;outline-offset:-2px}
+.foam-pocket.empty{opacity:.78}
+.foam-pocket.empty .mini-slot-piece{opacity:0}
+.foam-pocket:disabled{cursor:not-allowed}
+.foam-pocket .qty{
+  position:absolute;right:4px;top:3px;z-index:2;
+  min-width:28px;border-radius:8px;padding:2px 5px;
+  background:#163f42;color:#b5ffe9;border:1px solid #64b7aa;
+  font-size:12px;font-weight:1000;font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 4px #0003;
+}
+.foam-pocket.empty .qty{background:#74807d;color:#f4f6ee;border-color:#9ea9a5}
+.foam-well{height:79px;width:100%;display:grid;place-items:center;pointer-events:none}
+.foam-well svg{display:block;width:100%;height:100%;overflow:visible;
+  filter:drop-shadow(0 2px 1px #84918d45)}
+.foam-cutout-shadow{fill:none;stroke:#d4d8d5;stroke-linecap:round;stroke-linejoin:round}
+.foam-cutout{fill:none;stroke:#4c5655;stroke-linecap:round;stroke-linejoin:round}
+.mini-slot-piece{pointer-events:none}
+.mini-slot-stack{fill:none;stroke:#10191e;stroke-linecap:round;stroke-linejoin:round}
+.mini-slot-rim{fill:none;stroke:#738489;stroke-linecap:round;stroke-linejoin:round}
+.mini-slot-deck{fill:none;stroke:#28343a;stroke-linecap:round;stroke-linejoin:round}
+.mini-slot-rail{fill:none;stroke:#c1cecc;stroke-linecap:round;stroke-linejoin:round}
+.mini-slot-guide{fill:none;stroke:#0a1217;stroke-linecap:round;stroke-linejoin:round}
+.foam-pocket .pocket-caption{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:1px;
+  width:100%;min-width:0;white-space:nowrap;pointer-events:none}
+.foam-pocket .pocket-caption strong{font-size:9px;line-height:1;color:#293d3c;letter-spacing:.25px;font-weight:1000}
+.foam-pocket .pocket-caption small{font-size:8px;color:#586c65;line-height:1;font-weight:850}
+.case-foot{flex:none;display:flex;justify-content:space-between;gap:7px;padding:3px 10px;
+  background:linear-gradient(#343d41,#1e292f);color:#d3e7dd;
+  font-size:8px;font-weight:850;letter-spacing:.4px}
+.case-closed{flex:1;display:grid;place-items:center;
+  background:linear-gradient(90deg,#313d42,#435056,#313c41);
+  border:2px solid #738282;border-radius:10px;
+  margin-top:5px;color:#dce5df;font-size:10px;font-weight:900;letter-spacing:.6px}
+.case-closed[hidden]{display:none!important}
+@media(max-width:660px){
+ .tray.case-open{height:min(51dvh,455px);min-height:300px}
+ .case-shell{border-width:4px;border-top-width:5px}
+ .pieces.foam-insert{gap:6px;padding:8px;grid-auto-rows:108px}
+ .foam-pocket{height:108px}
+ .foam-well{height:73px}
+ .case-lid{font-size:7px;padding:3px 8px}
+ .case-actions .mini{padding:6px;min-height:33px}
+ .case-title strong{font-size:12px}
+}
+@media(max-width:360px){
+ .pieces.foam-insert{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:105px}
+ .tray.case-open{height:min(56dvh,480px)}
+ .foam-pocket{height:105px}
+}
+@media(orientation:landscape) and (max-height:530px){
+ .tray.case-open{height:min(51dvh,255px);min-height:160px}
+ .pieces.foam-insert{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:105px;overflow-x:auto}
+ .foam-pocket{height:105px}
+ .case-lid{display:none}
+ .tray:not(.case-open){height:124px;min-height:100px}
+}
+@media(prefers-reduced-motion:reduce){.tray{transition:none}}
