@@ -115,6 +115,17 @@ const fs=require("node:fs"),path=require("node:path");
  pocket.listeners.pointerup[0](event(400,710,29));
  assert.equal(st.loose.length,4,"Soltar fuera de la mesa no extrae piezas");
 
+ // Safari iOS: confirmar extracción en pointerup aunque no haya click
+ // sintético; si llega ese click, tampoco puede duplicar el inventario.
+ const touchPocket=byId("R1L");
+ touchPocket.listeners.pointerdown[0](event(150,730,40));
+ touchPocket.listeners.pointerup[0](event(150,730,40));
+ assert.equal(st.loose.length,5,"El toque táctil corto saca una pieza");
+ touchPocket.listeners.click[0]({detail:1});
+ assert.equal(st.loose.length,5,"El click sintético no crea una segunda pieza");
+ tap("R1L");
+ assert.equal(st.loose.length,6,"El toque siguiente vuelve a funcionar");
+
  assert.ok(JSON.parse(data.get("slotrace-lab-05")).loose.length>=4,
   "El contenido extraído queda guardado en el montaje");
  console.log("SlotRace DEV 0.7.0: maletín único, seis recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
