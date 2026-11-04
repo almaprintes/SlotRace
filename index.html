@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#091119">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>SlotRace · Prototipo jugable 0.1</title>
 <style>
 :root{color-scheme:dark;--bg:#091119;--panel:#111c27;--line:#263747;--white:#edf5f7;--muted:#9eafbb;--aqua:#38e0c5;--orange:#f7b15b;--error:#ff7d82}
@@ -40,6 +42,39 @@ canvas{display:block;width:100%;height:clamp(300px,59vh,590px);touch-action:none
 .foot{font-size:12px;color:#839aa9;margin-top:22px;text-align:center}.mono{font-variant-numeric:tabular-nums}
 @media(max-width:1120px){.layout{grid-template-columns:220px minmax(0,1fr)}.rightpanel{grid-column:1/-1}.rightgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rightgrid>div{min-width:0}}
 @media(max-width:720px){.wrapper{padding:11px}.header{padding:5px 3px 13px;margin-bottom:11px}.headtag{font-size:10px}.layout{grid-template-columns:1fr;gap:11px}.panel{padding:13px}.stage{order:-1;padding:9px}.rightpanel{grid-column:auto}.rightgrid{display:block}canvas{height:clamp(270px,43vh,430px)}.stagehead small{display:none}.trackfooter{font-size:10px}.brand h1{font-size:22px}.logo{width:39px;height:39px}.helper{font-size:12px}.overlayhint{font-size:11px}}
+
+/* Pilotaje sin scroll: la mesa de edición permanece detrás, el juego ocupa toda la pantalla. */
+.stagehead .launch{background:#20ad99;color:#062b28;border:1px solid #68e7d3;border-radius:11px;font-weight:900;padding:11px 16px;white-space:nowrap;cursor:pointer}
+.stagehead .launch:disabled{opacity:.4;cursor:not-allowed}
+.drive-overlay[hidden]{display:none!important}
+.drive-overlay{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;z-index:1000;background:#07141e;color:#eefaf9;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
+body.drive-open{overflow:hidden}
+.drive-top{flex:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 9px) 12px 9px;background:#10232d;border-bottom:1px solid #315360;min-height:61px}
+.drive-top strong{font-size:15px;line-height:1.12}.drive-top small{display:block;color:#91c4c4;font-size:11px}
+.drive-top button{background:#203946;border:1px solid #4b7380;border-radius:10px;color:#eefaf9;min-height:41px;padding:7px 11px;font-size:13px;font-weight:800}
+.drive-view{position:relative;flex:1 1 auto;min-height:135px;overflow:hidden;background:#0b1823}
+.drive-view canvas{width:100%!important;height:100%!important;display:block}
+.drive-hud{position:absolute;top:10px;left:9px;right:9px;display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:6px;pointer-events:none}
+.drive-chip{border:1px solid #37606c;background:#091c27d9;border-radius:10px;padding:6px 8px;backdrop-filter:blur(6px);text-align:center;min-width:0}
+.drive-chip small{display:block;color:#b1c8cf;font-size:10px;line-height:1.3}
+.drive-chip strong{display:block;font-size:clamp(15px,4.5vw,22px);font-variant-numeric:tabular-nums;line-height:1.25;white-space:nowrap}
+.drive-chip .ac{color:#36ebce}
+.drive-message{position:absolute;bottom:10px;left:10px;right:10px;text-align:center;pointer-events:none}
+.drive-message span{display:inline-block;max-width:100%;padding:6px 12px;background:#061823d9;border:1px solid #345664;border-radius:30px;color:#d2eee8;font-size:12px;font-weight:650}
+.drive-controls{flex:none;background:#10242e;border-top:1px solid #386171;padding:11px 13px calc(env(safe-area-inset-bottom, 0px) + 13px);display:flex;flex-direction:column;gap:9px}
+.drive-controlhead{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#c4dbe3;font-size:12px;font-weight:800}
+.drive-range{width:100%;height:37px;margin:0;accent-color:#36e1c5;touch-action:none;cursor:pointer}
+.drive-actions{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,2fr);gap:10px}
+.drive-actions button{min-height:65px;border-radius:13px;border:1px solid #537384;font-size:16px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
+#drivePause{background:#233e4d;color:#fff}
+#driveGas{background:#39e0bd;border-color:#78fae0;color:#052822;font-size:clamp(16px,4.5vw,21px)}
+#driveGas:active{background:#8bf7e0}
+#driveGas:disabled{opacity:.32}
+.drive-controls .drive-tip{text-align:center;color:#95b0b9;font-size:10px}
+@media(max-width:720px){.stagehead{gap:8px}.stagehead strong{font-size:13px}.stagehead .launch{padding:11px 12px;font-size:13px}.overlayhint{bottom:10px}.drive-tip{display:none}}
+@media(max-height:650px){.drive-controls{padding-top:6px;gap:3px}.drive-range{height:27px}.drive-actions button{min-height:49px}.drive-top{padding-top:calc(env(safe-area-inset-top, 0px) + 4px);padding-bottom:4px;min-height:47px}.drive-hud{top:5px}}
+@media(orientation:landscape) and (max-height:500px){.drive-controls{position:absolute;right:0;bottom:0;width:min(300px,43vw);border-left:1px solid #386171;border-top-left-radius:16px;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}.drive-view{height:100%}.drive-actions{grid-template-columns:1fr 1.3fr}.drive-actions button{font-size:13px;min-height:51px}.drive-controlhead{font-size:10px}.drive-chip strong{font-size:17px}.drive-message{right:min(300px,43vw)}}
+
 </style>
 </head>
 <body>
@@ -72,7 +107,7 @@ canvas{display:block;width:100%;height:clamp(300px,59vh,590px);touch-action:none
       <div class="note">Las dimensiones son provisionales para probar la mecánica. No representan todavía medidas certificadas de Scalextric.</div>
     </aside>
     <section class="stage" aria-label="Circuito">
-      <div class="stagehead"><strong>Vista cenital · mesa de montaje</strong><small>PIEZAS DOBLES · ENCAJE MAGNÉTICO SIMULADO</small></div>
+      <div class="stagehead"><strong>Vista cenital · mesa de montaje</strong><button class="launch" id="quickRace">🏁 Jugar a pantalla completa</button></div>
       <div class="canvaswrap"><canvas id="track" aria-label="Vista de los dos carriles y del coche de SlotRace"></canvas><div class="overlayhint" id="hint">Carga la pista y pulsa Comenzar</div></div>
       <div class="trackfooter"><span>Izquierda: turquesa · Derecha: naranja</span><span id="pieceCount">0 piezas</span></div>
     </section>
@@ -107,11 +142,34 @@ canvas{display:block;width:100%;height:clamp(300px,59vh,590px);touch-action:none
   </main>
   <footer class="foot">SlotRace LAB · Prototipo local sin servidor, cuentas ni récords oficiales · Las marcas se conservan en este navegador</footer>
 </div>
+
+<div class="drive-overlay" id="driveOverlay" hidden role="dialog" aria-modal="true" aria-label="Pilotaje SlotRace">
+  <div class="drive-top">
+    <div><strong>🏁 SlotRace · Pilotaje</strong><small id="driveLaneText">Carril izquierdo · carrera local</small></div>
+    <button id="driveLane" type="button" title="Cambiar carril cuando esté pausado">Cambiar carril</button>
+    <button id="driveExit" type="button">✕ Salir</button>
+  </div>
+  <div class="drive-view" id="driveSurface">
+    <div class="drive-hud">
+      <div class="drive-chip"><small>VUELTA</small><strong id="driveLap">1</strong></div>
+      <div class="drive-chip"><small>CRONÓMETRO</small><strong id="driveTime" class="ac">0,000</strong></div>
+      <div class="drive-chip"><small>GATILLO</small><strong id="drivePercent">0 %</strong></div>
+    </div>
+    <div class="drive-message"><span id="driveMessage">Acelera y levanta antes de las curvas</span></div>
+  </div>
+  <div class="drive-controls">
+    <div class="drive-controlhead"><span>GATILLO PROGRESIVO · ARRASTRA Y MANTÉN</span><strong id="driveSpeed">0 u/s</strong></div>
+    <input class="drive-range" id="driveThrottle" type="range" min="0" max="100" value="0" aria-label="Gatillo progresivo: se suelta al retirar el dedo">
+    <div class="drive-actions"><button type="button" id="drivePause">⏸ Pausar</button><button type="button" id="driveGas">MANTENER ACELERADOR</button></div>
+    <div class="drive-tip">Pulsa o desliza el gatillo · suelta para frenar · botón Salir para editar</div>
+  </div>
+</div>
+
 <script>
 (function(){
 "use strict";
 var $=function(id){return document.getElementById(id);};
-var canvas=$("track"),ctx=canvas.getContext("2d",{alpha:false});
+var canvas=$("track"),ctx=canvas.getContext("2d",{alpha:false}),previewParent=canvas.parentElement,overlayOpen=false;
 var L=130,R=95,OFFSET=16,stock={S:12,R:8,L:8};
 var original=["S","S","R","R","S","S","R","R"];
 var pieces=original.slice(),geometry=null,valid=false,lane=0,running=false,started=false;
@@ -157,7 +215,7 @@ function build(){
  $("addR").disabled=count("R")>=stock.R||pieces.length>=40;
  $("addL").disabled=count("L")>=stock.L||pieces.length>=40;
  $("undo").disabled=!pieces.length;
- $("start").disabled=!valid;
+ $("start").disabled=!valid;$("quickRace").disabled=!valid;
  save();updateUI();
 }
 function lanePath(){return lane===0?geometry.left:geometry.right;}
@@ -165,7 +223,7 @@ function sample(p,d){d=((d%p.total)+p.total)%p.total;var lo=0,hi=p.lengths.lengt
 var a=p.points[lo],b=p.points[hi],den=p.lengths[hi]-p.lengths[lo]||1,t=(d-p.lengths[lo])/den;
 return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,h:Math.atan2(b.y-a.y,b.x-a.x),turn:b.turn||a.turn};}
 function modify(fn){running=false;started=false;fn();resetRun();build();toast="Circuito modificado. Comprueba que está cerrado.";}
-function resetRun(){running=false;started=false;speed=0;distance=0;lap=1;lapTime=0;freeze=0;held=false;keyHeld=false;range=0;$("throttle").value="0";$("start").textContent="▶ Comenzar";updateUI();}
+function resetRun(){running=false;started=false;speed=0;distance=0;lap=1;lapTime=0;freeze=0;held=false;keyHeld=false;range=0;$("throttle").value="0";$("driveThrottle").value="0";$("start").textContent="▶ Comenzar";updateUI();}
 function currentRecord(){var value=records[trackKey];if(!Array.isArray(value))value=[null,null];return value;}
 function completedLap(){var time=lapTime;lapTime=0;if(time<.1)return;var arr=currentRecord();if(arr[lane]===null||time<arr[lane]){arr[lane]=time;records[trackKey]=arr;saveRecords();toast="¡Mejor vuelta "+(lane===0?"izquierda":"derecha")+"! "+round(time)+" s (solo local)";}else toast="Vuelta "+lap+": "+round(time)+" s";lap++;}
 function tick(dt){
@@ -195,9 +253,11 @@ function draw(){
  for(var gy=0;gy<h;gy+=26){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
  ctx.globalAlpha=1;
  if(!geometry||!geometry.center.length)return;
- var b=geometry.bounds,bw=b.maxx-b.minx,bh=b.maxy-b.miny,sc=Math.min(w/Math.max(120,bw),h/Math.max(120,bh),1.9);
- var ox=(w-(b.minx+b.maxx)*sc)/2,oy=(h-(b.miny+b.maxy)*sc)/2;
- ctx.save();ctx.translate(ox,oy);ctx.scale(sc,sc);
+ var b=geometry.bounds,bw=b.maxx-b.minx,bh=b.maxy-b.miny,portrait=overlayOpen&&h>w*1.04;
+ var sc=portrait?Math.min(w/Math.max(120,bh),h/Math.max(120,bw),2.2):Math.min(w/Math.max(120,bw),h/Math.max(120,bh),1.9);
+ ctx.save();
+ if(portrait){ctx.translate(w/2,h/2);ctx.rotate(Math.PI/2);ctx.scale(sc,sc);ctx.translate(-(b.minx+b.maxx)/2,-(b.miny+b.maxy)/2);}
+ else{var ox=(w-(b.minx+b.maxx)*sc)/2,oy=(h-(b.miny+b.maxy)*sc)/2;ctx.translate(ox,oy);ctx.scale(sc,sc);}
  var pts=geometry.center;
  drawPath(pts,"#6e7f89",75);drawPath(pts,"#252e36",67);
  drawPath(geometry.left.points,"#090e12",5.5);drawPath(geometry.right.points,"#090e12",5.5);
@@ -228,6 +288,16 @@ function updateUI(){
  $("start").textContent=running?"▶ En marcha":started?"▶ Continuar":"▶ Comenzar";
  $("hint").style.display=running?"none":"block";
  $("pause").disabled=!running;$("left").disabled=running;$("right").disabled=running;
+ $("driveLap").textContent=lap;
+ $("driveTime").textContent=round(lapTime);
+ $("drivePercent").textContent=Math.round(held||keyHeld?100:range)+" %";
+ $("driveSpeed").textContent=Math.round(speed)+" u/s";
+ $("driveLaneText").textContent="Carril "+(lane===0?"izquierdo":"derecho")+" · carrera local";
+ $("driveMessage").textContent=freeze>0?"Salida de pista · "+freeze.toFixed(1)+" segundos":toast;
+ $("drivePause").textContent=running?"⏸ Pausar":"▶ Seguir";
+ $("driveLane").disabled=running;
+ $("driveGas").disabled=!running;
+ $("quickRace").textContent=started?"🏁 Volver a pilotar":"🏁 Jugar a pantalla completa";
 }
 function loop(now){var dt=Math.min(.045,Math.max(0,(now-lastFrame)/1000));lastFrame=now;tick(dt);draw();if(now-lastUI>120){lastUI=now;updateUI();}requestAnimationFrame(loop);}
 $("addS").addEventListener("click",function(){modify(function(){pieces.push("S");});});
@@ -236,20 +306,42 @@ $("addL").addEventListener("click",function(){modify(function(){pieces.push("L")
 $("undo").addEventListener("click",function(){modify(function(){pieces.pop();});});
 $("oval").addEventListener("click",function(){modify(function(){pieces=original.slice();});toast="Óvalo inicial montado y listo.";updateUI();});
 $("clear").addEventListener("click",function(){modify(function(){pieces=[];});toast="Mesa vacía. Añade piezas para crear tu circuito.";updateUI();});
-$("start").addEventListener("click",function(){if(!valid)return;running=true;started=true;toast="Conduciendo · levanta el gatillo antes de la curva.";updateUI();});
+function openDrive(){if(!valid)return;
+ $("driveOverlay").hidden=false;overlayOpen=true;document.body.classList.add("drive-open");
+ $("driveSurface").insertBefore(canvas,$("driveSurface").firstChild);
+ resize();running=true;started=true;held=false;range=0;
+ $("throttle").value="0";$("driveThrottle").value="0";
+ toast="Conduciendo · levanta el gatillo antes de las curvas.";
+ updateUI();
+}
+function closeDrive(){running=false;held=false;keyHeld=false;range=0;
+ $("driveThrottle").value="0";$("throttle").value="0";
+ overlayOpen=false;$("driveOverlay").hidden=true;document.body.classList.remove("drive-open");
+ previewParent.insertBefore(canvas,previewParent.firstChild);
+ resize();toast="Carrera pausada. Puedes editar el circuito o volver a pilotar.";updateUI();
+}
+$("start").addEventListener("click",openDrive);
+$("quickRace").addEventListener("click",openDrive);
+$("driveExit").addEventListener("click",closeDrive);
+$("drivePause").addEventListener("click",function(){running=!running;held=false;range=0;$("driveThrottle").value="0";toast=running?"Conduciendo · controla el gatillo.":"En pausa · pulsa Seguir o cambia de carril.";updateUI();});
+$("driveLane").addEventListener("click",function(){if(running)return;chooseLane(lane===0?1:0);toast="Carril cambiado · pulsa Seguir para pilotar.";updateUI();});
 $("pause").addEventListener("click",function(){running=false;toast="Pausa · la vuelta está guardada en memoria.";updateUI();});
 $("reset").addEventListener("click",function(){resetRun();toast="Intento reiniciado. Los mejores tiempos se conservan.";updateUI();});
 function chooseLane(which){if(running){toast="Pausa primero para cambiar de carril.";updateUI();return;}if(lane===which)return;lane=which;resetRun();toast="Carril "+(lane===0?"izquierdo":"derecho")+" · nuevo intento.";updateUI();}
 $("left").addEventListener("click",function(){chooseLane(0);});
 $("right").addEventListener("click",function(){chooseLane(1);});
 $("throttle").addEventListener("input",function(e){range=Number(e.target.value);});
-var gas=$("gas");
-gas.addEventListener("pointerdown",function(e){held=true;try{gas.setPointerCapture(e.pointerId);}catch(err){}});
-["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){gas.addEventListener(ev,function(){held=false;});});
+$("driveThrottle").addEventListener("input",function(e){range=Number(e.target.value);updateUI();});
+function releaseDriveThrottle(){range=0;$("driveThrottle").value="0";updateUI();}
+["pointerup","pointercancel","lostpointercapture","change"].forEach(function(ev){$("driveThrottle").addEventListener(ev,releaseDriveThrottle);});
+[$("gas"),$("driveGas")].forEach(function(gas){
+ gas.addEventListener("pointerdown",function(e){if(overlayOpen&&!running)return;held=true;try{gas.setPointerCapture(e.pointerId);}catch(err){}});
+ ["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){gas.addEventListener(ev,function(){held=false;});});
+});
 window.addEventListener("keydown",function(e){if(e.code==="Space"||e.code==="ArrowUp"){if(e.target.tagName==="INPUT")return;e.preventDefault();keyHeld=true;}});
 window.addEventListener("keyup",function(e){if(e.code==="Space"||e.code==="ArrowUp")keyHeld=false;});
-window.addEventListener("blur",function(){keyHeld=false;held=false;});
-document.addEventListener("visibilitychange",function(){if(document.hidden){running=false;held=false;keyHeld=false;updateUI();}});
+window.addEventListener("blur",function(){keyHeld=false;held=false;range=0;$("driveThrottle").value="0";});
+document.addEventListener("visibilitychange",function(){if(document.hidden){running=false;held=false;keyHeld=false;range=0;$("driveThrottle").value="0";updateUI();}});
 window.__slotraceTest={getState:function(){return{valid:valid,pieces:pieces.slice(),running:running,lane:lane,lap:lap,speed:speed,freeze:freeze,records:currentRecord()};},setGas:function(v){range=v;$("throttle").value=String(v);},geometry:function(){return geometry;}};
 build();updateUI();requestAnimationFrame(loop);
 })();
