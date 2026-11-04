@@ -38,7 +38,7 @@ const path=require("node:path");
      setAttribute(){},setPointerCapture(){},appendChild(el){this.children.push(el);},
      getBoundingClientRect(){return{left:0,top:0,right:390,bottom:600,width:390,height:600}},
      querySelectorAll(){return this.children},
-     querySelector(sel){if(sel===".qty")return this.qty??=node("qty");if(sel===".grip")return this.grip??=node("grip");return null;}
+     querySelector(sel){if(sel===".qty")return this.qty??=node("qty");if(sel===".grip"||sel===".foam-drag-grip")return this.grip??=node("grip");return null;}
    };
  }
  const elements=new Map(ids.map(id=>[id,node(id)]));
@@ -81,5 +81,5 @@ const path=require("node:path");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","bridge","car"],
    "El coche elevado se pinta después del puente y queda encima");
- console.log("SlotRace DEV 0.9.1 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.9.2 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
