@@ -6,18 +6,58 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace LAB 0.4: construye una pista de doble carril sobre una mesa y conduce tu coche.">
-  <title>SlotRace LAB 0.4.4 · Mesa y pistas modulares</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.4.4">
+  <meta name="description" content="SlotRace DEV 0.5.0: mesa milimetrada, ocho completo con puente y conducción móvil.">
+  <title>SlotRace DEV 0.5.0 · Ocho con puente</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.5.0">
+  <style>
+  /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
+  #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
+    align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 50% 24%,#154c4b 0%,#071820 55%,#030c12 100%);
+    color:#f2fffc;font:600 16px system-ui,-apple-system,sans-serif;
+    text-align:center;transition:opacity .25s ease}
+  #loadingScreen.is-done{opacity:0;pointer-events:none}
+  .splash-inner{width:min(360px,100%);display:flex;align-items:center;flex-direction:column;gap:12px}
+  .splash-logo{height:91px;width:91px;border-radius:26px;display:grid;place-items:center;
+    background:linear-gradient(135deg,#55f6d5,#159da4);color:#05252a;font-size:56px;
+    font-weight:1000;box-shadow:0 15px 45px #29d6bb40}
+  .splash-kicker{font-size:11px;letter-spacing:3px;font-weight:900;color:#59e4cd}
+  .splash-title{font-size:clamp(32px,9vw,44px);font-weight:950;letter-spacing:-2px;line-height:1.05}
+  .splash-version{font-size:23px;font-weight:950;color:#64ffde;letter-spacing:1.6px}
+  .splash-progress{width:160px;height:5px;margin:13px 0 5px;border-radius:8px;
+    background:#27545b;overflow:hidden}
+  .splash-progress:before{content:"";display:block;height:100%;width:46%;
+    border-radius:inherit;background:#56e9c9;animation:loading-slide 1.25s ease-in-out infinite alternate}
+  @keyframes loading-slide{from{transform:translateX(-95%)}to{transform:translateX(225%)}}
+  .splash-info{color:#a0bbbf;font-size:13px}
+  .splash-note{color:#789da2;font-size:11px;margin-top:15px}
+  .splash-retry{display:none;color:#062923;background:#4de3c7;padding:10px 16px;
+    border-radius:11px;font-weight:850;text-decoration:none;font-size:14px}
+  #loadingScreen.failed .splash-retry{display:block}
+  #loadingScreen.failed .splash-progress{display:none}
+  @media(prefers-reduced-motion:reduce){.splash-progress:before{animation:none;width:100%}}
+  </style>
 </head>
 <body>
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.5.0">
+  <div class="splash-inner">
+    <div class="splash-logo" aria-hidden="true">S</div>
+    <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
+    <div class="splash-title">SlotRace</div>
+    <div class="splash-version">DEV 0.5.0</div>
+    <div class="splash-progress" aria-hidden="true"></div>
+    <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
+    <a class="splash-retry" href="./?v=0.5.0">Reintentar carga</a>
+    <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
+  </div>
+</div>
 <div class="app">
   <header class="mast">
     <div class="brand"><div class="brand-icon" aria-hidden="true">S</div><div>
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="version">MESA FÍSICA · V0.4.4<br>LOCAL · SIN CUENTA</div>
+    <div class="version" aria-label="Versión de desarrollo 0.5.0">DEV 0.5.0<br>LOCAL · PRUEBAS</div>
   </header>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
     <div class="worktop">
@@ -30,6 +70,7 @@
           <button id="zoomIn" type="button" aria-label="Ampliar mesa">+</button>
           <button id="zoomOut" type="button" aria-label="Reducir mesa">−</button>
           <button id="zoomFit" type="button" aria-label="Centrar mesa">⌖</button>
+          <button id="gridToggle" type="button" aria-label="Alternar cuadrícula milimetrada" aria-pressed="true">▦ 25 mm</button>
         </div>
         <div id="tableCaption" class="boardhint">Toca una pieza de tu caja para conectarla</div>
       </div>
@@ -50,7 +91,7 @@
           <button id="redo" class="mini" type="button" aria-label="Rehacer último cambio">↷</button>
           <button id="remove" class="mini" type="button" aria-label="Devolver pieza seleccionada">Quitar</button>
           <button id="rotate" class="mini" type="button" aria-label="Girar pieza suelta 45 grados">⟳ Girar</button>
-          <button id="eight" class="mini" type="button" aria-label="Montar ocho simétrico con cinco curvas por lado">Ocho 225°</button>
+          <button id="eight" class="mini" type="button" aria-label="Montar ocho simétrico con puente elevado y cinco curvas por lado">Ocho + puente</button>
           <button id="oval" class="mini" type="button" aria-label="Montar óvalo inicial">Óvalo</button>
           <button id="clear" class="mini" type="button" aria-label="Vaciar mesa">Vaciar</button>
         </div>
@@ -86,6 +127,15 @@
   </section>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
-<script type="module" src="./src/app.mjs?v=0.4.4"></script>
+<script>
+window.addEventListener("error",function(event){
+  var splash=document.getElementById("loadingScreen");
+  if(splash&&!splash.hidden&&!splash.classList.contains("is-done")){
+    splash.classList.add("failed");
+    document.getElementById("loadingStatus").textContent="No se pudo abrir esta versión. Prueba a recargar.";
+  }
+});
+</script>
+<script type="module" src="./src/app.mjs?v=0.5.0"></script>
 </body>
 </html>
