@@ -1007,7 +1007,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.5",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose}};
+window.slotraceLab={version:"DEV 0.5.5",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
