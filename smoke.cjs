@@ -133,5 +133,5 @@ assert.match(app,/function triggerPointerMove\(/,"Gestos verticales de la rueda"
 assert.match(app,/DIAL_STEP=5/,"Cada muesca equivale al 5%");
 assert.match(app,/function dialSound\(/,"Clic direccional sintetizado");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/,"La física usa porcentaje analógico");
-console.log("SlotRace LAB DEV 0.5.3 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB DEV 0.5.4 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
