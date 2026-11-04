@@ -8,17 +8,17 @@ const path=require("node:path");
  assert.equal(figure.closed,true);
  assert.equal(figure.valid,true);
  assert.ok(figure.bridge,"Debe existir el puente");
- assert.deepEqual(figure.bridge.overParts,[9,10,11,12]);
+ assert.deepEqual(figure.bridge.overParts,[7]);
  const lane=figure.lanes[0];
  const dForPiece=(i)=>{
    const index=lane.nodes.findIndex((node,j)=>j>1&&node.pieceIndex===i);
    assert.ok(index>=0,"Sección presente "+i);
    return lane.lengths[index]+.1;
  };
- const lower=geo.positionAt(lane,dForPiece(1));
- const upper=geo.positionAt(lane,dForPiece(10));
- assert.equal(lower.pieceIndex,1);
- assert.equal(upper.pieceIndex,10);
+ const lower=geo.positionAt(lane,dForPiece(0));
+ const upper=geo.positionAt(lane,dForPiece(7));
+ assert.equal(lower.pieceIndex,0);
+ assert.equal(upper.pieceIndex,7);
  assert.equal(geo.carTrackLevel(figure,lower),"lower");
  assert.equal(geo.carTrackLevel(figure,upper),"upper");
  assert.equal(geo.carTrackLevel(geo.buildTrack(geo.STARTER),lower),"lower");
@@ -75,11 +75,11 @@ const path=require("node:path");
  // La máscara del puente sólo cubre el tramo central, no la diagonal entera.
  assert.match(source,/const halfLength=185/,"Se usa un puente local de anchura limitada");
  assert.match(source,/paintContinuousTrack\(ctx,track,mode==="build"\)/,"Una única capa continua para todas las piezas");
- const groundOrder=render(dForPiece(1),16);
+ const groundOrder=render(dForPiece(0),16);
  assert.deepEqual(groundOrder,["base","car","bridge"],
    "El coche inferior se pinta antes del puente y queda oculto bajo él");
- const upperOrder=render(dForPiece(10),32);
+ const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","bridge","car"],
    "El coche elevado se pinta después del puente y queda encima");
- console.log("SlotRace DEV 0.8.1 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.9.0 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
