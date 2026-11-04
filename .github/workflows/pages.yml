@@ -37,6 +37,9 @@ jobs:
       - name: Comprobar derrape, trompo y penalización
         run: node tests/drift-spin.cjs
 
+      - name: Comprobar entrada realista en curvas del óvalo
+        run: node tests/oval-curve-entry.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
