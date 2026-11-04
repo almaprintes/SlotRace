@@ -86,7 +86,7 @@ function addLoose(id,x,y,h=0){
   Math.max(b.top+155,Math.min(b.bottom-220,y))
  );
  pushHistory();state.loose.push({id,x:point.x,y:point.y,h});
- state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza colocada en la mesa. Arrástrala hasta el conector amarillo.");return true;
+ state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
 }
 const SNAP_DISTANCE_MM=78;
 function snapLoose(index,{force=false,history=true}={}){
@@ -410,12 +410,12 @@ function updateUI(){
  const degrees=t.headingGap*180/Math.PI;
  const status=t.bridge?"OCHO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
  t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
-  !t.types.length?"MESA VACÍA · COLOCA PIEZAS":t.closed?"CONECTADO · CRUCE SIN PUENTE":
+  !t.types.length?state.loose.length+" PIEZAS SUELTAS · INICIA LA CADENA":t.closed?"CONECTADO · CRUCE SIN PUENTE":
   "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
  const notice=t.bridge?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
  t.intersection?"Cruce al mismo nivel: necesita puente":
   !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
-  t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":"La caja está lista";
+  t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":state.loose.length+" piezas sueltas · toca una y pulsa Iniciar";
  $("stateChip").textContent=t.bridge?"✓ OCHO CON PUENTE":
  t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
  $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
@@ -427,16 +427,18 @@ function updateUI(){
  $("play").textContent=t.valid?"🏁 Correr":"🏁 Probar óvalo";
  $("restore").hidden=!state.draft;
  $("selected").textContent=state.looseSelection>=0?"SUELTA · "+CATALOG[state.loose[state.looseSelection].id].name:
- state.selection<0?"TOCA UNA PIEZA O ARRÁSTRALA A LA MESA":
+ state.selection<0?"COGE, MUEVE Y SUELTA PIEZAS · MESA PUZZLE":
   "TRAMO "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
  $("remove").disabled=state.selection<0&&state.looseSelection<0;
  $("rotate").disabled=state.looseSelection<0;
+ $("joinPiece").disabled=state.looseSelection<0||state.track.closed;
+ $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
-  const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id)+(state.selection>=0&&state.types[state.selection]===id?1:0)+(state.looseSelection>=0&&state.loose[state.looseSelection].id===id?1:0);
+  const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id);
   el.querySelector(".qty").textContent="×"+free;
   el.disabled=free===0;
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===id)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===id));
@@ -476,7 +478,7 @@ function palette(){
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
     toast("Suelta la pieza dentro de la mesa.");return;
    }
-   const p=screenToWorld(e),b=state.track.board;
+   const p=screenToWorld(e),b=state.workBoard;
    if(p.x<b.left+85||p.x>b.right-85||p.y<b.top+85||p.y>b.bottom-85){
     toast("Suelta dentro del tapete verde.");return;
    }
@@ -503,7 +505,7 @@ function strokePath(ctx,points,color,width){
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
 function paintGrid(ctx){
  if(!state.gridEnabled)return;
- const b=state.track.board,edge=65;
+ const b=state.workBoard,edge=65;
  ctx.save();ctx.beginPath();
  ctx.rect(b.left+edge,b.top+edge,b.width-edge*2,b.height-edge*2);ctx.clip();
  for(const direction of ["x","y"]){
@@ -529,7 +531,7 @@ function paintGrid(ctx){
 function paintTable(ctx){
  ctx.save();
  // La mesa debe cubrir la geometría sin mover ni deformar los conectores.
- const b=state.track.board;
+ const b=state.workBoard;
  ctx.translate(b.left,b.top);
  ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
@@ -819,7 +821,7 @@ function paintLoose(ctx){
   }
   if(state.mode==="build"&&!state.track.closed){
    const end=state.track.ends.end;
-   if(Math.hypot(p.x-end.x,p.y-end.y)<175){
+   if(state.types.length&&Math.hypot(p.x-end.x,p.y-end.y)<SNAP_DISTANCE_MM){
     ctx.save();ctx.lineWidth=9;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
     ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(end.x,end.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
    }
@@ -828,8 +830,9 @@ function paintLoose(ctx){
  if(state.dragging?.active&&state.mode==="build"){
   const d=state.dragging,rect=editCanvas.getBoundingClientRect();
   const w=worldFromPointer(makeView(editCanvas,"build"),d.x-rect.left,d.y-rect.top);
-  if(w.x>=0&&w.x<=TABLE.width&&w.y>=0&&w.y<=TABLE.height){
-   const end=state.track.ends.end,snap=!state.track.closed&&Math.hypot(w.x-end.x,w.y-end.y)<175;
+  const b=state.workBoard;
+  if(w.x>=b.left&&w.x<=b.right&&w.y>=b.top&&w.y<=b.bottom){
+   const end=state.track.ends.end,snap=!state.track.closed&&state.types.length>0&&Math.hypot(w.x-end.x,w.y-end.y)<SNAP_DISTANCE_MM;
    const snapped=gridXY(w.x,w.y);
    const pose=snap?{x:end.x,y:end.y,h:end.h}:{x:snapped.x,y:snapped.y,h:0};
    const spec=CATALOG[d.id],n=spec.length?7:20;
@@ -889,7 +892,7 @@ function makeView(canvas,mode){
   (Number.isFinite(window.innerWidth)&&Number.isFinite(window.innerHeight)?
    window.innerHeight>window.innerWidth:h>w*1.1);
  const angle=portrait?Math.PI/2:0;
- const target=mode==="build"?state.track.board:
+ const target=mode==="build"?state.workBoard:
   {left:state.track.bounds.left-160,right:state.track.bounds.right+160,
    top:state.track.bounds.top-160,bottom:state.track.bounds.bottom+160};
  const cx=(target.left+target.right)/2,cy=(target.top+target.bottom)/2;
@@ -961,12 +964,12 @@ function canvasPointerMove(e){
  if(state.pointer.size===1&&p.looseIndex>=0){
   if(Math.hypot(p.x-p.originX,p.y-p.originY)<5)return;
   if(!p.dragged){pushHistory();p.dragged=true;}
-  const to=screenToWorld(e),piece=state.loose[p.looseIndex],b=state.track.board;
+  const to=screenToWorld(e),piece=state.loose[p.looseIndex],b=state.workBoard;
   if(!piece||!p.pieceStart)return;
   piece.x=Math.max(b.left+140,Math.min(b.right-140,
-    gridSnap(p.pieceStart.x+to.x-p.originWorld.x)));
+    coordinate(p.pieceStart.x+to.x-p.originWorld.x)));
   piece.y=Math.max(b.top+140,Math.min(b.bottom-140,
-    gridSnap(p.pieceStart.y+to.y-p.originWorld.y)));
+    coordinate(p.pieceStart.y+to.y-p.originWorld.y)));
   state.viewDirty=true;
   return;
  }
