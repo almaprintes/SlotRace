@@ -513,7 +513,8 @@ function updateHud(){
  const pose=positionAt(state.track.lanes[state.lane],state.distance);
  const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
  const underCrossing=isBelow&&pose&&Boolean(state.track.bridge)&&
-   Math.hypot(pose.x-state.track.parts[0].points[3].x,pose.y-state.track.parts[0].points[3].y)<165;
+   Math.hypot(pose.x-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).x,
+     pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    !state.run?"EN PAUSA":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
@@ -839,7 +840,7 @@ function paintContinuousTrack(ctx,track,editing){
 function paintBridgeCrossing(ctx,track){
  if(!track.bridge)return;
  const elevated=track.parts[track.bridge.overParts[0]];
- const middle=elevated.points[Math.floor(elevated.points.length/2)],angle=middle.h;
+ const middle=positionOnPiece(elevated.start,elevated.id,.5),angle=middle.h;
  const halfLength=185,halfWidth=(TRACK_WIDTH+13)/2;
  ctx.save();ctx.translate(middle.x,middle.y);ctx.rotate(angle);
  // Los soportes están fuera de la intersección, sin invadir las ranuras.
