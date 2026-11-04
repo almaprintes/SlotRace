@@ -16,7 +16,7 @@ const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(
  {...old.origin}:{...START};
 const state={
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,
-  types:initial,loose:initialLoose,origin:initialOrigin,track:buildTrack(initial,initialOrigin),mode:"build",selection:-1,looseSelection:-1,dragLoose:-1,
+  types:initial,loose:initialLoose,origin:initialOrigin,track:buildTrack(initial,initialOrigin),mode:"build",selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
@@ -92,70 +92,135 @@ function addLoose(id,x,y,h=0){
  pushHistory();state.loose.push({id,x:point.x,y:point.y,h});
  state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
 }
-const SNAP_DISTANCE_MM=78;
-function snapCandidates(piece){
- const end=state.track.ends.end,start=state.origin;
- const after=Math.hypot(piece.x-end.x,piece.y-end.y);
- const looseEnd=positionOnPiece(piece,piece.id,1);
- const before=Math.hypot(looseEnd.x-start.x,looseEnd.y-start.y);
- return{after,before};
+
+/* DEV 0.8.0 · imanes entre cualquier par de grupos o piezas sueltas. */
+const SNAP_DISTANCE_MM=135, SNAP_ROTATION_RAD=Math.PI/2+1e-5;
+let magnetSerial=1+Math.max(0,...state.loose.map(p=>{const m=/^magnet-(\d+)$/.exec(p.magnetGroup||"");return m?+m[1]:0;}));
+const newMagnetGroup=()=> "magnet-"+magnetSerial++;
+const angleDiff=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
+const connectorDistance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function looseMembers(index){
+ const p=state.loose[index];if(!p)return[];
+ if(!p.magnetGroup)return[index];
+ return state.loose.map((piece,i)=>({piece,i}))
+  .filter(v=>v.piece.magnetGroup===p.magnetGroup)
+  .sort((a,b)=>(a.piece.magnetOrder||0)-(b.piece.magnetOrder||0))
+  .map(v=>v.i);
+}
+function looseGroup(index){
+ const indices=looseMembers(index);if(!indices.length)return null;
+ const parts=indices.map(i=>state.loose[i]);
+ const start={x:parts[0].x,y:parts[0].y,h:parts[0].h};
+ const end=positionOnPiece(parts.at(-1),parts.at(-1).id,1);
+ return{indices,parts,start,end,key:parts[0].magnetGroup||"single-"+indices[0]};
+}
+function looseGroupKey(index){return state.loose[index]?.magnetGroup||"single-"+index;}
+function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
+ const moving=looseGroup(index);if(!moving)return null;
+ const excluded=new Set(moving.indices),targets=[];
+ if(state.types.length&&!state.track.closed)targets.push({kind:"main",start:state.origin,end:state.track.ends.end});
+ const seen=new Set();
+ for(let i=0;i<state.loose.length;i++){
+  if(excluded.has(i))continue;
+  const group=looseGroup(i);if(!group||seen.has(group.key))continue;
+  seen.add(group.key);targets.push({kind:"loose",index:i,start:group.start,end:group.end});
+ }
+ let best=null;
+ for(const target of targets)for(const [side,from,to] of [
+  ["append",moving.start,target.end],["prepend",moving.end,target.start]]){
+  const gap=connectorDistance(from,to),rotation=angleDiff(to.h,from.h);
+  if(gap>distance||Math.abs(rotation)>SNAP_ROTATION_RAD)continue;
+  const score=gap+Math.abs(rotation)*22;
+  if(!best||score<best.score)best={...target,side,from,to,gap,rotation,score};
+ }
+ return best;
+}
+function transformLoose(indices,from,to){
+ const angle=angleDiff(to.h,from.h),c=Math.cos(angle),sn=Math.sin(angle);
+ for(const i of indices){
+  const p=state.loose[i],dx=p.x-from.x,dy=p.y-from.y;
+  p.x=to.x+c*dx-sn*dy;p.y=to.y+sn*dx+c*dy;p.h+=angle;
+ }
 }
 function snapLoose(index,{force=false,history=true}={}){
- if(index<0||index>=state.loose.length||state.track.closed)return false;
- const piece=state.loose[index],first=state.types.length===0;
- const distances=first?{after:0,before:Infinity}:snapCandidates(piece);
- const prepend=!first&&distances.before<distances.after;
- if(!first&&!force&&Math.min(distances.after,distances.before)>SNAP_DISTANCE_MM)return false;
+ const source=looseGroup(index);if(!source)return false;
+ const magnet=bestMagnet(index,{distance:force?SNAP_DISTANCE_MM*1.5:SNAP_DISTANCE_MM});
+ if(!magnet)return false;
  if(history)pushHistory();
- if(first){
-  state.origin={x:piece.x,y:piece.y,h:piece.h};
-  state.types.push(piece.id);
- }else if(prepend){
-  // Ajustar el extremo final de la pieza nueva al inicio EXACTO de la
-  // cadena, sin mover ni girar ningún módulo ya ensamblado.
-  const h=state.origin.h-(CATALOG[piece.id].angle||0);
-  const vector=positionOnPiece({x:0,y:0,h},piece.id,1);
-  state.origin={x:state.origin.x-vector.x,y:state.origin.y-vector.y,h};
-  state.types.unshift(piece.id);
+ transformLoose(source.indices,magnet.from,magnet.to);
+ const moved=source.indices.map(i=>({...state.loose[i]}));
+ if(magnet.kind==="main"){
+  if(magnet.side==="append")state.types.push(...moved.map(p=>p.id));
+  else{state.types.unshift(...moved.map(p=>p.id));state.origin={x:moved[0].x,y:moved[0].y,h:moved[0].h};}
+  for(const i of [...source.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
+  state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+  state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
  }else{
-  state.types.push(piece.id);
+  const target=looseGroup(magnet.index);
+  const combined=magnet.side==="append"?[...target.indices,...source.indices]:
+   [...source.indices,...target.indices];
+  const groupId=target.parts[0].magnetGroup||newMagnetGroup();
+  for(const [order,i] of combined.entries()){
+   state.loose[i].magnetGroup=groupId;state.loose[i].magnetOrder=order;
+  }
+  state.selectedGroup=groupId;state.selectionMode="group";state.looseSelection=combined[0];state.selection=-1;
  }
- state.loose.splice(index,1);
- state.track=buildTrack(state.types,state.origin);extendWorkBoard();
- state.looseSelection=-1;state.dragLoose=-1;state.selection=-1;save();updateUI();
- toast(first?"¡Primera pieza fijada! Acerca otras para conectarlas.":
-  prepend?"¡Clac! Pieza conectada al principio del circuito.":
-  "¡Clac! Pieza encajada magnéticamente.");
+ state.dragLoose=-1;save();updateUI();
+ toast("¡Clac! Piezas acopladas: ya puedes moverlas como un tramo.");
  return true;
 }
-// Desprender una pieza ensamblada SIN mover el resto:
-// el prefijo queda conectado; la pieza elegida y las siguientes
-// pasan a ser objetos individuales en su MISMA posición del mundo.
 function detachConnected(index,{history=true}={}){
  if(index<0||index>=state.types.length)return -1;
  if(history)pushHistory();
- const remaining=state.track.parts.slice(index).map(part=>({
-  id:part.id,x:part.start.x,y:part.start.y,h:part.start.h
- }));
- const looseIndex=state.loose.length;
+ const pieces=state.track.parts.slice(index).map(part=>({id:part.id,x:part.start.x,y:part.start.y,h:part.start.h}));
+ const first=state.loose.length;
  state.types=state.types.slice(0,index);
- state.loose.push(...remaining);
+ if(pieces.length>1){
+  const key=newMagnetGroup();
+  for(let k=1;k<pieces.length;k++){pieces[k].magnetGroup=key;pieces[k].magnetOrder=k-1;}
+ }
+ state.loose.push(...pieces);
  state.track=buildTrack(state.types,state.origin);extendWorkBoard();
- state.selection=-1;state.looseSelection=looseIndex;state.run=false;
- save();updateUI();
- return looseIndex;
+ state.selection=-1;state.looseSelection=first;state.selectionMode="piece";state.selectedGroup="single-"+first;
+ state.run=false;save();updateUI();return first;
+}
+function detachLooseMember(index){
+ const members=looseMembers(index);if(members.length<=1)return;
+ const position=members.indexOf(index),original=state.loose[index].magnetGroup;
+ const before=members.slice(0,position),after=members.slice(position+1);
+ delete state.loose[index].magnetGroup;delete state.loose[index].magnetOrder;
+ for(const [order,i] of before.entries()){
+  if(before.length===1){delete state.loose[i].magnetGroup;delete state.loose[i].magnetOrder;}
+  else{state.loose[i].magnetGroup=original;state.loose[i].magnetOrder=order;}
+ }
+ const suffixId=newMagnetGroup();
+ for(const [order,i] of after.entries()){
+  if(after.length===1){delete state.loose[i].magnetGroup;delete state.loose[i].magnetOrder;}
+  else{state.loose[i].magnetGroup=suffixId;state.loose[i].magnetOrder=order;}
+ }
+}
+function promoteLooseGroup(index){
+ const group=looseGroup(index);if(!group||state.types.length)return false;
+ pushHistory();state.origin={...group.start};state.types=group.parts.map(p=>p.id);
+ for(const i of [...group.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
+ state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+ state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
+ save();updateUI();toast("¡Tramo fijado! Puedes seguir ampliándolo.");return true;
 }
 function startSelectedPiece(){
  if(state.looseSelection<0)return;
- const idx=state.looseSelection;
- if(state.types.length&&!state.track.closed){
-  const distances=snapCandidates(state.loose[idx]);
-  if(Math.min(distances.after,distances.before)>SNAP_DISTANCE_MM){
-   toast("Acerca un extremo de la pieza a cualquiera de los dos conectores libres.");return;
-  }
- }
- if(state.track.closed){toast("El circuito ya está cerrado; separa antes un tramo.");return;}
- snapLoose(idx,{force:false,history:true});
+ if(!state.types.length){promoteLooseGroup(state.looseSelection);return;}
+ if(!snapLoose(state.looseSelection,{history:true}))
+  toast("Acerca un conector a otro para unir los tramos.");
+}
+function selectByTap(kind,index){
+ const key=kind==="main"?"main":looseGroupKey(index);
+ const length=kind==="main"?state.types.length:looseMembers(index).length;
+ const same=state.selectedGroup===key;
+ state.selectionMode=length<=1?"piece":same&&state.selectionMode==="group"?"piece":"group";
+ state.selectedGroup=key;
+ state.selection=kind==="main"?index:-1;state.looseSelection=kind==="main"?-1:index;
+ updateUI();
 }
 function scatterLoose(id){
  // Cada toque de la caja añade una pieza nueva, sin reordenar las demás.
