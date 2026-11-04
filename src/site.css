@@ -271,3 +271,19 @@ button:disabled{opacity:.35;cursor:not-allowed}
   .dial-display{grid-template-columns:minmax(0,1fr) 40px}
   .dial-readout strong{font-size:25px}
 }
+
+/* DEV 0.6.0 · mesa puzzle: botón Iniciar a la vista y herramientas desplazables. */
+.panel-line{min-width:0}
+.panel-line .buttons{flex:1 1 auto;min-width:0;justify-content:flex-start;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
+ scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.panel-line .buttons .mini{flex:none;scroll-snap-align:start}
+#joinPiece{border-color:#a6ffe5;background:#49e3c4;color:#062f29;
+ font-weight:950;box-shadow:0 0 0 1px #43ddaa30}
+#joinPiece:disabled{opacity:.36}
+@media(max-width:660px){
+ .panel-line{flex-wrap:wrap;gap:5px}
+ .panel-line .selector{flex:0 0 100%;padding:5px 8px}
+ .panel-line .buttons{flex:1 1 100%}
+ .panel-line .buttons .mini{min-height:35px}
+}
