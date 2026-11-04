@@ -486,6 +486,80 @@ function paintBridgePillars(ctx,track){
   ctx.restore();
  }
 }
+// Dibujo continuo por todo el circuito: elimina costuras gruesas y bordes
+// superpuestos donde una recta enlaza con otra o entra en una curva.
+function paintContinuousTrack(ctx,track,editing){
+ if(!track.parts.length)return;
+ const path=track.points;
+ ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=15;ctx.shadowOffsetY=10;
+ strokePath(ctx,path,"#0c1518",TRACK_WIDTH+19);ctx.restore();
+ strokePath(ctx,path,"#65747a",TRACK_WIDTH+12);
+ strokePath(ctx,path,"#1e282d",TRACK_WIDTH+5);
+ strokePath(ctx,path,"#343e44",TRACK_WIDTH-4);
+ strokePath(ctx,path,"#283139",TRACK_WIDTH-31);
+ for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
+  const line=translated(path,laneOffset);
+  strokePath(ctx,line,"#101418",11);
+  strokePath(ctx,translated(path,laneOffset-7.6),"#94a5ac",2.2);
+  strokePath(ctx,translated(path,laneOffset+7.6),"#a2b4bc",2.2);
+  strokePath(ctx,line,"#080c0e",5);
+ }
+ for(const edge of [-72,72])strokePath(ctx,translated(path,edge),"#65787e",2.5);
+ for(const part of track.parts)paintSeam(ctx,part.start);
+ if(editing&&state.selection>=0){
+  ctx.save();ctx.globalAlpha=.28;
+  strokePath(ctx,track.parts[state.selection].points,"#4affd5",TRACK_WIDTH+17);
+  ctx.restore();
+ }
+ if(track.closed){
+  const p=track.parts[0].start;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
+  for(let k=-2;k<=2;k++)for(let j=0;j<8;j++){
+   ctx.fillStyle=(k+j)%2?"#fff6e8":"#171a1c";
+   ctx.fillRect(k*7,-TRACK_WIDTH/2+j*TRACK_WIDTH/8,7,TRACK_WIDTH/8);
+  }
+  ctx.restore();
+ }else if(editing){
+  for(const [p,color] of [[track.ends.begin,"#67eff1"],[track.ends.end,"#ffc66b"]]){
+   ctx.save();ctx.shadowBlur=15;ctx.shadowColor=color;ctx.fillStyle=color;
+   ctx.beginPath();ctx.arc(p.x,p.y,14,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+ }
+}
+// Overlay SOLO sobre la abertura real del cruce. En las anteriores
+// versiones toda la diagonal superior se repintaba encima del coche,
+// por lo que éste quedaba parcialmente oculto también cerca de curvas.
+function paintBridgeCrossing(ctx,track){
+ if(!track.bridge)return;
+ const middle=track.parts[10].end,angle=middle.h;
+ const halfLength=185,halfWidth=(TRACK_WIDTH+13)/2;
+ ctx.save();ctx.translate(middle.x,middle.y);ctx.rotate(angle);
+ // Los soportes están fuera de la intersección, sin invadir las ranuras.
+ for(const x of [-halfLength-33,halfLength+33]){
+  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=12;
+  ctx.fillStyle="#566d75";roundRect(ctx,x-15,-101,30,202,7);ctx.fill();
+  ctx.shadowBlur=0;ctx.fillStyle="#becfcf";ctx.fillRect(x-4,-92,8,184);
+  ctx.restore();
+ }
+ ctx.beginPath();roundRect(ctx,-halfLength,-halfWidth,halfLength*2,halfWidth*2,13);ctx.clip();
+ ctx.rotate(-angle);ctx.translate(-middle.x,-middle.y);
+ const upper=track.parts.slice(9,13).flatMap((part,i)=>i?part.points.slice(1):part.points);
+ ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=16;ctx.shadowOffsetY=10;
+ strokePath(ctx,upper,"#10181c",TRACK_WIDTH+23);ctx.restore();
+ strokePath(ctx,upper,"#728187",TRACK_WIDTH+13);
+ strokePath(ctx,upper,"#1d282e",TRACK_WIDTH+4);
+ strokePath(ctx,upper,"#36424a",TRACK_WIDTH-7);
+ strokePath(ctx,upper,"#28343a",TRACK_WIDTH-35);
+ for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
+  const line=translated(upper,laneOffset);
+  strokePath(ctx,line,"#0a1014",10);
+  strokePath(ctx,translated(upper,laneOffset-7.6),"#aabdc0",2.1);
+  strokePath(ctx,translated(upper,laneOffset+7.6),"#aabdc0",2.1);
+  strokePath(ctx,line,"#050c0e",5);
+ }
+ for(const edge of [-72,72])strokePath(ctx,translated(upper,edge),"#8a9a9e",2.6);
+ ctx.restore();
+}
 function paintTrack(ctx,track,editing,layer="all"){
  if(!track.parts.length)return;
  const elevated=track.bridge?track.bridge.overParts:[];
@@ -698,19 +772,16 @@ function renderScene(canvas,mode){
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=positionAt(track.lanes[state.lane],mode==="race"?state.distance:0);
  const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
+ // Dibujar el circuito completo como un solo tramo continuo evita
+ // bandas que se comen otras piezas en las uniones.
+ paintContinuousTrack(ctx,track,mode==="build");
  if(hasBridge){
-  // Primero los raíles de abajo. Si el coche está en el nivel inferior,
-  // se pinta AHORA: después el puente lo ocultará al cruzar.
-  paintTrack(ctx,track,mode==="build","ground");
+  // El coche inferior sólo pasa tras la MÁSCARA PEQUEÑA del cruce;
+  // el resto de la diagonal no puede ocultarlo.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
-  // El puente debe tapar al coche inferior, pero nunca al coche que
-  // realmente está recorriendo el tablero elevado.
-  paintTrack(ctx,track,mode==="build","overpass");
+  paintBridgeCrossing(ctx,track);
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
- }else{
-  paintTrack(ctx,track,mode==="build");
-  if(track.valid)paintCar(ctx,p,state.lane);
- }
+ }else if(track.valid)paintCar(ctx,p,state.lane);
  paintLoose(ctx);
  paintGhost(ctx,track);
  ctx.restore();
