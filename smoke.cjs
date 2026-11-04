@@ -73,6 +73,11 @@ const augmented=buildTrack([...STARTER,"S175"]);
 assert.equal(augmented.valid,false,"Extra piece breaks closed loop");
 assert.equal(augmented.closed,false);
 assert.ok(augmented.gap>100);
+// Un circuito abierto que se cruza también debe detectarse como incompatible
+// con una pista a ras de mesa, sin confundir el cruce con el cierre.
+const crossingOpen=buildTrack(["R2R","R2L","R1L","R2L","S350","S350","R1L","R1L","R1L","R2L","S175","R2L","S175","R1L","R1R","S350"]);
+assert.equal(crossingOpen.closed,false);
+assert.equal(crossingOpen.intersection,true);
 const broken=buildTrack(STARTER.slice(0,-1));
 assert.equal(broken.valid,false);
 assert.ok(broken.gap>100);
@@ -86,5 +91,5 @@ const midpoint=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(midpoint.x)&&Number.isFinite(midpoint.y));
 const nearest=nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y);
 assert.equal(nearest.index,0,"Tap should select a physical part");
-console.log("SlotRace LAB 0.4.1 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB 0.4.3 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
