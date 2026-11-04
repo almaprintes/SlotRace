@@ -46,6 +46,9 @@ jobs:
       - name: Comprobar caja de corcho y extracción de inventario
         run: node tests/foam-case.cjs
 
+      - name: Comprobar geometría PT-Precision y cierres exactos
+        run: node tests/pt-precision.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
