@@ -150,6 +150,7 @@ function strokePath(ctx,points,color,width){
 }
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
 function paintTable(ctx){
+ ctx.save();
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
  const wood=ctx.createLinearGradient(0,0,TABLE.width,TABLE.height);
  wood.addColorStop(0,"#ad7443");wood.addColorStop(.45,"#6b4327");wood.addColorStop(1,"#a96c3c");
