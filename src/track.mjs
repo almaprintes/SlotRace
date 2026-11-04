@@ -23,11 +23,17 @@ export const CATALOG = Object.freeze({
 });
 export const STARTER=Object.freeze(["S350","S350","R2R","R2R","R2R","R2R",
   "S350","S350","R2R","R2R","R2R","R2R"]);
+// Dos diagonales de 4 rectas de 350 mm. El cruce cae entre la
+// segunda y tercera pieza de cada diagonal, no en salida/meta.
 export const FIGURE_EIGHT=Object.freeze([
- "S350","S350",...Array(5).fill("R2R"),
- ...Array(4).fill("S350"),
- ...Array(5).fill("R2L"),"S350","S350"
+ ...Array(4).fill("S350"),...Array(5).fill("R2R"),
+ ...Array(4).fill("S350"),...Array(5).fill("R2L")
 ]);
+export const BRIDGE_HEIGHT_MM=65;
+export function hasAutomaticEightBridge(types){
+ return Array.isArray(types)&&types.length===FIGURE_EIGHT.length&&
+   types.every((id,i)=>id===FIGURE_EIGHT[i]);
+}
 const EPS=1e-7;
 const SNAP_MM=3; // tolerancia del conector: no estiramos piezas.
 const SNAP_RAD=Math.PI/180; // 1 grado máximo.
@@ -119,9 +125,16 @@ export function buildTrack(types,origin=START){
   const onTable=bounds.left>=board.left+TABLE.edge&&bounds.right<=board.right-TABLE.edge&&
     bounds.top>=board.top+TABLE.edge&&bounds.bottom<=board.bottom-TABLE.edge;
   const intersection=crossed(parts,closed);
+  // El ocho homologado de prueba tiene puente automático sobre la
+  // segunda diagonal y soportes a ambos extremos. Nunca validamos
+  // otros cruces planos por mera cercanía visual.
+  const bridge=closed&&intersection&&hasAutomaticEightBridge(types)?
+   {height:BRIDGE_HEIGHT_MM,overParts:[9,10,11,12],
+    underParts:[0,1,2,3],supports:[9,12],virtual:true}:null;
   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
-  return{parts,types:[...types],points,lanes,closed,onTable,intersection,
-    valid:closed&&onTable&&!intersection,ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
+  return{parts,types:[...types],points,lanes,closed,onTable,intersection,bridge,
+    valid:closed&&onTable&&(!intersection||Boolean(bridge)),
+    ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,bounds,board,
     connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,
     nearConnection:gap<=TRACK_WIDTH&&types.length>=4,
