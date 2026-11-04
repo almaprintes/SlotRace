@@ -32,68 +32,106 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.5.6");
+ assert.equal(game.version,"DEV 0.5.7");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
  assert.equal(st.track.valid,true);
  assert.equal(st.track.bridge,null,"No elevated crossing in the oval");
- const lane=st.track.lanes[0];
- const first=lane.nodes.findIndex(p=>p.pieceIndex===2);
- const last=lane.nodes.findLastIndex(p=>p.pieceIndex===2);
- const lastTurn=lane.nodes.findLastIndex(p=>p.pieceIndex===5);
- const nextStraight=lane.nodes.findIndex(p=>p.pieceIndex===6);
- assert.ok(first>1&&last>first&&lastTurn>last&&nextStraight>lastTurn);
- const curveStart=lane.lengths[first-1];
- const curveLength=lane.lengths[last]-curveStart;
- const turnEnd=lane.lengths[lastTurn];
- assert.ok(curveLength>170&&curveLength<260,"Each R2 45-degree segment has a sensible length");
- assert.equal(geom.positionAt(lane,curveStart+1).curve,1,"Curvature begins on the curve");
- assert.equal(geom.positionAt(lane,lane.lengths[nextStraight-1]+1).curve,0,
-   "The first few mm of the next STRAIGHT cannot inherit curvature from the preceding curve");
- assert.equal(physics.curveLimit(geom.positionAt(lane,lane.lengths[nextStraight-1]+1),0),Infinity,
-   "No curve limit applied while genuinely on a straight");
- function testThrottle(gas,dt){
+ // El óvalo gira a la derecha (+1): lane 1 interior, lane 0 exterior.
+ // El ocho incorpora curvas a izquierda; allí los roles se invierten.
+ const r=geom.CATALOG.R2R.radius,off=geom.LANE_OFFSET;
+ const right=geom.positionAt(st.track.lanes[0],
+  st.track.lanes[0].lengths[st.track.lanes[0].nodes.findIndex(p=>p.pieceIndex===2)+3]);
+ assert.equal(right.curve,1);
+ const outsideLimit=physics.curveLimit(right,0),insideLimit=physics.curveLimit(right,1);
+ assert.ok(outsideLimit>insideLimit,"El carril exterior admite más velocidad que el interior");
+ assert.ok(Math.abs(outsideLimit-physics.DRIVE.curveBase*physics.DRIVE.derailMultiplier*
+   Math.sqrt((r+off)/r))<.01,"Radio exterior R+39 aplicado");
+ assert.ok(Math.abs(insideLimit-physics.DRIVE.curveBase*physics.DRIVE.derailMultiplier*
+   Math.sqrt((r-off)/r))<.01,"Radio interior R-39 aplicado");
+ assert.ok(.65*physics.DRIVE.topSpeed<insideLimit&&.70*physics.DRIVE.topSpeed>insideLimit,
+   "El interior admite 65% pero supera umbral al 70%");
+ assert.ok(.75*physics.DRIVE.topSpeed<outsideLimit&&.80*physics.DRIVE.topSpeed>outsideLimit,
+   "El exterior admite 75% pero supera umbral al 80%");
+ const leftTrack=geom.buildTrack(["R2L","R2L","R2L"]);
+ const leftLine=leftTrack.lanes[0];
+ const leftPose=geom.positionAt(leftLine,leftLine.total*.25);
+ assert.equal(leftPose.curve,-1);
+ assert.ok(physics.curveLimit(leftPose,1)>physics.curveLimit(leftPose,0),
+   "Al invertir el sentido, el exterior pasa al otro carril");
+ assert.ok(Math.abs(physics.curveLimit(leftPose,1)-outsideLimit)<.01,
+   "El límite exterior no depende del sentido de giro");
+ assert.ok(Math.abs(physics.curveLimit(leftPose,0)-insideLimit)<.01,
+   "El límite interior no depende del sentido de giro");
+
+ const tracks=st.track.lanes;
+ function testThrottle(laneId,gas,dt){
+  const lane=tracks[laneId],first=lane.nodes.findIndex(p=>p.pieceIndex===2);
+  const last=lane.nodes.findLastIndex(p=>p.pieceIndex===2);
+  const lastTurn=lane.nodes.findLastIndex(p=>p.pieceIndex===5);
+  const nextStraight=lane.nodes.findIndex(p=>p.pieceIndex===6);
+  assert.ok(first>1&&last>first&&lastTurn>last&&nextStraight>lastTurn);
+  const curveStart=lane.lengths[first-1];
+  const curveLength=lane.lengths[last]-curveStart;
+  const turnEnd=lane.lengths[lastTurn];
+  const straightPosition=lane.lengths[nextStraight-1]+1;
+  assert.equal(geom.positionAt(lane,curveStart+1).curve,1);
+  assert.equal(geom.positionAt(lane,straightPosition).curve,0,
+    "La recta no debe heredar la curvatura anterior");
+  assert.equal(physics.curveLimit(geom.positionAt(lane,straightPosition),laneId),Infinity);
   Object.assign(st,{
-   gas,speed:gas*physics.DRIVE.topSpeed,
-   distance:curveStart+1,cornerDistance:0,cornerDirection:0,gripDebt:0,
-   penalty:0,deslot:null,drift:0,driftDirection:0,seconds:0,run:true
+    lane:laneId,gas,speed:gas*physics.DRIVE.topSpeed,
+    distance:curveStart+1,cornerDistance:0,cornerDirection:0,gripDebt:0,
+    penalty:0,deslot:null,drift:0,driftDirection:0,seconds:0,run:true
   });
   let maxDrift=0,steps=0;
-  for(;steps<400&&st.penalty===0&&st.distance<turnEnd;steps++){
+  for(;steps<500&&st.penalty===0&&st.distance<turnEnd;steps++){
    physics.simulationStep(dt);
    maxDrift=Math.max(maxDrift,st.drift);
    if(steps===0){
-    assert.equal(st.penalty,0,"A curve must never eject the car at the first edge");
-    assert.ok(st.distance>curveStart,"The car must begin to enter the curve");
+    assert.equal(st.penalty,0,"No puede salirse en la primera arista");
+    assert.ok(st.distance>curveStart,"Debe comenzar a recorrer la curva");
    }
   }
-  return{
-   crashed:st.penalty>0,advance:st.distance-curveStart,
-   maxDrift,steps,gripDebt:st.gripDebt,travel:st.cornerDistance
-  };
+  return{crashed:st.penalty>0,advance:st.distance-curveStart,
+   curveLength,turnLength:turnEnd-curveStart,maxDrift,steps,gripDebt:st.gripDebt};
  }
- const safe=testThrottle(.65,1/60);
- assert.equal(safe.crashed,false,"65% may drift but must finish the full bend");
- assert.ok(safe.advance>=turnEnd-curveStart,"The 65% case must reach the end of the turn");
- assert.ok(safe.maxDrift>.25,"65% should show visible controlled drift");
- const excess=testThrottle(.70,1/60);
- assert.equal(excess.crashed,true,"70% eventually causes an off-track spin if maintained");
- assert.ok(excess.advance>curveLength*.50,
-   "70% must pass the middle of its FIRST curve piece, not derail on the entrance");
- assert.ok(excess.advance<curveLength*2.5,
-   "70% should still derail in the early-to-middle portion of the bend");
- const fine=testThrottle(.70,1/120);
- assert.equal(fine.crashed,true,"Excessive throttle must also derail at 120 Hz");
- assert.ok(Math.abs(fine.advance-excess.advance)<25,
-   "Derail distance should not substantially change with simulation frame rate");
- // Lifting the throttle inside a curve recovers lateral grip rather
- // than punishing the driver after the speed becomes safe.
- Object.assign(st,{gas:.65,speed:.65*physics.DRIVE.topSpeed,distance:curveStart+80,
-  cornerDirection:1,cornerDistance:80,gripDebt:.75,penalty:0,deslot:null,run:true});
- const original=st.gripDebt;
+ const inner65=testThrottle(1,.65,1/60);
+ assert.equal(inner65.crashed,false,"Interior 65% completa la curva");
+ assert.ok(inner65.advance>=inner65.turnLength);
+ assert.ok(inner65.maxDrift>.20,"Interior 65% permite derrapar");
+ const inner70=testThrottle(1,.70,1/60);
+ assert.equal(inner70.crashed,true,"Interior 70% se sale con acelerador sostenido");
+ assert.ok(inner70.advance>inner70.curveLength*.50,
+   "Interior 70% debe salirse ya dentro de la curva, no al tocar la entrada");
+ assert.ok(inner70.advance<inner70.curveLength*2.5);
+ const outer75=testThrottle(0,.75,1/60);
+ assert.equal(outer75.crashed,false,"Exterior 75% completa la curva");
+ assert.ok(outer75.maxDrift>.15,"Exterior 75% derrapa sin salirse");
+ const outer80=testThrottle(0,.80,1/60);
+ assert.equal(outer80.crashed,true,"Exterior 80% se sale con acelerador sostenido");
+ assert.ok(outer80.advance>outer80.curveLength*.50,
+   "Exterior 80% no se sale a la entrada");
+ assert.ok(outer80.advance<outer80.curveLength*2.5);
+ const fastInner=testThrottle(1,.70,1/120);
+ const fastOuter=testThrottle(0,.80,1/120);
+ assert.equal(fastInner.crashed,true);
+ assert.equal(fastOuter.crashed,true);
+ assert.ok(Math.abs(fastInner.advance-inner70.advance)<25,
+   "El punto de salida interior debe ser estable entre 60/120 Hz");
+ assert.ok(Math.abs(fastOuter.advance-outer80.advance)<25,
+   "El punto de salida exterior debe ser estable entre 60/120 Hz");
+ // Suelta gas dentro de la curva y comprueba que la pérdida se recupera.
+ const innerLane=tracks[1];
+ const first=innerLane.nodes.findIndex(p=>p.pieceIndex===2);
+ const start=innerLane.lengths[first-1];
+ Object.assign(st,{lane:1,gas:.65,speed:.65*physics.DRIVE.topSpeed,
+  distance:start+80,cornerDirection:1,cornerDistance:80,
+  gripDebt:.75,penalty:0,deslot:null,run:true});
+ const initialDebt=st.gripDebt;
  for(let i=0;i<8;i++)physics.simulationStep(1/60);
- assert.equal(st.penalty,0,"Easing off must avoid a delayed penalty");
- assert.ok(st.gripDebt<original,"Reduced throttle must regenerate grip");
- console.log("SlotRace DEV 0.5.6: oval 65% stable drift, 70% delayed curve exit, straight boundaries and 60/120Hz equivalence — OK");
+ assert.equal(st.penalty,0,"Al reducir el gas no debe haber salida tardía");
+ assert.ok(st.gripDebt<initialDebt,"Reducir gas debe recuperar agarre");
+ console.log("SlotRace DEV 0.5.7: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
