@@ -1,4 +1,4 @@
-import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece} from "./track.mjs";
+import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-04";
@@ -30,9 +30,15 @@ function restoreSnapshot(shot){state.types=shot.types.slice();state.loose=(shot.
 function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
 function changeTypes(next,msg,loose=state.loose){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("No quedan suficientes piezas en la caja.");return false;}
+ const wasClosed=state.track.closed;
  pushHistory();state.types=next.slice();state.loose=loose.map(p=>({...p}));state.track=buildTrack(state.types);
  state.selection=-1;state.looseSelection=-1;state.run=false;resetLap();
- save();updateUI();if(msg)toast(msg);return true;
+ save();updateUI();
+ if(!wasClosed&&state.track.closed){
+   toast(state.track.intersection?"Los extremos encajan, pero hay un cruce sin puente.":
+     "¡Clac! Conectores unidos con precisión.");
+ }else if(msg)toast(msg);
+ return true;
 }
 function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;
  $("throttle").value="0";$("trigger").classList.remove("pressed");}
@@ -71,6 +77,24 @@ function inventoryAction(id){
  }
  const next=state.types.slice();next.push(id);
  changeTypes(next,"Pieza enganchada al extremo amarillo.");
+}
+function closeExactly(){
+ if(state.track.closed){
+   toast(state.track.intersection?"Los extremos ya conectan, pero hay un cruce sin puente.":"Este circuito ya está cerrado.");return;
+ }
+ if(state.loose.length){toast("Recoge o encaja primero las piezas sueltas.");return;}
+ if(state.types.length<2){toast("Coloca primero varias piezas.");return;}
+ $("autoClose").disabled=true;$("autoClose").textContent="Buscando…";
+ requestAnimationFrame(()=>{
+   try{
+    const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000});
+    if(result.ok){
+     if(result.unchanged)toast("El circuito ya estaba cerrado exactamente.");
+     else changeTypes(result.types,"Cierre calculado: "+result.replaced+" pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.");
+    }else toast(result.reason||"No hay cierre exacto con esas piezas.");
+   }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
+   finally{$("autoClose").textContent="Cerrar exacto";updateUI();}
+ });
 }
 function removeSelected(){
  if(state.looseSelection>=0){
@@ -149,13 +173,15 @@ function updateHud(){
 function updateUI(){
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  const t=state.track;
- const status=t.valid?"CIRCUITO HOMOLOGABLE · "+(t.length/1000).toFixed(2)+" m":
-  !t.types.length?"MESA VACÍA · MONTA PIEZAS":"TRAZADO ABIERTO · SEPARACIÓN "+Math.round(t.gap)+" mm";
- const notice= !t.onTable?"El circuito sobresale de la mesa":
-  t.intersection?"La pista se cruza sin puente":t.closed?"Ambos extremos conectados":
-  t.types.length?"Toca otra pieza para conectarla al extremo amarillo":"La caja está lista";
- $("stateChip").textContent=t.valid?"✓ CIRCUITO CERRADO":t.closed?"⚠ TRAZADO INVALIDO":"○ EN CONSTRUCCIÓN";
- $("stateDetails").textContent= t.valid? t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
+ const degrees=t.headingGap*180/Math.PI;
+ const status=t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
+  !t.types.length?"MESA VACÍA · COLOCA PIEZAS":t.closed?"CONECTADO · CRUCE SIN PUENTE":
+  "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
+ const notice=t.intersection?"Cruce al mismo nivel: necesita puente":
+  !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
+  t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":"La caja está lista";
+ $("stateChip").textContent=t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
+ $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
  $("buildStatus").textContent=status;
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
@@ -166,6 +192,7 @@ function updateUI(){
   "TRAMO "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
  $("remove").disabled=state.selection<0&&state.looseSelection<0;
  $("rotate").disabled=state.looseSelection<0;
+ $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
  const cards=$("pieces").querySelectorAll("[data-piece]");
@@ -513,6 +540,7 @@ function initEvents(){
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
+ $("autoClose").addEventListener("click",closeExactly);
  $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(4,state.camera.zoom*1.25);});
  $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(.65,state.camera.zoom/1.25);});
  $("zoomFit").addEventListener("click",()=>{state.camera={panX:0,panY:0,zoom:1};});
