@@ -1,386 +1,89 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#091119">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SlotRace LAB 0.3 · Juega sin bloqueo</title>
-<style>
-:root{color-scheme:dark;--bg:#091119;--panel:#111c27;--line:#263747;--white:#edf5f7;--muted:#9eafbb;--aqua:#38e0c5;--orange:#f7b15b;--error:#ff7d82}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0%,#193445 0%,transparent 38%),var(--bg);color:var(--white);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-button,input{font:inherit}button{touch-action:manipulation}button:focus-visible,input:focus-visible{outline:3px solid var(--aqua);outline-offset:3px}
-.wrapper{max-width:1580px;margin:auto;padding:20px 20px 28px}.header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0 20px;border-bottom:1px solid var(--line);margin-bottom:20px}
-.brand{display:flex;align-items:center;gap:13px}.logo{width:46px;height:46px;display:grid;place-items:center;background:linear-gradient(150deg,#43ebcb,#229fa5);border-radius:13px;color:#062124;font-weight:1000;font-size:24px;transform:rotate(-5deg)}
-.eyebrow{color:var(--aqua);font-size:11px;font-weight:800;letter-spacing:2.3px;text-transform:uppercase}.brand h1{margin:0;font-size:clamp(22px,3vw,32px);letter-spacing:-.8px;line-height:1.15}.subline{font-size:13px;color:var(--muted)}
-.headtag{border:1px solid #43606b;border-radius:24px;padding:7px 12px;color:#c4e4e5;font-size:12px;white-space:nowrap}
-.layout{display:grid;grid-template-columns:minmax(220px,270px) minmax(0,1fr) minmax(220px,270px);gap:16px;align-items:start}
-.panel,.stage{background:linear-gradient(165deg,#13212e,#0e1822);border:1px solid var(--line);border-radius:17px;min-width:0;overflow:hidden;box-shadow:0 15px 36px #02070b40}
-.panel{padding:17px}.stage{padding:13px}.sectiontitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}.sectiontitle h2{font-size:15px;font-weight:800;margin:0}.number{background:#223647;color:var(--aqua);border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800}
-.helper{color:var(--muted);font-size:12px;margin:5px 0 14px}.cap{font-size:10px;letter-spacing:1.4px;color:#92aab9;text-transform:uppercase;font-weight:900;margin:16px 0 8px}
-.btn{border:1px solid #385064;background:#1b3040;color:var(--white);padding:10px 12px;border-radius:10px;font-weight:750;cursor:pointer;transition:background .15s,transform .1s}
-.btn:hover:not(:disabled){background:#2b4353}.btn:active:not(:disabled){transform:scale(.975)}.btn:disabled{opacity:.37;cursor:not-allowed}
-.btn.primary{border-color:#3cdbbd;background:#22a99a;color:#042321}.btn.primary:hover:not(:disabled){background:#3de3c8}.btn.soft{border-color:#526374;background:#20313b}
-.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons .wide{grid-column:span 2}.counter{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #253643;font-size:13px}.counter strong{color:var(--white);font-variant-numeric:tabular-nums}
-#trackState{padding:9px 10px;border-radius:9px;background:#243441;color:#ffdc91;font-size:12px;line-height:1.45;margin:12px 0}
-#trackState.ready{background:#173d38;color:#9cf7dd}
-.stagehead{padding:2px 4px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center}.stagehead strong{font-size:15px}.stagehead small{color:var(--muted);font-size:11px}
-.canvaswrap{position:relative;background:#0a141e;border:1px solid #2b4250;border-radius:13px;overflow:hidden}
-canvas{display:block;width:100%;height:clamp(300px,59vh,590px);touch-action:none}
-.overlayhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#08141cdb;border:1px solid #355064;border-radius:14px;padding:8px 12px;font-size:12px;color:#cee7ed;white-space:nowrap;pointer-events:none;max-width:95%;text-align:center}
-.trackfooter{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 3px 1px;color:var(--muted);font-size:11px}
-.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{border:1px solid #2c4353;border-radius:11px;padding:10px 11px;background:#0e1a26}.stat .key{color:#9aaebb;font-size:11px}.stat .value{font-size:21px;line-height:1.2;font-weight:850;font-variant-numeric:tabular-nums;margin-top:3px}.stat .value.good{color:var(--aqua)}.stat .value.warn{color:var(--orange)}
-#activity{border:1px solid #355064;border-radius:9px;background:#172c34;font-size:12px;color:#a5e7d9;padding:9px;margin:12px 0;min-height:39px}
-.lane{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.lane .active{border-color:var(--aqua);color:var(--aqua);background:#143e3f}
-.gasbox{margin-top:15px;border-radius:14px;border:1px solid #34515e;padding:13px;background:#0b1a24}
-.gastitle{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:7px}
-#throttle{width:100%;height:32px;accent-color:var(--aqua);cursor:pointer;touch-action:pan-x}
-#gas{width:100%;margin-top:6px;min-height:58px;font-size:17px;letter-spacing:1px;user-select:none;-webkit-user-select:none}
-.note{margin-top:15px;padding:11px 13px;border-left:3px solid var(--orange);background:#342b222b;border-radius:4px;color:#b8c9d1;font-size:12px}
-.foot{font-size:12px;color:#839aa9;margin-top:22px;text-align:center}.mono{font-variant-numeric:tabular-nums}
-@media(max-width:1120px){.layout{grid-template-columns:220px minmax(0,1fr)}.rightpanel{grid-column:1/-1}.rightgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rightgrid>div{min-width:0}}
-@media(max-width:720px){.wrapper{padding:11px}.header{padding:5px 3px 13px;margin-bottom:11px}.headtag{font-size:10px}.layout{grid-template-columns:1fr;gap:11px}.panel{padding:13px}.stage{order:-1;padding:9px}.rightpanel{grid-column:auto}.rightgrid{display:block}canvas{height:clamp(270px,43vh,430px)}.stagehead small{display:none}.trackfooter{font-size:10px}.brand h1{font-size:22px}.logo{width:39px;height:39px}.helper{font-size:12px}.overlayhint{font-size:11px}}
-
-/* Pilotaje sin scroll: la mesa de edición permanece detrás, el juego ocupa toda la pantalla. */
-.stagehead .launch{background:#20ad99;color:#062b28;border:1px solid #68e7d3;border-radius:11px;font-weight:900;padding:11px 16px;white-space:nowrap;cursor:pointer}
-.stagehead .launch:disabled{opacity:.4;cursor:not-allowed}
-.drive-overlay[hidden]{display:none!important}
-.drive-overlay{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;z-index:1000;background:#07141e;color:#eefaf9;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
-body.drive-open{overflow:hidden}
-.drive-top{flex:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 9px) 12px 9px;background:#10232d;border-bottom:1px solid #315360;min-height:61px}
-.drive-top strong{font-size:15px;line-height:1.12}.drive-top small{display:block;color:#91c4c4;font-size:11px}
-.drive-top button{background:#203946;border:1px solid #4b7380;border-radius:10px;color:#eefaf9;min-height:41px;padding:7px 11px;font-size:13px;font-weight:800}
-.drive-view{position:relative;flex:1 1 auto;min-height:135px;overflow:hidden;background:#0b1823}
-.drive-view canvas{width:100%!important;height:100%!important;display:block}
-.drive-hud{position:absolute;top:10px;left:9px;right:9px;display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:6px;pointer-events:none}
-.drive-chip{border:1px solid #37606c;background:#091c27d9;border-radius:10px;padding:6px 8px;backdrop-filter:blur(6px);text-align:center;min-width:0}
-.drive-chip small{display:block;color:#b1c8cf;font-size:10px;line-height:1.3}
-.drive-chip strong{display:block;font-size:clamp(15px,4.5vw,22px);font-variant-numeric:tabular-nums;line-height:1.25;white-space:nowrap}
-.drive-chip .ac{color:#36ebce}
-.drive-message{position:absolute;bottom:10px;left:10px;right:10px;text-align:center;pointer-events:none}
-.drive-message span{display:inline-block;max-width:100%;padding:6px 12px;background:#061823d9;border:1px solid #345664;border-radius:30px;color:#d2eee8;font-size:12px;font-weight:650}
-.drive-controls{flex:none;background:#10242e;border-top:1px solid #386171;padding:11px 13px calc(env(safe-area-inset-bottom, 0px) + 13px);display:flex;flex-direction:column;gap:9px}
-.drive-controlhead{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#c4dbe3;font-size:12px;font-weight:800}
-.drive-range{width:100%;height:37px;margin:0;accent-color:#36e1c5;touch-action:none;cursor:pointer}
-.drive-actions{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,2fr);gap:10px}
-.drive-actions button{min-height:65px;border-radius:13px;border:1px solid #537384;font-size:16px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
-#drivePause{background:#233e4d;color:#fff}
-#driveGas{background:#39e0bd;border-color:#78fae0;color:#052822;font-size:clamp(16px,4.5vw,21px)}
-#driveGas:active{background:#8bf7e0}
-#driveGas:disabled{opacity:.32}
-.drive-controls .drive-tip{text-align:center;color:#95b0b9;font-size:10px}
-@media(max-width:720px){.stagehead{gap:8px}.stagehead strong{font-size:13px}.stagehead .launch{padding:11px 12px;font-size:13px}.overlayhint{bottom:10px}.drive-tip{display:none}}
-@media(max-height:650px){.drive-controls{padding-top:6px;gap:3px}.drive-range{height:27px}.drive-actions button{min-height:49px}.drive-top{padding-top:calc(env(safe-area-inset-top, 0px) + 4px);padding-bottom:4px;min-height:47px}.drive-hud{top:5px}}
-@media(orientation:landscape) and (max-height:500px){.drive-controls{position:absolute;right:0;bottom:0;width:min(300px,43vw);border-left:1px solid #386171;border-top-left-radius:16px;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}.drive-view{height:100%}.drive-actions{grid-template-columns:1fr 1.3fr}.drive-actions button{font-size:13px;min-height:51px}.drive-controlhead{font-size:10px}.drive-chip strong{font-size:17px}.drive-message{right:min(300px,43vw)}}
-
-
-/* Acceso inmediato a pilotaje aun con una receta abierta. */
-#mobilePlay{display:none}
-.draft-recovery{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:9px 4px 12px;padding:10px 11px;background:#143534;border:1px solid #4aa597;border-radius:10px}
-.draft-recovery[hidden]{display:none}
-.draft-recovery span{font-size:12px;color:#c9f4e8}
-.draft-recovery button{background:#35d8bd;border:0;color:#072b2a;font-size:12px;font-weight:900;border-radius:8px;padding:9px 12px}
-#quickRace{box-shadow:0 0 0 2px #34ad9233;min-height:47px}
-.stagehead .launch{background:#36dfc1}
-@media(max-width:720px){
-#mobilePlay{display:block;position:fixed;z-index:90;right:12px;bottom:calc(13px + env(safe-area-inset-bottom,0px));background:#36dfc1;color:#052623;border:2px solid #94fbe8;border-radius:18px;padding:13px 19px;font-size:15px;font-weight:950;box-shadow:0 10px 28px #00191ed0}
-body.drive-open #mobilePlay{display:none}
-.stagehead{flex-wrap:wrap}.stagehead .launch{flex:1 0 100%}
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+  <meta name="theme-color" content="#071017">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="SlotRace LAB 0.4: construye una pista de doble carril sobre una mesa y conduce tu coche.">
+  <title>SlotRace LAB 0.4 · Mesa Scalextric</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.4.0">
 </head>
 <body>
-<div class="wrapper">
-  <header class="header">
-    <div class="brand"><div class="logo">S</div><div><div class="eyebrow">Top Down RACE</div><h1>SlotRace <span style="color:#53e1c5">/ LAB</span></h1><div class="subline">Prototipo jugable 0.3 · construcción y pilotaje</div></div></div>
-    <div class="headtag">MODO LOCAL · SIN CUENTA</div>
+<div class="app">
+  <header class="mast">
+    <div class="brand"><div class="brand-icon" aria-hidden="true">S</div><div>
+      <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
+      <strong>SlotRace <em>LAB</em></strong>
+    </div></div>
+    <div class="version">MESA FÍSICA · V0.4<br>LOCAL · SIN CUENTA</div>
   </header>
-  <main class="layout">
-    <aside class="panel">
-      <div class="sectiontitle"><h2>Constructor de pista</h2><span class="number">01</span></div>
-      <p class="helper">Añade piezas de doble carril al extremo libre. Los conectores encajan automáticamente. Necesitas cerrar el circuito para correr.</p>
-      <div class="cap">Piezas disponibles / colocadas</div>
-      <div class="counter"><span>Rectas</span><strong id="invS">—</strong></div>
-      <div class="counter"><span>Curvas derechas</span><strong id="invR">—</strong></div>
-      <div class="counter"><span>Curvas izquierdas</span><strong id="invL">—</strong></div>
-      <div id="trackState" role="status">Comprobando circuito…</div>
-      <div class="cap">Añadir pieza al extremo</div>
-      <div class="buttons">
-        <button class="btn" id="addS">＋ Recta</button>
-        <button class="btn" id="addR">↷ Curva D</button>
-        <button class="btn" id="addL">↶ Curva I</button>
-        <button class="btn soft" id="undo">↩ Deshacer</button>
-      </div>
-      <div class="cap">Diseños</div>
-      <div class="buttons">
-        <button class="btn primary wide" id="oval">Montar óvalo inicial</button>
-        <button class="btn wide" id="clear">Desmontar pista</button>
-      </div>
-      <div class="note">Las dimensiones son provisionales para probar la mecánica. No representan todavía medidas certificadas de Scalextric.</div>
-    </aside>
-    <section class="stage" aria-label="Circuito">
-      <div class="stagehead"><strong>Vista cenital · mesa de montaje</strong><button class="launch" id="quickRace">🏁 Jugar ahora</button></div>
-      <div class="draft-recovery" id="draftRecovery" hidden><span>Tu circuito sin terminar está guardado.</span><button type="button" id="restoreDraft">↩ Recuperar diseño</button></div>
-      <div class="canvaswrap"><canvas id="track" aria-label="Vista de los dos carriles y del coche de SlotRace"></canvas><div class="overlayhint" id="hint">Carga la pista y pulsa Comenzar</div></div>
-      <div class="trackfooter"><span>Izquierda: turquesa · Derecha: naranja</span><span id="pieceCount">0 piezas</span></div>
-    </section>
-    <aside class="panel rightpanel">
-      <div class="sectiontitle"><h2>Box de pilotaje</h2><span class="number">02</span></div>
-      <div class="rightgrid">
-        <div>
-          <div class="statgrid">
-            <div class="stat"><div class="key">Vuelta</div><div class="value" id="lap">1</div></div>
-            <div class="stat"><div class="key">Tiempo actual</div><div class="value mono" id="timer">0,000 s</div></div>
-            <div class="stat"><div class="key">Mejor · Izq.</div><div class="value good" id="bestL">—</div></div>
-            <div class="stat"><div class="key">Mejor · Dcha.</div><div class="value warn" id="bestR">—</div></div>
-          </div>
-          <div class="cap">Tiempo combinado</div>
-          <div class="stat"><div class="value" id="combined">Completa ambos carriles</div><div class="key">Suma de las mejores vueltas personales</div></div>
-          <div id="activity" role="status">Listo para montar un circuito.</div>
+  <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
+    <div class="worktop">
+      <div id="tableSpace" class="tableframe">
+        <canvas id="editCanvas" aria-label="Mesa de montaje con madera, tapete verde y módulos Scalextric de dos carriles; toca una pieza para seleccionarla"></canvas>
+        <div class="boardchip">
+          <div id="stateChip">MESA DE MONTAJE</div><small id="stateDetails">Cargando el circuito…</small>
         </div>
-        <div>
-          <div class="cap">Elegir carril</div>
-          <div class="lane"><button class="btn active" id="left">Izquierdo</button><button class="btn" id="right">Derecho</button></div>
-          <div class="cap">Sesión</div>
-          <div class="buttons"><button class="btn primary wide" id="start">▶ Comenzar</button><button class="btn" id="pause">⏸ Pausar</button><button class="btn" id="reset">↺ Reiniciar</button></div>
-          <div class="gasbox">
-            <div class="gastitle"><span>GATILLO ANALÓGICO</span><span id="gasvalue">0 %</span></div>
-            <input id="throttle" type="range" min="0" max="100" value="0" aria-label="Aceleración analógica">
-            <button class="btn primary" id="gas">MANTENER PARA ACELERAR</button>
-            <p class="helper" style="margin:9px 0 0">También funciona con espacio o flecha arriba. Suelta para reducir velocidad antes de las curvas.</p>
-          </div>
+        <div class="boardtools" aria-label="Controles de la cámara">
+          <button id="zoomIn" type="button" aria-label="Ampliar mesa">+</button>
+          <button id="zoomOut" type="button" aria-label="Reducir mesa">−</button>
+          <button id="zoomFit" type="button" aria-label="Centrar mesa">⌖</button>
         </div>
+        <div id="tableCaption" class="boardhint">Toca una pieza de tu caja para conectarla</div>
       </div>
-    </aside>
-  </main>
-  <button id="mobilePlay" type="button">🏁 Jugar ahora</button>
-  <footer class="foot">SlotRace LAB 0.3 · Prototipo local sin servidor, cuentas ni récords oficiales · Las marcas se conservan en este navegador</footer>
-</div>
-
-<div class="drive-overlay" id="driveOverlay" hidden role="dialog" aria-modal="true" aria-label="Pilotaje SlotRace">
-  <div class="drive-top">
-    <div><strong>🏁 SlotRace · Pilotaje</strong><small id="driveLaneText">Carril izquierdo · carrera local</small></div>
-    <button id="driveLane" type="button" title="Cambiar carril cuando esté pausado">Cambiar carril</button>
-    <button id="driveExit" type="button">✕ Salir</button>
-  </div>
-  <div class="drive-view" id="driveSurface">
-    <div class="drive-hud">
-      <div class="drive-chip"><small>VUELTA</small><strong id="driveLap">1</strong></div>
-      <div class="drive-chip"><small>CRONÓMETRO</small><strong id="driveTime" class="ac">0,000</strong></div>
-      <div class="drive-chip"><small>GATILLO</small><strong id="drivePercent">0 %</strong></div>
     </div>
-    <div class="drive-message"><span id="driveMessage">Acelera y levanta antes de las curvas</span></div>
-  </div>
-  <div class="drive-controls">
-    <div class="drive-controlhead"><span>GATILLO PROGRESIVO · ARRASTRA Y MANTÉN</span><strong id="driveSpeed">0 u/s</strong></div>
-    <input class="drive-range" id="driveThrottle" type="range" min="0" max="100" value="0" aria-label="Gatillo progresivo: se suelta al retirar el dedo">
-    <div class="drive-actions"><button type="button" id="drivePause">⏸ Pausar</button><button type="button" id="driveGas">MANTENER ACELERADOR</button></div>
-    <div class="drive-tip">Pulsa o desliza el gatillo · suelta para frenar · botón Salir para editar</div>
-  </div>
+    <div class="controlbar">
+      <div class="left"><span id="buildStatus" class="status">Preparando el circuito…</span></div>
+      <div class="right"><button class="mini primary" id="play" type="button">🏁 Correr</button></div>
+    </div>
+    <div class="tray">
+      <div class="tray-title">
+        <span>TU CAJA DE PIEZAS · TOCA PARA ENCAJAR</span>
+        <button id="restore" class="mini alert" type="button" hidden>↩ Recuperar trazado</button>
+      </div>
+      <div class="panel-line">
+        <span id="selected" class="selector">Selecciona un tramo para sustituirlo</span>
+        <div class="buttons">
+          <button id="undo" class="mini" type="button" aria-label="Deshacer último cambio">↶</button>
+          <button id="redo" class="mini" type="button" aria-label="Rehacer último cambio">↷</button>
+          <button id="remove" class="mini" type="button" aria-label="Quitar tramo seleccionado">Quitar</button>
+          <button id="oval" class="mini" type="button" aria-label="Montar óvalo inicial">Óvalo</button>
+          <button id="clear" class="mini" type="button" aria-label="Vaciar mesa">Vaciar</button>
+        </div>
+      </div>
+      <div id="pieces" class="pieces" aria-label="Inventario de piezas"></div>
+    </div>
+  </section>
+  <section id="raceScreen" class="screen" hidden aria-label="Pilotaje de SlotRace">
+    <div class="race-view">
+      <div class="tableframe" id="raceSpace">
+        <canvas id="raceCanvas" aria-label="Coche circulando por el circuito sobre la mesa"></canvas>
+      </div>
+      <div class="race-hud">
+        <div class="hud"><small>VUELTA</small><strong id="lap">1</strong></div>
+        <div class="hud"><small>CRONÓMETRO</small><strong class="green" id="lapTime">0,000</strong></div>
+        <div class="hud"><small>GATILLO</small><strong id="power">0%</strong></div>
+      </div>
+      <div class="race-hint"><span id="raceHint">Suelta antes de las curvas</span></div>
+    </div>
+    <div class="race-controls">
+      <div class="race-buttons">
+        <button id="pause" class="mini primary" type="button">⏸ Pausar</button>
+        <button id="lane" class="mini" type="button" disabled>⇄ Carril</button>
+        <button id="back" class="mini" type="button">✕ Mesa</button>
+        <div class="race-footer">IZQ: <span id="bestLeft">—</span> · DER: <span id="bestRight">—</span><br>COMBINADA: <span id="combined">—</span></div>
+      </div>
+      <div class="gas-control">
+        <div class="gas-header"><span>GATILLO PROGRESIVO</span><strong id="speed">0 cm/s</strong></div>
+        <input id="throttle" type="range" min="0" max="100" value="0" aria-label="Control analógico de aceleración; se libera al soltar el dedo">
+        <button id="trigger" class="trigger" type="button">MANTENER<br>PARA ACELERAR</button>
+      </div>
+    </div>
+  </section>
+  <div id="toast" role="status" aria-live="polite"></div>
 </div>
-
-<script>
-(function(){
-"use strict";
-var $=function(id){return document.getElementById(id);};
-var canvas=$("track"),ctx=canvas.getContext("2d",{alpha:false}),previewParent=canvas.parentElement,overlayOpen=false;
-var L=130,R=95,OFFSET=16,stock={S:12,R:8,L:8};
-var original=["S","S","R","R","S","S","R","R"];
-var pieces=original.slice(),geometry=null,valid=false,lane=0,running=false,started=false;
-var speed=0,distance=0,lap=1,lapTime=0,freeze=0,range=0,held=false,keyHeld=false,lastFrame=performance.now(),lastUI=0;
-var records={},trackKey="",toast="Prototipo listo. Puedes editar el óvalo o probarlo.";
-var draftKey="slotrace-lab-draft-0.3",savedDraft=null;
-try{var ps=JSON.parse(localStorage.getItem("slotrace-lab-pieces")||"null");if(Array.isArray(ps)&&ps.length<=40&&ps.every(function(p){return p==="S"||p==="R"||p==="L";}))pieces=ps;records=JSON.parse(localStorage.getItem("slotrace-lab-records")||"{}");if(!records||typeof records!=="object")records={};}catch(e){records={};}
-try{var d=JSON.parse(localStorage.getItem(draftKey)||"null");if(Array.isArray(d)&&d.length<=40&&d.every(function(p){return p==="S"||p==="R"||p==="L";}))savedDraft=d;}catch(e){}
-function round(n){return n.toFixed(3).replace(".",",");}
-function norm(a){return Math.atan2(Math.sin(a),Math.cos(a));}
-function count(t){return pieces.filter(function(p){return p===t;}).length;}
-function save(){try{localStorage.setItem("slotrace-lab-pieces",JSON.stringify(pieces));}catch(e){}}
-function saveRecords(){try{localStorage.setItem("slotrace-lab-records",JSON.stringify(records));}catch(e){}}
-function pathFor(side,points){var p=points.map(function(q){return{x:q.x-Math.sin(q.h)*side,y:q.y+Math.cos(q.h)*side,h:q.h,turn:q.turn};});
-var lengths=[0];for(var i=1;i<p.length;i++){var dx=p[i].x-p[i-1].x,dy=p[i].y-p[i-1].y;lengths[i]=lengths[i-1]+Math.hypot(dx,dy);}return{points:p,lengths:lengths,total:lengths[lengths.length-1]||1};}
-function intersection(a,b,c,d){var ax=b.x-a.x,ay=b.y-a.y,bx=d.x-c.x,by=d.y-c.y;var cross=ax*by-ay*bx;if(Math.abs(cross)<1e-8)return false;var px=c.x-a.x,py=c.y-a.y;var t=(px*by-py*bx)/cross,u=(px*ay-py*ax)/cross;return t>0.002&&t<.998&&u>.002&&u<.998;}
-function hasCrossings(points){var n=points.length-1;for(var i=0;i<n;i++){for(var j=i+2;j<n;j++){if(i===0&&j===n-1)continue;if(intersection(points[i],points[i+1],points[j],points[j+1]))return true;}}return false;}
-function build(){
- var points=[{x:0,y:0,h:0,turn:0}],x=0,y=0,h=0;
- for(var i=0;i<pieces.length;i++){
-  var part=pieces[i],turn=part==="S"?0:(part==="R"?1:-1),samples=part==="S"?12:24;
-  var ox=x,oy=y,oh=h;
-  for(var k=1;k<=samples;k++){
-   var t=k/samples,ang=oh+turn*Math.PI*.5*t,px,py;
-   if(!turn){px=ox+L*t*Math.cos(oh);py=oy+L*t*Math.sin(oh);}
-   else{var signedR=turn*R;px=ox+signedR*(Math.sin(ang)-Math.sin(oh));py=oy-signedR*(Math.cos(ang)-Math.cos(oh));}
-   points.push({x:px,y:py,h:ang,turn:turn});if(k===samples){x=px;y=py;h=ang;}
-  }
- }
- var close=pieces.length>=4&&Math.hypot(x,y)<.01&&Math.abs(norm(h))<.01;
- valid=close&&!hasCrossings(points);
- geometry={center:points,left:pathFor(-OFFSET,points),right:pathFor(OFFSET,points)};
- var all=points, minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
- for(var q=0;q<all.length;q++){minx=Math.min(minx,all[q].x);miny=Math.min(miny,all[q].y);maxx=Math.max(maxx,all[q].x);maxy=Math.max(maxy,all[q].y);}
- geometry.bounds={minx:minx-50,maxx:maxx+50,miny:miny-50,maxy:maxy+50};
- trackKey=pieces.join("-");
- var state=$("trackState");state.className=valid?"ready":"";
- if(valid)state.textContent="✓ Circuito cerrado y validado · listo para correr";
- else if(close)state.textContent="⚠ El trazado se cruza. Revisa las piezas.";
- else state.textContent=pieces.length?"Circuito abierto: los extremos no encajan. Puedes deshacer o pulsar Jugar ahora; guardaremos el borrador.":"Mesa vacía. Pulsa Jugar ahora para montar el óvalo inicial.";
- $("hint").textContent=valid?(running?"":"Pulsa 🏁 Jugar ahora para conducir"):"Pulsa 🏁 Jugar ahora: se montará el óvalo sin perder tu diseño";
- $("pieceCount").textContent=pieces.length+" piezas";
- ["S","R","L"].forEach(function(t){$("inv"+t).textContent=(stock[t]-count(t))+" / "+count(t);});
- $("addS").disabled=count("S")>=stock.S||pieces.length>=40;
- $("addR").disabled=count("R")>=stock.R||pieces.length>=40;
- $("addL").disabled=count("L")>=stock.L||pieces.length>=40;
- $("undo").disabled=!pieces.length;
- $("start").disabled=false;$("quickRace").disabled=false;
- $("draftRecovery").hidden=!savedDraft;
- $("quickRace").textContent=valid?"🏁 Jugar ahora":"🏁 Jugar con óvalo inicial";
- $("mobilePlay").textContent=valid?"🏁 Jugar ahora":"🏁 Jugar óvalo";
- save();updateUI();
-}
-function lanePath(){return lane===0?geometry.left:geometry.right;}
-function sample(p,d){d=((d%p.total)+p.total)%p.total;var lo=0,hi=p.lengths.length-1;while(hi-lo>1){var mid=(lo+hi)>>1;if(p.lengths[mid]<=d)lo=mid;else hi=mid;}
-var a=p.points[lo],b=p.points[hi],den=p.lengths[hi]-p.lengths[lo]||1,t=(d-p.lengths[lo])/den;
-return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,h:Math.atan2(b.y-a.y,b.x-a.x),turn:b.turn||a.turn};}
-function modify(fn){running=false;started=false;fn();resetRun();build();toast="Circuito modificado. Comprueba que está cerrado.";}
-function resetRun(){running=false;started=false;speed=0;distance=0;lap=1;lapTime=0;freeze=0;held=false;keyHeld=false;range=0;$("throttle").value="0";$("driveThrottle").value="0";$("start").textContent="▶ Comenzar";updateUI();}
-function currentRecord(){var value=records[trackKey];if(!Array.isArray(value))value=[null,null];return value;}
-function completedLap(){var time=lapTime;lapTime=0;if(time<.1)return;var arr=currentRecord();if(arr[lane]===null||time<arr[lane]){arr[lane]=time;records[trackKey]=arr;saveRecords();toast="¡Mejor vuelta "+(lane===0?"izquierda":"derecha")+"! "+round(time)+" s (solo local)";}else toast="Vuelta "+lap+": "+round(time)+" s";lap++;}
-function tick(dt){
- if(!running||!valid)return;
- lapTime+=dt;
- if(freeze>0){freeze=Math.max(0,freeze-dt);return;}
- var gas=held||keyHeld?1:range/100;
- speed=Math.max(0,Math.min(410,speed+(gas*250-(1-gas)*135-19)*dt));
- var path=lanePath(),here=sample(path,distance);
- if(here.turn!==0){
-  var effectiveR=R-here.turn*(lane===0?-OFFSET:OFFSET);
-  var safe=Math.sqrt(870*Math.max(40,effectiveR));
-  if(speed>safe){speed=0;freeze=3;toast="Salida de pista · inmovilizado 3 segundos (la vuelta sigue contando)";return;}
- }
- distance+=speed*dt;
- if(distance>=path.total){distance%=path.total;completedLap();}
-}
-function drawPath(points,stroke,width){ctx.beginPath();for(var i=0;i<points.length;i++){var p=points[i];if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);}ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();}
-var viewport={w:600,h:400,dpr:1};
-function resize(){var dpr=Math.min(2,window.devicePixelRatio||1),rect=canvas.getBoundingClientRect(),w=Math.max(250,rect.width),h=Math.max(220,rect.height);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);viewport={w:w,h:h,dpr:dpr};}
-if(typeof ResizeObserver!=="undefined")new ResizeObserver(resize).observe(canvas);else window.addEventListener("resize",resize);resize();
-function draw(){
- var w=viewport.w,h=viewport.h;ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);
- ctx.fillStyle="#0b1823";ctx.fillRect(0,0,w,h);
- ctx.strokeStyle="#223541";ctx.lineWidth=1;ctx.globalAlpha=.45;
- for(var gx=0;gx<w;gx+=26){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,h);ctx.stroke();}
- for(var gy=0;gy<h;gy+=26){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
- ctx.globalAlpha=1;
- if(!geometry||!geometry.center.length)return;
- var b=geometry.bounds,bw=b.maxx-b.minx,bh=b.maxy-b.miny,portrait=overlayOpen&&h>w*1.04;
- var sc=portrait?Math.min(w/Math.max(120,bh),h/Math.max(120,bw),2.2):Math.min(w/Math.max(120,bw),h/Math.max(120,bh),1.9);
- ctx.save();
- if(portrait){ctx.translate(w/2,h/2);ctx.rotate(Math.PI/2);ctx.scale(sc,sc);ctx.translate(-(b.minx+b.maxx)/2,-(b.miny+b.maxy)/2);}
- else{var ox=(w-(b.minx+b.maxx)*sc)/2,oy=(h-(b.miny+b.maxy)*sc)/2;ctx.translate(ox,oy);ctx.scale(sc,sc);}
- var pts=geometry.center;
- drawPath(pts,"#6e7f89",75);drawPath(pts,"#252e36",67);
- drawPath(geometry.left.points,"#090e12",5.5);drawPath(geometry.right.points,"#090e12",5.5);
- drawPath(geometry.left.points,"#6b8997",1.1);drawPath(geometry.right.points,"#6b8997",1.1);
- if(valid){
-  var p=pts[0];ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
-  for(var k=0;k<10;k++){ctx.fillStyle=k%2?"#121a1e":"#f3f9f9";ctx.fillRect(-7,-34+k*6.8,14,6.8);}ctx.restore();
- }else{
-  var end=pts[pts.length-1];ctx.fillStyle="#f4b45b";ctx.beginPath();ctx.arc(end.x,end.y,7,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle="#ffcf92";ctx.lineWidth=2;ctx.beginPath();ctx.arc(pts[0].x,pts[0].y,7,0,Math.PI*2);ctx.stroke();
-  ctx.font="bold 12px system-ui";ctx.textAlign="left";ctx.fillStyle="#fff4c5";
-  ctx.fillText("INICIO",pts[0].x+10,pts[0].y-12);
-  ctx.fillText("EXTREMO",end.x+10,end.y+16);
- }
- if(valid){
-  var c=sample(lanePath(),distance),angle=c.h;
-  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(angle);
-  ctx.shadowColor=lane===0?"#42f3dd":"#ffb55a";ctx.shadowBlur=15;ctx.fillStyle=lane===0?"#3fe2cc":"#ffad54";
-  ctx.fillRect(-13,-7,26,14);ctx.shadowBlur=0;ctx.fillStyle="#0d2932";ctx.fillRect(-4,-5,9,10);
-  ctx.fillStyle="#f6fbfd";ctx.fillRect(8,-5,3,10);ctx.restore();
- }
- ctx.restore();
- if(freeze>0){ctx.font="bold 17px system-ui";ctx.fillStyle="#ffdbad";ctx.textAlign="center";ctx.fillText("SALIDA DE PISTA · "+freeze.toFixed(1)+" s",w/2,35);}
-}
-function updateUI(){
- $("lap").textContent=lap;$("timer").textContent=round(lapTime)+" s";
- var r=currentRecord();$("bestL").textContent=r[0]===null?"—":round(r[0])+" s";$("bestR").textContent=r[1]===null?"—":round(r[1])+" s";
- $("combined").textContent=r[0]!==null&&r[1]!==null?round(r[0]+r[1])+" s":"Completa ambos carriles";
- $("activity").textContent=toast;$("left").classList.toggle("active",lane===0);$("right").classList.toggle("active",lane===1);
- $("gasvalue").textContent=Math.round(held||keyHeld?100:range)+" %";
- $("start").textContent=running?"▶ En marcha":started?"▶ Continuar":"▶ Comenzar";
- $("hint").style.display=running?"none":"block";
- $("pause").disabled=!running;$("left").disabled=running;$("right").disabled=running;
- $("driveLap").textContent=lap;
- $("driveTime").textContent=round(lapTime);
- $("drivePercent").textContent=Math.round(held||keyHeld?100:range)+" %";
- $("driveSpeed").textContent=Math.round(speed)+" u/s";
- $("driveLaneText").textContent="Carril "+(lane===0?"izquierdo":"derecho")+" · carrera local";
- $("driveMessage").textContent=freeze>0?"Salida de pista · "+freeze.toFixed(1)+" segundos":toast;
- $("drivePause").textContent=running?"⏸ Pausar":"▶ Seguir";
- $("driveLane").disabled=running;
- $("driveGas").disabled=!running;
- $("quickRace").textContent=started?"🏁 Volver a pilotar":"🏁 Jugar a pantalla completa";
-}
-function loop(now){var dt=Math.min(.045,Math.max(0,(now-lastFrame)/1000));lastFrame=now;tick(dt);draw();if(now-lastUI>120){lastUI=now;updateUI();}requestAnimationFrame(loop);}
-$("addS").addEventListener("click",function(){modify(function(){pieces.push("S");});});
-$("addR").addEventListener("click",function(){modify(function(){pieces.push("R");});});
-$("addL").addEventListener("click",function(){modify(function(){pieces.push("L");});});
-$("undo").addEventListener("click",function(){modify(function(){pieces.pop();});});
-$("oval").addEventListener("click",function(){modify(function(){pieces=original.slice();});toast="Óvalo inicial montado y listo.";updateUI();});
-$("clear").addEventListener("click",function(){modify(function(){pieces=[];});toast="Mesa vacía. Añade piezas para crear tu circuito.";updateUI();});
-function openDrive(){
- if(!valid){
-  if(pieces.length){savedDraft=pieces.slice();try{localStorage.setItem(draftKey,JSON.stringify(savedDraft));}catch(e){}}
-  pieces=original.slice();resetRun();build();
- }
- if(!valid)return;
- $("driveOverlay").hidden=false;overlayOpen=true;document.body.classList.add("drive-open");
- $("driveSurface").insertBefore(canvas,$("driveSurface").firstChild);
- resize();running=true;started=true;held=false;range=0;
- $("throttle").value="0";$("driveThrottle").value="0";
- toast="Conduciendo · levanta el gatillo antes de las curvas.";
- updateUI();
-}
-function closeDrive(){running=false;held=false;keyHeld=false;range=0;
- $("driveThrottle").value="0";$("throttle").value="0";
- overlayOpen=false;$("driveOverlay").hidden=true;document.body.classList.remove("drive-open");
- previewParent.insertBefore(canvas,previewParent.firstChild);
- resize();toast="Carrera pausada. Puedes editar el circuito o volver a pilotar.";updateUI();
-}
-$("start").addEventListener("click",openDrive);
-$("quickRace").addEventListener("click",openDrive);
- $("mobilePlay").addEventListener("click",openDrive);
- $("restoreDraft").addEventListener("click",function(){
-  if(!savedDraft)return;
-  if(overlayOpen)closeDrive();
-  pieces=savedDraft.slice();savedDraft=null;
-  try{localStorage.setItem(draftKey,"");}catch(e){}
-  resetRun();build();toast="Tu diseño ha vuelto al constructor. Para correr, utiliza Jugar ahora.";updateUI();
- });
-$("driveExit").addEventListener("click",closeDrive);
-$("drivePause").addEventListener("click",function(){running=!running;held=false;range=0;$("driveThrottle").value="0";toast=running?"Conduciendo · controla el gatillo.":"En pausa · pulsa Seguir o cambia de carril.";updateUI();});
-$("driveLane").addEventListener("click",function(){if(running)return;chooseLane(lane===0?1:0);toast="Carril cambiado · pulsa Seguir para pilotar.";updateUI();});
-$("pause").addEventListener("click",function(){running=false;toast="Pausa · la vuelta está guardada en memoria.";updateUI();});
-$("reset").addEventListener("click",function(){resetRun();toast="Intento reiniciado. Los mejores tiempos se conservan.";updateUI();});
-function chooseLane(which){if(running){toast="Pausa primero para cambiar de carril.";updateUI();return;}if(lane===which)return;lane=which;resetRun();toast="Carril "+(lane===0?"izquierdo":"derecho")+" · nuevo intento.";updateUI();}
-$("left").addEventListener("click",function(){chooseLane(0);});
-$("right").addEventListener("click",function(){chooseLane(1);});
-$("throttle").addEventListener("input",function(e){range=Number(e.target.value);});
-$("driveThrottle").addEventListener("input",function(e){range=Number(e.target.value);updateUI();});
-function releaseDriveThrottle(){range=0;$("driveThrottle").value="0";updateUI();}
-["pointerup","pointercancel","lostpointercapture","change"].forEach(function(ev){$("driveThrottle").addEventListener(ev,releaseDriveThrottle);});
-[$("gas"),$("driveGas")].forEach(function(gas){
- gas.addEventListener("pointerdown",function(e){if(overlayOpen&&!running)return;held=true;try{gas.setPointerCapture(e.pointerId);}catch(err){}});
- ["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){gas.addEventListener(ev,function(){held=false;});});
-});
-window.addEventListener("keydown",function(e){if(e.code==="Space"||e.code==="ArrowUp"){if(e.target.tagName==="INPUT")return;e.preventDefault();keyHeld=true;}});
-window.addEventListener("keyup",function(e){if(e.code==="Space"||e.code==="ArrowUp")keyHeld=false;});
-window.addEventListener("blur",function(){keyHeld=false;held=false;range=0;$("driveThrottle").value="0";});
-document.addEventListener("visibilitychange",function(){if(document.hidden){running=false;held=false;keyHeld=false;range=0;$("driveThrottle").value="0";updateUI();}});
-window.__slotraceTest={getState:function(){return{valid:valid,pieces:pieces.slice(),running:running,lane:lane,lap:lap,speed:speed,freeze:freeze,records:currentRecord()};},setGas:function(v){range=v;$("throttle").value=String(v);},geometry:function(){return geometry;}};
-build();updateUI();requestAnimationFrame(loop);
-})();
-</script>
-</body></html>
+<script type="module" src="./src/app.mjs?v=0.4.0"></script>
+</body>
+</html>
