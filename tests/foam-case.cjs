@@ -20,7 +20,8 @@ const fs=require("node:fs"),path=require("node:path");
    addEventListener(type,cb){(this.listeners[type]??=[]).push(cb)},setPointerCapture(){},
    getBoundingClientRect(){return{left:0,top:0,width:390,height:600,right:390,bottom:600}},
    querySelectorAll(){return this.children},
-   querySelector(sel){if(sel===".qty")return this.qty??=node("qty");return null;}
+   querySelector(sel){if(sel===".qty")return this.qty??=node("qty");
+    if(sel===".foam-drag-grip")return this.grip??=node("grip");return null;}
   };
  }
  const elements=new Map(ids.map(id=>[id,node(id)]));
@@ -37,7 +38,7 @@ const fs=require("node:fs"),path=require("node:path");
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
- assert.equal(game.version,"DEV 0.9.1");
+ assert.equal(game.version,"DEV 0.9.2");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
@@ -62,7 +63,8 @@ const fs=require("node:fs"),path=require("node:path");
   assert.match(p.innerHTML,/mini-slot-groove/,"Dos ranuras de carril");
   assert.match(p.innerHTML,/mini-slot-seam/,"Conectores de extremo dibujados");
   assert.match(p.innerHTML,/foam-drag-grip/,"Asa de arrastre independiente");
-  assert.equal(p.listeners.pointerdown.length,1,"Cualquier pieza permite cogerla con el dedo");
+  assert.equal(p.listeners.pointerdown.length,1,"La pieza permite toque y scroll");
+  assert.equal(p.grip.listeners.pointerdown.length,1,"El asa captura el arrastre, no la caja");
   assert.equal(p.listeners.click.length,1,"También permite sacar tocando");
  }
  assert.notEqual(byId("S350").innerHTML,byId("S175").innerHTML,"Rectas de distinta longitud");
@@ -115,14 +117,15 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(captured,false,"El scroll no secuestra el puntero con setPointerCapture");
  assert.equal(st.dragging,null,"El scroll no inicia un arrastre de pista");
  assert.equal(st.loose.length,2,"Desplazar el maletín no extrae piezas");
+ assert.equal(st.dragging,null,"El arrastre desde el asa se cierra correctamente");
  const board=st.workBoard;
  const scale=Math.min((390-16)/board.height,(600-16)/board.width);
  const pt={x:board.left+board.width*.53,y:board.top+board.height*.47};
  const target={x:195-scale*(pt.y-(board.top+board.bottom)/2),
    y:300+scale*(pt.x-(board.left+board.right)/2)};
- pocket.listeners.pointerdown[0](event(200,720,21,true));
- pocket.listeners.pointermove[0](event(target.x,target.y));
- pocket.listeners.pointerup[0](event(target.x,target.y));
+ pocket.grip.listeners.pointerdown[0](event(200,720,21,true));
+ pocket.grip.listeners.pointermove[0](event(target.x,target.y));
+ pocket.grip.listeners.pointerup[0](event(target.x,target.y));
  assert.equal(st.loose.length,3,"Arrastrar saca exactamente una pieza");
  assert.equal(byId("R1_45R").qty.textContent,"∞");
  assert.equal(st.types.length,14);
@@ -134,12 +137,12 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("R1_45R").qty.textContent,"∞");
 
  // Cancelar un gesto o soltar fuera de la mesa no debe gastar inventario.
- pocket.listeners.pointerdown[0](event(200,720,28,true));
- pocket.listeners.pointercancel[0](event(200,600,28));
+ pocket.grip.listeners.pointerdown[0](event(200,720,28,true));
+ pocket.grip.listeners.pointercancel[0](event(200,600,28));
  assert.equal(st.loose.length,4);
- pocket.listeners.pointerdown[0](event(200,720,29,true));
- pocket.listeners.pointermove[0](event(400,710,29));
- pocket.listeners.pointerup[0](event(400,710,29));
+ pocket.grip.listeners.pointerdown[0](event(200,720,29,true));
+ pocket.grip.listeners.pointermove[0](event(400,710,29));
+ pocket.grip.listeners.pointerup[0](event(400,710,29));
  assert.equal(st.loose.length,4,"Soltar fuera de la mesa no extrae piezas");
 
  // Safari iOS: confirmar extracción en pointerup aunque no haya click
@@ -167,5 +170,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.9.1: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.9.2: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
