@@ -19,7 +19,7 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
-  drift:0,driftDirection:0,deslot:null,
+  drift:0,driftDirection:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
@@ -54,7 +54,7 @@ function changeTypes(next,msg,loose=state.loose){
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -140,7 +140,7 @@ function play(){
   state.types=STARTER.slice();state.loose=[];state.track=buildTrack(state.types);state.selection=-1;state.looseSelection=-1;
   save();
  }
- state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
+ state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
  toast("¡Pista lista! Suelta el gatillo antes de las curvas.");
 }
@@ -161,7 +161,11 @@ function completeLap(){
 // visual de pérdida de adherencia antes de llegar al trompo.
 const DRIVE=Object.freeze({
  maxSpeed:1250,topSpeed:1150,curveBase:690,derailMultiplier:1.20,
- driftStartsAt:.72,driftMaxAngle:.23,driftMaxOffset:12
+ driftStartsAt:.72,driftMaxAngle:.23,driftMaxOffset:12,
+ // A un 70% de gas y velocidad estabilizada, el coche necesita
+ // recorrer aprox. una curva de 45° antes de perder la ranura.
+ stressReferenceExcess:.045,stressDistance:185,minCurveDistance:65,
+ gripRecoveryPerSec:1.25
 });
 function curveLimit(p,lane){
  if(!p||!p.curve)return Infinity;
@@ -186,9 +190,31 @@ function simulation(dt){
  const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
  const limit=curveLimit(p,state.lane);
  const ratio=Number.isFinite(limit)?state.speed/limit:0;
- if(ratio>1){
+ const travel=state.speed*dt;
+ if(p?.curve){
+  // Las curvas de 45° contiguas son UNA MISMA curva a estos efectos.
+  // Así no reiniciamos artificialmente el agarre en cada junta.
+  if(state.cornerDirection!==p.curve){
+   state.cornerDirection=p.curve;state.cornerDistance=0;state.gripDebt=0;
+  }
+  state.cornerDistance+=travel;
+  // La adherencia no se pierde al atravesar la arista inicial.
+  // El exceso de velocidad acumula desplazamiento lateral gradualmente;
+  // bajar el gas permite recuperar agarre incluso dentro de la curva.
+  if(ratio>1){
+   const excess=(ratio-1)/DRIVE.stressReferenceExcess;
+   state.gripDebt+=Math.pow(excess,1.15)*travel/DRIVE.stressDistance;
+  }else{
+   state.gripDebt=Math.max(0,state.gripDebt-DRIVE.gripRecoveryPerSec*dt);
+  }
+ }else{
+  // Es una RECTA real: no aplicamos la fuerza de curva anterior.
+  state.cornerDistance=0;state.cornerDirection=0;
+  state.gripDebt=Math.max(0,state.gripDebt-DRIVE.gripRecoveryPerSec*3*dt);
+ }
+ if(p?.curve&&state.cornerDistance>=DRIVE.minCurveDistance&&state.gripDebt>=1){
   state.speed=0;state.penalty=3;
-  state.drift=0;
+  state.drift=0;state.gripDebt=0;
   // El circuito y la distancia permanecen intactos. Solo animamos
   // la salida lateral y el giro, y lo devolvemos al mismo punto.
   state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
@@ -981,7 +1007,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.4",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose}};
+window.slotraceLab={version:"DEV 0.5.5",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
