@@ -34,6 +34,9 @@ jobs:
       - name: Comprobar paso inferior y superior del puente
         run: node tests/bridge-occlusion.cjs
 
+      - name: Comprobar derrape, trompo y penalización
+        run: node tests/drift-spin.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
