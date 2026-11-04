@@ -169,7 +169,13 @@ const DRIVE=Object.freeze({
 });
 function curveLimit(p,lane){
  if(!p||!p.curve)return Infinity;
- const radius=Math.max(130,p.radius+(lane?LANE_OFFSET:-LANE_OFFSET)*p.curve);
+ // Los puntos de carril se generan desplazando el eje a su normal:
+ // lane 0 = -LANE_OFFSET; lane 1 = +LANE_OFFSET.
+ // En una curva derecha (+1), el carril 1 es INTERIOR (radio menor),
+ // el 0 EXTERIOR; en una izquierda (-1) ocurre lo contrario.
+ // Antes se SUMABA ese desplazamiento y se invertía el agarre.
+ const lateralOffset=lane===0?-LANE_OFFSET:LANE_OFFSET;
+ const radius=Math.max(70,p.radius-lateralOffset*p.curve);
  return DRIVE.curveBase*Math.sqrt(radius/CATALOG.R2R.radius)*DRIVE.derailMultiplier;
 }
 function simulation(dt){
@@ -1007,7 +1013,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.6",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
+window.slotraceLab={version:"DEV 0.5.7",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
