@@ -3,7 +3,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
-const {STARTER,CATALOG,TABLE,buildTrack,allowed,freeStock,positionAt,nearestPiece,findLegalClosure,positionOnPiece,START}=await import("./src/track.mjs");
+const {STARTER,FIGURE_EIGHT,CATALOG,TABLE,buildTrack,allowed,freeStock,positionAt,nearestPiece,findLegalClosure,positionOnPiece,START}=await import("./src/track.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
@@ -50,6 +50,7 @@ const halfTurned=buildTrack([...STARTER,"S175"]);
 assert.equal(halfTurned.closed,false,"Una recta sobrante no se cierra por tolerancia");
 assert.ok(halfTurned.gap>=170,"No deformar rectas para cerrar");
 assert.match(html,/id="autoClose"/,"Botón de cálculo de cierre");
+assert.match(html,/id="eight"/,"Plantilla visible del ocho 225°");
 assert.match(app,/function closeExactly\(/,"Resolución automática del conector");
 
 assert.equal(CATALOG.S350.length,350);
@@ -65,6 +66,7 @@ const figureEight=[
  ...Array(4).fill("S350"),...Array(5).fill("R2L"),
  "S350","S350"
 ];
+assert.deepEqual(FIGURE_EIGHT,figureEight,"La plantilla del ocho coincide con el circuito del usuario");
 const eight=buildTrack(figureEight);
 assert.equal(eight.parts.length,18);
 assert.equal(eight.closed,true,"El ocho simétrico debe cerrar");
