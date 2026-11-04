@@ -31,6 +31,9 @@ jobs:
       - name: Comprobar control táctil analógico
         run: node tests/analog-trigger.cjs
 
+      - name: Comprobar paso inferior y superior del puente
+        run: node tests/bridge-occlusion.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
