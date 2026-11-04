@@ -1415,7 +1415,7 @@ function loop(now){
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.9.2",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,paintLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
