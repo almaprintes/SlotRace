@@ -1,5 +1,5 @@
 // SlotRace — familia modular PT-Precision (geometría nominal de diseño).
-// NO sustituye aún el catálogo jugable de DEV 0.8.1 ni certifica acoplamiento físico.
+// Integrado como catálogo jugable en DEV 0.9.0. NO certifica acoplamiento físico.
 export const FAMILY_ID = "pt-precision-v1";
 export const GEOMETRY = Object.freeze({
   trackWidth: 156, lanePitch: 78, laneOffset: 39,
