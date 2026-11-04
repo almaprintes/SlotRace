@@ -74,7 +74,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 #toast.show{opacity:1}
 .isloading{color:#bedad7}
 @media(max-width:660px){
-.mast{min-height:57px;padding-bottom:7px}.brand-icon{width:36px;height:36px;font-size:19px}.brand strong{font-size:19px}.version{display:none}
+.mast{min-height:57px;padding-bottom:7px}.brand-icon{width:36px;height:36px;font-size:19px}.brand strong{font-size:19px}.version{display:block;font-size:10px;line-height:1.3;white-space:nowrap;color:#6af0d5;font-weight:900}
 .worktop{padding:7px}.tableframe{border-radius:17px}.boardchip{left:9px;top:10px;font-size:11px;padding:6px 9px;max-width:65%}.boardtools{right:9px;top:9px}
 .boardtools button{width:36px;height:37px;min-width:36px;font-size:20px}.boardhint{font-size:11px;padding:6px 10px;bottom:8px}
 .controlbar{padding:7px 9px}.controlbar .status{max-width:43vw;font-size:11px}.controlbar .mini{padding:6px 10px;font-size:11px;min-height:39px}
@@ -121,4 +121,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .controlbar .right{gap:5px}
  .controlbar .right .mini{padding:8px 7px;font-size:11px;min-height:40px}
  .controlbar .right .primary{min-width:101px}
+}
+
+/* DEV 0.5.0: la versión siempre visible tras la pantalla de carga. */
+@media(max-width:660px){
+ .mast .brand small{display:none}
+ .mast .brand{flex:1;min-width:0}
+ .mast .brand strong{font-size:20px}
+ .mast .version{flex:none;text-align:right;font-variant-numeric:tabular-nums}
+ .boardtools #gridToggle{font-size:12px;font-weight:900;padding:0 6px;min-width:53px;white-space:nowrap}
 }
