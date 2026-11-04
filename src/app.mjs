@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure,carTrackLevel} from "./track.mjs";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-05";
@@ -66,7 +66,7 @@ function restoreSnapshot(shot){
 }
 function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
- if(!allowed([...next,...loose.map(p=>p.id)])){toast("No quedan suficientes piezas en la caja.");return false;}
+ if(!allowed([...next,...loose.map(p=>p.id)])){toast("La construcción contiene piezas desconocidas.");return false;}
  const wasClosed=state.track.closed;
  pushHistory();state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};state.track=buildTrack(state.types,state.origin);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
@@ -84,7 +84,7 @@ function undo(){if(!state.history.length){toast("No hay movimientos que deshacer
 function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");return;}
  state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
 function addLoose(id,x,y,h=0){
- if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Esa pieza ya no está disponible.");return false;}
+ if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Ese tipo de pieza no existe en el catálogo.");return false;}
  const b=state.workBoard,point=gridXY(
   Math.max(b.left+145,Math.min(b.right-225,x)),
   Math.max(b.top+155,Math.min(b.bottom-220,y))
@@ -548,15 +548,17 @@ function updateUI(){
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
- const stocks=Object.values(CATALOG);
- const total=stocks.reduce((sum,spec)=>sum+spec.stock,0);
  const used=state.types.length+state.loose.length;
- $("caseCount").textContent=(total-used)+" de "+total+" piezas en sus huecos";
+ const total=Object.values(CATALOG).reduce((sum,spec)=>sum+spec.stock,0);
+ $("caseCount").textContent=UNLIMITED_DEVELOPMENT_STOCK?
+  "∞ piezas disponibles · "+used+" en la mesa":
+  (total-used)+" de "+total+" piezas en sus huecos";
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
   const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id);
-  el.querySelector(".qty").textContent="×"+free;
-  el.setAttribute("aria-label",CATALOG[id].name+" · "+free+" disponibles. Toca para sacar o arrastra a la mesa.");
+  const unlimited=free===Infinity;
+  el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
+  el.setAttribute("aria-label",CATALOG[id].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+". Toca para sacar o arrastra a la mesa.");
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===id)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===id));
@@ -1301,7 +1303,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.8.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.8.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
  puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
