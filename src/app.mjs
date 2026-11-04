@@ -4,9 +4,11 @@ const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localS
 const KEY="slotrace-lab-04";
 const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return null;}})();
 const initial=old?.types&&allowed(old.types)?old.types.slice():STARTER.slice();
+const storedLoose=Array.isArray(old?.loose)?old.loose.filter(p=>CATALOG[p?.id]&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.h)):[];
+const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose:[];
 const state={
-  types:initial,track:buildTrack(initial),mode:"build",selection:-1,
-  history:[],redo:[],draft:Array.isArray(old?.draft)&&allowed(old.draft)?old.draft:null,
+  types:initial,loose:initialLoose,track:buildTrack(initial),mode:"build",selection:-1,looseSelection:-1,dragLoose:-1,
+  history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:null,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   gas:0,buttonGas:false,keyboardGas:false,gasInput:false,
   records:old?.records&&typeof old.records==="object"?old.records:{},
@@ -14,7 +16,7 @@ const state={
   camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
   dragging:null,latest:performance.now()
 };
-function save(){storage(KEY,JSON.stringify({types:state.types,draft:state.draft,records:state.records}));}
+function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,draft:state.draft,records:state.records}));}
 const stage=$("buildScreen"),race=$("raceScreen");
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
@@ -23,30 +25,76 @@ const recKey=()=>state.types.join("-");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
-function pushHistory(){state.history.push(state.types.slice());if(state.history.length>45)state.history.shift();state.redo=[];}
-function changeTypes(next,msg){if(!allowed(next)){toast("No quedan piezas de ese tipo en la caja.");return false;}
- pushHistory();state.types=next.slice();state.track=buildTrack(state.types);state.selection=-1;state.run=false;resetLap();
- save();updateUI();if(msg)toast(msg);return true;}
+function snapshot(){return{types:state.types.slice(),loose:state.loose.map(p=>({...p}))};}
+function restoreSnapshot(shot){state.types=shot.types.slice();state.loose=(shot.loose||[]).map(p=>({...p}));state.track=buildTrack(state.types);state.selection=-1;state.looseSelection=-1;resetLap();save();updateUI();}
+function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
+function changeTypes(next,msg,loose=state.loose){
+ if(!allowed([...next,...loose.map(p=>p.id)])){toast("No quedan suficientes piezas en la caja.");return false;}
+ pushHistory();state.types=next.slice();state.loose=loose.map(p=>({...p}));state.track=buildTrack(state.types);
+ state.selection=-1;state.looseSelection=-1;state.run=false;resetLap();
+ save();updateUI();if(msg)toast(msg);return true;
+}
 function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;
  $("throttle").value="0";$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
- state.redo.push(state.types.slice());state.types=state.history.pop();state.track=buildTrack(state.types);state.selection=-1;resetLap();save();updateUI();}
+ state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
 function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");return;}
- state.history.push(state.types.slice());state.types=state.redo.pop();state.track=buildTrack(state.types);state.selection=-1;resetLap();save();updateUI();}
+ state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
+function addLoose(id,x,y,h=0){
+ if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Esa pieza ya no está disponible.");return false;}
+ pushHistory();state.loose.push({id,x:Math.max(190,Math.min(TABLE.width-240,x)),y:Math.max(210,Math.min(TABLE.height-250,y)),h});
+ state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza colocada en la mesa. Arrástrala hasta el conector amarillo.");return true;
+}
+function snapLoose(index){
+ if(state.track.closed||index<0||index>=state.loose.length)return false;
+ const piece=state.loose[index],end=state.track.ends.end;
+ if(Math.hypot(piece.x-end.x,piece.y-end.y)>175)return false;
+ pushHistory();state.loose.splice(index,1);state.types.push(piece.id);state.track=buildTrack(state.types);
+ state.looseSelection=-1;state.dragLoose=-1;state.selection=-1;save();updateUI();
+ toast("¡Clac! Pieza encajada magnéticamente.");return true;
+}
 function inventoryAction(id){
  if(!CATALOG[id])return;
- const next=state.types.slice(),selected=state.selection;
- if(selected>=0){const old=next[selected];if(old===id){toast("Ya tienes esa pieza seleccionada.");return;}
-  next[selected]=id;changeTypes(next,"Tramo sustituido y conectado a sus vecinos.");}
- else{next.push(id);changeTypes(next,"Pieza encajada en el conector libre.");}
+ const selected=state.selection,looseIndex=state.looseSelection;
+ if(looseIndex>=0){
+  if(state.loose[looseIndex].id===id){toast("Ya tienes esa pieza en la mesa.");return;}
+  const next=state.loose.map(p=>({...p}));next[looseIndex].id=id;
+  if(!allowed([...state.types,...next.map(p=>p.id)])){toast("No quedan piezas de ese tipo.");return;}
+  pushHistory();state.loose=next;save();updateUI();toast("Pieza suelta sustituida.");return;
+ }
+ if(selected>=0){
+  if(state.types[selected]===id){toast("Ya tienes esa pieza seleccionada.");return;}
+  const next=state.types.slice();next[selected]=id;changeTypes(next,"Tramo sustituido y conectado a sus vecinos.");return;
+ }
+ if(state.track.closed){
+  addLoose(id,430+state.loose.length*190,1240,0);return;
+ }
+ const next=state.types.slice();next.push(id);
+ changeTypes(next,"Pieza enganchada al extremo amarillo.");
 }
-function removeSelected(){if(state.selection<0){toast("Toca un tramo de pista para seleccionarlo.");return;}
- const next=state.types.slice();next.splice(state.selection,1);changeTypes(next,"Tramo retirado. Los conectores se han vuelto a unir.");}
-function recoverDraft(){if(!state.draft)return;const d=state.draft.slice();state.draft=null;changeTypes(d,"Diseño anterior recuperado.");}
+function removeSelected(){
+ if(state.looseSelection>=0){
+  pushHistory();state.loose.splice(state.looseSelection,1);state.looseSelection=-1;
+  save();updateUI();toast("Pieza suelta devuelta a la caja.");return;
+ }
+ if(state.selection<0){toast("Toca un tramo sobre la mesa para seleccionarlo.");return;}
+ const next=state.types.slice();next.splice(state.selection,1);
+ changeTypes(next,"Tramo retirado. Puedes continuar montando.");
+}
+function rotateLoose(){
+ if(state.looseSelection<0){toast("Selecciona una pieza suelta de la mesa para girarla.");return;}
+ pushHistory();state.loose[state.looseSelection].h+=Math.PI/4;
+ save();updateUI();toast("Pieza girada 45°.");
+}
+function recoverDraft(){
+ if(!state.draft)return;
+ const d=state.draft;state.draft=null;
+ changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[]);
+}
 function play(){
  if(!state.track.valid){
-  state.draft=state.types.slice();
-  state.types=STARTER.slice();state.track=buildTrack(state.types);state.selection=-1;
+  state.draft=snapshot();
+  state.types=STARTER.slice();state.loose=[];state.track=buildTrack(state.types);state.selection=-1;state.looseSelection=-1;
   save();
  }
  state.run=true;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
