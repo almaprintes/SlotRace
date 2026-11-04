@@ -32,7 +32,11 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html _site/index.html
+          cp -R src _site/src
           touch _site/.nojekyll
+          test -f _site/src/app.mjs
+          test -f _site/src/track.mjs
+          test -f _site/src/site.css
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
