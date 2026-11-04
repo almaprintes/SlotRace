@@ -1,9 +1,33 @@
-# SlotRace · DEV 0.5.2 — gatillo progresivo y coche bajo el puente
+# SlotRace · DEV 0.5.3 — rueda de aceleración con clics y puente localizado
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.5.3 — rueda táctil de sintonización
+
+El mando pasa a ser una **rueda estrecha de 66–70 px**, vertical, con estrías visuales. El jugador desliza el pulgar **arriba** para aumentar la alimentación del coche y **abajo** para reducirla. Cada avance de 7 px produce una muesca de **5 puntos porcentuales**; hay 20 muescas desde 0 hasta 100 %.
+
+A un lado, fuera de la zona donde va el pulgar, se encuentra una **pantalla de porcentaje grande** con barra vertical y marcas 0/25/50/75/100. La rueda emite un **clic sintetizado localmente** por cada muesca: tono agudo al subir (1260 Hz) y grave al bajar (670 Hz). El botón **🔊 CLIC / 🔇 MUDO** permite silenciarlo sin cambiar el mando; su preferencia se conserva en el navegador. En Safari iOS, el sonido se activa durante la primera interacción táctil compatible; si el dispositivo o navegador no permite audio, el mando sigue funcionando en silencio.
+
+**Al soltar, el gas cae a cero**, como en un mando Scalextric con retorno. No hace clic 20 veces al soltarse: los clics únicamente acompañan los movimientos del pulgar. La física continúa utilizando la potencia real de 0–100 %.
+
+## DEV 0.5.3 — corrección del cruce
+
+- Los raíles se dibujan como **una superficie continua**, evitando superposición de bordes y sombras en las juntas de rectas y curvas.
+- Solo existe una **máscara de puente de aproximadamente 370 mm de longitud** centrada en el cruce: el tramo elevado no repinta toda la diagonal ni esconde el coche fuera del cruce.
+- El coche del carril inferior se pinta antes de esa máscara corta y queda oculto **solo al pasar por debajo**; el de la sección superior se pinta después y permanece visible.
+- Las piezas y el recorrido siguen siendo los mismos. Puente y soportes siguen siendo un prototipo visual, no una simulación tridimensional real.
+
+### Pruebas
+```sh
+node smoke.cjs
+node tests/analog-trigger.cjs
+node tests/bridge-occlusion.cjs
+```
+
+GitHub Actions las ejecuta antes de publicar en Pages. Para probar en móvil: https://almaprintes.github.io/SlotRace/?v=0.5.3 y comprobar que en la carga y la cabecera figure **DEV 0.5.3**.
 
 ## Novedades de DEV 0.5.2
 
