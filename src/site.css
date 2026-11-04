@@ -255,3 +255,19 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .trigger.dial-wheel{flex-basis:57px;width:57px}
  .dial-display>small{display:none}
 }
+
+/* DEV 0.5.6 · lectura izquierda + rueda a la derecha, con separación móvil.
+   Se preservan el ancho táctil y el recorrido vertical de la rueda. */
+.dial-layout{gap:12px;align-items:stretch;justify-content:flex-end}
+.dial-layout>.dial-display{order:0;min-width:0;flex:1 1 auto}
+.dial-layout>.dial-wheel{order:1;flex-shrink:0;align-self:stretch}
+@media(max-width:660px){
+  .dial-layout{gap:8px}
+  .dial-display{grid-template-columns:minmax(0,1fr) 45px;padding:8px 5px 6px}
+  .dial-readout strong{font-size:clamp(26px,7vw,30px)}
+}
+@media(orientation:landscape) and (max-height:520px){
+  .dial-layout{gap:7px}
+  .dial-display{grid-template-columns:minmax(0,1fr) 40px}
+  .dial-readout strong{font-size:25px}
+}
