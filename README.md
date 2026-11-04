@@ -1,4 +1,4 @@
-# SlotRace LAB 0.4 — mesa de montaje y Scalextric virtual
+# SlotRace LAB 0.4.1 — mesa de montaje y Scalextric virtual
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
@@ -9,7 +9,8 @@ Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, de
 - Mesa visible, de madera con tapete verde, tablero de 220 × 145 cm virtuales, sombras, marco y piezas modulares que se ven sobre ella.
 - Piezas físicas digitales de **dos carriles**, separadas por uniones visibles; cada módulo lleva sus ranuras de guiado y carriles metálicos dibujados.
 - Catálogo inicial de rectas de 350 y 175 mm, curvas de R2 de 45° a izquierda/derecha, y curvas R1 de 45°; todas con inventario finito.
-- Los extremos se unen **geométricamente** al añadir módulos desde la caja. La selección de un tramo sobre la mesa permite sustituirlo o quitarlo, rehaciendo los encajes a continuación.
+- Los extremos se unen **geométricamente** al añadir módulos desde la caja. También puedes arrastrar una pieza desde el asa **⠿** de la caja, dejarla suelta sobre el tapete, girarla, moverla y acercarla al extremo amarillo de la pista para que encaje.
+- La selección de un tramo sobre la mesa permite sustituirlo o quitarlo, rehaciendo los encajes a continuación. Los módulos sueltos consumen inventario y se devuelven a la caja al retirarlos.
 - **Deshacer/rehacer**, zoom con botones, pan con un dedo y zoom con pinza.
 - Óvalo inicial de 12 piezas; cuando la geometría se cierra realmente y no sale del tablero, queda habilitada la validación local.
 - Pantalla de carreras separada con coche y mesa siempre visibles, gatillo de pulsación continua / deslizador analógico, vueltas y tiempos por carril.
@@ -18,8 +19,8 @@ Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, de
 
 ## Controles
 
-1. **Mesa:** toca una pieza en la caja inferior para añadirla al extremo amarillo; se encaja automáticamente en el tramo anterior.
-2. Toca un módulo de pista para **seleccionarlo**, luego toca otro módulo de la caja para sustituirlo, o pulsa «Quitar».
+1. **Mesa:** toca una pieza en la caja inferior para añadirla al extremo amarillo; se encaja automáticamente en el tramo anterior. Para colocarla físicamente en la mesa, arrástrala desde **⠿** y suéltala donde quieras sobre el tapete.
+2. Toca un módulo de pista para **seleccionarlo**, luego toca otro módulo de la caja para sustituirlo, o pulsa «Quitar». Si está **suelto**, puedes arrastrarlo, girarlo con «⟳ Girar» y acercarlo al extremo amarillo para encajarlo.
 3. Usa **↶/↷** para deshacer/rehacer; **Óvalo** para empezar con una pista cerrada; **Vaciar** para empezar desde cero.
 4. Arrastra sobre la mesa para desplazar la cámara y pellizca para ampliar/reducir. Los botones +/−/⌖ hacen lo mismo.
 5. Pulsa **Correr** para entrar al pilotaje; **MANTENER PARA ACELERAR** equivale a apretar el gatillo a fondo. El deslizador permite ajustar la aceleración, y regresa a cero cuando sueltas el dedo.
@@ -38,7 +39,7 @@ Fuentes de referencia:
 
 ### Aún pendiente para un Scalextric completo
 
-- Colocación **libre y arrastre de piezas individuales en cualquier punto de la mesa**, unión a cualquiera de los extremos y soporte de ramales/cambios de pista.
+- Ensamblaje de **varios tramos independientes**, unión desde ambos extremos de cada tramo, ramales/cambios de pista y manipulación completamente libre de cada módulo integrado. Ahora se pueden mover **piezas sueltas** y encajarlas únicamente al extremo amarillo del tramo principal.
 - Puentes, ocho, elevaciones y soportes físicos.
 - Física calibrada de modelos de coche, mando físico, IA y carrera de dos mangas.
 - Carrera oficial, récords globales, economía, colección, Supabase y multijugador.
