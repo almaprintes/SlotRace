@@ -206,7 +206,7 @@ function rotateLoose(){
 function recoverDraft(){
  if(!state.draft)return;
  const d=state.draft;state.draft=null;
- changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[]);
+ changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[],d.origin||START);
 }
 function play(){
  state.triggerGesture=null;
@@ -1053,13 +1053,16 @@ function initEvents(){
  $("back").addEventListener("click",back);
  $("pause").addEventListener("click",pause);
  $("lane").addEventListener("click",switchLane);
- $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[],START);resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};});
+ $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[],START);resetWorkBoard();save();state.camera={panX:0,panY:0,zoom:1};});
  $("eight").addEventListener("click",()=>{
-   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[],START);resetWorkBoard();
+   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[],START);resetWorkBoard();save();
    state.camera={panX:0,panY:0,zoom:1};
    save();
  });
- $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[],START));
+ $("clear").addEventListener("click",()=>{
+  changeTypes([],"Mesa vacía: coloca y mueve las piezas como un puzzle.",[],START);
+  resetWorkBoard();save();updateUI();
+ });
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
