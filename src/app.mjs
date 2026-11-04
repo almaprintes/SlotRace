@@ -362,9 +362,34 @@ function paintSeam(ctx,p){
  }
  ctx.restore();
 }
+function paintBridgePillars(ctx,track){
+ if(!track.bridge)return;
+ // Dos soportes bajo la diagonal superior, junto a los extremos de la rampa.
+ const over=track.bridge.overParts;
+ for(const idx of [over[0],over[over.length-1]]){
+  const section=track.parts[idx],p=section.points[Math.floor(section.points.length/2)];
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
+  ctx.shadowColor="#000a";ctx.shadowBlur=25;ctx.shadowOffsetY=12;
+  ctx.fillStyle="#5d6f76";ctx.fillRect(-15,-106,30,212);
+  ctx.fillStyle="#b9c8cb";ctx.fillRect(-7,-99,14,198);
+  ctx.restore();
+ }
+}
 function paintTrack(ctx,track,editing){
  if(!track.parts.length)return;
- for(const part of track.parts){
+ const elevated=track.bridge?track.bridge.overParts:[];
+ const ordered=elevated.length?
+  [...track.parts.filter(p=>!elevated.includes(p.index)),...track.parts.filter(p=>elevated.includes(p.index))]:
+  track.parts;
+ for(const part of ordered){
+  if(track.bridge&&part.index===elevated[0])paintBridgePillars(ctx,track);
+  if(elevated.includes(part.index)){
+   // La banda superior pasa por delante del cruce inferior y proyecta
+   // sombra propia. El nivel real de altura se incorporará a las físicas después.
+   ctx.save();ctx.shadowColor="#000c";ctx.shadowBlur=27;ctx.shadowOffsetY=18;
+   strokePath(ctx,part.points,"#11171b",TRACK_WIDTH+28);
+   ctx.restore();
+  }
   ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=18;ctx.shadowOffsetY=14;
   strokePath(ctx,part.points,"#0c1419",TRACK_WIDTH+20);ctx.restore();
   strokePath(ctx,part.points,"#637176",TRACK_WIDTH+14);
@@ -381,6 +406,11 @@ function paintTrack(ctx,track,editing){
   }
   for(const edge of [-72,72])strokePath(ctx,translated(part.points,edge),"#707d82",2.5);
   paintSeam(ctx,part.start);
+  if(track.bridge&&elevated.includes(part.index)){
+   ctx.save();ctx.globalAlpha=.7;
+   for(const side of [-71,71])strokePath(ctx,translated(part.points,side),"#d6e0d3",3);
+   ctx.restore();
+  }
   if(editing&&part.index===state.selection){
    strokePath(ctx,part.points,"#77ffe6",TRACK_WIDTH+22);
    strokePath(ctx,part.points,"#14383d",TRACK_WIDTH+15);
