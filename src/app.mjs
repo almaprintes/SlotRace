@@ -1,18 +1,27 @@
 import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
-const KEY="slotrace-lab-04";
+const KEY="slotrace-lab-05";
 const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return null;}})();
-const initial=old?.types&&allowed(old.types)?old.types.slice():STARTER.slice();
+const legacy=(()=>{try{return JSON.parse(storage("slotrace-lab-04")||"null");}catch(e){return null;}})();
+const oldValid=old?.types&&allowed(old.types);
+const initial=oldValid?old.types.slice():FIGURE_EIGHT.slice();
+// El primer inicio de DEV 0.5 conserva la construcción anterior sin
+// sustituir el ocho de demostración. Nunca borramos la clave antigua.
+const legacyDraft=!oldValid&&legacy?.types&&allowed(legacy.types)?
+ {types:legacy.types.slice(),loose:Array.isArray(legacy.loose)?legacy.loose:[]} :null;
 const storedLoose=Array.isArray(old?.loose)?old.loose.filter(p=>CATALOG[p?.id]&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.h)):[];
 const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose:[];
 const state={
   gridEnabled:old?.gridEnabled!==false,viewDirty:true,
   types:initial,loose:initialLoose,track:buildTrack(initial),mode:"build",selection:-1,looseSelection:-1,dragLoose:-1,
-  history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:null,
+  history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
+ Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
+ legacyDraft,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   gas:0,buttonGas:false,keyboardGas:false,gasInput:false,
-  records:old?.records&&typeof old.records==="object"?old.records:{},
+  records:old?.records&&typeof old.records==="object"?old.records:
+ legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
   camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
   dragging:null,latest:performance.now()
@@ -183,13 +192,16 @@ function updateUI(){
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  const t=state.track;
  const degrees=t.headingGap*180/Math.PI;
- const status=t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
+ const status=t.bridge?"OCHO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
+ t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
   !t.types.length?"MESA VACÍA · COLOCA PIEZAS":t.closed?"CONECTADO · CRUCE SIN PUENTE":
   "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
- const notice=t.intersection?"Cruce al mismo nivel: necesita puente":
+ const notice=t.bridge?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
+ t.intersection?"Cruce al mismo nivel: necesita puente":
   !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
   t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":"La caja está lista";
- $("stateChip").textContent=t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
+ $("stateChip").textContent=t.bridge?"✓ OCHO CON PUENTE":
+ t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
  $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
  $("buildStatus").textContent=status;
  $("gridToggle").textContent=state.gridEnabled?"▦ 25 mm":"▦";
@@ -607,8 +619,9 @@ function initEvents(){
  $("lane").addEventListener("click",switchLane);
  $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[]);state.camera={panX:0,panY:0,zoom:1};});
  $("eight").addEventListener("click",()=>{
-   changeTypes(FIGURE_EIGHT.slice(),"Ocho simétrico de 225° + 225°: los conectores coinciden; falta construir el puente del cruce.",[]);
+   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[]);
    state.camera={panX:0,panY:0,zoom:1};
+   save();
  });
  $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[]));
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
