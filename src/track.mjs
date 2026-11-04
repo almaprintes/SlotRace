@@ -183,24 +183,24 @@ export function countPieces(types){
 // separación pequeña originada mucho antes, eso no puede funcionar.
 // Comprobamos una o dos sustituciones EN CUALQUIER POSICIÓN antes de intentar
 // añadir piezas. Las que parecen cerrar se validan con todas las colisiones.
-function findGlobalReplacements(types,{maxStates=24000}={}){
+function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
  const ids=Object.keys(CATALOG),used=countPieces(types);
  let tested=0,nearest={gap:Infinity,changes:[]};
- const base=buildTrack(types);
+ const base=buildTrack(types,origin);
  if(base.gap<nearest.gap)nearest={gap:base.gap,changes:[]};
  const angleOf=id=>CATALOG[id].angle||0;
  const changesAt=(at,to)=>({index:at,from:types[at],to});
  const candidate=types.slice();
  function evaluate(changes){
   if(++tested>maxStates)return null;
-  let pose={...START};
+  let pose={...origin};
   for(const id of candidate)pose=positionOnPiece(pose,id,1);
-  const heading=Math.abs(norm(pose.h-START.h));
+  const heading=Math.abs(norm(pose.h-origin.h));
   if(heading>SNAP_RAD)return null;
-  const gap=hypot(pose.x-START.x,pose.y-START.y);
+  const gap=hypot(pose.x-origin.x,pose.y-origin.y);
   if(gap<nearest.gap-.01)nearest={gap,changes:changes.map(c=>({...c}))};
   if(gap>SNAP_MM)return null;
-  const built=buildTrack(candidate);
+  const built=buildTrack(candidate,origin);
   if(!built.valid)return null;
   return{ok:true,types:candidate.slice(),replaced:changes.length,added:0,
    changes:changes.map(c=>({...c})),unchanged:false};
@@ -233,7 +233,7 @@ function findGlobalReplacements(types,{maxStates=24000}={}){
      if(available<=0)continue;
      // Un cambio de radio conserva el giro. Dos cambios opuestos
      // de sentido pueden compensarse si el rumbo final lo permite.
-     const revisedHeading=norm(base.ends.end.h-START.h+
+     const revisedHeading=norm(base.ends.end.h-origin.h+
        angleOf(toI)-angleOf(fromI)+angleOf(toJ)-angleOf(fromJ));
      if(Math.abs(revisedHeading)>SNAP_RAD)continue;
      candidate[j]=toJ;
@@ -255,15 +255,15 @@ function findGlobalReplacements(types,{maxStates=24000}={}){
 // Busca un cierre utilizando sólo módulos que existan realmente en el inventario.
 // Prioriza conservar la mayor parte posible del circuito; comprueba cruces antes
 // de proponer un resultado. No crea piezas de transición deformadas.
-export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}={}){
+export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,origin=START}={}){
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
-  const current=buildTrack(types);
+  const current=buildTrack(types,origin);
   if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
   // Primera oportunidad: reemplazos precisos lejos del último conector.
   // Importante para pistas largas con error acumulado de decenas de mm.
-  const global=findGlobalReplacements(types,{maxStates:24000});
+  const global=findGlobalReplacements(types,{maxStates:24000,origin});
   if(global.ok)return global;
-  const ids=Object.keys(CATALOG),target=START;
+  const ids=Object.keys(CATALOG),target=origin;
   let visits=0;
   // Cuanto menos se edita, antes se evalúa. Así no se rehace el circuito arbitrariamente.
   for(let cost=1;cost<=maxReplace+maxAdd;cost++){
@@ -274,7 +274,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}=
       const prefix=types.slice(0,types.length-replace);
       const counts={};
       for(const id of prefix)counts[id]=(counts[id]||0)+1;
-      const origin=buildTrack(prefix).ends.end;
+      const startingPose=buildTrack(prefix,origin).ends.end;
       const proposed=[];
       function recurse(pose,remaining){
         if(++visits>maxStates)return null;
@@ -284,7 +284,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}=
           if(gap>SNAP_MM||headingGap>SNAP_RAD)return null;
           const guess=[...prefix,...proposed];
           if(guess.length<4)return null;
-          const built=buildTrack(guess);
+          const built=buildTrack(guess,origin);
           return built.valid?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
         }
         if(hypot(pose.x-target.x,pose.y-target.y)>remaining*380+SNAP_MM)return null;
@@ -299,7 +299,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}=
         }
         return null;
       }
-      const result=recurse(origin,inserted);
+      const result=recurse(startingPose,inserted);
       if(result)return result;
       if(visits>maxStates)return{ok:false,reason:"La búsqueda del cierre agotó sus combinaciones; no se ha deformado ninguna pieza.",limited:true,global};
     }
