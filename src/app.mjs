@@ -29,8 +29,12 @@ const state={
   camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
   dragging:null,latest:performance.now()
 };
-state.workBoard={...state.track.board};
-function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,origin:state.origin,draft:state.draft,records:state.records,gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled}));}
+const oldBoard=old?.workBoard;
+const boardValid=oldBoard&&["left","top","right","bottom","width","height"].every(k=>Number.isFinite(oldBoard[k]));
+state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
+function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
+ origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
+ gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
