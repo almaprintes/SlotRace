@@ -17,7 +17,7 @@ const ids = ["track","trackState","hint","pieceCount","invS","invR","invL","addS
   "activity","left","right","gasvalue","throttle","gas","start","pause","reset",
   "quickRace","driveOverlay","driveSurface","driveLap","driveTime","drivePercent",
   "driveSpeed","driveLaneText","driveMessage","drivePause","driveLane",
-  "driveGas","driveExit","driveThrottle"];
+  "driveGas","driveExit","driveThrottle","mobilePlay","restoreDraft","draftRecovery"];
 const previewParent = {firstChild:null,insertBefore(node){node.parentElement=this;this.firstChild=node;}};
 const driveParent = {firstChild:null,insertBefore(node){node.parentElement=this;this.firstChild=node;}};
 for (const id of ids) {
@@ -33,6 +33,7 @@ for (const id of ids) {
 }
 nodes.track.parentElement=previewParent;
 nodes.driveOverlay.hidden=true;
+nodes.draftRecovery.hidden=true;
 const classes=new Set();
 const document = {getElementById:id=>nodes[id],addEventListener:nop,hidden:false,
   body:{classList:{add:k=>classes.add(k),remove:k=>classes.delete(k)}}};
@@ -102,4 +103,20 @@ assert.equal(game.getState().valid,false,"Empty table should be invalid");
 assert.equal(game.getState().pieces.length,0);
 events.oval.click();
 assert.equal(game.getState().valid,true,"Restore oval should work");
+// A draft that cannot close must never prevent racing.
+events.addS.click();
+assert.equal(game.getState().valid,false,"Edited track should be open");
+assert.equal(game.getState().pieces.length,9);
+events.mobilePlay.click();
+assert.equal(game.getState().valid,true,"One-tap play should switch to a valid starter oval");
+assert.equal(game.getState().pieces.length,8,"Starter track must have eight pieces");
+assert.equal(game.getState().running,true);
+assert.equal(nodes.draftRecovery.hidden,false,"Draft recovery must be available");
+events.driveExit.click();
+events.restoreDraft.click();
+assert.equal(game.getState().valid,false,"Restored draft should retain original open state");
+assert.equal(game.getState().pieces.length,9,"Edited draft pieces must not disappear");
+events.oval.click();
+assert.equal(game.getState().valid,true,"Original oval must remain available");
+
 console.log("SlotRace LAB smoke: OK (layout, full-screen cockpit, touch controls, editor, lap timing, both lanes).");
