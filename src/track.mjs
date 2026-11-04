@@ -1,34 +1,22 @@
-// SlotRace LAB — geometría modular 2 carriles (milímetros virtuales).
-// Referencias: pista de 156 mm, recta Sport 350/175 mm y curvas R2 45°.
-// La compatibilidad física con fabricantes NO está certificada.
-export const TABLE = Object.freeze({width:2200,height:1450,edge:62});
-export const START = Object.freeze({x:750,y:325,h:0});
-export const TRACK_WIDTH = 156;
-export const LANE_OFFSET = 39;
-// Los radios de ~370 mm (R2) y ~214 mm (R1) citados para pistas físicas
-// se refieren al BORDE EXTERIOR, no al eje central del módulo de 156 mm.
-// Calibración provisional de eje R2 para que 8 rectas de 350 mm y
-// 5 curvas de +45° / 5 de -45° den un ocho matemáticamente exacto:
-// R = 2 * L * (sqrt(2) - 1) = 289.94949366 mm.
-// Esta calibración geométrica no certifica el radio de la pieza comercial.
-export const VIRTUAL_R2_RADIUS=2*350*(Math.SQRT2-1);
-export const VIRTUAL_R1_RADIUS=214-TRACK_WIDTH/2;
-export const CATALOG = Object.freeze({
-  S350:{name:"Recta larga",code:"350 mm",length:350,stock:8,group:"recta"},
-  S175:{name:"Media recta",code:"175 mm",length:175,stock:4,group:"recta"},
-  R2R:{name:"Curva R2 ↷",code:"45° derecha",radius:VIRTUAL_R2_RADIUS,angle:Math.PI/4,stock:12,group:"curva"},
-  R2L:{name:"Curva R2 ↶",code:"45° izquierda",radius:VIRTUAL_R2_RADIUS,angle:-Math.PI/4,stock:12,group:"curva"},
-  R1R:{name:"Curva R1 ↷",code:"45° cerrada",radius:VIRTUAL_R1_RADIUS,angle:Math.PI/4,stock:6,group:"curva"},
-  R1L:{name:"Curva R1 ↶",code:"45° cerrada",radius:VIRTUAL_R1_RADIUS,angle:-Math.PI/4,stock:6,group:"curva"}
-});
-export const STARTER=Object.freeze(["S350","S350","R2R","R2R","R2R","R2R",
-  "S350","S350","R2R","R2R","R2R","R2R"]);
-// Dos diagonales de 4 rectas de 350 mm. El cruce cae entre la
-// segunda y tercera pieza de cada diagonal, no en salida/meta.
-export const FIGURE_EIGHT=Object.freeze([
- ...Array(4).fill("S350"),...Array(5).fill("R2R"),
- ...Array(4).fill("S350"),...Array(5).fill("R2L")
-]);
+// SlotRace DEV 0.9.0 · Geometría modular PT-Precision: radios y rectas exactos.
+// Catálogo virtual experimental; no se afirma compatibilidad física entre sistemas.
+import {GEOMETRY,RADII,PARTS,RECIPES} from "./pt-precision.mjs";
+export const TABLE=Object.freeze({width:2200,height:1450,edge:62});
+export const START=Object.freeze({x:750,y:325,h:0});
+export const TRACK_WIDTH=GEOMETRY.trackWidth;
+export const LANE_OFFSET=GEOMETRY.laneOffset;
+export const VIRTUAL_R2_RADIUS=RADII.R2;
+export const VIRTUAL_R1_RADIUS=RADII.R1;
+export const CATALOG=Object.freeze(Object.fromEntries(
+ Object.entries(PARTS).map(([id,s])=>[id,Object.freeze({
+  name:s.name,code:s.reference,
+  ...(s.kind==="straight"?{length:s.length}:{radius:s.radius,angle:s.angle}),
+  stock:s.kind==="straight"?8:12,group:s.kind==="straight"?"recta":"curva",
+  radiusId:s.radiusId||null,degrees:s.degrees||0
+ })])
+));
+export const STARTER=Object.freeze([...RECIPES.ovalR2]);
+export const FIGURE_EIGHT=Object.freeze([...RECIPES.eightR2]);
 export const BRIDGE_HEIGHT_MM=65;
 export function hasAutomaticEightBridge(types){
  return Array.isArray(types)&&types.length===FIGURE_EIGHT.length&&
@@ -142,12 +130,11 @@ export function buildTrack(types,origin=START){
   const onTable=bounds.left>=board.left+TABLE.edge&&bounds.right<=board.right-TABLE.edge&&
     bounds.top>=board.top+TABLE.edge&&bounds.bottom<=board.bottom-TABLE.edge;
   const intersection=crossed(parts,closed);
-  // El ocho homologado de prueba tiene puente automático sobre la
-  // segunda diagonal y soportes a ambos extremos. Nunca validamos
-  // otros cruces planos por mera cercanía visual.
+  // El ocho exacto PT-Precision cruza dos rectas de 584 mm por su centro.
+  // La primera es inferior (0) y la segunda es el puente elevado (7).
   const bridge=closed&&intersection&&hasAutomaticEightBridge(types)?
-   {height:BRIDGE_HEIGHT_MM,overParts:[9,10,11,12],
-    underParts:[0,1,2,3],supports:[9,12],virtual:true}:null;
+   {height:BRIDGE_HEIGHT_MM,overParts:[7],
+    underParts:[0],supports:[7],virtual:true}:null;
   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
   return{parts,types:[...types],points,lanes,closed,onTable,intersection,bridge,
     valid:closed&&onTable&&(!intersection||Boolean(bridge)),
@@ -304,7 +291,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
           const built=buildTrack(guess,origin);
           return built.valid?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
         }
-        if(hypot(pose.x-target.x,pose.y-target.y)>remaining*380+SNAP_MM)return null;
+        if(hypot(pose.x-target.x,pose.y-target.y)>remaining*584+SNAP_MM)return null;
         for(const id of ids){
           if((counts[id]||0)>=stockLimit(id))continue;
           counts[id]=(counts[id]||0)+1;proposed.push(id);
