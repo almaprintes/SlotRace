@@ -112,3 +112,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .tray .panel-line .buttons .mini{min-height:30px;padding:5px 9px}
  .piece-card .grip{bottom:7px}
 }
+
+/* El botón de cierre exacto no debe esconderse en la bandeja de piezas. */
+.controlbar .right .mini{white-space:nowrap;min-width:0;font-size:12px}
+.controlbar .right #autoClose{border-color:#91bdae;color:#c5f6e7}
+@media(max-width:660px){
+ .controlbar .status{max-width:31vw;font-size:10px;letter-spacing:-.15px}
+ .controlbar .right{gap:5px}
+ .controlbar .right .mini{padding:8px 7px;font-size:11px;min-height:40px}
+ .controlbar .right .primary{min-width:101px}
+}
