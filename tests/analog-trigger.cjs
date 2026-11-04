@@ -23,7 +23,7 @@ const path=require("node:path");
    getBoundingClientRect(){return{left:0,top:0,right:390,bottom:600,width:390,height:600}},
    setPointerCapture(){},querySelectorAll(){return this.children},
    querySelector(sel){
-    if(sel===".grip")return this.grip??=makeEl("grip");
+    if(sel===".grip"||sel===".foam-drag-grip")return this.grip??=makeEl("grip");
     if(sel===".qty")return this.qty??=makeEl("qty");
     return null;
    }};
@@ -64,7 +64,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.9.1");
+ assert.equal(window.slotraceLab.version,"DEV 0.9.2");
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
  assert.equal(state.run,true);
@@ -121,5 +121,5 @@ const path=require("node:path");
  assert.equal(trigger.disabled,true);
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.9.1: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.9.2: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
