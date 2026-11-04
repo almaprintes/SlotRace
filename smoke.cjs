@@ -55,7 +55,24 @@ assert.match(app,/function closeExactly\(/,"Resolución automática del conector
 assert.equal(CATALOG.S350.length,350);
 assert.equal(CATALOG.S175.length,175);
 assert.ok(Math.abs(CATALOG.R2R.angle-Math.PI/4)<1e-8);
-assert.equal(CATALOG.R2R.radius,370);
+assert.ok(Math.abs(CATALOG.R2R.radius-289.9494936611666)<1e-8,
+  "Radio virtual calibrado del EJE del módulo, no del borde exterior");
+// Trazado del usuario: 8 rectas de 350 mm (2 + 4 + 2) y 10 curvas,
+// cinco a derecha y cinco a izquierda. Giro neto = 0° y posición final
+// debe coincidir sin deformar ni añadir una sola pieza.
+const figureEight=[
+ "S350","S350",...Array(5).fill("R2R"),
+ ...Array(4).fill("S350"),...Array(5).fill("R2L"),
+ "S350","S350"
+];
+const eight=buildTrack(figureEight);
+assert.equal(eight.parts.length,18);
+assert.equal(eight.closed,true,"El ocho simétrico debe cerrar");
+assert.ok(eight.gap<1e-6,"Extremos exactamente alineados");
+assert.ok(eight.headingGap<1e-8,"Giro de 225° compensado con -225°");
+assert.equal(eight.intersection,true,"El ocho necesita puente, no un cruce plano");
+assert.equal(eight.valid,false,"No homologar cruce sin puente automáticamente");
+assert.equal(eight.onTable,true,"La mesa dinámica debe abarcar el ocho");
 assert.equal(oval.closed,true,"Starter oval must connect with no gap");
 assert.equal(oval.valid,true,"Starter oval must fit on the table and avoid ground-level overlaps");
 assert.equal(oval.onTable,true);
@@ -91,5 +108,5 @@ const midpoint=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(midpoint.x)&&Number.isFinite(midpoint.y));
 const nearest=nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y);
 assert.equal(nearest.index,0,"Tap should select a physical part");
-console.log("SlotRace LAB 0.4.3 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB 0.4.4 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
