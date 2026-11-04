@@ -37,7 +37,7 @@ const fs=require("node:fs"),path=require("node:path");
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG);
- assert.equal(game.version,"DEV 0.8.0");
+ assert.equal(game.version,"DEV 0.8.1");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
@@ -58,19 +58,19 @@ const fs=require("node:fs"),path=require("node:path");
  assert.notEqual(byId("S350").innerHTML,byId("S175").innerHTML,"Rectas de distinta longitud");
  assert.notEqual(byId("R2R").innerHTML,byId("R2L").innerHTML,"Curvas de sentidos contrarios");
  assert.notEqual(byId("R2R").innerHTML,byId("R1R").innerHTML,"Curvas de diferente radio");
- assert.equal(byId("S350").disabled,true,"El hueco vacío sigue visible, no se puede gastar");
- assert.equal(byId("S350").qty.textContent,"×0");
- assert.equal(byId("S175").qty.textContent,"×4");
- assert.equal(byId("R2R").qty.textContent,"×7");
- const total=Object.values(geo.CATALOG).reduce((n,x)=>n+x.stock,0);
- assert.equal(elements.get("caseCount").textContent,(total-18)+" de "+total+" piezas en sus huecos");
+ assert.equal(byId("S350").disabled,false,"El hueco S350 siempre puede suministrar piezas");
+ assert.equal(byId("S350").qty.textContent,"∞");
+ assert.equal(byId("S175").qty.textContent,"∞");
+ assert.equal(byId("R2R").qty.textContent,"∞");
+ assert.equal(geo.UNLIMITED_DEVELOPMENT_STOCK,true);
+ assert.equal(elements.get("caseCount").textContent,"∞ piezas disponibles · 18 en la mesa");
 
  const tap=id=>byId(id).listeners.click[0]({detail:0});
  tap("S175");tap("S175");
  assert.equal(st.loose.length,2,"Permite sacar varias piezas del mismo hueco");
  assert.equal(st.types.length,18,"Las piezas ensambladas no se alteran");
- assert.equal(byId("S175").qty.textContent,"×2");
- assert.equal(elements.get("caseCount").textContent,(total-20)+" de "+total+" piezas en sus huecos");
+ assert.equal(byId("S175").qty.textContent,"∞");
+ assert.equal(elements.get("caseCount").textContent,"∞ piezas disponibles · 20 en la mesa");
 
  // Cerrar la caja no borra las piezas sacadas ni altera el circuito.
  const toggle=elements.get("caseToggle");
@@ -97,14 +97,14 @@ const fs=require("node:fs"),path=require("node:path");
  pocket.listeners.pointermove[0](event(target.x,target.y));
  pocket.listeners.pointerup[0](event(target.x,target.y));
  assert.equal(st.loose.length,3,"Arrastrar saca exactamente una pieza");
- assert.equal(byId("R1R").qty.textContent,"×5");
+ assert.equal(byId("R1R").qty.textContent,"∞");
  assert.equal(st.types.length,18);
  assert.equal(st.loose.at(-1).id,"R1R");
  pocket.listeners.click[0]({detail:1});
  assert.equal(st.loose.length,3,"El click sintético tras arrastrar no duplica la pieza");
  tap("R1R");
  assert.equal(st.loose.length,4,"El siguiente toque vuelve a sacar otra pieza");
- assert.equal(byId("R1R").qty.textContent,"×4");
+ assert.equal(byId("R1R").qty.textContent,"∞");
 
  // Cancelar un gesto o soltar fuera de la mesa no debe gastar inventario.
  pocket.listeners.pointerdown[0](event(200,720,28));
@@ -128,5 +128,13 @@ const fs=require("node:fs"),path=require("node:path");
 
  assert.ok(JSON.parse(data.get("slotrace-lab-05")).loose.length>=4,
   "El contenido extraído queda guardado en el montaje");
- console.log("SlotRace DEV 0.8.0: maletín único, seis recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ // En el modo pruebas, ni el fin del kit inicial ni el viejo máximo
+ // de 48 piezas pueden impedir sacar más módulos del maletín.
+ for(let n=0;n<45;n++)tap("S350");
+ assert.ok(st.types.length+st.loose.length>48,"Se permiten más de 48 piezas");
+ assert.equal(byId("S350").qty.textContent,"∞","El hueco mantiene ∞ tras 45 extracciones");
+ assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
+ assert.equal(elements.get("caseCount").textContent,
+  "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
+ console.log("SlotRace DEV 0.8.1: maletín único, seis recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
