@@ -32,7 +32,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.5.5");
+ assert.equal(game.version,"DEV 0.5.6");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
@@ -95,5 +95,5 @@ const path=require("node:path");
  for(let i=0;i<8;i++)physics.simulationStep(1/60);
  assert.equal(st.penalty,0,"Easing off must avoid a delayed penalty");
  assert.ok(st.gripDebt<original,"Reduced throttle must regenerate grip");
- console.log("SlotRace DEV 0.5.5: oval 65% stable drift, 70% delayed curve exit, straight boundaries and 60/120Hz equivalence — OK");
+ console.log("SlotRace DEV 0.5.6: oval 65% stable drift, 70% delayed curve exit, straight boundaries and 60/120Hz equivalence — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
