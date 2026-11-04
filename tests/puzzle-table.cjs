@@ -6,7 +6,9 @@ const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"");
+  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"")
+  .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
+  .replace("function strokePath(ctx,points,color,width){","function strokePath(ctx,points,color,width){if(color===\"#0c1518\"&&width===TRACK_WIDTH+19)window.__shadowLog.push(points.length);");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
@@ -19,7 +21,7 @@ const path=require("node:path");
    querySelectorAll(){return this.children},
    querySelector(sel){
     if(sel===".qty")return this.qty??=node("qty");
-    if(sel===".grip")return this.grip??=node("grip");
+    if(sel===".grip"||sel===".foam-drag-grip")return this.grip??=node("grip");
     return null;
    }};
  }
@@ -29,7 +31,7 @@ const path=require("node:path");
  for(const id of ["editCanvas","raceCanvas"])elements.get(id).getContext=()=>ctx;
  const document={getElementById:id=>elements.get(id),createElement:()=>node("card"),
   addEventListener(){},hidden:false};
- const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,
+ const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__seamLog:[],__shadowLog:[],
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
@@ -38,7 +40,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.1");
+ assert.equal(game.version,"DEV 0.9.2");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -121,9 +123,30 @@ const path=require("node:path");
                       st.track.parts[i+1].start.y-prior[i].y)<1e-6,
     "Prepending cannot move original assembled pieces");
  }
+ // Regresión visual: dos módulos magnéticos comparten UNA sombra y
+ // sólo dos juntas externas; nunca dos siluetas independientes superpuestas.
+ game.changeTypes([],"Mesa limpia para probar uniones",[],geo.START);
+ game.puzzle.scatterLoose("S350");
+ game.puzzle.scatterLoose("S350");
+ const free=st.loose[0],joined=st.loose[1];
+ const endOfFirst=geo.positionOnPiece({x:free.x,y:free.y,h:free.h},free.id,1);
+ joined.x=endOfFirst.x+5;joined.y=endOfFirst.y+4;joined.h=free.h;
+ assert.equal(game.puzzle.snapLoose(1,{force:true}),true,"La segunda recta se une a la primera");
+ const groups=game.puzzle.loosePaintGroups();
+ assert.equal(groups.length,1,"Dos piezas encajadas = un único grupo visual");
+ assert.equal(groups[0].parts.length,2);
+ assert.equal(groups[0].points.length,
+   groups[0].parts[0].points.length+groups[0].parts[1].points.length-1,
+   "La trayectoria continua no duplica el punto de unión");
+ window.__seamLog.length=0;window.__shadowLog.length=0;
+ game.puzzle.paintLoose(ctx);
+ assert.equal(window.__shadowLog.length,1,"Sólo una sombra exterior para el grupo acoplado");
+ assert.equal(window.__seamLog.length,2,"Sin sombra ni costura interior entre las piezas");
+ assert.ok(window.__shadowLog[0]>groups[0].parts[0].points.length,
+  "La sombra debe cubrir las dos rectas como un único contorno");
  const stored=JSON.parse(saved.get("slotrace-lab-09"));
  assert.ok(Math.abs(stored.origin.x-idealStart.x)<1e-5,"Prepending updates and persists world anchor");
- assert.equal(stored.loose.length,1,"Loose pieces persist to local storage");
+ assert.equal(stored.loose.length,2,"El grupo de dos piezas se guarda completo");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
- console.log("SlotRace DEV 0.9.1 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.9.2 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
