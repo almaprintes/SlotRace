@@ -1,9 +1,20 @@
-# SlotRace · DEV 0.5.3 — rueda de aceleración con clics y puente localizado
+# SlotRace · DEV 0.5.4 — más velocidad, derrape y trompos animados
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.5.4 — conducción más expresiva
+
+- **Más velocidad de carrera:** velocidad objetivo máxima virtual de 950 a **1.150 mm/s** (+21 %).
+- **Curvas menos castigadoras:** límite básico R2 pasa de 610 a 690 mm/s y la tolerancia de salida de ×1,10 a ×1,20. En una misma curva el umbral efectivo aumenta aproximadamente un 23 %; sigue dependiendo del carril y el radio.
+- **Derrape controlado:** cuando el coche circula al 72–100 % del límite efectivo de curva, la carrocería se inclina gradualmente, la parte trasera desliza ligeramente (hasta 12 mm virtuales) y aparecen estelas breves. **No cambia el centro de la ranura ni el recorrido contabilizado.**
+- **Trompo visible:** cuando se sobrepasa el límite, el coche se desplaza hacia fuera, da dos vueltas completas y vuelve progresivamente a la misma posición. Queda inmovilizado durante los **3 segundos** de penalización; el reloj sigue corriendo y la vuelta sigue siendo válida.
+- **La animación no modifica la posición real del coche:** no permite atravesar, adelantar ni saltarse tramos o checkpoints. El efecto es visual y la física sigue siendo provisional.
+- Se añade `tests/drift-spin.cjs` con verificaciones de velocidad, derrape sin salida, giro, regreso a la ranura, conservación de distancia y vuelta, cronómetro y penalización.
+
+La versión de la pantalla de carga y la cabecera es **DEV 0.5.4**. Prueba en Safari: https://almaprintes.github.io/SlotRace/?v=0.5.4
 
 ## DEV 0.5.3 — rueda táctil de sintonización
 
