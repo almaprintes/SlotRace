@@ -96,3 +96,19 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .worktop{padding:4px}.tray{min-height:95px}.controlbar{padding:4px 8px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Piezas físicas sueltas: asa táctil de arrastre y barra de herramientas sin recortes */
+.piece-card .grip{position:absolute;right:9px;bottom:8px;border:1px solid #80bfb4;background:#1b494a;border-radius:7px;color:#a5ffee;font-size:22px;line-height:23px;width:32px;height:28px;text-align:center;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.piece-card .grip:active{background:#4ceccc;color:#062522;cursor:grabbing}
+.panel-line{flex-wrap:wrap}
+.panel-line .selector{flex:1 1 165px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.panel-line .buttons{max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.panel-line .buttons .mini{white-space:nowrap;flex:none}
+@media(max-width:660px){
+ .tray{min-height:175px;max-height:205px}
+ .tray .piece-card{height:79px}
+ .tray .tray-title{font-size:10px}
+ .tray .panel-line{row-gap:4px}
+ .tray .panel-line .buttons .mini{min-height:30px;padding:5px 9px}
+ .piece-card .grip{bottom:7px}
+}
