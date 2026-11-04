@@ -115,7 +115,7 @@ assert.ok(Number.isFinite(midpoint.x)&&Number.isFinite(midpoint.y));
 const nearest=nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y);
 assert.equal(nearest.index,0,"Tap should select a physical part");
 assert.match(html,/id="loadingScreen"/,"Pantalla de carga de desarrollo");
-assert.match(html,/DEV 0\.5\.6/,"Versión de desarrollo visible");
+assert.match(html,/DEV 0\.5\.7/,"Versión de desarrollo visible");
 assert.match(html,/id="loadingStatus"/,"Estado de carga visible");
 assert.match(html,/id="gridToggle"/,"Botón de retícula milimetrada");
 assert.match(app,/const KEY="slotrace-lab-05"/,"Estado nuevo para conservar construcción anterior");
@@ -134,5 +134,5 @@ assert.match(app,/function triggerPointerMove\(/,"Gestos verticales de la rueda"
 assert.match(app,/DIAL_STEP=5/,"Cada muesca equivale al 5%");
 assert.match(app,/function dialSound\(/,"Clic direccional sintetizado");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/,"La física usa porcentaje analógico");
-console.log("SlotRace LAB DEV 0.5.6 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB DEV 0.5.7 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
