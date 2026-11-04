@@ -424,12 +424,18 @@ function paintBridgePillars(ctx,track){
   ctx.restore();
  }
 }
-function paintTrack(ctx,track,editing){
+function paintTrack(ctx,track,editing,layer="all"){
  if(!track.parts.length)return;
  const elevated=track.bridge?track.bridge.overParts:[];
- const ordered=elevated.length?
-  [...track.parts.filter(p=>!elevated.includes(p.index)),...track.parts.filter(p=>elevated.includes(p.index))]:
-  track.parts;
+ // La vía inferior y la superior se dibujan en PASADAS DISTINTAS,
+ // para poder situar un coche debajo del puente sin pintarlo encima.
+ const ordered=layer==="ground"?
+  track.parts.filter(p=>!elevated.includes(p.index)):
+  layer==="overpass"?
+  track.parts.filter(p=>elevated.includes(p.index)):
+  elevated.length?
+   [...track.parts.filter(p=>!elevated.includes(p.index)),...track.parts.filter(p=>elevated.includes(p.index))]:
+   track.parts;
  for(const part of ordered){
   if(track.bridge&&part.index===elevated[0])paintBridgePillars(ctx,track);
   if(elevated.includes(part.index)){
@@ -467,7 +473,7 @@ function paintTrack(ctx,track,editing){
    ctx.globalAlpha=.20;strokePath(ctx,part.points,"#36ffd6",TRACK_WIDTH+8);ctx.globalAlpha=1;
   }
  }
- if(track.closed){
+ if(track.closed&&layer!=="overpass"){
   const p=track.parts[0].start,nx=-Math.sin(p.h),ny=Math.cos(p.h),dx=Math.cos(p.h),dy=Math.sin(p.h);
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
   for(let k=-2;k<=2;k++)for(let j=0;j<8;j++){
@@ -475,7 +481,7 @@ function paintTrack(ctx,track,editing){
   }
   ctx.restore();
  }
- if(!track.closed&&editing){
+ if(layer!=="overpass"&&!track.closed&&editing){
   const start=track.ends.begin,end=track.ends.end;
   for(const [p,color] of [[start,"#67eff1"],[end,"#ffc66b"]]){
    ctx.save();ctx.shadowBlur=25;ctx.shadowColor=color;ctx.fillStyle=color;
@@ -626,10 +632,25 @@ function renderScene(canvas,mode){
  ctx.setTransform(v.dpr,0,0,v.dpr,0,0);
  ctx.fillStyle="#0a141b";ctx.fillRect(0,0,v.w,v.h);
  ctx.save();transform(ctx,v);
- paintTable(ctx);paintGrid(ctx);paintTrack(ctx,state.track,mode==="build");paintLoose(ctx);
- paintGhost(ctx,state.track);
- const p=positionAt(state.track.lanes[state.lane],mode==="race"?state.distance:0);
- if(state.track.valid)paintCar(ctx,p,state.lane);
+ paintTable(ctx);paintGrid(ctx);
+ const track=state.track,hasBridge=Boolean(track.bridge);
+ const p=positionAt(track.lanes[state.lane],mode==="race"?state.distance:0);
+ const carAbove=hasBridge&&p&&track.bridge.overParts.includes(p.pieceIndex);
+ if(hasBridge){
+  // Primero los raíles de abajo. Si el coche está en el nivel inferior,
+  // se pinta AHORA: después el puente lo ocultará al cruzar.
+  paintTrack(ctx,track,mode==="build","ground");
+  if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
+  // El puente debe tapar al coche inferior, pero nunca al coche que
+  // realmente está recorriendo el tablero elevado.
+  paintTrack(ctx,track,mode==="build","overpass");
+  if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
+ }else{
+  paintTrack(ctx,track,mode==="build");
+  if(track.valid)paintCar(ctx,p,state.lane);
+ }
+ paintLoose(ctx);
+ paintGhost(ctx,track);
  ctx.restore();
 }
 function screenToWorld(e){
