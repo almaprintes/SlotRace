@@ -81,5 +81,5 @@ const path=require("node:path");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","bridge","car"],
    "El coche elevado se pinta después del puente y queda encima");
- console.log("SlotRace DEV 0.9.0 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.9.1 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
