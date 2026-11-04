@@ -123,6 +123,10 @@ const path=require("node:path");
                       st.track.parts[i+1].start.y-prior[i].y)<1e-6,
     "Prepending cannot move original assembled pieces");
  }
+ const previousStored=JSON.parse(saved.get("slotrace-lab-09"));
+ assert.ok(Math.abs(previousStored.origin.x-idealStart.x)<1e-5,
+  "Prepending updates and persists world anchor");
+ assert.equal(previousStored.loose.length,1,"Loose piece persists to local storage");
  // Regresión visual: dos módulos magnéticos comparten UNA sombra y
  // sólo dos juntas externas; nunca dos siluetas independientes superpuestas.
  game.changeTypes([],"Mesa limpia para probar uniones",[],geo.START);
@@ -145,7 +149,7 @@ const path=require("node:path");
  assert.ok(window.__shadowLog[0]>groups[0].parts[0].points.length,
   "La sombra debe cubrir las dos rectas como un único contorno");
  const stored=JSON.parse(saved.get("slotrace-lab-09"));
- assert.ok(Math.abs(stored.origin.x-idealStart.x)<1e-5,"Prepending updates and persists world anchor");
+ assert.equal(stored.types.length,0,"Las piezas se guardan como tramo libre");
  assert.equal(stored.loose.length,2,"El grupo de dos piezas se guarda completo");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
  console.log("SlotRace DEV 0.9.2 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
