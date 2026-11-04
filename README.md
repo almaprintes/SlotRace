@@ -1,10 +1,27 @@
-# SlotRace · DEV 0.8.1 — caja infinita de piezas para experimentar
+# SlotRace · DEV 0.9.0 — familia PT-Precision jugable
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
 
+## DEV 0.9.0 — familia PT-Precision activa (20 variantes, 13 formas)
+
+**Probar en móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.0
+
+La caja de espuma presenta **13 cavidades**: rectas de 78, 87,5, 175, 350 y 584 mm, salida/meta y siete curvas R1–R4 (22,5°, 45°, 90° según radio). Cada curva admite los dos sentidos sin duplicar la cavidad, lo que suma **20 variantes geométricas** en el motor. El inventario es ilimitado durante las pruebas.
+
+- **Caja: derecha/izquierda** elige en qué sentido extraer la siguiente curva. **Voltear curva** invierte la pieza ya seleccionada. **Girar 22,5°** rota una pieza o tramo libre.
+- Radios centrales: **R1 136, R2 292, R3 448, R4 604 mm**; ancho de pista 156 mm, distancia entre carriles 78 mm.
+- Plantilla de óvalo R2: 12 módulos; ocho exacto: **dos rectas 584 mm y doce curvas R2 de 45°**, con la segunda recta elevada (14 módulos).
+- El algoritmo de cierre primero intenta completar con una pieza sin modificar el montaje; si no es posible busca reemplazos y combinaciones, **sin alargar ni deformar los módulos**.
+- Nueva clave de guardado de pruebas `slotrace-lab-09`: se inicia con el ocho de la nueva familia sin reutilizar automáticamente el trazado calibrado de la DEV anterior. Esto es intencionado para experimentar.
+- Se han adaptado las pruebas de mesa, maletín, puente, física, gatillo y cierre. La nueva prueba `tests/pt-precision.cjs` verifica círculos, radios concéntricos y recetas exactas.
+
+**Límite actual:** PT-Precision es un sistema virtual matemático propio, no una reproducción certificada de piezas mecánicamente compatibles. Cambios de carril, cruces a nivel y bordes especiales del catálogo histórico están identificados pero **todavía no son módulos funcionales en la caja**. No se simulan como simples rectas para evitar validaciones falsas. La tabla completa y su justificación están en `docs/familia-pt-precision.md`.
+
+---
+ 
 ## DEV 0.8.1 — piezas ilimitadas en la caja de pruebas
 
 **Inventario de desarrollo ilimitado** para los seis modelos que ya existen en el catálogo: rectas S350/S175 y curvas R1/R2 a derecha e izquierda. Cada alojamiento de espuma muestra **∞**, permanece activo tras sacar piezas y permite colocar tantas copias como se necesiten.
