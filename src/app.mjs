@@ -1,7 +1,7 @@
 import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
-const KEY="slotrace-lab-05";
+const KEY="slotrace-lab-09";
 const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return null;}})();
 const legacy=(()=>{try{return JSON.parse(storage("slotrace-lab-04")||"null");}catch(e){return null;}})();
 const oldValid=old?.types&&allowed(old.types);
@@ -15,7 +15,7 @@ const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose
 const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(Number.isFinite)?
  {...old.origin}:{...START};
 const state={
-  gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,
+  gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,origin:initialOrigin,track:buildTrack(initial,initialOrigin),mode:"build",selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
@@ -34,7 +34,7 @@ const boardValid=oldBoard&&["left","top","right","bottom","width","height"].ever
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
- gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen}));}
+ gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -231,9 +231,30 @@ function scatterLoose(id){
  const y=b.top+195+(Math.floor(n/cols)%4)*270;
  return addLoose(id,x,y,0);
 }
+const pocketPartId=id=>id.includes("_")&&id.endsWith("R")?id.slice(0,-1)+state.caseCurveDirection:id;
 function inventoryAction(id){
- if(!CATALOG[id])return;
- scatterLoose(id);
+ const chosen=pocketPartId(id);
+ if(!CATALOG[chosen])return;
+ scatterLoose(chosen);
+}
+function flipSelectedCurve(){
+ let id=null;
+ if(state.looseSelection>=0)id=state.loose[state.looseSelection]?.id;
+ else if(state.selectionMode==="piece"&&state.selection>=0)id=state.types[state.selection];
+ if(!id||!id.includes("_")||!/[RL]$/.test(id)){
+  state.caseCurveDirection=state.caseCurveDirection==="R"?"L":"R";
+  save();updateUI();toast(state.caseCurveDirection==="R"?"La caja entrega curvas a la derecha.":"La caja entrega curvas a la izquierda.");
+  return;
+ }
+ const opposite=id.slice(0,-1)+(id.endsWith("R")?"L":"R");
+ if(state.looseSelection>=0){
+  pushHistory();detachLooseMember(state.looseSelection);
+  state.loose[state.looseSelection].id=opposite;
+  save();updateUI();toast("Curva suelta invertida. Encájala en sentido contrario.");
+ }else{
+  const next=state.types.slice();next[state.selection]=opposite;
+  changeTypes(next,"Curva del circuito invertida: revisa los conectores.");
+ }
 }
 function closeExactly(){
  if(state.track.closed){
@@ -326,7 +347,7 @@ function curveLimit(p,lane){
  // Antes se SUMABA ese desplazamiento y se invertía el agarre.
  const lateralOffset=lane===0?-LANE_OFFSET:LANE_OFFSET;
  const radius=Math.max(70,p.radius-lateralOffset*p.curve);
- return DRIVE.curveBase*Math.sqrt(radius/CATALOG.R2R.radius)*DRIVE.derailMultiplier;
+ return DRIVE.curveBase*Math.sqrt(radius/CATALOG.R2_45R.radius)*DRIVE.derailMultiplier;
 }
 function simulation(dt){
  if(!state.run||!state.track.valid)return;
@@ -491,8 +512,8 @@ function updateHud(){
  $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
  const pose=positionAt(state.track.lanes[state.lane],state.distance);
  const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
- const underCrossing=isBelow&&pose&&state.track.parts.length>=3&&
-   Math.hypot(pose.x-state.track.parts[1].end.x,pose.y-state.track.parts[1].end.y)<135;
+ const underCrossing=isBelow&&pose&&Boolean(state.track.bridge)&&
+   Math.hypot(pose.x-state.track.parts[0].points[3].x,pose.y-state.track.parts[0].points[3].y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    !state.run?"EN PAUSA":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
@@ -543,6 +564,8 @@ function updateUI(){
  $("remove").disabled=state.selectionMode!=="piece"||
   (state.selection<0&&state.looseSelection<0);
  $("rotate").disabled=state.looseSelection<0;
+ $("flip").textContent=state.caseCurveDirection==="R"?"↷ DERECHA / INVERTIR":"↶ IZQUIERDA / INVERTIR";
+ $("flip").setAttribute("aria-label","Cambiar dirección de las curvas de la caja o invertir la curva seleccionada");
  $("joinPiece").disabled=state.looseSelection<0;
  $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
@@ -555,23 +578,28 @@ function updateUI(){
   (total-used)+" de "+total+" piezas en sus huecos";
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
-  const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id);
+  const id=el.dataset.piece,chosen=pocketPartId(id),free=freeStock([...state.types,...state.loose.map(p=>p.id)],chosen);
   const unlimited=free===Infinity;
   el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
-  el.setAttribute("aria-label",CATALOG[id].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+". Toca para sacar o arrastra a la mesa.");
+  el.setAttribute("aria-label",CATALOG[chosen].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+". Toca para sacar o arrastra a la mesa.");
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
-  el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===id)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===id));
+  el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===chosen)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen));
  }
  $("tableCaption").textContent=state.looseSelection>=0?"PIEZA SUELTA · arrástrala al conector amarillo":
  state.selection>=0?"TRAMO SELECCIONADO · toca otra pieza para sustituirlo":
  state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":"ARRASTRA UNA PIEZA DESDE ⠿ · PELLIZCA PARA ZOOM";
  updateHud();
 }
-// Las seis siluetas siguen la GEOMETRÍA de cada módulo: rectas de
-// distintas longitudes y curvas R1/R2 con sentido correcto. Cada huella
-// permanece recortada incluso cuando ya no quedan piezas de ese modelo.
-const pocketNames={S350:"RECTA LARGA",S175:"RECTA CORTA",R2R:"R2 DERECHA",R2L:"R2 IZQUIERDA",R1R:"R1 DERECHA",R1L:"R1 IZQUIERDA"};
+// Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
+const pocketNames={
+ S078:"RECTA 78",S0875:"RECTA 87,5",S175:"RECTA 175",S350:"RECTA 350",
+ S584:"RECTA 584",START350:"SALIDA / META",
+ R1_225R:"R1 · 22,5°",R1_45R:"R1 · 45°",R1_90R:"R1 · 90°",
+ R2_225R:"R2 · 22,5°",R2_45R:"R2 · 45°",
+ R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°"
+};
+const pocketIds=Object.keys(CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
 function foamSlotSVG(id){
  const spec=CATALOG[id],n=spec.length?2:20;
  const pts=Array.from({length:n+1},(_,i)=>positionOnPiece({x:0,y:0,h:0},id,i/n));
@@ -600,9 +628,11 @@ function foamSlotSVG(id){
 }
 function palette(){
  const list=$("pieces");
- for(const [id,spec] of Object.entries(CATALOG)){
+ for(const id of pocketIds){
+  const spec=CATALOG[id];
   const pocket=document.createElement("button");
   pocket.type="button";pocket.className="foam-pocket";pocket.dataset.piece=id;
+  pocket.dataset.kind=spec.group;
   pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
   pocket.innerHTML='<span class="qty">×0</span>'+
     '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
@@ -752,10 +782,9 @@ function paintSeam(ctx,p){
 }
 function paintBridgePillars(ctx,track){
  if(!track.bridge)return;
- // Dos soportes bajo la diagonal superior, junto a los extremos de la rampa.
- const over=track.bridge.overParts;
- for(const idx of [over[0],over[over.length-1]]){
-  const section=track.parts[idx],p=section.points[Math.floor(section.points.length/2)];
+ const section=track.parts[track.bridge.overParts[0]];
+ for(const fraction of [.2,.8]){
+  const p=section.points[Math.round((section.points.length-1)*fraction)];
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
   ctx.shadowColor="#000a";ctx.shadowBlur=25;ctx.shadowOffsetY=12;
   ctx.fillStyle="#5d6f76";ctx.fillRect(-15,-106,30,212);
@@ -809,7 +838,8 @@ function paintContinuousTrack(ctx,track,editing){
 // por lo que éste quedaba parcialmente oculto también cerca de curvas.
 function paintBridgeCrossing(ctx,track){
  if(!track.bridge)return;
- const middle=track.parts[10].end,angle=middle.h;
+ const elevated=track.parts[track.bridge.overParts[0]];
+ const middle=elevated.points[Math.floor(elevated.points.length/2)],angle=middle.h;
  const halfLength=185,halfWidth=(TRACK_WIDTH+13)/2;
  ctx.save();ctx.translate(middle.x,middle.y);ctx.rotate(angle);
  // Los soportes están fuera de la intersección, sin invadir las ranuras.
@@ -821,7 +851,7 @@ function paintBridgeCrossing(ctx,track){
  }
  ctx.beginPath();roundRect(ctx,-halfLength,-halfWidth,halfLength*2,halfWidth*2,13);ctx.clip();
  ctx.rotate(-angle);ctx.translate(-middle.x,-middle.y);
- const upper=track.parts.slice(9,13).flatMap((part,i)=>i?part.points.slice(1):part.points);
+ const upper=track.bridge.overParts.flatMap((index,i)=>i?track.parts[index].points.slice(1):track.parts[index].points);
  ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=16;ctx.shadowOffsetY=10;
  strokePath(ctx,upper,"#10181c",TRACK_WIDTH+23);ctx.restore();
  strokePath(ctx,upper,"#728187",TRACK_WIDTH+13);
@@ -1231,7 +1261,7 @@ function initEvents(){
  $("lane").addEventListener("click",switchLane);
  $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[],START);resetWorkBoard();save();state.camera={panX:0,panY:0,zoom:1};});
  $("eight").addEventListener("click",()=>{
-   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[],START);resetWorkBoard();save();
+   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho exacto! Dos rectas 584 y doce curvas de 45°, puente elevado.",[],START);resetWorkBoard();save();
    state.camera={panX:0,panY:0,zoom:1};
    save();
  });
@@ -1242,6 +1272,7 @@ function initEvents(){
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
+ $("flip").addEventListener("click",flipSelectedCurve);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
   save();updateUI();scheduleResize();
@@ -1303,8 +1334,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.8.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
- puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.9.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+ puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
