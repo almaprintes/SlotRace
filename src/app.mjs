@@ -482,11 +482,13 @@ function palette(){
    if(p.x<b.left+85||p.x>b.right-85||p.y<b.top+85||p.y>b.bottom-85){
     toast("Suelta dentro del tapete verde.");return;
    }
-   const end=state.track.ends.end;
-   if(!state.track.closed&&Math.hypot(p.x-end.x,p.y-end.y)<175){
-    changeTypes([...state.types,id],"¡Clac! Pieza encajada magnéticamente.");return;
+   // La pieza llega a la mesa como objeto físico independiente.
+   // Sólo encaja si el jugador la suelta cerca del conector libre.
+   if(!addLoose(id,p.x,p.y))return;
+   if(state.types.length&&!state.track.closed){
+    const idx=state.loose.length-1;
+    snapLoose(idx,{history:false});
    }
-   addLoose(id,p.x,p.y);
   };
   grip.addEventListener("pointerup",drop);
   grip.addEventListener("pointercancel",()=>{state.dragging=null;updateUI();});
