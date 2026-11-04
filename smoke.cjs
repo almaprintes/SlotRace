@@ -128,5 +128,5 @@ assert.match(html,/100<\/span><span>75<\/span><span>50<\/span><span>25<\/span><s
 assert.doesNotMatch(html,/id="throttle"/,"Sin deslizador separado");
 assert.match(app,/function triggerPointerMove\(/,"Gestos progresivos en el pedal");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/,"La física usa porcentaje analógico");
-console.log("SlotRace LAB DEV 0.5.1 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB DEV 0.5.2 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
