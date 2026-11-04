@@ -1,9 +1,20 @@
-# SlotRace · DEV 0.5.0 — ocho con puente y versión visible
+# SlotRace · DEV 0.5.1 — gatillo analógico por gestos
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## Novedades de DEV 0.5.1
+
+- Sustituye el control binario «MANTENER PARA ACELERAR» y su deslizador separado por **un solo gatillo táctil grande**, que se rellena conforme se regula el gas.
+- Desliza **hacia arriba o hacia la derecha para acelerar** y vuelve hacia abajo o izquierda para reducir, sin soltar el dedo.
+- La escala aparece graduada en **0, 25, 50, 75 y 100 %**, con el porcentaje exacto en grande y sincronizado con el indicador del HUD.
+- Una pulsación quieta inicia en **0 %**, no en 100 %. Al soltar el dedo o cancelar el contacto, el gas vuelve a cero. La pausa y el paso a segundo plano también lo liberan.
+- La simulación del coche utiliza directamente el porcentaje continuo del control táctil; no se convierte a un booleano 0/100. El teclado puede seguir acelerando con espacio/flecha arriba a modo alternativo.
+- Añade `tests/analog-trigger.cjs`, que prueba gestos verticales y horizontales, valores intermedios, marcha atrás del gesto, suelta, varios dedos y aceleración parcial. GitHub Actions exige pasar la prueba antes de publicar.
+
+**Para probarlo:** abre https://almaprintes.github.io/SlotRace/?v=0.5.1, comprueba que aparezca DEV 0.5.1 en la pantalla de carga y en la cabecera, pulsa Correr y desliza el dedo dentro del botón graduado.
 
 ## Novedades de DEV 0.5.0
 
