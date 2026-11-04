@@ -52,7 +52,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.5.1");
+ assert.equal(window.slotraceLab.version,"DEV 0.5.2");
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
  assert.equal(state.run,true);
@@ -107,5 +107,5 @@ const path=require("node:path");
  for(const fn of elements.get("pause").listeners.click)fn();
  assert.equal(state.run,false);assert.equal(power(),0);
  assert.equal(trigger.disabled,true);
- console.log("SlotRace DEV 0.5.1: gatillo gradual vertical/horizontal, retorno, seguridad multitáctil y física — OK");
+ console.log("SlotRace DEV 0.5.2: gatillo gradual vertical/horizontal, retorno, seguridad multitáctil y física — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
