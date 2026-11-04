@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.5.2: mesa milimetrada, ocho completo con puente y conducción móvil.">
-  <title>SlotRace DEV 0.5.2 · Ocho con puente</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.5.2">
+  <meta name="description" content="SlotRace DEV 0.5.3: mesa milimetrada, ocho completo con puente y conducción móvil.">
+  <title>SlotRace DEV 0.5.3 · Ocho con puente</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.5.3">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.5.2">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.5.3">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.5.2</div>
+    <div class="splash-version">DEV 0.5.3</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.5.2">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.5.3">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="version" aria-label="Versión de desarrollo 0.5.2">DEV 0.5.2<br>LOCAL · PRUEBAS</div>
+    <div class="version" aria-label="Versión de desarrollo 0.5.3">DEV 0.5.3<br>LOCAL · PRUEBAS</div>
   </header>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
     <div class="worktop">
@@ -119,17 +119,29 @@
         <div class="race-footer">IZQ: <span id="bestLeft">—</span> · DER: <span id="bestRight">—</span><br>COMBINADA: <span id="combined">—</span></div>
       </div>
       <div class="gas-control">
-        <div class="gas-header"><span>GATILLO ANALÓGICO · DESLIZA EL DEDO</span><strong id="speed">0 cm/s</strong></div>
-        <button id="trigger" class="trigger" type="button"
-          aria-label="Gatillo progresivo. Desliza arriba o derecha para acelerar; abajo o izquierda para reducir; suelta para volver a cero.">
-          <span class="trigger-fill" id="triggerFill" aria-hidden="true"></span>
-          <span class="trigger-guides" aria-hidden="true"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></span>
-          <span class="trigger-face">
-            <strong id="triggerValue">0%</strong>
-            <span>↑ O → ACELERAR</span>
-            <small>↓ O ← REDUCIR · SOLTAR = 0</small>
-          </span>
-        </button>
+        <div class="gas-header">
+          <span>RUEDA DEL MANDO · 5% POR CLIC</span>
+          <button class="dial-sound" id="clickSound" type="button"
+            aria-pressed="true" aria-label="Activar o silenciar clics del dial">🔊 CLIC</button>
+        </div>
+        <div class="dial-layout">
+          <button id="trigger" class="trigger dial-wheel" type="button"
+            aria-label="Rueda táctil de aceleración: deslizar arriba aumenta 5% por clic, abajo reduce 5%. Soltar devuelve a cero.">
+            <span class="dial-grooves" aria-hidden="true"></span>
+            <span class="dial-arrows" aria-hidden="true">▲<span>GAS</span>▼</span>
+          </button>
+          <div class="dial-display" aria-label="Porcentaje de aceleración">
+            <div class="dial-readout">
+              <strong id="triggerValue">0%</strong>
+              <span id="speed">0 cm/s</span>
+            </div>
+            <div class="dial-graph" aria-hidden="true">
+              <div class="dial-bar"><div id="triggerFill" class="dial-bar-fill"></div></div>
+              <div class="dial-guides"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div>
+            </div>
+            <small>↑ MÁS · ↓ MENOS · SOLTAR = 0</small>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -144,6 +156,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.5.2"></script>
+<script type="module" src="./src/app.mjs?v=0.5.3"></script>
 </body>
 </html>
