@@ -1100,22 +1100,21 @@ let dragOrigin=null;
 function canvasPointerDown(e){
  if(state.mode!=="build")return;
  editCanvas.setPointerCapture(e.pointerId);
- const onTable=screenToWorld(e),near=state.pointer.size===0?nearestLoose(onTable.x,onTable.y):{index:-1};
- const looseIndex=near.index>=0&&near.distance<TRACK_WIDTH*.55?near.index:-1;
- const hit=looseIndex<0&&state.pointer.size===0?
-  nearestPiece(state.track,onTable.x,onTable.y):{index:-1,distance:Infinity};
- const trackIndex=hit.index>=0&&hit.distance<TRACK_WIDTH*.55?hit.index:-1;
+ const point=screenToWorld(e),single=state.pointer.size===0;
+ const loose=single?nearestLoose(point.x,point.y):{index:-1,distance:Infinity};
+ const looseIndex=loose.distance<TRACK_WIDTH*.55?loose.index:-1;
+ const hit=looseIndex<0&&single?nearestPiece(state.track,point.x,point.y):{index:-1,distance:Infinity};
+ const trackIndex=hit.distance<TRACK_WIDTH*.55?hit.index:-1;
+ const key=trackIndex>=0?"main":looseIndex>=0?looseGroupKey(looseIndex):null;
+ // Primer toque selecciona el tramo; el siguiente toque selecciona la
+ // pieza concreta. Un arrastre respeta el modo de selección vigente.
+ const samePiece=trackIndex>=0?state.selection===trackIndex:state.looseSelection===looseIndex;
+ const dragMode=key&&key===state.selectedGroup&&state.selectionMode==="piece"&&samePiece?"piece":"group";
  state.pointer.set(e.pointerId,{
   x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,
-  originWorld:onTable,
-  pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null,
-  looseIndex,trackIndex,dragged:false
+  originWorld:point,looseIndex,trackIndex,dragMode,dragged:false,
+  pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null
  });
- if(looseIndex>=0){
-  state.looseSelection=looseIndex;state.selection=-1;state.dragLoose=looseIndex;updateUI();
- }else if(trackIndex>=0){
-  state.selection=trackIndex;state.looseSelection=-1;updateUI();
- }
  if(state.pointer.size===2){
   const p=[...state.pointer.values()],dx=p[0].x-p[1].x,dy=p[0].y-p[1].y;
   state.pinch={distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
@@ -1124,53 +1123,83 @@ function canvasPointerDown(e){
 function canvasPointerMove(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  const oldX=p.x,oldY=p.y;p.x=e.clientX;p.y=e.clientY;
- // Iniciar el arrastre de una pieza conectada: la desprendemos en el
- // momento en que el dedo se mueve, sin alterar las posiciones de las
- // restantes. Un simple toque sólo la selecciona.
- if(state.pointer.size===1&&p.trackIndex>=0&&
-   Math.hypot(p.x-p.originX,p.y-p.originY)>=7){
-  const i=detachConnected(p.trackIndex,{history:true});
-  if(i>=0){
-   p.looseIndex=i;p.trackIndex=-1;p.dragged=true;
-   p.pieceStart={...state.loose[i]};
+ const distance=Math.hypot(p.x-p.originX,p.y-p.originY);
+ if(state.pointer.size===1&&p.trackIndex>=0&&distance>=7){
+  if(!p.dragged){
+   if(p.dragMode==="piece"){
+    const looseIndex=detachConnected(p.trackIndex,{history:true});
+    if(looseIndex>=0){
+     p.looseIndex=looseIndex;p.trackIndex=-1;p.pieceStart={...state.loose[looseIndex]};
+     p.dragged=true;p.dragMode="piece";
+    }
+   }else{
+    pushHistory();p.dragged=true;p.moveMain=true;
+    p.startOrigin={...state.origin};
+    state.selectedGroup="main";state.selectionMode="group";state.selection=p.trackIndex;
+    state.looseSelection=-1;
+   }
   }
  }
+ if(state.pointer.size===1&&p.moveMain){
+  const to=screenToWorld(e),b=state.workBoard;
+  state.origin={
+   x:Math.max(b.left+90,Math.min(b.right-90,coordinate(p.startOrigin.x+to.x-p.originWorld.x))),
+   y:Math.max(b.top+90,Math.min(b.bottom-90,coordinate(p.startOrigin.y+to.y-p.originWorld.y))),
+   h:p.startOrigin.h
+  };
+  state.track=buildTrack(state.types,state.origin);
+  state.viewDirty=true;return;
+ }
  if(state.pointer.size===1&&p.looseIndex>=0){
-  if(Math.hypot(p.x-p.originX,p.y-p.originY)<5)return;
-  if(!p.dragged){pushHistory();p.dragged=true;}
-  const to=screenToWorld(e),piece=state.loose[p.looseIndex],b=state.workBoard;
-  if(!piece||!p.pieceStart)return;
-  piece.x=Math.max(b.left+140,Math.min(b.right-140,
-    coordinate(p.pieceStart.x+to.x-p.originWorld.x)));
-  piece.y=Math.max(b.top+140,Math.min(b.bottom-140,
-    coordinate(p.pieceStart.y+to.y-p.originWorld.y)));
-  state.viewDirty=true;
-  return;
+  if(distance<7&&!p.dragged)return;
+  if(!p.dragged){
+   pushHistory();p.dragged=true;
+   if(p.dragMode==="piece"&&looseMembers(p.looseIndex).length>1)
+    detachLooseMember(p.looseIndex);
+   p.memberIndices=p.dragMode==="group"?looseMembers(p.looseIndex):[p.looseIndex];
+   p.memberPositions=p.memberIndices.map(i=>({i,x:state.loose[i].x,y:state.loose[i].y}));
+   state.selectionMode=p.dragMode;state.selectedGroup=looseGroupKey(p.looseIndex);
+   state.looseSelection=p.looseIndex;state.selection=-1;
+  }
+  if(!p.memberPositions){
+   p.memberIndices=[p.looseIndex];
+   p.memberPositions=[{i:p.looseIndex,x:p.pieceStart.x,y:p.pieceStart.y}];
+  }
+  const to=screenToWorld(e),b=state.workBoard;
+  const pivot=p.memberPositions.find(v=>v.i===p.looseIndex)||p.memberPositions[0];
+  const x=Math.max(b.left+140,Math.min(b.right-140,coordinate(pivot.x+to.x-p.originWorld.x)));
+  const y=Math.max(b.top+140,Math.min(b.bottom-140,coordinate(pivot.y+to.y-p.originWorld.y)));
+  for(const original of p.memberPositions){
+   const piece=state.loose[original.i];if(!piece)continue;
+   piece.x=original.x+x-pivot.x;piece.y=original.y+y-pivot.y;
+  }
+  state.viewDirty=true;return;
  }
  if(state.pointer.size>=2&&state.pinch){
   const list=[...state.pointer.values()],a=list[0],b=list[1];
   const dist=Math.hypot(a.x-b.x,a.y-b.y);
   state.camera.zoom=Math.max(.65,Math.min(4,state.pinch.zoom*dist/Math.max(1,state.pinch.distance)));
   state.camera.panX+=(e.clientX-oldX)/2;state.camera.panY+=(e.clientY-oldY)/2;
- }else{state.camera.panX+=e.clientX-oldX;state.camera.panY+=e.clientY-oldY;}
+ }else{
+  state.camera.panX+=e.clientX-oldX;state.camera.panY+=e.clientY-oldY;
+ }
  state.viewDirty=true;
 }
 function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  state.pointer.delete(e.pointerId);if(state.pointer.size<2)state.pinch=null;
- if(p.looseIndex>=0){
-  if(p.dragged){
-   // No conectar piezas que el jugador sólo quiere dejar sueltas.
-   // La conexión es un gesto magnético al extremo de la cadena actual.
-   if(!state.types.length||!snapLoose(p.looseIndex,{history:false})){save();updateUI();}
+ if(p.dragged){
+  if(p.looseIndex>=0&&!snapLoose(p.looseIndex,{history:false})){
+   save();updateUI();
   }
-  state.dragLoose=-1;return;
+  if(p.moveMain){extendWorkBoard();save();updateUI();}
+  state.dragLoose=-1;
+  return;
  }
  if(state.pointer.size===0&&Math.hypot(p.x-p.originX,p.y-p.originY)<10){
-  const pt=screenToWorld(e),hit=nearestPiece(state.track,pt.x,pt.y);
-  state.selection=hit.index>=0&&hit.distance<TRACK_WIDTH*.58?hit.index:-1;
-  state.looseSelection=-1;
-  updateUI();
+  if(p.looseIndex>=0)selectByTap("loose",p.looseIndex);
+  else if(p.trackIndex>=0)selectByTap("main",p.trackIndex);
+  else{state.selectedGroup=null;state.selection=-1;state.looseSelection=-1;updateUI();}
  }
 }
 function initEvents(){
@@ -1252,7 +1281,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.7.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.8.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
  puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
