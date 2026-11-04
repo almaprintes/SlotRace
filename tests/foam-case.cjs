@@ -37,7 +37,7 @@ const fs=require("node:fs"),path=require("node:path");
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
- assert.equal(game.version,"DEV 0.9.0");
+ assert.equal(game.version,"DEV 0.9.1");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
@@ -46,12 +46,22 @@ const fs=require("node:fs"),path=require("node:path");
  assert.deepEqual(pockets.map(p=>p.dataset.piece),allTypes);
  assert.match(css,/foam-insert/,"La caja tiene espuma troquelada");
  assert.match(css,/foam-cutout/,"La espuma conserva el hueco de cada módulo");
+ assert.match(css,/overflow-y:scroll/,"La caja tiene desplazamiento vertical nativo");
+ assert.match(css,/-webkit-overflow-scrolling:touch/,"Safari conserva la inercia del scroll");
+ assert.match(css,/cursor:pointer;touch-action:pan-y/,"Deslizar sobre la pieza desplaza la caja");
+ assert.match(css,/foam-drag-grip[^}]*touch-action:none/s,"El asa permite sacar piezas sin bloquear el scroll");
+ assert.match(html,/↕ DESLIZA PARA VER MÁS/,"Ayuda visible de scroll");
+ assert.match(html,/tabindex="0"/,"La caja también se desplaza con teclado");
  assert.match(html,/id="caseInterior"/);
  assert.match(html,/id="caseToggle"/);
  const byId=id=>pockets.find(p=>p.dataset.piece===id);
  for(const p of pockets){
   assert.match(p.innerHTML,/foam-cutout/,"El hueco tiene silueta de corte");
   assert.match(p.innerHTML,/mini-slot-piece/,"El hueco contiene el módulo apilado");
+  assert.match(p.innerHTML,/mini-slot-outer/,"Bisel exterior igual que la mesa");
+  assert.match(p.innerHTML,/mini-slot-groove/,"Dos ranuras de carril");
+  assert.match(p.innerHTML,/mini-slot-seam/,"Conectores de extremo dibujados");
+  assert.match(p.innerHTML,/foam-drag-grip/,"Asa de arrastre independiente");
   assert.equal(p.listeners.pointerdown.length,1,"Cualquier pieza permite cogerla con el dedo");
   assert.equal(p.listeners.click.length,1,"También permite sacar tocando");
  }
@@ -88,13 +98,29 @@ const fs=require("node:fs"),path=require("node:path");
 
  // Sacar arrastrando una curva hacia el tapete sin activar además el click.
  const pocket=byId("R1_45R");
- const event=(x,y,id=21)=>({clientX:x,clientY:y,pointerId:id,preventDefault(){}});
+ const event=(x,y,id=21,grip=false)=>({clientX:x,clientY:y,pointerId:id,pointerType:"touch",
+  target:{dataset:{dragHandle:grip?"true":undefined}},preventDefault(){}});
+ // Deslizar por encima de un hueco no captura el puntero ni saca piezas:
+ // Safari entregará pointercancel al comenzar el scroll nativo.
+ let prevented=false,captured=false;
+ const scrollStart={...event(160,590,91),preventDefault(){prevented=true}};
+ const capture=pocket=>{const previous=pocket.setPointerCapture;
+  pocket.setPointerCapture=()=>{captured=true};return()=>{pocket.setPointerCapture=previous}};
+ const scrollPocket=byId("R1_45R"),restoreCapture=capture(scrollPocket);
+ scrollPocket.listeners.pointerdown[0](scrollStart);
+ scrollPocket.listeners.pointermove[0](event(160,535,91));
+ scrollPocket.listeners.pointercancel[0](event(160,535,91));
+ restoreCapture();
+ assert.equal(prevented,false,"El scroll no impide el comportamiento táctil del navegador");
+ assert.equal(captured,false,"El scroll no secuestra el puntero con setPointerCapture");
+ assert.equal(st.dragging,null,"El scroll no inicia un arrastre de pista");
+ assert.equal(st.loose.length,2,"Desplazar el maletín no extrae piezas");
  const board=st.workBoard;
  const scale=Math.min((390-16)/board.height,(600-16)/board.width);
  const pt={x:board.left+board.width*.53,y:board.top+board.height*.47};
  const target={x:195-scale*(pt.y-(board.top+board.bottom)/2),
    y:300+scale*(pt.x-(board.left+board.right)/2)};
- pocket.listeners.pointerdown[0](event(200,720));
+ pocket.listeners.pointerdown[0](event(200,720,21,true));
  pocket.listeners.pointermove[0](event(target.x,target.y));
  pocket.listeners.pointerup[0](event(target.x,target.y));
  assert.equal(st.loose.length,3,"Arrastrar saca exactamente una pieza");
@@ -108,10 +134,10 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("R1_45R").qty.textContent,"∞");
 
  // Cancelar un gesto o soltar fuera de la mesa no debe gastar inventario.
- pocket.listeners.pointerdown[0](event(200,720,28));
+ pocket.listeners.pointerdown[0](event(200,720,28,true));
  pocket.listeners.pointercancel[0](event(200,600,28));
  assert.equal(st.loose.length,4);
- pocket.listeners.pointerdown[0](event(200,720,29));
+ pocket.listeners.pointerdown[0](event(200,720,29,true));
  pocket.listeners.pointermove[0](event(400,710,29));
  pocket.listeners.pointerup[0](event(400,710,29));
  assert.equal(st.loose.length,4,"Soltar fuera de la mesa no extrae piezas");
@@ -141,5 +167,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.9.0: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.9.1: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
