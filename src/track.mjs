@@ -41,12 +41,29 @@ const BOARD_MARGIN=180; // margen virtual alrededor de la pista.
 
 const hypot=Math.hypot;
 const norm=a=>Math.atan2(Math.sin(a),Math.cos(a));
-export function allowed(types){
-  const totals={};
-  for(const id of types){if(!CATALOG[id])return false;totals[id]=(totals[id]||0)+1;if(totals[id]>CATALOG[id].stock)return false;}
-  return types.length<=48;
+// Inventario de desarrollo ilimitado: stock de la caja separado del
+// catálogo físico. Los números stock del catálogo quedan como referencia
+// del kit inicial, pero NO limitan los ensayos del constructor.
+export const UNLIMITED_DEVELOPMENT_STOCK=true;
+export function stockLimit(id){
+ if(!CATALOG[id])return 0;
+ return UNLIMITED_DEVELOPMENT_STOCK?Infinity:CATALOG[id].stock;
 }
-export function freeStock(types,id){return Math.max(0,(CATALOG[id]?.stock||0)-types.filter(x=>x===id).length);}
+export function allowed(types){
+ if(!Array.isArray(types))return false;
+ const totals={};
+ for(const id of types){
+  if(!CATALOG[id])return false;
+  totals[id]=(totals[id]||0)+1;
+  if(totals[id]>stockLimit(id))return false;
+ }
+ // Sin el límite histórico de 48 piezas en modo pruebas.
+ return UNLIMITED_DEVELOPMENT_STOCK||types.length<=48;
+}
+export function freeStock(types,id){
+ const limit=stockLimit(id);
+ return Number.isFinite(limit)?Math.max(0,limit-types.filter(x=>x===id).length):limit;
+}
 export function positionOnPiece(pose,id,t){
   const spec=CATALOG[id];if(!spec)throw new Error("Pieza desconocida: "+id);
   t=Math.max(0,Math.min(1,t));
@@ -208,7 +225,7 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
  for(let i=0;i<types.length;i++){
   const fromI=types[i];
   for(const toI of ids){
-   if(toI===fromI||used[toI]>=CATALOG[toI].stock)continue;
+   if(toI===fromI||used[toI]>=stockLimit(toI))continue;
    candidate[i]=toI;
    const found=evaluate([changesAt(i,toI)]);
    candidate[i]=fromI;
@@ -222,13 +239,13 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
   const fromI=types[i];
   for(const toI of ids){
    if(toI===fromI)continue;
-   if(used[toI]>=CATALOG[toI].stock)continue;
+   if(used[toI]>=stockLimit(toI))continue;
    candidate[i]=toI;
    for(let j=i+1;j<types.length;j++){
     const fromJ=types[j];
     for(const toJ of ids){
      if(toJ===fromJ)continue;
-     const available=CATALOG[toJ].stock-used[toJ]-(toJ===toI?1:0)
+     const available=stockLimit(toJ)-used[toJ]-(toJ===toI?1:0)
        +(toJ===fromI?1:0);
      if(available<=0)continue;
      // Un cambio de radio conserva el giro. Dos cambios opuestos
@@ -289,7 +306,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
         }
         if(hypot(pose.x-target.x,pose.y-target.y)>remaining*380+SNAP_MM)return null;
         for(const id of ids){
-          if((counts[id]||0)>=CATALOG[id].stock)continue;
+          if((counts[id]||0)>=stockLimit(id))continue;
           counts[id]=(counts[id]||0)+1;proposed.push(id);
           const next=positionOnPiece(pose,id,1);
           const found=recurse(next,remaining-1);
