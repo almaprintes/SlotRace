@@ -7,6 +7,7 @@ const initial=old?.types&&allowed(old.types)?old.types.slice():STARTER.slice();
 const storedLoose=Array.isArray(old?.loose)?old.loose.filter(p=>CATALOG[p?.id]&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.h)):[];
 const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose:[];
 const state={
+  gridEnabled:old?.gridEnabled!==false,viewDirty:true,
   types:initial,loose:initialLoose,track:buildTrack(initial),mode:"build",selection:-1,looseSelection:-1,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:null,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
@@ -16,7 +17,10 @@ const state={
   camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
   dragging:null,latest:performance.now()
 };
-function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,draft:state.draft,records:state.records}));}
+function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,draft:state.draft,records:state.records,gridEnabled:state.gridEnabled}));}
+const GRID_MM=25;
+const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
+function gridXY(x,y){return {x:gridSnap(x),y:gridSnap(y)};}
 const stage=$("buildScreen"),race=$("raceScreen");
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
@@ -48,7 +52,11 @@ function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");
  state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
 function addLoose(id,x,y,h=0){
  if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Esa pieza ya no está disponible.");return false;}
- pushHistory();state.loose.push({id,x:Math.max(190,Math.min(TABLE.width-240,x)),y:Math.max(210,Math.min(TABLE.height-250,y)),h});
+ const b=state.track.board,point=gridXY(
+  Math.max(b.left+145,Math.min(b.right-225,x)),
+  Math.max(b.top+155,Math.min(b.bottom-220,y))
+ );
+ pushHistory();state.loose.push({id,x:point.x,y:point.y,h});
  state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza colocada en la mesa. Arrástrala hasta el conector amarillo.");return true;
 }
 function snapLoose(index){
@@ -183,6 +191,8 @@ function updateUI(){
  $("stateChip").textContent=t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
  $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
  $("buildStatus").textContent=status;
+ $("gridToggle").textContent=state.gridEnabled?"▦ 25 mm":"▦";
+ $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
  $("play").textContent=t.valid?"🏁 Correr":"🏁 Probar óvalo";
@@ -236,8 +246,10 @@ function palette(){
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
     toast("Suelta la pieza dentro de la mesa.");return;
    }
-   const p=screenToWorld(e);
-   if(p.x<85||p.x>TABLE.width-85||p.y<85||p.y>TABLE.height-85){toast("Suelta dentro del tapete verde.");return;}
+   const p=screenToWorld(e),b=state.track.board;
+   if(p.x<b.left+85||p.x>b.right-85||p.y<b.top+85||p.y>b.bottom-85){
+    toast("Suelta dentro del tapete verde.");return;
+   }
    const end=state.track.ends.end;
    if(!state.track.closed&&Math.hypot(p.x-end.x,p.y-end.y)<175){
     changeTypes([...state.types,id],"¡Clac! Pieza encajada magnéticamente.");return;
@@ -259,6 +271,31 @@ function strokePath(ctx,points,color,width){
  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="butt";ctx.lineJoin="round";ctx.stroke();
 }
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
+function paintGrid(ctx){
+ if(!state.gridEnabled)return;
+ const b=state.track.board,edge=65;
+ ctx.save();ctx.beginPath();
+ ctx.rect(b.left+edge,b.top+edge,b.width-edge*2,b.height-edge*2);ctx.clip();
+ for(const direction of ["x","y"]){
+   const from=direction==="x"?b.left+edge:b.top+edge;
+   const to=direction==="x"?b.right-edge:b.bottom-edge;
+   for(let coordinate=Math.ceil(from/GRID_MM)*GRID_MM;coordinate<=to;coordinate+=GRID_MM){
+     const major=Math.round(coordinate)%100===0;
+     ctx.beginPath();
+     if(direction==="x"){ctx.moveTo(coordinate,b.top+edge);ctx.lineTo(coordinate,b.bottom-edge);}
+     else{ctx.moveTo(b.left+edge,coordinate);ctx.lineTo(b.right-edge,coordinate);}
+     ctx.strokeStyle=major?"#d5ffde":"#bdedc4";
+     ctx.globalAlpha=major?.23:.085;
+     ctx.lineWidth=major?2.2:1;
+     ctx.stroke();
+   }
+ }
+ ctx.globalAlpha=.62;ctx.fillStyle="#e9ffdc";ctx.font="bold 15px system-ui";ctx.textAlign="left";
+ for(let x=Math.ceil((b.left+150)/500)*500;x<b.right-150;x+=500){
+  ctx.fillText(x+" mm",x+5,b.top+111);
+ }
+ ctx.restore();
+}
 function paintTable(ctx){
  ctx.save();
  // La mesa debe cubrir la geometría sin mover ni deformar los conectores.
@@ -411,7 +448,8 @@ function paintLoose(ctx){
   const w=worldFromPointer(makeView(editCanvas,"build"),d.x-rect.left,d.y-rect.top);
   if(w.x>=0&&w.x<=TABLE.width&&w.y>=0&&w.y<=TABLE.height){
    const end=state.track.ends.end,snap=!state.track.closed&&Math.hypot(w.x-end.x,w.y-end.y)<175;
-   const pose=snap?{x:end.x,y:end.y,h:end.h}:{x:w.x,y:w.y,h:0};
+   const snapped=gridXY(w.x,w.y);
+   const pose=snap?{x:end.x,y:end.y,h:end.h}:{x:snapped.x,y:snapped.y,h:0};
    const spec=CATALOG[d.id],n=spec.length?7:20;
    const points=Array.from({length:n+1},(_,k)=>positionOnPiece(pose,d.id,k/n));
    ctx.save();ctx.globalAlpha=.63;
@@ -478,7 +516,7 @@ function renderScene(canvas,mode){
  ctx.setTransform(v.dpr,0,0,v.dpr,0,0);
  ctx.fillStyle="#0a141b";ctx.fillRect(0,0,v.w,v.h);
  ctx.save();transform(ctx,v);
- paintTable(ctx);paintTrack(ctx,state.track,mode==="build");paintLoose(ctx);
+ paintTable(ctx);paintGrid(ctx);paintTrack(ctx,state.track,mode==="build");paintLoose(ctx);
  paintGhost(ctx,state.track);
  const p=positionAt(state.track.lanes[state.lane],mode==="race"?state.distance:0);
  if(state.track.valid)paintCar(ctx,p,state.lane);
