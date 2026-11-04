@@ -1,8 +1,22 @@
-# SlotRace · DEV 0.9.0 — familia PT-Precision jugable
+# SlotRace · DEV 0.9.1 — maletín desplazable y piezas realistas
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.io/SlotRace/
+**Enlace:** https://almaprintes.github.io/Sl## DEV 0.9.1 — scroll táctil y acabado idéntico en mesa/caja
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.1
+
+- El interior de la espuma ahora tiene **scroll vertical nativo con inercia iOS**, mientras la tapa, los controles y el pie del maletín permanecen fijos.
+- **Deslizar el dedo sobre una pieza** recorre el catálogo de 13 modelos, sin moverla ni crear una pieza accidental. **Tocar** la pieza extrae una copia, como antes.
+- Cada hueco tiene su propia asa **⠿** en la esquina superior izquierda. **Arrastrar desde el asa** hasta la mesa extrae la pieza; el resto del hueco queda libre para desplazarse.
+- Las 13 previsualizaciones SVG usan los **mismos colores y proporciones de ancho, bordes, superficie, carriles, guías y uniones** que el renderizador de pista de la mesa. Las rectas cortas tienen extremos planos, sin efecto de cápsula redondeada.
+- Corregida también la extracción por arrastre de curvas cuando está seleccionado el sentido **izquierda** en la caja.
+- Conserva la partida guardada de la serie 0.9.x y mantiene el inventario ∞.
+- Se han verificado los 8 conjuntos de pruebas JavaScript, incluido el test de scroll/asa de `tests/foam-case.cjs`. Prueba táctil física en Safari iPhone pendiente de confirmación por usuario.
+
+---
+
+otRace/
 
 
 ## DEV 0.9.0 — familia PT-Precision activa (20 variantes, 13 formas)
