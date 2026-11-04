@@ -7,8 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="SlotRace LAB 0.4: construye una pista de doble carril sobre una mesa y conduce tu coche.">
-  <title>SlotRace LAB 0.4.1 · Mesa y pistas modulares</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.4.1">
+  <title>SlotRace LAB 0.4.2 · Mesa y pistas modulares</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.4.2">
 </head>
 <body>
 <div class="app">
@@ -17,7 +17,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="version">MESA FÍSICA · V0.4.1<br>LOCAL · SIN CUENTA</div>
+    <div class="version">MESA FÍSICA · V0.4.2<br>LOCAL · SIN CUENTA</div>
   </header>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
     <div class="worktop">
@@ -50,6 +50,7 @@
           <button id="redo" class="mini" type="button" aria-label="Rehacer último cambio">↷</button>
           <button id="remove" class="mini" type="button" aria-label="Devolver pieza seleccionada">Quitar</button>
           <button id="rotate" class="mini" type="button" aria-label="Girar pieza suelta 45 grados">⟳ Girar</button>
+          <button id="autoClose" class="mini primary" type="button" aria-label="Calcular un cierre geométricamente exacto utilizando el inventario">Cerrar exacto</button>
           <button id="oval" class="mini" type="button" aria-label="Montar óvalo inicial">Óvalo</button>
           <button id="clear" class="mini" type="button" aria-label="Vaciar mesa">Vaciar</button>
         </div>
@@ -85,6 +86,6 @@
   </section>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
-<script type="module" src="./src/app.mjs?v=0.4.1"></script>
+<script type="module" src="./src/app.mjs?v=0.4.2"></script>
 </body>
 </html>
