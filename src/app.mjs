@@ -410,7 +410,7 @@ function updateUI(){
  const degrees=t.headingGap*180/Math.PI;
  const status=t.bridge?"OCHO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
  t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
-  !t.types.length?state.loose.length+" PIEZAS SUELTAS · INICIA LA CADENA":t.closed?"CONECTADO · CRUCE SIN PUENTE":
+  !t.types.length?(state.loose.length?state.loose.length+" PIEZAS SUELTAS · INICIA LA CADENA":"MESA VACÍA · COLOCA PIEZAS"): t.closed?"CONECTADO · CRUCE SIN PUENTE":
   "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
  const notice=t.bridge?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
  t.intersection?"Cruce al mismo nivel: necesita puente":
@@ -946,13 +946,20 @@ function canvasPointerDown(e){
  editCanvas.setPointerCapture(e.pointerId);
  const onTable=screenToWorld(e),near=state.pointer.size===0?nearestLoose(onTable.x,onTable.y):{index:-1};
  const looseIndex=near.index>=0&&near.distance<TRACK_WIDTH*.55?near.index:-1;
+ const hit=looseIndex<0&&state.pointer.size===0?
+  nearestPiece(state.track,onTable.x,onTable.y):{index:-1,distance:Infinity};
+ const trackIndex=hit.index>=0&&hit.distance<TRACK_WIDTH*.55?hit.index:-1;
  state.pointer.set(e.pointerId,{
   x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,
   originWorld:onTable,
   pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null,
-  looseIndex,dragged:false
+  looseIndex,trackIndex,dragged:false
  });
- if(looseIndex>=0){state.looseSelection=looseIndex;state.selection=-1;state.dragLoose=looseIndex;updateUI();}
+ if(looseIndex>=0){
+  state.looseSelection=looseIndex;state.selection=-1;state.dragLoose=looseIndex;updateUI();
+ }else if(trackIndex>=0){
+  state.selection=trackIndex;state.looseSelection=-1;updateUI();
+ }
  if(state.pointer.size===2){
   const p=[...state.pointer.values()],dx=p[0].x-p[1].x,dy=p[0].y-p[1].y;
   state.pinch={distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
@@ -961,6 +968,17 @@ function canvasPointerDown(e){
 function canvasPointerMove(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  const oldX=p.x,oldY=p.y;p.x=e.clientX;p.y=e.clientY;
+ // Iniciar el arrastre de una pieza conectada: la desprendemos en el
+ // momento en que el dedo se mueve, sin alterar las posiciones de las
+ // restantes. Un simple toque sólo la selecciona.
+ if(state.pointer.size===1&&p.trackIndex>=0&&
+   Math.hypot(p.x-p.originX,p.y-p.originY)>=7){
+  const i=detachConnected(p.trackIndex,{history:true});
+  if(i>=0){
+   p.looseIndex=i;p.trackIndex=-1;p.dragged=true;
+   p.pieceStart={...state.loose[i]};
+  }
+ }
  if(state.pointer.size===1&&p.looseIndex>=0){
   if(Math.hypot(p.x-p.originX,p.y-p.originY)<5)return;
   if(!p.dragged){pushHistory();p.dragged=true;}
@@ -985,7 +1003,11 @@ function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  state.pointer.delete(e.pointerId);if(state.pointer.size<2)state.pinch=null;
  if(p.looseIndex>=0){
-  if(p.dragged){if(!snapLoose(p.looseIndex)){save();updateUI();}}
+  if(p.dragged){
+   // No conectar piezas que el jugador sólo quiere dejar sueltas.
+   // La conexión es un gesto magnético al extremo de la cadena actual.
+   if(!state.types.length||!snapLoose(p.looseIndex,{history:false})){save();updateUI();}
+  }
   state.dragLoose=-1;return;
  }
  if(state.pointer.size===0&&Math.hypot(p.x-p.originX,p.y-p.originY)<10){
@@ -1000,16 +1022,17 @@ function initEvents(){
  $("back").addEventListener("click",back);
  $("pause").addEventListener("click",pause);
  $("lane").addEventListener("click",switchLane);
- $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[]);state.camera={panX:0,panY:0,zoom:1};});
+ $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[],START);resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};});
  $("eight").addEventListener("click",()=>{
-   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[]);
+   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho montado! 225° + 225°, conectores alineados y puente elevado.",[],START);resetWorkBoard();
    state.camera={panX:0,panY:0,zoom:1};
    save();
  });
- $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[]));
+ $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[],START));
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
+ $("joinPiece").addEventListener("click",startSelectedPiece);
  $("gridToggle").addEventListener("click",()=>{
   state.gridEnabled=!state.gridEnabled;save();updateUI();
   toast(state.gridEnabled?"Retícula de 25 mm activada.":"Retícula desactivada.");
@@ -1066,7 +1089,9 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.7",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
+window.slotraceLab={version:"DEV 0.6.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+ puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd},
+ physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
