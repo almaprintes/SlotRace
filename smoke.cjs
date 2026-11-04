@@ -10,7 +10,7 @@ const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
 assert.match(html,/id="editCanvas"/,"Physical table canvas");
 assert.match(html,/id="raceCanvas"/,"Separate racing canvas");
 assert.match(html,/id="pieces"/,"Modular track inventory");
-assert.match(html,/id="throttle"/,"Analog throttle");
+assert.match(html,/id="trigger"/,"Analog swipe trigger");
 assert.match(css,/\.tableframe/,"Physical table drawing surface");
 assert.match(app,/function paintTable\(/,"Wood and felt tabletop renderer");
 assert.match(app,/function paintTrack\(/,"Separate plastic track pieces");
