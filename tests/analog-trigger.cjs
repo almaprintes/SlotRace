@@ -36,7 +36,19 @@ const path=require("node:path");
  },set(t,k,v){t[k]=v;return true;}});
  for(const id of ["editCanvas","raceCanvas"])elements.get(id).getContext=()=>ctx;
  const document={getElementById:id=>elements.get(id),createElement:()=>makeEl("palette"),addEventListener(){},hidden:false};
- const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,
+ // Audio en memoria: permite comparar las dos tonalidades sin reproducir sonido.
+ const pitches=[];
+ class MockAudioContext{
+  constructor(){this.state="running";this.currentTime=0;this.destination={};}
+  createOscillator(){return{
+   type:"triangle",
+   frequency:{setValueAtTime:(hz)=>pitches.push(hz),exponentialRampToValueAtTime(){}},
+   connect(){},start(){},stop(){}};
+  }
+  createGain(){return{gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}};}
+  resume(){return Promise.resolve();}
+ }
+ const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,AudioContext:MockAudioContext,
   setTimeout:fn=>fn(),matchMedia:()=>({matches:true}),addEventListener(){}};
  const data=new Map();const localStorage={
   getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)
@@ -52,60 +64,63 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.5.2");
+ assert.equal(window.slotraceLab.version,"DEV 0.5.3");
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
  assert.equal(state.run,true);
- assert.equal(state.mode,"race");
  assert.equal(trigger.disabled,false);
  const power=()=>Math.round(state.gas*100);
- fire("pointerdown",105,180);
- assert.equal(power(),0,"Pulsar solo no acelera al 100%");
- fire("pointermove",105,120);
- assert.ok(power()>=50&&power()<=55,"Deslizar hacia arriba debe graduar sobre el 52%");
- assert.equal(elements.get("triggerValue").textContent,power()+"%");
- assert.equal(elements.get("triggerFill").style.height,power()+"%");
- fire("pointermove",105,60);
- assert.equal(power(),100,"Más recorrido llega al 100%");
- fire("pointermove",105,152);
- assert.ok(power()>20&&power()<30,"Volver hacia abajo reduce gradualmente el gatillo");
- fire("pointerup",105,152);
- assert.equal(power(),0,"Soltar lleva el gatillo a cero");
+ const wheelLabel=()=>elements.get("triggerValue").textContent;
+ fire("pointerdown",105,180,5);
+ assert.equal(power(),0,"Pulsación sin movimiento no acelera");
+ fire("pointermove",105,173,5);
+ assert.equal(power(),5,"Cada 7 px hacia arriba suma un clic de 5%");
+ assert.equal(wheelLabel(),"5%");
+ assert.equal(elements.get("triggerFill").style.height,"5%");
+ assert.equal(pitches.at(-1),1260,"El clic al subir es agudo");
+ fire("pointermove",105,152,5);
+ assert.equal(power(),20,"Cada nuevo clic añade un 5%");
+ fire("pointermove",105,40,5);
+ assert.equal(power(),100,"Recorrido acumulado llega a 100%");
+ fire("pointermove",105,110,5);
+ assert.equal(power(),50,"Bajar diez clics reduce a 50%");
+ assert.equal(pitches.at(-1),670,"El clic al bajar es grave");
+ assert.notEqual(1260,670,"Dos tonalidades distinguibles");
+ fire("pointerup",105,110,5);
+ assert.equal(power(),0,"Al soltar vuelve a cero");
  assert.equal(elements.get("triggerFill").style.height,"0%");
- // El gesto horizontal mantiene las mismas propiedades sin un segundo mando.
- fire("pointerdown",100,170,8);
- fire("pointermove",192,170,8);
- assert.ok(power()>=50&&power()<=60,"Deslizar a la derecha también gradúa el gas");
- fire("pointermove",135,170,8);
- assert.ok(power()>10&&power()<30,"Volver hacia izquierda reduce sin caer de golpe a cero");
- fire("pointercancel",135,170,8);
- assert.equal(power(),0,"Cancelar el gesto también libera el gatillo");
- // Ignorar eventos de otro dedo para evitar aceleraciones fantasma.
- fire("pointerdown",100,170,11);
- fire("pointermove",250,170,12);
- assert.equal(power(),0,"No aceptar otro puntero mientras se conduce");
- fire("pointerup",100,170,11);
+
+ // Sólo vertical: los desplazamientos horizontales no regulan el dial.
+ fire("pointerdown",105,180,8);
+ fire("pointermove",240,180,8);
+ assert.equal(power(),0,"Mover hacia el lado no acelera");
+ fire("pointercancel",240,180,8);
  assert.equal(power(),0);
- // La conducción usa esta misma variable, no un booleano 0/100.
- fire("pointerdown",105,180,13);fire("pointermove",105,110,13);
- assert.ok(state.gas>0&&state.gas<1,"Simulación recibe gas realmente analógico");
- const frame=callbacks.shift();now=16;frame(now);
- assert.ok(state.speed>0&&state.speed<30,"El coche acelera gradualmente con gas parcial");
- fire("pointerup",105,110,13);
- // Un cuarto de gatillo debe mover el coche desde parado.
- // La física anterior mantenía velocidad 0 por debajo de aproximadamente 46 %.
- state.speed=0;
- fire("pointerdown",105,180,16);
- fire("pointermove",105,151,16);
- assert.ok(state.gas>.2&&state.gas<.3,"El 25 % es realmente alcanzable");
- // En el arranque hay también un callback de la pantalla de carga.
- // Procesamos todos los callbacks pendientes, no sólo el primero.
- const pending=callbacks.splice(0);now=32;
- for(const frame of pending)frame(now);
- assert.ok(state.speed>0&&state.speed<12,"El coche avanza también al 25 %");
- fire("pointerup",105,151,16);
+
+ // Rechazar multitáctil mientras un dedo usa el control.
+ fire("pointerdown",105,180,11);
+ fire("pointermove",105,60,12);
+ assert.equal(power(),0,"Otro puntero no acelera");
+ fire("pointerup",105,180,11);
+
+ // El interruptor de sonido no cambia los niveles de potencia.
+ const soundButton=elements.get("clickSound");
+ const beforeMute=pitches.length;
+ for(const fn of soundButton.listeners.click)fn();
+ assert.equal(state.clicksEnabled,false);
+ assert.equal(soundButton.attrs["aria-pressed"],"false");
+ fire("pointerdown",105,180,14);
+ fire("pointermove",105,145,14);
+ assert.equal(power(),25);
+ assert.equal(pitches.length,beforeMute,"En silencio no se generan clics");
+ // El 25% debe mover el coche desde parado.
+ let frame=callbacks.shift();now=16;frame(now);
+ assert.ok(state.speed>0&&state.speed<12,"Con un cuarto de rueda el coche se mueve");
+ fire("pointerup",105,145,14);
  for(const fn of elements.get("pause").listeners.click)fn();
  assert.equal(state.run,false);assert.equal(power(),0);
  assert.equal(trigger.disabled,true);
- console.log("SlotRace DEV 0.5.2: gatillo gradual vertical/horizontal, retorno, seguridad multitáctil y física — OK");
+ for(const fn of soundButton.listeners.click)fn();
+ assert.equal(state.clicksEnabled,true);
+ console.log("SlotRace DEV 0.5.3: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
