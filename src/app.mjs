@@ -461,7 +461,10 @@ let dragOrigin=null;
 function canvasPointerDown(e){
  if(state.mode!=="build")return;
  editCanvas.setPointerCapture(e.pointerId);
- state.pointer.set(e.pointerId,{x:e.clientX,y:e.clientY,prevX:e.clientX,prevY:e.clientY,originX:e.clientX,originY:e.clientY});
+ const onTable=screenToWorld(e),near=state.pointer.size===0?nearestLoose(onTable.x,onTable.y):{index:-1};
+ const looseIndex=near.index>=0&&near.distance<TRACK_WIDTH*.55?near.index:-1;
+ state.pointer.set(e.pointerId,{x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,looseIndex,dragged:false});
+ if(looseIndex>=0){state.looseSelection=looseIndex;state.selection=-1;state.dragLoose=looseIndex;updateUI();}
  if(state.pointer.size===2){
   const p=[...state.pointer.values()],dx=p[0].x-p[1].x,dy=p[0].y-p[1].y;
   state.pinch={distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
@@ -470,21 +473,33 @@ function canvasPointerDown(e){
 function canvasPointerMove(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  const oldX=p.x,oldY=p.y;p.x=e.clientX;p.y=e.clientY;
+ if(state.pointer.size===1&&p.looseIndex>=0){
+  if(Math.hypot(p.x-p.originX,p.y-p.originY)<5)return;
+  if(!p.dragged){pushHistory();p.dragged=true;}
+  const from=screenToWorld({clientX:oldX,clientY:oldY}),to=screenToWorld(e);
+  const piece=state.loose[p.looseIndex];if(!piece)return;
+  piece.x=Math.max(140,Math.min(TABLE.width-140,piece.x+to.x-from.x));
+  piece.y=Math.max(140,Math.min(TABLE.height-140,piece.y+to.y-from.y));
+  return;
+ }
  if(state.pointer.size>=2&&state.pinch){
   const list=[...state.pointer.values()],a=list[0],b=list[1];
   const dist=Math.hypot(a.x-b.x,a.y-b.y);
   state.camera.zoom=Math.max(.65,Math.min(4,state.pinch.zoom*dist/Math.max(1,state.pinch.distance)));
-  // Two fingers move the camera; the board remains under their midpoint.
   state.camera.panX+=(e.clientX-oldX)/2;state.camera.panY+=(e.clientY-oldY)/2;
  }else{state.camera.panX+=e.clientX-oldX;state.camera.panY+=e.clientY-oldY;}
 }
 function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
- state.pointer.delete(e.pointerId);
- if(state.pointer.size<2)state.pinch=null;
+ state.pointer.delete(e.pointerId);if(state.pointer.size<2)state.pinch=null;
+ if(p.looseIndex>=0){
+  if(p.dragged){if(!snapLoose(p.looseIndex)){save();updateUI();}}
+  state.dragLoose=-1;return;
+ }
  if(state.pointer.size===0&&Math.hypot(p.x-p.originX,p.y-p.originY)<10){
   const pt=screenToWorld(e),hit=nearestPiece(state.track,pt.x,pt.y);
   state.selection=hit.index>=0&&hit.distance<TRACK_WIDTH*.58?hit.index:-1;
+  state.looseSelection=-1;
   updateUI();
  }
 }
@@ -493,10 +508,11 @@ function initEvents(){
  $("back").addEventListener("click",back);
  $("pause").addEventListener("click",pause);
  $("lane").addEventListener("click",switchLane);
- $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo reglamentario de prueba montado.");state.camera={panX:0,panY:0,zoom:1};});
- $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: toca una pieza de la caja."));
+ $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[]);state.camera={panX:0,panY:0,zoom:1};});
+ $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[]));
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
+ $("rotate").addEventListener("click",rotateLoose);
  $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(4,state.camera.zoom*1.25);});
  $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(.65,state.camera.zoom/1.25);});
  $("zoomFit").addEventListener("click",()=>{state.camera={panX:0,panY:0,zoom:1};});
