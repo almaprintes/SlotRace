@@ -15,7 +15,7 @@ const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose
 const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(Number.isFinite)?
  {...old.origin}:{...START};
 const state={
-  gridEnabled:old?.gridEnabled!==false,viewDirty:true,
+  gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,
   types:initial,loose:initialLoose,origin:initialOrigin,track:buildTrack(initial,initialOrigin),mode:"build",selection:-1,looseSelection:-1,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
@@ -34,7 +34,7 @@ const boardValid=oldBoard&&["left","top","right","bottom","width","height"].ever
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
- gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled}));}
+ gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -451,6 +451,11 @@ function updateUI(){
  $("buildStatus").classList.toggle("warn",!t.valid);
  $("play").textContent=t.valid?"🏁 Correr":"🏁 Probar óvalo";
  $("restore").hidden=!state.draft;
+ $("pieceCase").classList.toggle("case-open",state.caseOpen);
+ $("caseInterior").hidden=!state.caseOpen;
+ $("caseClosed").hidden=state.caseOpen;
+ $("caseToggle").textContent=state.caseOpen?"▴ Cerrar caja":"▾ Abrir caja";
+ $("caseToggle").setAttribute("aria-expanded",String(state.caseOpen));
  $("selected").textContent=state.looseSelection>=0?"SUELTA · "+CATALOG[state.loose[state.looseSelection].id].name:
  state.selection<0?"COGE, MUEVE Y SUELTA PIEZAS · MESA PUZZLE":
   "TRAMO "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
@@ -461,11 +466,17 @@ function updateUI(){
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
+ const stocks=Object.values(CATALOG);
+ const total=stocks.reduce((sum,spec)=>sum+spec.stock,0);
+ const used=state.types.length+state.loose.length;
+ $("caseCount").textContent=(total-used)+" de "+total+" piezas en sus huecos";
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
   const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id);
   el.querySelector(".qty").textContent="×"+free;
+  el.setAttribute("aria-label",CATALOG[id].name+" · "+free+" disponibles. Toca para sacar o arrastra a la mesa.");
   el.disabled=free===0;
+  el.classList.toggle("empty",free===0);
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===id)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===id));
  }
  $("tableCaption").textContent=state.looseSelection>=0?"PIEZA SUELTA · arrástrala al conector amarillo":
@@ -1066,6 +1077,10 @@ function initEvents(){
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
+ $("caseToggle").addEventListener("click",()=>{
+  state.caseOpen=!state.caseOpen;
+  save();updateUI();scheduleResize();
+ });
  $("joinPiece").addEventListener("click",startSelectedPiece);
  $("gridToggle").addEventListener("click",()=>{
   state.gridEnabled=!state.gridEnabled;save();updateUI();
@@ -1123,7 +1138,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.6.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.7.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
  puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
