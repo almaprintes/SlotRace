@@ -93,18 +93,39 @@ function addLoose(id,x,y,h=0){
  state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
 }
 const SNAP_DISTANCE_MM=78;
+function snapCandidates(piece){
+ const end=state.track.ends.end,start=state.origin;
+ const after=Math.hypot(piece.x-end.x,piece.y-end.y);
+ const looseEnd=positionOnPiece(piece,piece.id,1);
+ const before=Math.hypot(looseEnd.x-start.x,looseEnd.y-start.y);
+ return{after,before};
+}
 function snapLoose(index,{force=false,history=true}={}){
  if(index<0||index>=state.loose.length||state.track.closed)return false;
- const piece=state.loose[index],end=state.track.ends.end;
- const first=state.types.length===0;
- if(!first&&!force&&Math.hypot(piece.x-end.x,piece.y-end.y)>SNAP_DISTANCE_MM)return false;
+ const piece=state.loose[index],first=state.types.length===0;
+ const distances=first?{after:0,before:Infinity}:snapCandidates(piece);
+ const prepend=!first&&distances.before<distances.after;
+ if(!first&&!force&&Math.min(distances.after,distances.before)>SNAP_DISTANCE_MM)return false;
  if(history)pushHistory();
- if(first)state.origin={x:piece.x,y:piece.y,h:piece.h};
+ if(first){
+  state.origin={x:piece.x,y:piece.y,h:piece.h};
+  state.types.push(piece.id);
+ }else if(prepend){
+  // Ajustar el extremo final de la pieza nueva al inicio EXACTO de la
+  // cadena, sin mover ni girar ningún módulo ya ensamblado.
+  const h=state.origin.h-(CATALOG[piece.id].angle||0);
+  const vector=positionOnPiece({x:0,y:0,h},piece.id,1);
+  state.origin={x:state.origin.x-vector.x,y:state.origin.y-vector.y,h};
+  state.types.unshift(piece.id);
+ }else{
+  state.types.push(piece.id);
+ }
  state.loose.splice(index,1);
- state.types.push(piece.id);
  state.track=buildTrack(state.types,state.origin);extendWorkBoard();
  state.looseSelection=-1;state.dragLoose=-1;state.selection=-1;save();updateUI();
- toast(first?"¡Primera pieza fijada! Acerca otras para conectarlas.":"¡Clac! Pieza encajada magnéticamente.");
+ toast(first?"¡Primera pieza fijada! Acerca otras para conectarlas.":
+  prepend?"¡Clac! Pieza conectada al principio del circuito.":
+  "¡Clac! Pieza encajada magnéticamente.");
  return true;
 }
 // Desprender una pieza ensamblada SIN mover el resto:
@@ -128,9 +149,9 @@ function startSelectedPiece(){
  if(state.looseSelection<0)return;
  const idx=state.looseSelection;
  if(state.types.length&&!state.track.closed){
-  const piece=state.loose[idx],end=state.track.ends.end;
-  if(Math.hypot(piece.x-end.x,piece.y-end.y)>SNAP_DISTANCE_MM){
-   toast("Acerca el inicio de la pieza al conector amarillo para encajarla.");return;
+  const distances=snapCandidates(state.loose[idx]);
+  if(Math.min(distances.after,distances.before)>SNAP_DISTANCE_MM){
+   toast("Acerca un extremo de la pieza a cualquiera de los dos conectores libres.");return;
   }
  }
  if(state.track.closed){toast("El circuito ya está cerrado; separa antes un tramo.");return;}
@@ -825,11 +846,15 @@ function paintLoose(ctx){
   if(state.mode==="build"&&index===state.looseSelection){
    ctx.save();ctx.globalAlpha=.45;strokePath(ctx,part.points,"#f4d06c",TRACK_WIDTH+25);ctx.restore();
   }
-  if(state.mode==="build"&&!state.track.closed){
-   const end=state.track.ends.end;
-   if(state.types.length&&Math.hypot(p.x-end.x,p.y-end.y)<SNAP_DISTANCE_MM){
+  if(state.mode==="build"&&!state.track.closed&&state.types.length){
+   const ends=snapCandidates(p);
+   const nearEnd=ends.after<ends.before,dist=Math.min(ends.after,ends.before);
+   if(dist<SNAP_DISTANCE_MM){
+    const target=nearEnd?state.track.ends.end:state.origin;
+    const source=nearEnd?p:positionOnPiece(p,p.id,1);
     ctx.save();ctx.lineWidth=9;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
-    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(end.x,end.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    ctx.beginPath();ctx.moveTo(source.x,source.y);ctx.lineTo(target.x,target.y);
+    ctx.stroke();ctx.setLineDash([]);ctx.restore();
    }
   }
  }
