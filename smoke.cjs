@@ -125,6 +125,7 @@ assert.match(app,/function paintContinuousTrack\(/,"Pista continua sin uniones s
 assert.match(app,/function paintBridgeCrossing\(/,"Puente delimitado al cruce");
 assert.match(html,/id="triggerFill"/,"El gatillo tiene relleno dinámico");
 assert.match(html,/id="triggerValue"/,"El gatillo muestra el porcentaje");
+assert.ok(html.indexOf('class="dial-display"')<html.indexOf('id="trigger"'),"Cuadro a la izquierda y rueda a la derecha");
 assert.match(html,/class="dial-guides"/,"Escala lateral independiente del pulgar");
 assert.match(html,/id="clickSound"/,"Control de clics sonoros");
 assert.match(html,/class="trigger dial-wheel"/,"Rueda táctil estrecha");
@@ -133,5 +134,5 @@ assert.match(app,/function triggerPointerMove\(/,"Gestos verticales de la rueda"
 assert.match(app,/DIAL_STEP=5/,"Cada muesca equivale al 5%");
 assert.match(app,/function dialSound\(/,"Clic direccional sintetizado");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/,"La física usa porcentaje analógico");
-console.log("SlotRace LAB DEV 0.5.5 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+console.log("SlotRace LAB DEV 0.5.6 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
