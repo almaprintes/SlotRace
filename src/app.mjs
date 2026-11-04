@@ -19,14 +19,14 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
-  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,
+  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
   camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
   dragging:null,latest:performance.now()
 };
-function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,draft:state.draft,records:state.records,gridEnabled:state.gridEnabled}));}
+function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,draft:state.draft,records:state.records,gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 function gridXY(x,y){return {x:gridSnap(x),y:gridSnap(y)};}
@@ -180,15 +180,67 @@ function simulation(dt){
  state.distance+=state.speed*dt;
  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
 }
+// Rueda de sintonización táctil: 20 muescas de 5% y sonido direccional.
+// El audio es generado localmente con Web Audio, sin archivos externos.
+const DIAL_STEP=5;
+const DIAL_PX_PER_CLICK=7;
+let dialAudioContext=null;
+function initDialAudio(){
+ if(!state.clicksEnabled)return;
+ const AudioClass=window.AudioContext||window.webkitAudioContext;
+ if(!AudioClass)return; // algunos navegadores de prueba no tienen salida de audio
+ try{
+  if(!dialAudioContext)dialAudioContext=new AudioClass();
+  if(dialAudioContext.state==="suspended"){
+   const resume=dialAudioContext.resume();
+   if(resume&&typeof resume.catch==="function")resume.catch(()=>{});
+  }
+ }catch(err){dialAudioContext=null;}
+}
+function dialSound(direction,count){
+ if(!state.clicksEnabled)return;
+ initDialAudio();
+ const ctx=dialAudioContext;
+ if(!ctx||ctx.state==="closed")return;
+ const freq=direction>0?1260:670; // subir: agudo; bajar: grave
+ const time=ctx.currentTime||0;
+ const steps=Math.min(20,Math.abs(count));
+ for(let i=0;i<steps;i++){
+  try{
+   const at=time+i*.019;
+   const osc=ctx.createOscillator(),gain=ctx.createGain();
+   osc.type="triangle";
+   osc.frequency.setValueAtTime(freq,at);
+   osc.frequency.exponentialRampToValueAtTime(freq*.73,at+.012);
+   gain.gain.setValueAtTime(.0001,at);
+   gain.gain.exponentialRampToValueAtTime(.05,at+.0015);
+   gain.gain.exponentialRampToValueAtTime(.0001,at+.016);
+   osc.connect(gain);gain.connect(ctx.destination);
+   osc.start(at);osc.stop(at+.018);
+  }catch(err){break;}
+ }
+}
 function updateTriggerDisplay(){
  const percent=Math.round((state.keyboardGas?1:state.gas)*100);
  $("triggerFill").style.height=percent+"%";
  $("triggerValue").textContent=percent+"%";
  $("trigger").setAttribute("data-power",String(percent));
  $("trigger").classList.toggle("pressed",Boolean(state.triggerGesture));
+ $("clickSound").textContent=state.clicksEnabled?"🔊 CLIC":"🔇 MUDO";
+ $("clickSound").setAttribute("aria-pressed",String(state.clicksEnabled));
 }
 function setProgressGas(value){
  state.gas=Math.max(0,Math.min(1,value));
+ updateTriggerDisplay();
+ updateHud();
+}
+function setDialSteps(steps){
+ const from=Math.round(state.gas*100/DIAL_STEP);
+ const to=Math.max(0,Math.min(20,from+steps));
+ const actual=to-from;
+ if(!actual)return;
+ state.gas=to*DIAL_STEP/100;
+ dialSound(Math.sign(actual),actual);
  updateTriggerDisplay();
  updateHud();
 }
@@ -202,20 +254,23 @@ function stopProgressGas(){
 function triggerPointerDown(e){
  if(!state.run||state.triggerGesture)return;
  e.preventDefault?.();
- state.triggerGesture={id:e.pointerId,startX:e.clientX,startY:e.clientY,axis:null};
- setProgressGas(0);
+ state.triggerGesture={id:e.pointerId,lastY:e.clientY,carry:0};
+ state.gas=0;updateTriggerDisplay();updateHud();
+ // En Safari iOS el AudioContext debe activarse durante un gesto real.
+ initDialAudio();
  try{$("trigger").setPointerCapture(e.pointerId);}catch(err){}
 }
 function triggerPointerMove(e){
  const gesture=state.triggerGesture;
  if(!state.run||!gesture||e.pointerId!==gesture.id)return;
  e.preventDefault?.();
- const dx=e.clientX-gesture.startX,dy=e.clientY-gesture.startY;
- if(!gesture.axis&&Math.hypot(dx,dy)>=7)gesture.axis=Math.abs(dx)>Math.abs(dy)?"horizontal":"vertical";
- if(!gesture.axis)return;
- const distance=gesture.axis==="vertical"?-dy:dx;
- const range=gesture.axis==="vertical"?115:Math.max(125,Math.min(200,($("trigger").clientWidth||240)*.65));
- setProgressGas(distance/range);
+ const delta=gesture.lastY-e.clientY;
+ gesture.lastY=e.clientY;
+ gesture.carry+=delta;
+ const steps=Math.trunc(gesture.carry/DIAL_PX_PER_CLICK);
+ if(!steps)return;
+ gesture.carry-=steps*DIAL_PX_PER_CLICK;
+ setDialSteps(steps);
 }
 function triggerPointerEnd(e){
  if(!state.triggerGesture||e.pointerId!==state.triggerGesture.id)return;
@@ -754,6 +809,11 @@ function initEvents(){
   state.camera.zoom=Math.max(.65,Math.min(4,state.camera.zoom*(e.deltaY>0?.9:1.1)));
   state.viewDirty=true;
  },{passive:false});
+ $("clickSound").addEventListener("click",()=>{
+  state.clicksEnabled=!state.clicksEnabled;
+  if(state.clicksEnabled)initDialAudio();
+  save();updateTriggerDisplay();
+ });
  const trigger=$("trigger");
  trigger.addEventListener("pointerdown",triggerPointerDown);
  trigger.addEventListener("pointermove",triggerPointerMove);
@@ -785,7 +845,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.2",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
+window.slotraceLab={version:"DEV 0.5.3",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
