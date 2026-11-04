@@ -1,9 +1,19 @@
-# SlotRace · DEV 0.5.5 — pérdida progresiva de agarre al entrar en curvas
+# SlotRace · DEV 0.5.6 — cuadro de potencia a la izquierda y rueda a la derecha
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.5.6 — ergonomía de la rueda
+
+- **Cuadro de porcentaje a la izquierda**, con escala y barra de potencia visibles sin que el pulgar los tape.
+- **Rueda táctil a la derecha**, junto al borde derecho del puesto de pilotaje.
+- Espaciado y alineación revisados para pantallas verticales y horizontales, sin agrandar la zona táctil.
+- No se modifican los incrementos de 5 %, las dos tonalidades de clic, el retorno a cero, la física de curvas ni el cruce del puente.
+- Se comprueba con pruebas automáticas que el cuadro precede a la rueda en la interfaz y que los cinco conjuntos de pruebas siguen pasando.
+
+Prueba: https://almaprintes.github.io/SlotRace/?v=0.5.6. Debe aparecer **DEV 0.5.6** en la pantalla de carga y en la cabecera.
 
 ## DEV 0.5.5 — salida de curva progresiva
 
