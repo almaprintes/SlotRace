@@ -64,6 +64,26 @@ const path=require("node:path");
    "El límite exterior no depende del sentido de giro");
  assert.ok(Math.abs(physics.curveLimit(leftPose,0)-insideLimit)<.01,
    "El límite interior no depende del sentido de giro");
+// El ocho REAL tiene cinco R2 a derecha (piezas 4..8) y cinco R2 a
+// izquierda (piezas 13..17). Cada carril alterna exterior e interior.
+ const eight=geom.buildTrack(geom.FIGURE_EIGHT);
+ assert.equal(eight.valid,true,"El ocho completo debe seguir siendo jugable");
+ for(const [pieceIndex,turn,innerLane,outerLane] of [
+  [5,1,1,0], // Lóbulo a derecha: carril 1 dentro
+  [14,-1,0,1] // Lóbulo a izquierda: carril 0 dentro
+ ]){
+  const sampleLane=eight.lanes[0];
+  const ix=sampleLane.nodes.findIndex(p=>p.pieceIndex===pieceIndex)+3;
+  const pose=geom.positionAt(sampleLane,sampleLane.lengths[ix]);
+  assert.equal(pose.curve,turn,"El giro del lóbulo debe ser el esperado");
+  const inner=physics.curveLimit(pose,innerLane);
+  const outer=physics.curveLimit(pose,outerLane);
+  assert.ok(outer>inner,"En ambos lóbulos el exterior debe admitir más gas");
+  assert.ok(.65*physics.DRIVE.topSpeed<inner&&.70*physics.DRIVE.topSpeed>inner,
+   "En ambos lóbulos 65% interior seguro y 70% por encima del umbral");
+  assert.ok(.75*physics.DRIVE.topSpeed<outer&&.80*physics.DRIVE.topSpeed>outer,
+   "En ambos lóbulos 75% exterior seguro y 80% por encima del umbral");
+ }
 
  const tracks=st.track.lanes;
  function testThrottle(laneId,gas,dt){
