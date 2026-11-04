@@ -62,14 +62,14 @@ function restoreSnapshot(shot){
  state.types=shot.types.slice();state.loose=(shot.loose||[]).map(p=>({...p}));
  state.origin=shot.origin?{...shot.origin}:{...START};
  state.track=buildTrack(state.types,state.origin);extendWorkBoard();
- state.selection=-1;state.looseSelection=-1;resetLap();save();updateUI();
+ state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
 }
 function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("No quedan suficientes piezas en la caja.");return false;}
  const wasClosed=state.track.closed;
  pushHistory();state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};state.track=buildTrack(state.types,state.origin);extendWorkBoard();
- state.selection=-1;state.looseSelection=-1;state.run=false;resetLap();
+ state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
  save();updateUI();
  if(!wasClosed&&state.track.closed){
    toast(state.track.intersection?"Los extremos encajan, pero hay un cruce sin puente.":
@@ -90,7 +90,7 @@ function addLoose(id,x,y,h=0){
   Math.max(b.top+155,Math.min(b.bottom-220,y))
  );
  pushHistory();state.loose.push({id,x:point.x,y:point.y,h});
- state.selection=-1;state.looseSelection=state.loose.length-1;save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
+ state.selection=-1;state.looseSelection=state.loose.length-1;state.selectionMode="piece";state.selectedGroup=looseGroupKey(state.looseSelection);save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
 }
 
 /* DEV 0.8.0 · imanes entre cualquier par de grupos o piezas sueltas. */
@@ -254,19 +254,29 @@ function closeExactly(){
  });
 }
 function removeSelected(){
+ if(state.selectionMode!=="piece"){toast("Toca otra vez la pieza concreta que quieres quitar.");return;}
  if(state.looseSelection>=0){
-  pushHistory();state.loose.splice(state.looseSelection,1);state.looseSelection=-1;
+  pushHistory();detachLooseMember(state.looseSelection);
+  state.loose.splice(state.looseSelection,1);state.looseSelection=-1;
+  state.selectedGroup=null;
   save();updateUI();toast("Pieza suelta devuelta a la caja.");return;
  }
  if(state.selection<0){toast("Toca un tramo sobre la mesa para seleccionarlo.");return;}
  const i=detachConnected(state.selection);
- if(i>=0){state.loose.splice(i,1);state.looseSelection=-1;save();updateUI();
+ if(i>=0){state.loose.splice(i,1);state.looseSelection=-1;state.selectedGroup=null;save();updateUI();
  toast("Pieza devuelta a la caja. Las otras se quedan sobre la mesa.");}
 }
 function rotateLoose(){
- if(state.looseSelection<0){toast("Selecciona una pieza suelta de la mesa para girarla.");return;}
- pushHistory();state.loose[state.looseSelection].h+=Math.PI/4;
- save();updateUI();toast("Pieza girada 45°.");
+ if(state.looseSelection<0){toast("Selecciona una pieza de la mesa para girarla.");return;}
+ pushHistory();
+ if(state.selectionMode==="piece")detachLooseMember(state.looseSelection);
+ const indices=state.selectionMode==="group"?looseMembers(state.looseSelection):[state.looseSelection];
+ const anchor=state.loose[indices[0]],x=anchor.x,y=anchor.y,c=Math.SQRT1_2;
+ for(const i of indices){
+  const p=state.loose[i],dx=p.x-x,dy=p.y-y;
+  p.x=x+c*dx-c*dy;p.y=y+c*dx+c*dy;p.h+=Math.PI/4;
+ }
+ save();updateUI();toast(indices.length>1?"Tramo completo girado 45°.":"Pieza girada 45°.");
 }
 function recoverDraft(){
  if(!state.draft)return;
@@ -521,12 +531,19 @@ function updateUI(){
  $("caseClosed").hidden=state.caseOpen;
  $("caseToggle").textContent=state.caseOpen?"▴ Cerrar caja":"▾ Abrir caja";
  $("caseToggle").setAttribute("aria-expanded",String(state.caseOpen));
- $("selected").textContent=state.looseSelection>=0?"SUELTA · "+CATALOG[state.loose[state.looseSelection].id].name:
- state.selection<0?"COGE, MUEVE Y SUELTA PIEZAS · MESA PUZZLE":
-  "TRAMO "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
- $("remove").disabled=state.selection<0&&state.looseSelection<0;
+ const selectedLength=state.selectedGroup==="main"?state.types.length:
+  state.looseSelection>=0?looseMembers(state.looseSelection).length:0;
+ $("selected").textContent=state.selectedGroup==null?
+  "TOCA UNA VEZ: TRAMO · OTRA VEZ: PIEZA":
+  state.selectionMode==="group"?
+   "TRAMO UNIDO · "+selectedLength+" PIEZAS · ARRASTRA PARA MOVERLO":
+  state.looseSelection>=0?
+   "PIEZA · "+CATALOG[state.loose[state.looseSelection].id].name+" · ARRASTRA PARA SEPARAR":
+   "PIEZA "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
+ $("remove").disabled=state.selectionMode!=="piece"||
+  (state.selection<0&&state.looseSelection<0);
  $("rotate").disabled=state.looseSelection<0;
- $("joinPiece").disabled=state.looseSelection<0||state.track.closed;
+ $("joinPiece").disabled=state.looseSelection<0;
  $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
  $("undo").disabled=!state.history.length;
@@ -634,8 +651,7 @@ function palette(){
    // La pieza sale del maletín, permanece suelta o encaja si toca un
    // conector. Nunca se desplazan las piezas que ya están colocadas.
    if(!addLoose(id,pt.x,pt.y))return;
-   if(state.types.length&&!state.track.closed)
-    snapLoose(state.loose.length-1,{history:false});
+   snapLoose(state.loose.length-1,{history:false});
   });
   pocket.addEventListener("pointercancel",e=>{
    if(state.dragging?.id===id&&state.dragging.pointerId===e.pointerId){
@@ -765,9 +781,10 @@ function paintContinuousTrack(ctx,track,editing){
  }
  for(const edge of [-72,72])strokePath(ctx,translated(path,edge),"#65787e",2.5);
  for(const part of track.parts)paintSeam(ctx,part.start);
- if(editing&&state.selection>=0){
-  ctx.save();ctx.globalAlpha=.28;
-  strokePath(ctx,track.parts[state.selection].points,"#4affd5",TRACK_WIDTH+17);
+ if(editing&&state.selectedGroup==="main"&&state.selection>=0){
+  ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.20:.42;
+  strokePath(ctx,state.selectionMode==="group"?path:track.parts[state.selection].points,
+   state.selectionMode==="group"?"#74ffe0":"#ffd070",TRACK_WIDTH+17);
   ctx.restore();
  }
  if(track.closed){
@@ -968,18 +985,21 @@ function paintLoose(ctx){
    strokePath(ctx,translated(part.points,off+7),"#a0afb3",2);
   }
   paintSeam(ctx,part.start);
-  if(state.mode==="build"&&index===state.looseSelection){
-   ctx.save();ctx.globalAlpha=.45;strokePath(ctx,part.points,"#f4d06c",TRACK_WIDTH+25);ctx.restore();
+  const selected=state.mode==="build"&&state.looseSelection>=0&&
+   (state.selectionMode==="piece"?index===state.looseSelection:
+    looseGroupKey(index)===state.selectedGroup);
+  if(selected){
+   ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.22:.43;
+   strokePath(ctx,part.points,state.selectionMode==="group"?"#6effdf":"#f4d06c",TRACK_WIDTH+25);
+   ctx.restore();
   }
-  if(state.mode==="build"&&!state.track.closed&&state.types.length){
-   const ends=snapCandidates(p);
-   const nearEnd=ends.after<ends.before,dist=Math.min(ends.after,ends.before);
-   if(dist<SNAP_DISTANCE_MM){
-    const target=nearEnd?state.track.ends.end:state.origin;
-    const source=nearEnd?p:positionOnPiece(p,p.id,1);
-    ctx.save();ctx.lineWidth=9;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
-    ctx.beginPath();ctx.moveTo(source.x,source.y);ctx.lineTo(target.x,target.y);
-    ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  if(state.mode==="build"&&state.looseSelection===index){
+   const magnet=bestMagnet(index);
+   if(magnet){
+    ctx.save();ctx.lineWidth=7;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
+    ctx.beginPath();ctx.moveTo(magnet.from.x,magnet.from.y);
+    ctx.lineTo(magnet.to.x,magnet.to.y);ctx.stroke();
+    ctx.setLineDash([]);ctx.restore();
    }
   }
  }
@@ -1282,7 +1302,8 @@ function loop(now){
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.8.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
- puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd},
+ puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+ looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
