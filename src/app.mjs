@@ -179,6 +179,7 @@ function updateHud(){
  $("trigger").disabled=!state.run;
 }
 function updateUI(){
+ state.viewDirty=true;
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  const t=state.track;
  const degrees=t.headingGap*180/Math.PI;
@@ -237,6 +238,7 @@ function palette(){
    if(!state.dragging||state.dragging.id!==id)return;
    state.dragging.x=e.clientX;state.dragging.y=e.clientY;
    if(Math.hypot(e.clientX-state.dragging.originX,e.clientY-state.dragging.originY)>9)state.dragging.active=true;
+   state.viewDirty=true;
   });
   const drop=e=>{
    if(!state.dragging||state.dragging.id!==id)return;
@@ -477,19 +479,36 @@ function paintGhost(ctx,track){
  ctx.restore();
 }
 function resize(){
+ // iPhone Safari ajusta el viewport varias veces al girar o esconder barras.
+ // Sólo cambiamos el backing buffer cuando cambia realmente el tamaño.
+ let changed=false;
+ const dpr=Math.min(2,window.devicePixelRatio||1);
  for(const canvas of [editCanvas,raceCanvas]){
-  if(!canvas.parentElement)return;
   const rect=canvas.getBoundingClientRect();
   if(!rect.width||!rect.height)continue;
-  const dpr=Math.min(2,window.devicePixelRatio||1);
   const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
-  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+  if(canvas.width!==w||canvas.height!==h){
+   canvas.width=w;canvas.height=h;changed=true;
+  }
  }
+ if(changed)state.viewDirty=true;
+}
+let resizeQueued=false;
+function scheduleResize(){
+ if(resizeQueued)return;
+ resizeQueued=true;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  resizeQueued=false;resize();
+ }));
 }
 function makeView(canvas,mode){
  const dpr=Math.min(2,window.devicePixelRatio||1);
  const w=canvas.width/dpr,h=canvas.height/dpr;
- const portrait=h>w*1.1,angle=portrait?Math.PI/2:0;
+ const portrait=typeof window.matchMedia==="function"?
+  window.matchMedia("(orientation: portrait)").matches:
+  (Number.isFinite(window.innerWidth)&&Number.isFinite(window.innerHeight)?
+   window.innerHeight>window.innerWidth:h>w*1.1);
+ const angle=portrait?Math.PI/2:0;
  const target=mode==="build"?state.track.board:
   {left:state.track.bounds.left-160,right:state.track.bounds.right+160,
    top:state.track.bounds.top-160,bottom:state.track.bounds.bottom+160};
@@ -532,7 +551,12 @@ function canvasPointerDown(e){
  editCanvas.setPointerCapture(e.pointerId);
  const onTable=screenToWorld(e),near=state.pointer.size===0?nearestLoose(onTable.x,onTable.y):{index:-1};
  const looseIndex=near.index>=0&&near.distance<TRACK_WIDTH*.55?near.index:-1;
- state.pointer.set(e.pointerId,{x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,looseIndex,dragged:false});
+ state.pointer.set(e.pointerId,{
+  x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,
+  originWorld:onTable,
+  pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null,
+  looseIndex,dragged:false
+ });
  if(looseIndex>=0){state.looseSelection=looseIndex;state.selection=-1;state.dragLoose=looseIndex;updateUI();}
  if(state.pointer.size===2){
   const p=[...state.pointer.values()],dx=p[0].x-p[1].x,dy=p[0].y-p[1].y;
@@ -545,10 +569,13 @@ function canvasPointerMove(e){
  if(state.pointer.size===1&&p.looseIndex>=0){
   if(Math.hypot(p.x-p.originX,p.y-p.originY)<5)return;
   if(!p.dragged){pushHistory();p.dragged=true;}
-  const from=screenToWorld({clientX:oldX,clientY:oldY}),to=screenToWorld(e);
-  const piece=state.loose[p.looseIndex];if(!piece)return;
-  piece.x=Math.max(140,Math.min(TABLE.width-140,piece.x+to.x-from.x));
-  piece.y=Math.max(140,Math.min(TABLE.height-140,piece.y+to.y-from.y));
+  const to=screenToWorld(e),piece=state.loose[p.looseIndex],b=state.track.board;
+  if(!piece||!p.pieceStart)return;
+  piece.x=Math.max(b.left+140,Math.min(b.right-140,
+    gridSnap(p.pieceStart.x+to.x-p.originWorld.x)));
+  piece.y=Math.max(b.top+140,Math.min(b.bottom-140,
+    gridSnap(p.pieceStart.y+to.y-p.originWorld.y)));
+  state.viewDirty=true;
   return;
  }
  if(state.pointer.size>=2&&state.pinch){
@@ -557,6 +584,7 @@ function canvasPointerMove(e){
   state.camera.zoom=Math.max(.65,Math.min(4,state.pinch.zoom*dist/Math.max(1,state.pinch.distance)));
   state.camera.panX+=(e.clientX-oldX)/2;state.camera.panY+=(e.clientY-oldY)/2;
  }else{state.camera.panX+=e.clientX-oldX;state.camera.panY+=e.clientY-oldY;}
+ state.viewDirty=true;
 }
 function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
@@ -586,10 +614,14 @@ function initEvents(){
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
+ $("gridToggle").addEventListener("click",()=>{
+  state.gridEnabled=!state.gridEnabled;save();updateUI();
+  toast(state.gridEnabled?"Retícula de 25 mm activada.":"Retícula desactivada.");
+ });
  $("autoClose").addEventListener("click",closeExactly);
- $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(4,state.camera.zoom*1.25);});
- $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(.65,state.camera.zoom/1.25);});
- $("zoomFit").addEventListener("click",()=>{state.camera={panX:0,panY:0,zoom:1};});
+ $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(4,state.camera.zoom*1.25);state.viewDirty=true;});
+ $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(.65,state.camera.zoom/1.25);state.viewDirty=true;});
+ $("zoomFit").addEventListener("click",()=>{state.camera={panX:0,panY:0,zoom:1};state.viewDirty=true;});
  for(const type of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
   editCanvas.addEventListener(type,e=>{
    if(type==="pointerdown")canvasPointerDown(e);
@@ -600,6 +632,7 @@ function initEvents(){
  editCanvas.addEventListener("wheel",e=>{
   if(state.mode!=="build")return;e.preventDefault();
   state.camera.zoom=Math.max(.65,Math.min(4,state.camera.zoom*(e.deltaY>0?.9:1.1)));
+  state.viewDirty=true;
  },{passive:false});
  const trigger=$("trigger");
  trigger.addEventListener("pointerdown",e=>{if(!state.run)return;setTrigger(true);try{trigger.setPointerCapture(e.pointerId);}catch(err){};});
@@ -617,16 +650,19 @@ function initEvents(){
  const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;throttle.value="0";if(state.mode==="race")state.run=false;updateHud();};
  window.addEventListener("blur",pauseBackground);
  document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseBackground();});
- window.addEventListener("resize",resize);
+ window.addEventListener("resize",scheduleResize);
+ if(window.visualViewport)window.visualViewport.addEventListener("resize",scheduleResize);
  if(typeof ResizeObserver!=="undefined"){
-  new ResizeObserver(resize).observe($("tableSpace"));
-  new ResizeObserver(resize).observe($("raceSpace"));
+  new ResizeObserver(scheduleResize).observe($("tableSpace"));
+  new ResizeObserver(scheduleResize).observe($("raceSpace"));
  }
 }
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
- simulation(dt);resize();
- if(state.mode==="build")renderScene(editCanvas,"build");else renderScene(raceCanvas,"race");
+ simulation(dt);
+ if(state.mode==="build"){
+  if(state.viewDirty){renderScene(editCanvas,"build");state.viewDirty=false;}
+ }else renderScene(raceCanvas,"race");
  if(!state._hudTime||now-state._hudTime>100){state._hudTime=now;updateHud();}
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
