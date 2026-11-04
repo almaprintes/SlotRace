@@ -85,7 +85,6 @@ const path=require("node:path");
  fire("pointermove",105,110,5);
  assert.equal(power(),50,"Bajar diez clics reduce a 50%");
  assert.equal(pitches.at(-1),670,"El clic al bajar es grave");
- assert.notEqual(1260,670,"Dos tonalidades distinguibles");
  fire("pointerup",105,110,5);
  assert.equal(power(),0,"Al soltar vuelve a cero");
  assert.equal(elements.get("triggerFill").style.height,"0%");
