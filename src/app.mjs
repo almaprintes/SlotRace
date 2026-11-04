@@ -675,54 +675,59 @@ function palette(){
     '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
      '<span class="foam-drag-grip" data-drag-handle="true" aria-hidden="true">⠿</span>'+
     '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>';
+  const grip=pocket.querySelector(".foam-drag-grip");
   let suppressNextClick=false,tapPointer=null;
-  // Pan vertical en la espuma: el navegador hace scroll nativo.
-  // Arrastre de piezas: comenzar sobre el asa ⠿, que captura el puntero.
+  // El maletín se desplaza sobre el cuerpo del hueco y se arrastra desde
+  // el asa: la captura táctil vive en el ASA, nunca en el botón desplazable.
   pocket.addEventListener("click",e=>{
+   if(e.target===grip||grip.contains?.(e.target))return;
    if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
-   suppressNextClick=false;
-   inventoryAction(id);
+   suppressNextClick=false;inventoryAction(id);
   });
   pocket.addEventListener("pointerdown",e=>{
-   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],pocketPartId(id))<1)return;
+   if(e.target===grip)return;
+   tapPointer=e.pointerType==="mouse"?null:
+    {pointerId:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
    suppressNextClick=false;
-   const grip=e.target?.dataset?.dragHandle==="true";
-   if(!grip){
-    // No llamar preventDefault ni setPointerCapture sobre el botón entero:
-    // eso impedía desplazarse por la caja en Safari iOS.
-    tapPointer=e.pointerType==="mouse"?null:
-     {pointerId:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
-    return;
-   }
-   tapPointer=null;
-   e.preventDefault?.();
-   state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
-    originX:e.clientX,originY:e.clientY,active:false};
-   try{pocket.setPointerCapture(e.pointerId);}catch(err){}
-   state.viewDirty=true;
   });
   pocket.addEventListener("pointermove",e=>{
    if(tapPointer?.pointerId===e.pointerId&&
       Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9)tapPointer.moved=true;
+  });
+  pocket.addEventListener("pointerup",e=>{
+   if(tapPointer?.pointerId!==e.pointerId)return;
+   const moved=tapPointer.moved||
+    Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9;
+   tapPointer=null;suppressNextClick=true;
+   if(!moved)inventoryAction(id);
+  });
+  pocket.addEventListener("pointercancel",e=>{
+   if(tapPointer?.pointerId===e.pointerId){tapPointer=null;suppressNextClick=true;}
+  });
+  grip.addEventListener("click",e=>{e.preventDefault?.();e.stopPropagation?.();});
+  grip.addEventListener("pointerdown",e=>{
+   e.preventDefault?.();e.stopPropagation?.();
+   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],pocketPartId(id))<1)return;
+   tapPointer=null;suppressNextClick=true;
+   state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
+    originX:e.clientX,originY:e.clientY,active:false};
+   try{grip.setPointerCapture(e.pointerId);}catch(err){}
+   state.viewDirty=true;
+  });
+  grip.addEventListener("pointermove",e=>{
    const d=state.dragging;
    if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
+   e.preventDefault?.();e.stopPropagation?.();
    d.x=e.clientX;d.y=e.clientY;
    if(Math.hypot(d.x-d.originX,d.y-d.originY)>9)d.active=true;
    state.viewDirty=true;
   });
-  pocket.addEventListener("pointerup",e=>{
-   if(tapPointer?.pointerId===e.pointerId){
-    const moved=tapPointer.moved||
-      Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9;
-    tapPointer=null;suppressNextClick=true;
-    if(!moved)inventoryAction(id);
-    return;
-   }
+  grip.addEventListener("pointerup",e=>{
    const d=state.dragging;
    if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
-   state.dragging=null;state.viewDirty=true;
-   suppressNextClick=true;
-   if(!d.active){inventoryAction(id);return;}
+   e.preventDefault?.();e.stopPropagation?.();
+   state.dragging=null;state.viewDirty=true;suppressNextClick=true;
+   if(!d.active)return;
    const rect=editCanvas.getBoundingClientRect();
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
     toast("Suelta la pieza en el tapete. No se ha gastado ninguna.");return;
@@ -734,8 +739,7 @@ function palette(){
    if(!addLoose(pocketPartId(id),pt.x,pt.y))return;
    snapLoose(state.loose.length-1,{history:false});
   });
-  pocket.addEventListener("pointercancel",e=>{
-   if(tapPointer?.pointerId===e.pointerId){tapPointer=null;suppressNextClick=true;}
+  grip.addEventListener("pointercancel",e=>{
    if(state.dragging?.id===id&&state.dragging.pointerId===e.pointerId){
     state.dragging=null;state.viewDirty=true;
    }
@@ -1385,7 +1389,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.9.2",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
  puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
