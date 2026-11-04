@@ -186,3 +186,6 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .trigger{height:103px;min-height:82px}
  .gas-control .gas-header{font-size:9px}
 }
+
+/* El relleno debe permanecer por encima del fondo del gatillo. */
+.trigger-fill{z-index:0}
