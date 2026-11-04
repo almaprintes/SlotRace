@@ -140,7 +140,7 @@ function play(){
   state.types=STARTER.slice();state.loose=[];state.track=buildTrack(state.types);state.selection=-1;state.looseSelection=-1;
   save();
  }
- state.run=true;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
+ state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
  toast("¡Pista lista! Suelta el gatillo antes de las curvas.");
 }
@@ -311,10 +311,11 @@ function updateHud(){
  const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
  const underCrossing=isBelow&&pose&&state.track.parts.length>=3&&
    Math.hypot(pose.x-state.track.parts[1].end.x,pose.y-state.track.parts[1].end.y)<135;
- $("raceHint").textContent=state.penalty>0?"FUERA DE PISTA · "+state.penalty.toFixed(1)+" s":
+ $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    !state.run?"EN PAUSA":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
-   "Levanta el dedo al entrar en la curva";
+   state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
+   "Busca el límite sin pasarte en las curvas";
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").disabled=state.run;
  $("trigger").disabled=!state.run;
@@ -648,10 +649,52 @@ function paintTrack(ctx,track,editing,layer="all"){
   }
  }
 }
+// Deslizamiento visual sin alterar la ranura física ni el cronómetro.
+// Para un trompo de 3 segundos, el coche se aparta, gira y vuelve a su
+// posición original: la vuelta sigue siendo válida.
+function visualCarPose(at){
+ if(state.mode!=="race")return {...at,smoke:0,spin:0};
+ if(state.deslot){
+  const d=state.deslot,t=d.elapsed;
+  const side=d.turn||1;
+  const out=t<.7?t/.7:t<1.75?1:Math.max(0,(3-t)/1.25);
+  const turn=t<1.4?Math.PI*4*(t/1.4):Math.PI*4;
+  const normalX=-Math.sin(at.h),normalY=Math.cos(at.h);
+  return{...at,
+   x:at.x-side*normalX*85*out,
+   y:at.y-side*normalY*85*out,
+   h:at.h+side*turn,
+   smoke:Math.max(0,1-t/2.5),spin:1};
+ }
+ const d=state.drift||0,side=state.driftDirection||0;
+ const normalX=-Math.sin(at.h),normalY=Math.cos(at.h);
+ return{...at,
+  x:at.x-side*normalX*DRIVE.driftMaxOffset*d,
+  y:at.y-side*normalY*DRIVE.driftMaxOffset*d,
+  h:at.h+side*DRIVE.driftMaxAngle*d,
+  smoke:d,spin:0};
+}
 function paintCar(ctx,at,lane,paused=false){
  if(!at)return;
  const color=lane===0?"#55eecf":"#ffc267";
- ctx.save();ctx.translate(at.x,at.y);ctx.rotate(at.h);
+ const visual=visualCarPose(at);
+ ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h);
+ if(visual.smoke>.03){
+  // Estelas breves de las ruedas posteriores, sin imágenes ni partículas
+  // persistentes que penalicen el rendimiento en el iPhone.
+  ctx.save();
+  ctx.globalAlpha=Math.min(.45,.38*visual.smoke);
+  for(let i=0;i<3;i++){
+   const x=-83-i*23,y=(i-1)*20;
+   ctx.beginPath();ctx.ellipse(x,y,9+i*6,4+i*4,.2,0,Math.PI*2);
+   ctx.fillStyle="#d9e7e0";ctx.fill();
+  }
+  if(visual.spin){
+   ctx.strokeStyle="#def0e2";ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(0,0,104,visual.h,visual.h+Math.PI*.9);ctx.stroke();
+  }
+  ctx.restore();
+ }
  ctx.shadowColor="#000a";ctx.shadowBlur=17;ctx.shadowOffsetY=9;
  ctx.fillStyle="#0b1013";roundRect(ctx,-77,-32,154,64,16);ctx.fill();ctx.shadowBlur=0;ctx.shadowOffsetY=0;
  for(const x of [-53,49])for(const y of [-33,25]){
@@ -938,7 +981,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.3",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
+window.slotraceLab={version:"DEV 0.5.4",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
