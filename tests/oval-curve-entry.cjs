@@ -32,7 +32,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.8.1");
+ assert.equal(game.version,"DEV 0.9.0");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
@@ -40,7 +40,7 @@ const path=require("node:path");
  assert.equal(st.track.bridge,null,"No elevated crossing in the oval");
  // El óvalo gira a la derecha (+1): lane 1 interior, lane 0 exterior.
  // El ocho incorpora curvas a izquierda; allí los roles se invierten.
- const r=geom.CATALOG.R2R.radius,off=geom.LANE_OFFSET;
+ const r=geom.CATALOG.R2_45R.radius,off=geom.LANE_OFFSET;
  const right=geom.positionAt(st.track.lanes[0],
   st.track.lanes[0].lengths[st.track.lanes[0].nodes.findIndex(p=>p.pieceIndex===2)+3]);
  assert.equal(right.curve,1);
@@ -54,7 +54,7 @@ const path=require("node:path");
    "El interior admite 65% pero supera umbral al 70%");
  assert.ok(.75*physics.DRIVE.topSpeed<outsideLimit&&.80*physics.DRIVE.topSpeed>outsideLimit,
    "El exterior admite 75% pero supera umbral al 80%");
- const leftTrack=geom.buildTrack(["R2L","R2L","R2L"]);
+ const leftTrack=geom.buildTrack(["R2_45L","R2_45L","R2_45L"]);
  const leftLine=leftTrack.lanes[0];
  const leftPose=geom.positionAt(leftLine,leftLine.total*.25);
  assert.equal(leftPose.curve,-1);
@@ -64,13 +64,13 @@ const path=require("node:path");
    "El límite exterior no depende del sentido de giro");
  assert.ok(Math.abs(physics.curveLimit(leftPose,0)-insideLimit)<.01,
    "El límite interior no depende del sentido de giro");
-// El ocho REAL tiene cinco R2 a derecha (piezas 4..8) y cinco R2 a
-// izquierda (piezas 13..17). Cada carril alterna exterior e interior.
+// El ocho PT-Precision tiene seis R2 a derecha (piezas 1..6) y seis R2 a
+// izquierda (piezas 8..13). Cada carril alterna exterior e interior.
  const eight=geom.buildTrack(geom.FIGURE_EIGHT);
  assert.equal(eight.valid,true,"El ocho completo debe seguir siendo jugable");
  for(const [pieceIndex,turn,innerLane,outerLane] of [
   [5,1,1,0], // Lóbulo a derecha: carril 1 dentro
-  [14,-1,0,1] // Lóbulo a izquierda: carril 0 dentro
+  [10,-1,0,1] // Lóbulo a izquierda: carril 0 dentro
  ]){
   const sampleLane=eight.lanes[0];
   const ix=sampleLane.nodes.findIndex(p=>p.pieceIndex===pieceIndex)+3;
@@ -157,7 +157,7 @@ const path=require("node:path");
  // anterior, que tiene tramos y distancias distintos.
  st.track=eight;
  st.types=[...geom.FIGURE_EIGHT];
- // Verificación DINÁMICA del ocho de 18 piezas: los límites no sólo
+ // Verificación DINÁMICA del ocho de 14 piezas: los límites no sólo
  // deben dar el valor teórico; deben aplicarse al recorrer ambos lóbulos.
  function testEightCurve(pieceId,laneId,gas){
   const lane=eight.lanes[laneId];
@@ -179,7 +179,7 @@ const path=require("node:path");
    physics.simulationStep(1/60);
   return{crashed:st.penalty>0,advance:st.distance-start,firstLength};
  }
- for(const [startPiece,innerLane,outerLane] of [[4,1,0],[13,0,1]]){
+ for(const [startPiece,innerLane,outerLane] of [[1,1,0],[8,0,1]]){
   const slowInner=testEightCurve(startPiece,innerLane,.65);
   const fastInner=testEightCurve(startPiece,innerLane,.70);
   const slowOuter=testEightCurve(startPiece,outerLane,.75);
@@ -193,5 +193,5 @@ const path=require("node:path");
   assert.ok(fastOuter.advance>fastOuter.firstLength*.5,
    "El coche no sale antes de media curva exterior del ocho");
  }
- console.log("SlotRace DEV 0.8.1: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
+ console.log("SlotRace DEV 0.9.0: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
