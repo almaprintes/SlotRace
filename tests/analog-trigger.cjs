@@ -98,7 +98,10 @@ const path=require("node:path");
  fire("pointerdown",105,180,16);
  fire("pointermove",105,151,16);
  assert.ok(state.gas>.2&&state.gas<.3,"El 25 % es realmente alcanzable");
- const lowFrame=callbacks.shift();now=32;lowFrame(now);
+ // En el arranque hay también un callback de la pantalla de carga.
+ // Procesamos todos los callbacks pendientes, no sólo el primero.
+ const pending=callbacks.splice(0);now=32;
+ for(const frame of pending)frame(now);
  assert.ok(state.speed>0&&state.speed<12,"El coche avanza también al 25 %");
  fire("pointerup",105,151,16);
  for(const fn of elements.get("pause").listeners.click)fn();
