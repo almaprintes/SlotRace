@@ -1,9 +1,21 @@
-# SlotRace · DEV 0.5.4 — más velocidad, derrape y trompos animados
+# SlotRace · DEV 0.5.5 — pérdida progresiva de agarre al entrar en curvas
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.5.5 — salida de curva progresiva
+
+- **Corregido el error de entrada:** antes bastaba con superar el límite de velocidad en el primer milímetro de la curva para que el coche hiciera un trompo. Ahora el exceso de velocidad **acumula pérdida de agarre durante el recorrido**, hasta provocar la salida más adelante.
+- **El coche no se sale en la arista inicial.** Cada tramo continuo de curvas del mismo sentido conserva el desgaste de agarre entre sus piezas de 45°, sin reiniciarse en las juntas.
+- **Soltar o reducir gas recupera adherencia**, incluso dentro de la curva: si bajas el porcentaje a tiempo, puedes evitar la salida.
+- **Las rectas ya no heredan falsamente la curvatura anterior.** Se corrige la lectura del segmento activo para que una zona físicamente recta no se penalice como curva.
+- **Ajuste específico para el óvalo:** con velocidad estabilizada y carril interior, el 65 % permite completar la curva derrapando sin penalización. A 70 % mantenido, las pruebas reproducibles sitúan la salida aproximadamente a 175–182 mm dentro de una primera curva de unos 258 mm, según 60 o 120 actualizaciones por segundo: **aproximadamente 68–70 % de la pieza**, no al entrar. Es un ajuste experimental de jugabilidad, no una medida física certificada de Scalextric.
+- Se mantienen los efectos de derrape, animación de trompo, cronómetro y penalización de 3 segundos sin invalidar la vuelta.
+- Nueva prueba automatizada `tests/oval-curve-entry.cjs`: valida 65 % frente a 70 %, límites recta/curva, recuperación de agarre al reducir gas y estabilidad de resultado a distintas frecuencias de simulación.
+
+Prueba en móvil: https://almaprintes.github.io/SlotRace/?v=0.5.5. Comprueba **DEV 0.5.5** en la carga y en la cabecera.
 
 ## DEV 0.5.4 — conducción más expresiva
 
