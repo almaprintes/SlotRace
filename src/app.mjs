@@ -1057,36 +1057,61 @@ function loosePart(piece,index){
  const points=Array.from({length:n+1},(_,k)=>positionOnPiece(pose,piece.id,k/n));
  return{id:piece.id,index,start:pose,end:points[points.length-1],points};
 }
+// Una unión magnética se dibuja como UNA superficie continua. La sombra,
+// los cantos y las juntas de conector sólo aparecen en el perímetro del
+// tramo, no en las piezas interiores que ya quedaron encajadas.
+function loosePaintGroups(){
+ const groups=[],seen=new Set();
+ for(let i=0;i<state.loose.length;i++){
+  if(seen.has(i))continue;
+  const indices=looseMembers(i);
+  for(const j of indices)seen.add(j);
+  const parts=indices.map(j=>loosePart(state.loose[j],j));
+  const points=parts.flatMap((part,k)=>k?part.points.slice(1):part.points);
+  groups.push({key:looseGroupKey(i),indices,parts,points});
+ }
+ return groups;
+}
 function paintLoose(ctx){
- for(const [index,p] of state.loose.entries()){
-  const part=loosePart(p,index);
-  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=20;ctx.shadowOffsetY=13;
-  strokePath(ctx,part.points,"#10181a",TRACK_WIDTH+22);ctx.restore();
-  strokePath(ctx,part.points,"#728184",TRACK_WIDTH+12);
-  strokePath(ctx,part.points,"#2a353a",TRACK_WIDTH+2);
-  strokePath(ctx,part.points,"#38434a",TRACK_WIDTH-13);
+ for(const group of loosePaintGroups()){
+  const {points,parts,indices}=group;
+  if(!points.length)continue;
+  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=18;ctx.shadowOffsetY=12;
+  strokePath(ctx,points,PIECE_LOOK.shadow,TRACK_WIDTH+19);
+  ctx.restore();
+  strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+12);
+  strokePath(ctx,points,PIECE_LOOK.rim,TRACK_WIDTH+5);
+  strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
+  strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
   for(const off of [-LANE_OFFSET,LANE_OFFSET]){
-   strokePath(ctx,translated(part.points,off),"#071015",10);
-   strokePath(ctx,translated(part.points,off-7),"#a0afb3",2);
-   strokePath(ctx,translated(part.points,off+7),"#a0afb3",2);
+   strokePath(ctx,translated(points,off),PIECE_LOOK.groove,11);
+   strokePath(ctx,translated(points,off-7.6),PIECE_LOOK.metalA,2.2);
+   strokePath(ctx,translated(points,off+7.6),PIECE_LOOK.metalB,2.2);
+   strokePath(ctx,translated(points,off),PIECE_LOOK.guide,5);
   }
-  paintSeam(ctx,part.start);
-  const selected=state.mode==="build"&&state.looseSelection>=0&&
-   (state.selectionMode==="piece"?index===state.looseSelection:
-    looseGroupKey(index)===state.selectedGroup);
-  if(selected){
-   ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.22:.43;
-   strokePath(ctx,part.points,state.selectionMode==="group"?"#6effdf":"#f4d06c",TRACK_WIDTH+25);
-   ctx.restore();
-  }
-  if(state.mode==="build"&&state.looseSelection===index){
-   const magnet=bestMagnet(index);
-   if(magnet){
-    ctx.save();ctx.lineWidth=7;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
-    ctx.beginPath();ctx.moveTo(magnet.from.x,magnet.from.y);
-    ctx.lineTo(magnet.to.x,magnet.to.y);ctx.stroke();
-    ctx.setLineDash([]);ctx.restore();
+  for(const edge of [-72,72])strokePath(ctx,translated(points,edge),PIECE_LOOK.edge,2.5);
+  // Sólo los conectores exteriores: nunca dibujar una falsa separación
+  // oscura entre dos módulos magnéticamente unidos.
+  paintSeam(ctx,parts[0].start);
+  paintSeam(ctx,parts[parts.length-1].end);
+  if(state.mode==="build"&&state.looseSelection>=0){
+   if(state.selectionMode==="group"&&group.key===state.selectedGroup){
+    ctx.save();ctx.globalAlpha=.22;
+    strokePath(ctx,points,"#6effdf",TRACK_WIDTH+25);ctx.restore();
+   }else if(state.selectionMode==="piece"&&indices.includes(state.looseSelection)){
+    const part=parts[indices.indexOf(state.looseSelection)];
+    ctx.save();ctx.globalAlpha=.43;
+    strokePath(ctx,part.points,"#f4d06c",TRACK_WIDTH+25);ctx.restore();
    }
+  }
+ }
+ if(state.mode==="build"&&state.looseSelection>=0){
+  const magnet=bestMagnet(state.looseSelection);
+  if(magnet){
+   ctx.save();ctx.lineWidth=7;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
+   ctx.beginPath();ctx.moveTo(magnet.from.x,magnet.from.y);
+   ctx.lineTo(magnet.to.x,magnet.to.y);ctx.stroke();
+   ctx.setLineDash([]);ctx.restore();
   }
  }
  if(state.dragging?.active&&state.mode==="build"){
@@ -1390,7 +1415,7 @@ function loop(now){
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.9.2",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
- puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
