@@ -153,6 +153,10 @@ const path=require("node:path");
  for(let i=0;i<8;i++)physics.simulationStep(1/60);
  assert.equal(st.penalty,0,"Al reducir el gas no debe haber salida tardía");
  assert.ok(st.gripDebt<initialDebt,"Reducir gas debe recuperar agarre");
+ // Las simulaciones siguientes deben recorrer el ocho, no el óvalo
+ // anterior, que tiene tramos y distancias distintos.
+ st.track=eight;
+ st.types=[...geom.FIGURE_EIGHT];
  // Verificación DINÁMICA del ocho de 18 piezas: los límites no sólo
  // deben dar el valor teórico; deben aplicarse al recorrer ambos lóbulos.
  function testEightCurve(pieceId,laneId,gas){
