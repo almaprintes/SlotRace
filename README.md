@@ -1,4 +1,4 @@
-# SlotRace LAB — prototipo 0.2
+# SlotRace LAB — prototipo 0.3
 
 Repositorio autónomo **SlotRace**: primera versión del laboratorio jugable. Totalmente separado del código y del despliegue público de Top Down RACE.
 
@@ -10,11 +10,13 @@ Localmente abre `index.html` en un navegador moderno. Es un prototipo HTML autó
 
 ## Cómo conducir en móvil
 
-1. Abre la web y pulsa **«🏁 Jugar a pantalla completa»** junto a la vista cenital.
+1. Abre la web y pulsa **«🏁 Jugar ahora»** junto a la vista cenital o en el botón fijo inferior del móvil. **Funciona aunque el circuito actual esté abierto**: se conserva como borrador y se monta el óvalo inicial.
 2. El juego abre una vista sin scroll con pista, cronómetro, vuelta y gatillo siempre visibles.
 3. **Mantén** el botón «MANTENER ACELERADOR» para acelerar a fondo, o **arrastra y mantén** el deslizador para regular el gatillo de forma analógica. Al soltar el dedo, el deslizador vuelve a 0.
 4. **Pausar / Seguir** permite detener y continuar; puedes **cambiar de carril mientras esté pausado**.
-5. Pulsa **Salir** para volver a editar la pista. La carrera se pausa.
+5. Pulsa **Salir** para volver a editar la pista. La carrera se pausa. Si venías de una construcción sin cerrar, aparecerá **«Recuperar diseño»** y podrás restaurar todas sus piezas.
+
+**Importante:** el editor sigue siendo de conexión secuencial y no monta automáticamente cualquier figura. Para probar la conducción, usa siempre Jugar ahora. Los diseños y marcas usan almacenamiento local del navegador y **pueden perderse al cerrar todas las pestañas de navegación privada**.
 
 En vertical, la pista se gira automáticamente en pantalla para ocupar más espacio, **sin cambiar la geometría real de las piezas**.
 
