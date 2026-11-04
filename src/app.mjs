@@ -261,6 +261,10 @@ function strokePath(ctx,points,color,width){
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
 function paintTable(ctx){
  ctx.save();
+ // La mesa debe cubrir la geometría sin mover ni deformar los conectores.
+ const b=state.track.board;
+ ctx.translate(b.left,b.top);
+ ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
  const wood=ctx.createLinearGradient(0,0,TABLE.width,TABLE.height);
  wood.addColorStop(0,"#ad7443");wood.addColorStop(.45,"#6b4327");wood.addColorStop(1,"#a96c3c");
@@ -288,7 +292,7 @@ function paintTable(ctx){
  }ctx.globalAlpha=1;ctx.restore();
  ctx.font="bold 40px system-ui";ctx.fillStyle="#b5e3c1";ctx.globalAlpha=.38;ctx.textAlign="center";
  ctx.fillText("SLOTRACE  •  CRAFT RACE STUDIO",TABLE.width/2,166);ctx.globalAlpha=1;
- ctx.font="24px system-ui";ctx.fillStyle="#b9d6a7";ctx.globalAlpha=.47;ctx.fillText("MESA DE MONTAJE  ·  220 × 145 CM",TABLE.width/2,TABLE.height-119);ctx.globalAlpha=1;
+ ctx.font="24px system-ui";ctx.fillStyle="#b9d6a7";ctx.globalAlpha=.47;ctx.fillText("MESA DE MONTAJE  ·  "+Math.round(b.width/10)+" × "+Math.round(b.height/10)+" CM",TABLE.width/2,TABLE.height-119);ctx.globalAlpha=1;
  for(const corner of [[76,76],[TABLE.width-76,76],[76,TABLE.height-76],[TABLE.width-76,TABLE.height-76]]){
   ctx.fillStyle="#503725";ctx.beginPath();ctx.arc(corner[0],corner[1],17,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle="#d4b57b";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(corner[0]-8,corner[1]);ctx.lineTo(corner[0]+8,corner[1]);ctx.stroke();
@@ -448,7 +452,7 @@ function makeView(canvas,mode){
  const dpr=Math.min(2,window.devicePixelRatio||1);
  const w=canvas.width/dpr,h=canvas.height/dpr;
  const portrait=h>w*1.1,angle=portrait?Math.PI/2:0;
- const target=mode==="build"?{left:0,right:TABLE.width,top:0,bottom:TABLE.height}:
+ const target=mode==="build"?state.track.board:
   {left:state.track.bounds.left-160,right:state.track.bounds.right+160,
    top:state.track.bounds.top-160,bottom:state.track.bounds.bottom+160};
  const cx=(target.left+target.right)/2,cy=(target.top+target.bottom)/2;
