@@ -115,7 +115,7 @@ assert.ok(Number.isFinite(midpoint.x)&&Number.isFinite(midpoint.y));
 const nearest=nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y);
 assert.equal(nearest.index,0,"Tap should select a physical part");
 assert.match(html,/id="loadingScreen"/,"Pantalla de carga de desarrollo");
-assert.match(html,/DEV 0\.5\.1/,"Versión de desarrollo visible");
+assert.match(html,/DEV 0\.5\.2/,"Versión de desarrollo visible");
 assert.match(html,/id="loadingStatus"/,"Estado de carga visible");
 assert.match(html,/id="gridToggle"/,"Botón de retícula milimetrada");
 assert.match(app,/const KEY="slotrace-lab-05"/,"Estado nuevo para conservar construcción anterior");
