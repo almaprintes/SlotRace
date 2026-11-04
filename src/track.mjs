@@ -23,6 +23,11 @@ export const CATALOG = Object.freeze({
 });
 export const STARTER=Object.freeze(["S350","S350","R2R","R2R","R2R","R2R",
   "S350","S350","R2R","R2R","R2R","R2R"]);
+export const FIGURE_EIGHT=Object.freeze([
+ "S350","S350",...Array(5).fill("R2R"),
+ ...Array(4).fill("S350"),
+ ...Array(5).fill("R2L"),"S350","S350"
+]);
 const EPS=1e-7;
 const SNAP_MM=3; // tolerancia del conector: no estiramos piezas.
 const SNAP_RAD=Math.PI/180; // 1 grado máximo.
