@@ -16,6 +16,10 @@ export const CATALOG = Object.freeze({
 export const STARTER=Object.freeze(["S350","S350","R2R","R2R","R2R","R2R",
   "S350","S350","R2R","R2R","R2R","R2R"]);
 const EPS=1e-7;
+const SNAP_MM=3; // tolerancia del conector: no estiramos piezas.
+const SNAP_RAD=Math.PI/180; // 1 grado máximo.
+const BOARD_MARGIN=180; // margen virtual alrededor de la pista.
+
 const hypot=Math.hypot;
 const norm=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export function allowed(types){
@@ -41,6 +45,8 @@ function lineIntersects(a,b,c,d){
 function crossed(parts,closed){
   for(let i=0;i<parts.length;i++){
     for(let j=i+2;j<parts.length;j++){
+      // Sólo omitimos el empalme entre el primer y último módulo si de verdad cerró.
+      // Los cruces de una pista abierta también cuentan.
       if(closed&&i===0&&j===parts.length-1)continue;
       const a=parts[i].points,b=parts[j].points;
       for(let x=0;x<a.length-1;x++)for(let y=0;y<b.length-1;y++){
@@ -66,7 +72,16 @@ export function buildTrack(types,origin=START){
   }
   const gap=hypot(pose.x-origin.x,pose.y-origin.y);
   const headingGap=Math.abs(norm(pose.h-origin.h));
-  const closed=types.length>=4&&gap<0.35&&headingGap<.005;
+  const closed=types.length>=4&&gap<=SNAP_MM&&headingGap<=SNAP_RAD;
+  if(closed&&parts.length){
+    // El cierre se asienta sobre un único conector común; diferencias submilimétricas
+    // del muestreo se eliminan sin deformar el catálogo de piezas.
+    const endPoint=points[points.length-1];
+    endPoint.x=origin.x;endPoint.y=origin.y;endPoint.h=origin.h;
+    const lastPart=parts[parts.length-1];
+    lastPart.points[lastPart.points.length-1]=endPoint;
+    lastPart.end={...endPoint};
+  }
   const bounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity};
   for(const p of points){
     bounds.left=Math.min(bounds.left,p.x-TRACK_WIDTH/2);
@@ -74,12 +89,26 @@ export function buildTrack(types,origin=START){
     bounds.top=Math.min(bounds.top,p.y-TRACK_WIDTH/2);
     bounds.bottom=Math.max(bounds.bottom,p.y+TRACK_WIDTH/2);
   }
-  const onTable=bounds.left>=TABLE.edge&&bounds.right<=TABLE.width-TABLE.edge&&
-    bounds.top>=TABLE.edge&&bounds.bottom<=TABLE.height-TABLE.edge;
-  const intersection=closed&&crossed(parts,closed);
+  // La mesa del taller se amplía si el circuito requiere más superficie.
+  // No reducimos ni desplazamos el radio de las curvas para fingir un cierre.
+  const board={left:0,top:0,right:TABLE.width,bottom:TABLE.height};
+  if(types.length){
+    board.left=Math.min(0,Math.floor((bounds.left-BOARD_MARGIN)/100)*100);
+    board.top=Math.min(0,Math.floor((bounds.top-BOARD_MARGIN)/100)*100);
+    board.right=Math.max(TABLE.width,Math.ceil((bounds.right+BOARD_MARGIN)/100)*100);
+    board.bottom=Math.max(TABLE.height,Math.ceil((bounds.bottom+BOARD_MARGIN)/100)*100);
+  }
+  board.width=board.right-board.left;board.height=board.bottom-board.top;
+  board.expanded=board.width>TABLE.width||board.height>TABLE.height;
+  const onTable=bounds.left>=board.left+TABLE.edge&&bounds.right<=board.right-TABLE.edge&&
+    bounds.top>=board.top+TABLE.edge&&bounds.bottom<=board.bottom-TABLE.edge;
+  const intersection=crossed(parts,closed);
   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
   return{parts,types:[...types],points,lanes,closed,onTable,intersection,
-    valid:closed&&onTable&&!intersection,ends:{begin:{...origin},end:{...pose}},gap,headingGap,bounds,
+    valid:closed&&onTable&&!intersection,ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
+    gap,headingGap,bounds,board,
+    connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,
+    nearConnection:gap<=TRACK_WIDTH&&types.length>=4,
     length:lanes.reduce((acc,l)=>acc+l.total,0)/2};
 }
 export function positionAt(lane,distance){
@@ -106,4 +135,55 @@ export function nearestPiece(track,x,y){
 }
 export function countPieces(types){
   return Object.fromEntries(Object.keys(CATALOG).map(id=>[id,types.filter(t=>t===id).length]));
+}
+
+// Busca un cierre utilizando sólo módulos que existan realmente en el inventario.
+// Prioriza conservar la mayor parte posible del circuito; comprueba cruces antes
+// de proponer un resultado. No crea piezas de transición deformadas.
+export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}={}){
+  if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
+  const current=buildTrack(types);
+  if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
+  const ids=Object.keys(CATALOG),target=START;
+  let visits=0;
+  // Cuanto menos se edita, antes se evalúa. Así no se rehace el circuito arbitrariamente.
+  for(let cost=1;cost<=maxReplace+maxAdd;cost++){
+    for(let replace=0;replace<=Math.min(maxReplace,cost,types.length);replace++){
+      const add=cost; // costes: quitar un tramo + añadir otros
+      const inserted=cost-replace;
+      if(inserted>maxAdd||inserted<1)continue;
+      const prefix=types.slice(0,types.length-replace);
+      const counts={};
+      for(const id of prefix)counts[id]=(counts[id]||0)+1;
+      const origin=buildTrack(prefix).ends.end;
+      const proposed=[];
+      function recurse(pose,remaining){
+        if(++visits>maxStates)return null;
+        if(remaining===0){
+          const gap=hypot(pose.x-target.x,pose.y-target.y);
+          const headingGap=Math.abs(norm(pose.h-target.h));
+          if(gap>SNAP_MM||headingGap>SNAP_RAD)return null;
+          const guess=[...prefix,...proposed];
+          if(guess.length<4)return null;
+          const built=buildTrack(guess);
+          return built.valid?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
+        }
+        if(hypot(pose.x-target.x,pose.y-target.y)>remaining*380+SNAP_MM)return null;
+        for(const id of ids){
+          if((counts[id]||0)>=CATALOG[id].stock)continue;
+          counts[id]=(counts[id]||0)+1;proposed.push(id);
+          const next=positionOnPiece(pose,id,1);
+          const found=recurse(next,remaining-1);
+          proposed.pop();counts[id]--;
+          if(found)return found;
+          if(visits>maxStates)return null;
+        }
+        return null;
+      }
+      const result=recurse(origin,inserted);
+      if(result)return result;
+      if(visits>maxStates)return{ok:false,reason:"La búsqueda llegó al límite de combinaciones; elimina el tramo que se cruza.",limited:true};
+    }
+  }
+  return{ok:false,reason:current.intersection?"La pista se cruza a la misma altura; necesitas modificar ese tramo o usar un puente.":"No existe un cierre con las piezas disponibles y los últimos tramos; modifica la dirección o las rectas."};
 }
