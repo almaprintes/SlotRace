@@ -19,6 +19,7 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
+  drift:0,driftDirection:0,deslot:null,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
@@ -53,7 +54,7 @@ function changeTypes(next,msg,loose=state.loose){
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.buttonGas=false;state.keyboardGas=false;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -156,27 +157,48 @@ function completeLap(){
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
  state.seconds=0;state.lap++;
 }
+// Ajustes del prototipo: más velocidad, mayor margen en curvas y aviso
+// visual de pérdida de adherencia antes de llegar al trompo.
+const DRIVE=Object.freeze({
+ maxSpeed:1250,topSpeed:1150,curveBase:690,derailMultiplier:1.20,
+ driftStartsAt:.72,driftMaxAngle:.23,driftMaxOffset:12
+});
+function curveLimit(p,lane){
+ if(!p||!p.curve)return Infinity;
+ const radius=Math.max(130,p.radius+(lane?LANE_OFFSET:-LANE_OFFSET)*p.curve);
+ return DRIVE.curveBase*Math.sqrt(radius/CATALOG.R2R.radius)*DRIVE.derailMultiplier;
+}
 function simulation(dt){
  if(!state.run||!state.track.valid)return;
- state.seconds+=dt;
- if(state.penalty>0){state.penalty=Math.max(0,state.penalty-dt);return;}
+ state.seconds+=dt; // la penalización forma parte del tiempo de vuelta
+ if(state.penalty>0){
+  state.penalty=Math.max(0,state.penalty-dt);
+  if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
+  if(state.penalty===0){state.deslot=null;state.drift=0;}
+  return;
+ }
  const g=state.keyboardGas?1:state.gas;
- // Cada porcentaje de gatillo tiene una velocidad objetivo proporcional.
- // La respuesta con inercia hace que el coche avance incluso a 20-30 %
- // y que al bajar el dedo reduzca sin detenerse de golpe.
- const targetSpeed=g*950;
- const response=g>0?1.9:2.7;
- state.speed=Math.max(0,Math.min(1300,
+ const targetSpeed=g*DRIVE.topSpeed;
+ const response=g>0?2.25:2.9;
+ state.speed=Math.max(0,Math.min(DRIVE.maxSpeed,
   state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
  ));
  const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
- if(p?.curve){
-  const r=Math.max(130,p.radius+(state.lane?LANE_OFFSET:-LANE_OFFSET)*p.curve);
-  const safe=610*Math.sqrt(r/CATALOG.R2R.radius);
-  if(state.speed>safe*1.10){
-   state.speed=0;state.penalty=3;toast("¡Fuera de pista! +3 segundos de inmovilización.");return;
-  }
+ const limit=curveLimit(p,state.lane);
+ const ratio=Number.isFinite(limit)?state.speed/limit:0;
+ if(ratio>1){
+  state.speed=0;state.penalty=3;
+  state.drift=0;
+  // El circuito y la distancia permanecen intactos. Solo animamos
+  // la salida lateral y el giro, y lo devolvemos al mismo punto.
+  state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
+  toast("¡Trompo! Fuera de pista · +3 s.");return;
  }
+ const desired= p?.curve?
+  Math.max(0,Math.min(1,(ratio-DRIVE.driftStartsAt)/(1-DRIVE.driftStartsAt))):0;
+ // Entrada y salida suaves del derrape: no salta al cruzar un empalme.
+ state.drift+=(desired-state.drift)*(1-Math.exp(-9*dt));
+ state.driftDirection=state.drift>.002?(p?.curve||state.driftDirection):0;
  state.distance+=state.speed*dt;
  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
 }
