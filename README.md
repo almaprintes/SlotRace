@@ -1,4 +1,4 @@
-# SlotRace LAB — prototipo 0.1
+# SlotRace LAB — prototipo 0.2
 
 Repositorio autónomo **SlotRace**: primera versión del laboratorio jugable. Totalmente separado del código y del despliegue público de Top Down RACE.
 
@@ -7,6 +7,16 @@ Repositorio autónomo **SlotRace**: primera versión del laboratorio jugable. To
 **Para probar en móvil:** una vez activado GitHub Pages en Settings → Pages → Source: GitHub Actions, entra en https://almaprintes.github.io/SlotRace/ .
 
 Localmente abre `index.html` en un navegador moderno. Es un prototipo HTML autónomo, sin dependencias ni conexión a Supabase. Para servirlo desde un ordenador también puedes ejecutar `python3 -m http.server 8080` en la raíz del repositorio y abrir `http://localhost:8080/`.
+
+## Cómo conducir en móvil
+
+1. Abre la web y pulsa **«🏁 Jugar a pantalla completa»** junto a la vista cenital.
+2. El juego abre una vista sin scroll con pista, cronómetro, vuelta y gatillo siempre visibles.
+3. **Mantén** el botón «MANTENER ACELERADOR» para acelerar a fondo, o **arrastra y mantén** el deslizador para regular el gatillo de forma analógica. Al soltar el dedo, el deslizador vuelve a 0.
+4. **Pausar / Seguir** permite detener y continuar; puedes **cambiar de carril mientras esté pausado**.
+5. Pulsa **Salir** para volver a editar la pista. La carrera se pausa.
+
+En vertical, la pista se gira automáticamente en pantalla para ocupar más espacio, **sin cambiar la geometría real de las piezas**.
 
 ## Qué funciona
 
@@ -19,7 +29,7 @@ Localmente abre `index.html` en un navegador moderno. Es un prototipo HTML autó
 - Cronometraje por carril, mejores vueltas independientes y **suma de los dos mejores tiempos**, incluso de intentos distintos.
 - Pausa, reinicio y cambio de carril **solo fuera de la conducción**.
 - Autoguardado de diseño y récords personales en el navegador (localStorage).
-- Adaptación visual básica a pantallas móviles.
+- Modo de pilotaje dedicado a pantalla completa en iPhone y Android, con controles permanentes abajo y HUD arriba, sin scroll mientras se conduce.
 
 ## Qué NO es todavía
 
