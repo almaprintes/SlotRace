@@ -1,4 +1,4 @@
-import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure} from "./track.mjs";
+import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-04";
@@ -147,7 +147,7 @@ function simulation(dt){
  const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
  if(p?.curve){
   const r=Math.max(130,p.radius+(state.lane?LANE_OFFSET:-LANE_OFFSET)*p.curve);
-  const safe=610*Math.sqrt(r/370);
+  const safe=610*Math.sqrt(r/CATALOG.R2R.radius);
   if(state.speed>safe*1.10){
    state.speed=0;state.penalty=3;toast("¡Fuera de pista! +3 segundos de inmovilización.");return;
   }
@@ -540,6 +540,10 @@ function initEvents(){
  $("pause").addEventListener("click",pause);
  $("lane").addEventListener("click",switchLane);
  $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[]);state.camera={panX:0,panY:0,zoom:1};});
+ $("eight").addEventListener("click",()=>{
+   changeTypes(FIGURE_EIGHT.slice(),"Ocho simétrico de 225° + 225°: los conectores coinciden; falta construir el puente del cruce.",[]);
+   state.camera={panX:0,panY:0,zoom:1};
+ });
  $("clear").addEventListener("click",()=>changeTypes([],"Mesa vacía: arrastra o toca piezas de la caja.",[]));
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
