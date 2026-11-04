@@ -43,6 +43,9 @@ jobs:
       - name: Comprobar mesa-puzzle táctil y piezas independientes
         run: node tests/puzzle-table.cjs
 
+      - name: Comprobar caja de corcho y extracción de inventario
+        run: node tests/foam-case.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
