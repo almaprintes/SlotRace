@@ -1,4 +1,4 @@
-import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure} from "./track.mjs";
+import {TABLE,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,positionOnPiece,findLegalClosure,carTrackLevel} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-05";
@@ -230,7 +230,14 @@ function updateHud(){
  $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
  $("bestRight").textContent=v[1]===null?"—":format(v[1])+" s";
  $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
- $("raceHint").textContent=state.penalty>0?"FUERA DE PISTA · "+state.penalty.toFixed(1)+" s":state.run?"Levanta el dedo al entrar en la curva":"EN PAUSA";
+ const pose=positionAt(state.track.lanes[state.lane],state.distance);
+ const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
+ const underCrossing=isBelow&&pose&&state.track.parts.length>=3&&
+   Math.hypot(pose.x-state.track.parts[1].end.x,pose.y-state.track.parts[1].end.y)<135;
+ $("raceHint").textContent=state.penalty>0?"FUERA DE PISTA · "+state.penalty.toFixed(1)+" s":
+   !state.run?"EN PAUSA":
+   underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
+   "Levanta el dedo al entrar en la curva";
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").disabled=state.run;
  $("trigger").disabled=!state.run;
@@ -635,7 +642,7 @@ function renderScene(canvas,mode){
  paintTable(ctx);paintGrid(ctx);
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=positionAt(track.lanes[state.lane],mode==="race"?state.distance:0);
- const carAbove=hasBridge&&p&&track.bridge.overParts.includes(p.pieceIndex);
+ const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
  if(hasBridge){
   // Primero los raíles de abajo. Si el coche está en el nivel inferior,
   // se pinta AHORA: después el puente lo ocultará al cruzar.
