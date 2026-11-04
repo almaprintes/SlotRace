@@ -2,7 +2,7 @@
 // Referencias: pista de 156 mm, recta Sport 350/175 mm y curvas R2 45°.
 // La compatibilidad física con fabricantes NO está certificada.
 export const TABLE = Object.freeze({width:2200,height:1450,edge:62});
-export const START = Object.freeze({x:380,y:325,h:0});
+export const START = Object.freeze({x:750,y:325,h:0});
 export const TRACK_WIDTH = 156;
 export const LANE_OFFSET = 39;
 export const CATALOG = Object.freeze({
