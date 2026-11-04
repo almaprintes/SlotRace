@@ -1,8 +1,19 @@
-# SlotRace · DEV 0.9.1 — maletín desplazable y piezas realistas
+# SlotRace · DEV 0.9.2 — arrastre iPhone y uniones sin sombras
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.io/Sl## DEV 0.9.1 — scroll táctil y acabado idéntico en mesa/caja
+**Enlace:** https://almaprintes.github.io/Sl### DEV 0.9.2 — arrastre táctil real y uniones magnéticas continuas
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.2
+
+- El asa ⠿ de cada pieza se ha ampliado a **39 × 38 px** y tiene sus propios eventos `pointerdown/move/up/cancel` con captura sobre el asa, no sobre el botón del inventario. **Arrastrar desde el asa** lleva la pieza a la mesa; deslizar el resto de la espuma sigue haciendo scroll vertical.
+- Los tramos sueltos conectados mediante el sistema magnético (`magnetGroup`) se representan como **un único perfil y una única sombra exterior**, utilizando una ruta continua. Únicamente se pintan juntas en los **dos extremos del grupo**; nunca una sombra negra entre piezas ya acopladas.
+- Se conserva la selección por tramo/pieza, el guardado y la compatibilidad con las partidas de DEV 0.9.1.
+- Pruebas: los ocho conjuntos de verificación han pasado en entorno JavaScript, incluidos tests de arrastre con captura en el asa y de ausencia de sombras/juntas interiores. **La respuesta real al gesto en Safari iPhone debe verificarse manualmente en el dispositivo.**
+
+---
+
+# DEV 0.9.1 — scroll táctil y acabado idéntico en mesa/caja
 
 **Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.1
 
