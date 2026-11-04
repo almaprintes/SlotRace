@@ -153,5 +153,37 @@ const path=require("node:path");
  for(let i=0;i<8;i++)physics.simulationStep(1/60);
  assert.equal(st.penalty,0,"Al reducir el gas no debe haber salida tardía");
  assert.ok(st.gripDebt<initialDebt,"Reducir gas debe recuperar agarre");
+ // Verificación DINÁMICA del ocho de 18 piezas: los límites no sólo
+ // deben dar el valor teórico; deben aplicarse al recorrer ambos lóbulos.
+ function testEightCurve(pieceId,laneId,gas){
+  const lane=eight.lanes[laneId];
+  const index=lane.nodes.findIndex(p=>p.pieceIndex===pieceId);
+  const endIndex=lane.nodes.findLastIndex(p=>p.pieceIndex===pieceId);
+  const turnEnd=lane.nodes.findLastIndex(p=>p.pieceIndex===pieceId+4);
+  assert.ok(index>1&&endIndex>index&&turnEnd>endIndex);
+  const start=lane.lengths[index-1],firstLength=lane.lengths[endIndex]-start;
+  Object.assign(st,{
+   lane:laneId,gas,speed:gas*physics.DRIVE.topSpeed,distance:start+1,
+   cornerDistance:0,cornerDirection:0,gripDebt:0,penalty:0,
+   deslot:null,drift:0,driftDirection:0,seconds:0,run:true
+  });
+  for(let i=0;i<500&&st.penalty===0&&st.distance<lane.lengths[turnEnd];i++)
+   physics.simulationStep(1/60);
+  return{crashed:st.penalty>0,advance:st.distance-start,firstLength};
+ }
+ for(const [startPiece,innerLane,outerLane] of [[4,1,0],[13,0,1]]){
+  const slowInner=testEightCurve(startPiece,innerLane,.65);
+  const fastInner=testEightCurve(startPiece,innerLane,.70);
+  const slowOuter=testEightCurve(startPiece,outerLane,.75);
+  const fastOuter=testEightCurve(startPiece,outerLane,.80);
+  assert.equal(slowInner.crashed,false,"En ambos lóbulos: interior 65% estable");
+  assert.equal(fastInner.crashed,true,"En ambos lóbulos: interior 70% se sale");
+  assert.equal(slowOuter.crashed,false,"En ambos lóbulos: exterior 75% estable");
+  assert.equal(fastOuter.crashed,true,"En ambos lóbulos: exterior 80% se sale");
+  assert.ok(fastInner.advance>fastInner.firstLength*.5,
+   "El coche no sale antes de media curva interior del ocho");
+  assert.ok(fastOuter.advance>fastOuter.firstLength*.5,
+   "El coche no sale antes de media curva exterior del ocho");
+ }
  console.log("SlotRace DEV 0.5.7: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
