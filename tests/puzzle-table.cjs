@@ -99,8 +99,25 @@ const path=require("node:path");
  game.puzzle.startSelectedPiece();
  assert.deepEqual(st.types,["S350","R2R"],"Only an intentionally joined piece snaps");
  assert.equal(st.loose.length,1,"Third scattered piece remains where it was");
+ // También se pueden conectar piezas por el comienzo, como en un puzzle.
+ game.puzzle.scatterLoose("S175");
+ const prepend=st.loose.length-1,prior=st.track.parts.map(x=>({...x.start}));
+ const newH=st.origin.h;
+ const idealStart={x:st.origin.x-175*Math.cos(newH),
+                   y:st.origin.y-175*Math.sin(newH),h:newH};
+ st.loose[prepend].x=idealStart.x+5;
+ st.loose[prepend].y=idealStart.y+5;
+ st.loose[prepend].h=newH;
+ st.looseSelection=prepend;
+ game.puzzle.startSelectedPiece();
+ assert.deepEqual(st.types,["S175","S350","R2R"],"Join at first connector prepends a piece");
+ for(let i=0;i<prior.length;i++){
+  assert.ok(Math.hypot(st.track.parts[i+1].start.x-prior[i].x,
+                      st.track.parts[i+1].start.y-prior[i].y)<1e-6,
+    "Prepending cannot move original assembled pieces");
+ }
  const stored=JSON.parse(saved.get("slotrace-lab-05"));
- assert.equal(stored.origin.x,positions[0].x,"World anchor persists");
+ assert.ok(Math.abs(stored.origin.x-idealStart.x)<1e-5,"Prepending updates and persists world anchor");
  assert.equal(stored.loose.length,1,"Loose pieces persist to local storage");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
  console.log("SlotRace DEV 0.6.0 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
