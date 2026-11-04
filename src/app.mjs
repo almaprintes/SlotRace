@@ -161,19 +161,23 @@ function updateUI(){
  $("buildStatus").classList.toggle("warn",!t.valid);
  $("play").textContent=t.valid?"🏁 Correr":"🏁 Probar óvalo";
  $("restore").hidden=!state.draft;
- $("selected").textContent=state.selection<0?"Toca una pieza de la mesa para seleccionarla":
-  "Pieza "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
- $("remove").disabled=state.selection<0;
+ $("selected").textContent=state.looseSelection>=0?"SUELTA · "+CATALOG[state.loose[state.looseSelection].id].name:
+ state.selection<0?"TOCA UNA PIEZA O ARRÁSTRALA A LA MESA":
+  "TRAMO "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
+ $("remove").disabled=state.selection<0&&state.looseSelection<0;
+ $("rotate").disabled=state.looseSelection<0;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
-  const id=el.dataset.piece,free=freeStock(state.types,id)+(state.selection>=0&&state.types[state.selection]===id?1:0);
+  const id=el.dataset.piece,free=freeStock([...state.types,...state.loose.map(p=>p.id)],id)+(state.selection>=0&&state.types[state.selection]===id?1:0)+(state.looseSelection>=0&&state.loose[state.looseSelection].id===id?1:0);
   el.querySelector(".qty").textContent="×"+free;
   el.disabled=free===0;
-  el.classList.toggle("selected",state.selection>=0&&state.types[state.selection]===id);
+  el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===id)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===id));
  }
- $("tableCaption").textContent=state.selection>=0?"PIEZA SELECCIONADA · toca otra para cambiar":"ARRASTRA PARA MOVER LA MESA · PELLIZCA PARA ZOOM";
+ $("tableCaption").textContent=state.looseSelection>=0?"PIEZA SUELTA · arrástrala al conector amarillo":
+ state.selection>=0?"TRAMO SELECCIONADO · toca otra pieza para sustituirlo":
+ state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":"ARRASTRA UNA PIEZA DESDE ⠿ · PELLIZCA PARA ZOOM";
  updateHud();
 }
 const paletteIcons={S350:"━",S175:"─",R2R:"↷",R2L:"↶",R1R:"⤷",R1L:"⤶"};
@@ -182,8 +186,39 @@ function palette(){
  for(const [id,spec] of Object.entries(CATALOG)){
   const b=document.createElement("button");b.type="button";b.className="piece-card";b.dataset.piece=id;
   b.setAttribute("aria-label",spec.name+", "+spec.code);
-  b.innerHTML='<span class="qty">×0</span><span class="pictogram" aria-hidden="true">'+paletteIcons[id]+'</span><strong>'+spec.name+'</strong><small>'+spec.code+'</small>';
+  b.innerHTML='<span class="qty">×0</span><span class="pictogram" aria-hidden="true">'+paletteIcons[id]+'</span><strong>'+spec.name+'</strong><small>'+spec.code+'</small><span class="grip" title="Arrastrar pieza a la mesa" aria-hidden="true">⠿</span>';
   b.addEventListener("click",()=>inventoryAction(id));
+  const grip=b.querySelector(".grip");
+  grip.addEventListener("click",e=>e.stopPropagation());
+  grip.addEventListener("pointerdown",e=>{
+   e.preventDefault();e.stopPropagation();
+   if(freeStock([...state.types,...state.loose.map(p=>p.id)],id)<1){toast("No quedan piezas.");return;}
+   state.dragging={id,x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,active:false};
+   grip.setPointerCapture(e.pointerId);updateUI();
+  });
+  grip.addEventListener("pointermove",e=>{
+   if(!state.dragging||state.dragging.id!==id)return;
+   state.dragging.x=e.clientX;state.dragging.y=e.clientY;
+   if(Math.hypot(e.clientX-state.dragging.originX,e.clientY-state.dragging.originY)>9)state.dragging.active=true;
+  });
+  const drop=e=>{
+   if(!state.dragging||state.dragging.id!==id)return;
+   const d=state.dragging;state.dragging=null;updateUI();
+   if(!d.active){inventoryAction(id);return;}
+   const rect=editCanvas.getBoundingClientRect();
+   if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
+    toast("Suelta la pieza dentro de la mesa.");return;
+   }
+   const p=screenToWorld(e);
+   if(p.x<85||p.x>TABLE.width-85||p.y<85||p.y>TABLE.height-85){toast("Suelta dentro del tapete verde.");return;}
+   const end=state.track.ends.end;
+   if(!state.track.closed&&Math.hypot(p.x-end.x,p.y-end.y)<175){
+    changeTypes([...state.types,id],"¡Clac! Pieza encajada magnéticamente.");return;
+   }
+   addLoose(id,p.x,p.y);
+  };
+  grip.addEventListener("pointerup",drop);
+  grip.addEventListener("pointercancel",()=>{state.dragging=null;updateUI();});
   list.appendChild(b);
  }
 }
