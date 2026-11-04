@@ -1,6 +1,6 @@
 # SlotRace — familia PT-Precision v1 (geometría matemática)
 
-**Estado (04-11-2026):** especificación y motor matemático independientes, bajo pruebas. Aún **no** está seleccionable en el maletín de DEV 0.8.1; no sustituye los circuitos guardados ni la física activa.
+**Estado (04-11-2026):** familia integrada en la **DEV 0.9.0**: 13 cavidades del maletín, variantes dirigidas, giro de 22,5°, cierre geométrico y plantillas de óvalo/ocho. Sistema experimental; no certifica compatibilidad mecánica con pistas físicas.
 
 ## Referencia visual y documental
 
@@ -54,4 +54,4 @@ Código matemático independiente: `src/pt-precision.mjs`. Prueba de regresión:
 
 Pruebas: 20 IDs válidos; 156 mm entre ejes concéntricos; cuarta recta exacta; equivalencias de arcos, círculos completos R1–R4, óvalo y ocho exactos; accesorios especiales protegidos.
 
-**Migración siguiente:** conectar esta familia al catálogo y al maletín de SlotRace como una versión nueva (cambio funcional mayor de alcance), añadir selección por familia, arreglar el modo de inversión sin duplicar huecos y actualizar la plantilla de puente/física sin alterar los guardados antiguos. **No** cambiar a ciegas `src/track.mjs` mientras las pruebas DEV 0.8.1 dependan del radio anterior.
+**Integración DEV 0.9.0:** `src/track.mjs` usa `PARTS` y `RADII` de esta familia; el maletín agrupa curvas por molde y permite alternar el sentido; `index.html` incluye los dos controles independientes; el ocho tiene la segunda recta de 584 mm elevada. La nueva clave `slotrace-lab-09` evita reutilizar automáticamente construcciones de la DEV 0.8.1. Próxima línea de trabajo: implementar y validar topologías especiales (cambio de carril, cruce, chicanes y bordes) sin fingir conexiones ni trayectorias.
