@@ -32,7 +32,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.6.0");
+ assert.equal(game.version,"DEV 0.7.0");
  game.openRace();
  const st=game.state,physics=game.physics;
  assert.equal(st.track.valid,true);
@@ -87,5 +87,5 @@ const path=require("node:path");
  assert.equal(st.distance,fixedDistance,"Car returns to same point");
  assert.equal(st.lap,lap,"Lap remains valid");
  assert.ok(st.seconds>3,"Chronometer continues throughout the penalty");
- console.log("SlotRace DEV 0.6.0: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
+ console.log("SlotRace DEV 0.7.0: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
