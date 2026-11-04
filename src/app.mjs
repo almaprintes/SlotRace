@@ -344,6 +344,62 @@ function paintCar(ctx,at,lane,paused=false){
  ctx.fillStyle="#092b30";ctx.font="bold 21px sans-serif";ctx.textAlign="center";ctx.fillText("7",-38,8);
  ctx.restore();
 }
+function loosePart(piece,index){
+ const n=CATALOG[piece.id].length?7:20;
+ const pose={x:piece.x,y:piece.y,h:piece.h};
+ const points=Array.from({length:n+1},(_,k)=>positionOnPiece(pose,piece.id,k/n));
+ return{id:piece.id,index,start:pose,end:points[points.length-1],points};
+}
+function paintLoose(ctx){
+ for(const [index,p] of state.loose.entries()){
+  const part=loosePart(p,index);
+  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=20;ctx.shadowOffsetY=13;
+  strokePath(ctx,part.points,"#10181a",TRACK_WIDTH+22);ctx.restore();
+  strokePath(ctx,part.points,"#728184",TRACK_WIDTH+12);
+  strokePath(ctx,part.points,"#2a353a",TRACK_WIDTH+2);
+  strokePath(ctx,part.points,"#38434a",TRACK_WIDTH-13);
+  for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+   strokePath(ctx,translated(part.points,off),"#071015",10);
+   strokePath(ctx,translated(part.points,off-7),"#a0afb3",2);
+   strokePath(ctx,translated(part.points,off+7),"#a0afb3",2);
+  }
+  paintSeam(ctx,part.start);
+  if(state.mode==="build"&&index===state.looseSelection){
+   ctx.save();ctx.globalAlpha=.45;strokePath(ctx,part.points,"#f4d06c",TRACK_WIDTH+25);ctx.restore();
+  }
+  if(state.mode==="build"&&!state.track.closed){
+   const end=state.track.ends.end;
+   if(Math.hypot(p.x-end.x,p.y-end.y)<175){
+    ctx.save();ctx.lineWidth=9;ctx.strokeStyle="#84f6c0";ctx.setLineDash([20,12]);
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(end.x,end.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+   }
+  }
+ }
+ if(state.dragging?.active&&state.mode==="build"){
+  const d=state.dragging,rect=editCanvas.getBoundingClientRect();
+  const w=worldFromPointer(makeView(editCanvas,"build"),d.x-rect.left,d.y-rect.top);
+  if(w.x>=0&&w.x<=TABLE.width&&w.y>=0&&w.y<=TABLE.height){
+   const end=state.track.ends.end,snap=!state.track.closed&&Math.hypot(w.x-end.x,w.y-end.y)<175;
+   const pose=snap?{x:end.x,y:end.y,h:end.h}:{x:w.x,y:w.y,h:0};
+   const spec=CATALOG[d.id],n=spec.length?7:20;
+   const points=Array.from({length:n+1},(_,k)=>positionOnPiece(pose,d.id,k/n));
+   ctx.save();ctx.globalAlpha=.63;
+   strokePath(ctx,points,snap?"#66ffe0":"#ffcc7c",TRACK_WIDTH+22);
+   strokePath(ctx,points,"#25313b",TRACK_WIDTH);
+   for(const off of [-LANE_OFFSET,LANE_OFFSET])strokePath(ctx,translated(points,off),"#081017",9);
+   ctx.restore();
+  }
+ }
+}
+function nearestLoose(x,y){
+ let best={index:-1,distance:Infinity};
+ for(let i=0;i<state.loose.length;i++){
+  const part=loosePart(state.loose[i],i);
+  const hit=nearestPiece({parts:[part]},x,y);
+  if(hit.distance<best.distance)best={index:i,distance:hit.distance};
+ }
+ return best;
+}
 function paintGhost(ctx,track){
  if(!track.parts.length||track.closed||state.mode!=="build")return;
  const e=track.ends.end;
@@ -391,7 +447,7 @@ function renderScene(canvas,mode){
  ctx.setTransform(v.dpr,0,0,v.dpr,0,0);
  ctx.fillStyle="#0a141b";ctx.fillRect(0,0,v.w,v.h);
  ctx.save();transform(ctx,v);
- paintTable(ctx);paintTrack(ctx,state.track,mode==="build");
+ paintTable(ctx);paintTrack(ctx,state.track,mode==="build");paintLoose(ctx);
  paintGhost(ctx,state.track);
  const p=positionAt(state.track.lanes[state.lane],mode==="race"?state.distance:0);
  if(state.track.valid)paintCar(ctx,p,state.lane);
