@@ -60,9 +60,15 @@ const path=require("node:path");
  const render=(distance,time)=>{
   game.state.distance=distance;
   window.__drawLog.length=0;
-  const next=frames.shift();
-  assert.ok(next,"Animación pendiente");
-  now=time;next(now);
+  // Puede haber un fotograma de cierre de la pantalla de carga antes
+  // del siguiente fotograma de juego; esperar al render verdadero.
+  let attempts=0;
+  while(!window.__drawLog.length&&attempts++<5){
+   const next=frames.shift();
+   assert.ok(next,"Animación pendiente");
+   now=time;next(now);
+  }
+  assert.ok(window.__drawLog.length,"El escenario debe dibujarse");
   return window.__drawLog.slice();
  };
  const groundOrder=render(dForPiece(1),16);
