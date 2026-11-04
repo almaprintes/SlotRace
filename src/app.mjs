@@ -673,27 +673,37 @@ function palette(){
   pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
   pocket.innerHTML='<span class="qty">×0</span>'+
     '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
+     '<span class="foam-drag-grip" data-drag-handle="true" aria-hidden="true">⠿</span>'+
     '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>';
-  let suppressNextClick=false;
-  // Un toque saca una pieza; el teclado también puede activarla.
+  let suppressNextClick=false,tapPointer=null;
+  // Pan vertical en la espuma: el navegador hace scroll nativo.
+  // Arrastre de piezas: comenzar sobre el asa ⠿, que captura el puntero.
   pocket.addEventListener("click",e=>{
-   // Ratón y teclado siguen funcionando como alternativa al tacto.
-   // El evento click sintético tras pointerup no debe consumir dos piezas.
    if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
+   suppressNextClick=false;
    inventoryAction(id);
   });
-  // No hace falta localizar una lengüeta diminuta: se puede coger la
-  // pieza desde cualquier punto de su propio hueco troquelado.
   pocket.addEventListener("pointerdown",e=>{
-   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],id)<1)return;
-   e.preventDefault?.();
+   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],pocketPartId(id))<1)return;
    suppressNextClick=false;
+   const grip=e.target?.dataset?.dragHandle==="true";
+   if(!grip){
+    // No llamar preventDefault ni setPointerCapture sobre el botón entero:
+    // eso impedía desplazarse por la caja en Safari iOS.
+    tapPointer=e.pointerType==="mouse"?null:
+     {pointerId:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
+    return;
+   }
+   tapPointer=null;
+   e.preventDefault?.();
    state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
     originX:e.clientX,originY:e.clientY,active:false};
    try{pocket.setPointerCapture(e.pointerId);}catch(err){}
    state.viewDirty=true;
   });
   pocket.addEventListener("pointermove",e=>{
+   if(tapPointer?.pointerId===e.pointerId&&
+      Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9)tapPointer.moved=true;
    const d=state.dragging;
    if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
    d.x=e.clientX;d.y=e.clientY;
@@ -701,12 +711,16 @@ function palette(){
    state.viewDirty=true;
   });
   pocket.addEventListener("pointerup",e=>{
+   if(tapPointer?.pointerId===e.pointerId){
+    const moved=tapPointer.moved||
+      Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9;
+    tapPointer=null;suppressNextClick=true;
+    if(!moved)inventoryAction(id);
+    return;
+   }
    const d=state.dragging;
    if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
    state.dragging=null;state.viewDirty=true;
-   // Un toque corto se resuelve directamente en pointerup; Safari
-   // no siempre envía el click sintético al capturar el puntero.
-   // Si lo envía, se suprime para no extraer dos piezas de una vez.
    suppressNextClick=true;
    if(!d.active){inventoryAction(id);return;}
    const rect=editCanvas.getBoundingClientRect();
@@ -717,12 +731,11 @@ function palette(){
    if(pt.x<b.left+85||pt.x>b.right-85||pt.y<b.top+85||pt.y>b.bottom-85){
     toast("Suelta dentro de la mesa verde.");return;
    }
-   // La pieza sale del maletín, permanece suelta o encaja si toca un
-   // conector. Nunca se desplazan las piezas que ya están colocadas.
-   if(!addLoose(id,pt.x,pt.y))return;
+   if(!addLoose(pocketPartId(id),pt.x,pt.y))return;
    snapLoose(state.loose.length-1,{history:false});
   });
   pocket.addEventListener("pointercancel",e=>{
+   if(tapPointer?.pointerId===e.pointerId){tapPointer=null;suppressNextClick=true;}
    if(state.dragging?.id===id&&state.dragging.pointerId===e.pointerId){
     state.dragging=null;state.viewDirty=true;
    }
@@ -1372,7 +1385,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.9.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
  puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
