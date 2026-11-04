@@ -484,51 +484,95 @@ function updateUI(){
  state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":"ARRASTRA UNA PIEZA DESDE ⠿ · PELLIZCA PARA ZOOM";
  updateHud();
 }
-const paletteIcons={S350:"━",S175:"─",R2R:"↷",R2L:"↶",R1R:"⤷",R1L:"⤶"};
+// Las seis siluetas siguen la GEOMETRÍA de cada módulo: rectas de
+// distintas longitudes y curvas R1/R2 con sentido correcto. Cada huella
+// permanece recortada incluso cuando ya no quedan piezas de ese modelo.
+const pocketNames={S350:"RECTA LARGA",S175:"RECTA CORTA",R2R:"R2 DERECHA",R2L:"R2 IZQUIERDA",R1R:"R1 DERECHA",R1L:"R1 IZQUIERDA"};
+function foamSlotSVG(id){
+ const spec=CATALOG[id],n=spec.length?2:20;
+ const pts=Array.from({length:n+1},(_,i)=>positionOnPiece({x:0,y:0,h:0},id,i/n));
+ const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
+ const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+ const scale=Math.min(.31,80/Math.max(1,maxX-minX),40/Math.max(1,maxY-minY));
+ const tx=(120-(maxX-minX)*scale)/2,ty=(80-(maxY-minY)*scale)/2;
+ const xy=p=>[(tx+(p.x-minX)*scale).toFixed(2),(ty+(p.y-minY)*scale).toFixed(2)];
+ const path=points=>points.map((p,i)=>{const [x,y]=xy(p);return(i?"L":"M")+x+" "+y;}).join(" ");
+ const main=path(pts);
+ const slot=off=>path(pts.map(p=>({x:p.x-Math.sin(p.h)*off,
+   y:p.y+Math.cos(p.h)*off,h:p.h})));
+ const width=TRACK_WIDTH*scale;
+ return '<svg viewBox="0 0 120 80" focusable="false" aria-hidden="true">'+
+  '<path class="foam-cutout-shadow" d="'+main+'" stroke-width="'+(width+13).toFixed(1)+'"/>'+
+  '<path class="foam-cutout" d="'+main+'" stroke-width="'+(width+8).toFixed(1)+'"/>'+
+  '<g class="mini-slot-piece">'+
+   '<path class="mini-slot-stack" transform="translate(0 3)" d="'+main+'" stroke-width="'+(width+4).toFixed(1)+'"/>'+
+   '<path class="mini-slot-rim" d="'+main+'" stroke-width="'+(width+3).toFixed(1)+'"/>'+
+   '<path class="mini-slot-deck" d="'+main+'" stroke-width="'+(width-2).toFixed(1)+'"/>'+
+   '<path class="mini-slot-rail" d="'+slot(-LANE_OFFSET)+'" stroke-width="2"/>'+
+   '<path class="mini-slot-rail" d="'+slot(LANE_OFFSET)+'" stroke-width="2"/>'+
+   '<path class="mini-slot-guide" d="'+slot(-LANE_OFFSET)+'" stroke-width=".8"/>'+
+   '<path class="mini-slot-guide" d="'+slot(LANE_OFFSET)+'" stroke-width=".8"/>'+
+  '</g></svg>';
+}
 function palette(){
  const list=$("pieces");
  for(const [id,spec] of Object.entries(CATALOG)){
-  const b=document.createElement("button");b.type="button";b.className="piece-card";b.dataset.piece=id;
-  b.setAttribute("aria-label",spec.name+", "+spec.code);
-  b.innerHTML='<span class="qty">×0</span><span class="pictogram" aria-hidden="true">'+paletteIcons[id]+'</span><strong>'+spec.name+'</strong><small>'+spec.code+'</small><span class="grip" title="Arrastrar pieza a la mesa" aria-hidden="true">⠿</span>';
-  b.addEventListener("click",()=>inventoryAction(id));
-  const grip=b.querySelector(".grip");
-  grip.addEventListener("click",e=>e.stopPropagation());
-  grip.addEventListener("pointerdown",e=>{
-   e.preventDefault();e.stopPropagation();
-   if(freeStock([...state.types,...state.loose.map(p=>p.id)],id)<1){toast("No quedan piezas.");return;}
-   state.dragging={id,x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,active:false};
-   grip.setPointerCapture(e.pointerId);updateUI();
+  const pocket=document.createElement("button");
+  pocket.type="button";pocket.className="foam-pocket";pocket.dataset.piece=id;
+  pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
+  pocket.innerHTML='<span class="qty">×0</span>'+
+    '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
+    '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>';
+  let suppressNextClick=false;
+  // Un toque saca una pieza; el teclado también puede activarla.
+  pocket.addEventListener("click",()=>{
+   if(suppressNextClick){suppressNextClick=false;return;}
+   inventoryAction(id);
   });
-  grip.addEventListener("pointermove",e=>{
-   if(!state.dragging||state.dragging.id!==id)return;
-   state.dragging.x=e.clientX;state.dragging.y=e.clientY;
-   if(Math.hypot(e.clientX-state.dragging.originX,e.clientY-state.dragging.originY)>9)state.dragging.active=true;
+  // No hace falta localizar una lengüeta diminuta: se puede coger la
+  // pieza desde cualquier punto de su propio hueco troquelado.
+  pocket.addEventListener("pointerdown",e=>{
+   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],id)<1)return;
+   e.preventDefault?.();
+   suppressNextClick=false;
+   state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
+    originX:e.clientX,originY:e.clientY,active:false};
+   try{pocket.setPointerCapture(e.pointerId);}catch(err){}
    state.viewDirty=true;
   });
-  const drop=e=>{
-   if(!state.dragging||state.dragging.id!==id)return;
-   const d=state.dragging;state.dragging=null;updateUI();
-   if(!d.active){inventoryAction(id);return;}
+  pocket.addEventListener("pointermove",e=>{
+   const d=state.dragging;
+   if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
+   d.x=e.clientX;d.y=e.clientY;
+   if(Math.hypot(d.x-d.originX,d.y-d.originY)>9)d.active=true;
+   state.viewDirty=true;
+  });
+  pocket.addEventListener("pointerup",e=>{
+   const d=state.dragging;
+   if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
+   state.dragging=null;state.viewDirty=true;
+   if(!d.active)return; // se resuelve por el evento click normal
+   suppressNextClick=true;
    const rect=editCanvas.getBoundingClientRect();
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
-    toast("Suelta la pieza dentro de la mesa.");return;
+    toast("Suelta la pieza en el tapete. No se ha gastado ninguna.");return;
    }
-   const p=screenToWorld(e),b=state.workBoard;
-   if(p.x<b.left+85||p.x>b.right-85||p.y<b.top+85||p.y>b.bottom-85){
-    toast("Suelta dentro del tapete verde.");return;
+   const pt=screenToWorld(e),b=state.workBoard;
+   if(pt.x<b.left+85||pt.x>b.right-85||pt.y<b.top+85||pt.y>b.bottom-85){
+    toast("Suelta dentro de la mesa verde.");return;
    }
-   // La pieza llega a la mesa como objeto físico independiente.
-   // Sólo encaja si el jugador la suelta cerca del conector libre.
-   if(!addLoose(id,p.x,p.y))return;
-   if(state.types.length&&!state.track.closed){
-    const idx=state.loose.length-1;
-    snapLoose(idx,{history:false});
+   // La pieza sale del maletín, permanece suelta o encaja si toca un
+   // conector. Nunca se desplazan las piezas que ya están colocadas.
+   if(!addLoose(id,pt.x,pt.y))return;
+   if(state.types.length&&!state.track.closed)
+    snapLoose(state.loose.length-1,{history:false});
+  });
+  pocket.addEventListener("pointercancel",e=>{
+   if(state.dragging?.id===id&&state.dragging.pointerId===e.pointerId){
+    state.dragging=null;state.viewDirty=true;
    }
-  };
-  grip.addEventListener("pointerup",drop);
-  grip.addEventListener("pointercancel",()=>{state.dragging=null;updateUI();});
-  list.appendChild(b);
+  });
+  list.appendChild(pocket);
  }
 }
 function roundRect(ctx,x,y,w,h,r){
