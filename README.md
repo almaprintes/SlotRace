@@ -1,9 +1,33 @@
-# SlotRace · DEV 0.7.0 — maletín de piezas con corcho troquelado
+# SlotRace · DEV 0.8.1 — caja infinita de piezas para experimentar
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.8.1 — piezas ilimitadas en la caja de pruebas
+
+**Inventario de desarrollo ilimitado** para los seis modelos que ya existen en el catálogo: rectas S350/S175 y curvas R1/R2 a derecha e izquierda. Cada alojamiento de espuma muestra **∞**, permanece activo tras sacar piezas y permite colocar tantas copias como se necesiten.
+
+- Eliminado el límite anterior de **48 módulos** por circuito y la restricción del número de unidades del kit inicial.
+- La caja muestra **«∞ piezas disponibles · N en la mesa»** sin restar existencias.
+- La búsqueda de cierre también puede utilizar módulos que anteriormente figuraban agotados. Sigue teniendo un límite de iteraciones para evitar bloqueos, pero no uno de existencias.
+- Se conserva la información `stock` del catálogo para representar el kit físico de referencia cuando desactivemos el modo de desarrollo. La opción `UNLIMITED_DEVELOPMENT_STOCK` controla el suministro virtual; no cambia geometría, dimensiones, curvas, controles ni partidas guardadas.
+- El cambio es **menor**: se incrementa únicamente el tercer número, de **0.8.0 a 0.8.1**.
+
+**Pruebas:** `smoke.cjs` comprueba cantidades superiores a las del kit y circuitos de más de 48 módulos; `tests/foam-case.cjs` saca 45 rectas adicionales y comprueba que el hueco sigue mostrando ∞. Se mantienen las siete pruebas automatizadas de versiones anteriores.
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.8.1. En la pantalla de carga y cabecera debe aparecer **DEV 0.8.1**.
+
+### Nota sobre dimensiones
+
+El catálogo de medidas comerciales de Scalextric Sport sigue pendiente de auditoría completa; el inventario infinito no valida ni modifica los radios geométricos provisionales que tiene actualmente el prototipo.
+
+## DEV 0.8.0 — grupos magnéticos y selección
+
+- Los tramos independientes pueden acoplarse mediante sus conectores, con imán entre las piezas sueltas y la cadena principal.
+- Primer toque: selecciona el tramo entero para arrastrarlo. Segundo toque sobre una pieza: selecciona únicamente esa pieza para separarla.
+- Los tramos unidos se mueven como un bloque conservando sus uniones.
 
 ## DEV 0.7.0 — caja física de piezas
 
