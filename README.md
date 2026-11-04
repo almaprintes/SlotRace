@@ -1,59 +1,63 @@
-# SlotRace LAB — prototipo 0.3
+# SlotRace LAB 0.4 — mesa de montaje y Scalextric virtual
 
-Repositorio autónomo **SlotRace**: primera versión del laboratorio jugable. Totalmente separado del código y del despliegue público de Top Down RACE.
+Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-## Cómo abrirlo
+**Enlace:** https://almaprintes.github.io/SlotRace/
 
-**Para probar en móvil:** una vez activado GitHub Pages en Settings → Pages → Source: GitHub Actions, entra en https://almaprintes.github.io/SlotRace/ .
+## Qué cambia en 0.4
 
-Localmente abre `index.html` en un navegador moderno. Es un prototipo HTML autónomo, sin dependencias ni conexión a Supabase. Para servirlo desde un ordenador también puedes ejecutar `python3 -m http.server 8080` en la raíz del repositorio y abrir `http://localhost:8080/`.
+- Mesa visible, de madera con tapete verde, tablero de 220 × 145 cm virtuales, sombras, marco y piezas modulares que se ven sobre ella.
+- Piezas físicas digitales de **dos carriles**, separadas por uniones visibles; cada módulo lleva sus ranuras de guiado y carriles metálicos dibujados.
+- Catálogo inicial de rectas de 350 y 175 mm, curvas de R2 de 45° a izquierda/derecha, y curvas R1 de 45°; todas con inventario finito.
+- Los extremos se unen **geométricamente** al añadir módulos desde la caja. La selección de un tramo sobre la mesa permite sustituirlo o quitarlo, rehaciendo los encajes a continuación.
+- **Deshacer/rehacer**, zoom con botones, pan con un dedo y zoom con pinza.
+- Óvalo inicial de 12 piezas; cuando la geometría se cierra realmente y no sale del tablero, queda habilitada la validación local.
+- Pantalla de carreras separada con coche y mesa siempre visibles, gatillo de pulsación continua / deslizador analógico, vueltas y tiempos por carril.
+- Si pruebas una pista abierta, **la construcción se guarda como borrador** y se monta el óvalo para empezar. El botón «Recuperar trazado» permite volver a ella.
+- Estado guardado en el almacenamiento local del navegador. La navegación privada puede borrarlo al cerrar la sesión.
 
-## Cómo conducir en móvil
+## Controles
 
-1. Abre la web y pulsa **«🏁 Jugar ahora»** junto a la vista cenital o en el botón fijo inferior del móvil. **Funciona aunque el circuito actual esté abierto**: se conserva como borrador y se monta el óvalo inicial.
-2. El juego abre una vista sin scroll con pista, cronómetro, vuelta y gatillo siempre visibles.
-3. **Mantén** el botón «MANTENER ACELERADOR» para acelerar a fondo, o **arrastra y mantén** el deslizador para regular el gatillo de forma analógica. Al soltar el dedo, el deslizador vuelve a 0.
-4. **Pausar / Seguir** permite detener y continuar; puedes **cambiar de carril mientras esté pausado**.
-5. Pulsa **Salir** para volver a editar la pista. La carrera se pausa. Si venías de una construcción sin cerrar, aparecerá **«Recuperar diseño»** y podrás restaurar todas sus piezas.
+1. **Mesa:** toca una pieza en la caja inferior para añadirla al extremo amarillo; se encaja automáticamente en el tramo anterior.
+2. Toca un módulo de pista para **seleccionarlo**, luego toca otro módulo de la caja para sustituirlo, o pulsa «Quitar».
+3. Usa **↶/↷** para deshacer/rehacer; **Óvalo** para empezar con una pista cerrada; **Vaciar** para empezar desde cero.
+4. Arrastra sobre la mesa para desplazar la cámara y pellizca para ampliar/reducir. Los botones +/−/⌖ hacen lo mismo.
+5. Pulsa **Correr** para entrar al pilotaje; **MANTENER PARA ACELERAR** equivale a apretar el gatillo a fondo. El deslizador permite ajustar la aceleración, y regresa a cero cuando sueltas el dedo.
+6. Puedes pausar, cambiar de carril mientras está pausado y regresar a la mesa. Las vueltas terminadas y los mejores tiempos se guardan por configuración de pista.
 
-**Importante:** el editor sigue siendo de conexión secuencial y no monta automáticamente cualquier figura. Para probar la conducción, usa siempre Jugar ahora. Los diseños y marcas usan almacenamiento local del navegador y **pueden perderse al cerrar todas las pestañas de navegación privada**.
+## Dimensiones y límites
 
-En vertical, la pista se gira automáticamente en pantalla para ocupar más espacio, **sin cambiar la geometría real de las piezas**.
+Se han tomado referencias de pista Scalextric Sport 1:32: recta estándar de 350 mm; curva R2 de 45° con radio de referencia de 370 mm; ancho aproximado de pista 156 mm y separación entre ranuras de 78 mm.
 
-## Qué funciona
+**Es un modelo digital experimental, no una reproducción certificada ni una licencia de Scalextric.** Falta verificar contra una pieza física real el radio exacto al eje de cada ranura y el perfil de los conectores.
 
-- Óvalo inicial cerrado de **dos carriles** y coche visible.
-- Editor secuencial de piezas dobles: recta, curva a derecha e izquierda, deshacer, desmontar y restaurar el óvalo.
-- Encaje geométrico automático entre conectores (modelo de piezas provisional); validación de cierre y rechazo de cruces de ejes.
-- Inventario limitado por clase de pieza, sin duplicarlo al desmontar.
-- Gatillo analógico por deslizador, botón táctil «Mantener para acelerar» y teclado (espacio/flecha arriba).
-- Movimiento con aceleración, inercia, límite de agarre en curva y salida de pista con inmovilización de **3 segundos**, manteniendo válida la vuelta.
-- Cronometraje por carril, mejores vueltas independientes y **suma de los dos mejores tiempos**, incluso de intentos distintos.
-- Pausa, reinicio y cambio de carril **solo fuera de la conducción**.
-- Autoguardado de diseño y récords personales en el navegador (localStorage).
-- Modo de pilotaje dedicado a pantalla completa en iPhone y Android, con controles permanentes abajo y HUD arriba, sin scroll mientras se conduce.
+Fuentes de referencia:
+- [Scalextric C8198 · recta 350 mm y curva R2 45°](https://uk.scalextric.com/products/scalextric-standard-straight-and-r2-curve-track-extension-pack-c8198)
+- [Scalextric Sport 2025 · catálogo de accesorios y radios](https://arwico.ch/media/mageworx/downloads/attachment/file/s/c/scalextric_2025_catalogue.pdf)
+- [Scalextric Track · pista 156 mm, ranuras 78 mm](https://www.slotcar-boutique.com/en/251-scalextric-track)
 
-## Qué NO es todavía
+### Aún pendiente para un Scalextric completo
 
-- **No** usa medidas reales u homologadas de pistas Scalextric / SCX. Las rectas, radios y agarre se expresan en unidades de prototipo.
-- **No** incluye elevaciones, puentes, cruce en ocho, montaje manual sobre mesa libre, motores de coches diferenciados, mando físico, sonido ni rivales IA.
-- **No** son tiempos oficiales ni existe ningún ranking mundial, validación de servidor, inventario de usuario ni economía.
-- La simulación de tiempo es preliminar: no sirve para comparaciones competitivas ni para evaluar el rendimiento final en iPhone.
-- Los récords locales pertenecen a este navegador; al borrar su almacenamiento se pierden.
+- Colocación **libre y arrastre de piezas individuales en cualquier punto de la mesa**, unión a cualquiera de los extremos y soporte de ramales/cambios de pista.
+- Puentes, ocho, elevaciones y soportes físicos.
+- Física calibrada de modelos de coche, mando físico, IA y carrera de dos mangas.
+- Carrera oficial, récords globales, economía, colección, Supabase y multijugador.
+- Comprobación visual/táctil en iPhone y Android reales y medición de FPS.
 
-## Pruebas
+No se han implementado piezas móviles ilimitadas ni se han declarado récords oficiales.
 
-`node smoke.cjs`
+## Prueba local
 
-La prueba ejecuta la lógica con elementos de interfaz simulados para comprobar cierre, edición, conducción y récords. **No sustituye las pruebas visuales y táctiles en dispositivos reales.**
+Abre la carpeta desde un servidor estático (los módulos ES no funcionan necesariamente bajo `file://`).
 
-## Próximo hito de ingeniería
+```bash
+python3 -m http.server 8080
+# http://localhost:8080/
+node smoke.cjs
+```
 
-1. Homologar catálogo y medidas verdaderas de piezas antes de prometer equivalencia física.
-2. Crear colocación libre en mesa, conexión de extremos y validación modular sólida.
-3. Probar aceleración, ritmo de curvas y cronómetro en iOS y Android; medir estabilidad de fotogramas.
-4. Incorporar solo después la competición de dos mangas, IA y demás sistemas aprobados.
+El workflow `.github/workflows/pages.yml` ejecuta `node smoke.cjs` antes de publicar en GitHub Pages.
 
-## Regla de seguridad
+## Separación del juego público
 
-Este repositorio es un laboratorio autónomo. Nunca debe conectarse a las tablas públicas, monetización ni versión de producción de Top Down RACE sin una fase específica de integración y pruebas.
+Este repositorio no modifica `almaprintes/TopdownCraftrace` ni emplea el backend de TDR. Las mejoras se prueban exclusivamente en SlotRace.
