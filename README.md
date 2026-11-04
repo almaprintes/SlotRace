@@ -1,9 +1,37 @@
-# SlotRace · DEV 0.5.7 — curvas por radio real de cada carril
+# SlotRace · DEV 0.7.0 — maletín de piezas con corcho troquelado
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.7.0 — caja física de piezas
+
+La caja deja de ser una tira de tarjetas independientes. Ahora es **un único maletín**, con marco de plástico oscuro e **inserto de espuma blanca texturizada**. Tiene seis alojamientos troquelados, cuyas siluetas corresponden a las formas del catálogo:
+
+- Recta de 350 mm y media recta de 175 mm.
+- Curva R2 de 45° a derecha e izquierda.
+- Curva R1 de 45° a derecha e izquierda.
+
+Cada alojamiento muestra la silueta geométrica del módulo, con dos carriles y aspecto de pista apilada. El contador indica las piezas **que quedan dentro de la caja**; al vaciarse un hueco desaparece el módulo pero permanece el troquel de espuma. Las piezas conectadas o sueltas sobre la mesa ya no cuentan como piezas guardadas.
+
+**Manejo:** tocar un alojamiento saca una pieza a la mesa como objeto independiente. También se puede **arrastrar desde cualquier zona del hueco** hasta el tapete; si se suelta cerca de un conector encaja, si no permanece suelta. Un gesto cancelado o soltado fuera de la mesa no consume inventario. La extracción por arrastre no se duplica con el clic táctil posterior.
+
+La tapa **«Cerrar caja / Abrir caja»** permite recuperar espacio de mesa. La preferencia se guarda junto al trazado sin borrar los datos de las versiones anteriores. El diseño usa seis cavidades en una rejilla adaptable a móvil, con una fila en horizontal.
+
+Por tratarse de un rediseño importante del constructor, incrementamos la versión menor: **0.6.0 → 0.7.0**, conforme a la política del proyecto.
+
+**Pruebas:** `node tests/foam-case.cjs` valida inventario, seis siluetas, huecos vacíos, clics/arrastre, apertura/cierre, persistencia y que no se extraigan piezas duplicadas. La prueba está incluida en GitHub Actions.
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.7.0 — verificar **DEV 0.7.0** en la carga y la cabecera.
+
+## DEV 0.6.0 — mesa puzzle
+
+- Se pueden sacar **varias piezas sueltas** de la caja y dejarlas desperdigadas sobre el tapete.
+- Una pieza conectada se puede **coger y arrastrar**, separándola del circuito sin desplazar sus vecinas. Las piezas posteriores quedan sueltas en sus posiciones originales.
+- Las piezas pueden encajarse magnéticamente **en cualquiera de los dos extremos** de la cadena, o iniciarse una cadena desde cualquier pieza suelta.
+- **Deshacer y rehacer**, guardado del origen y tamaño estable de la mesa mientras se arrastra.
+- Prueba automatizada `tests/puzzle-table.cjs`; esta funcionalidad supuso pasar de la rama DEV 0.5.x a 0.6.0.
 
 ## DEV 0.5.7 — interior y exterior corregidos
 
