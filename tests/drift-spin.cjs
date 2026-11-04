@@ -32,7 +32,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.5.4");
+ assert.equal(game.version,"DEV 0.5.5");
  game.openRace();
  const st=game.state,physics=game.physics;
  assert.equal(st.track.valid,true);
@@ -65,25 +65,27 @@ const path=require("node:path");
  const p=geom.positionAt(lane,st.distance),vis=physics.visualCarPose(p);
  assert.ok(Math.abs(vis.h-p.h)>.015,"Car body yaws while rails stay fixed");
  assert.ok(Math.hypot(vis.x-p.x,vis.y-p.y)>.5,"Car tail slides slightly");
- // Forcing speed above threshold starts a spin on the same track position.
+ // Una velocidad muy alta debe terminar causando un trompo, pero nunca
+ // en el mismo instante del primer contacto con la curva.
  const limitNow=physics.curveLimit(p,0);
  st.speed=limitNow*1.35;st.gas=1;
- tick();
- assert.equal(st.penalty,3,"A genuine off-track run causes 3 seconds of penalty");
+ for(let i=0;i<25&&st.penalty===0;i++)tick();
+ assert.equal(st.penalty,3,"Accumulated excessive speed eventually causes a spin");
  assert.ok(st.deslot,"The spin state is present");
+ const spinStartPose=geom.positionAt(lane,st.distance);
  const fixedDistance=st.distance,lap=st.lap;
  for(let i=0;i<12;i++)tick(50);
  assert.ok(st.deslot.elapsed>.4,"The spin animation advances while immobilized");
  assert.equal(st.distance,fixedDistance,"No progress during off-track penalty");
  assert.equal(st.lap,lap,"No invalidation of the lap");
  const spin=physics.visualCarPose(geom.positionAt(lane,st.distance));
- assert.ok(Math.abs(spin.h-p.h)>1,"Car turns visibly during spin");
- assert.ok(Math.hypot(spin.x-p.x,spin.y-p.y)>30,"Car moves outward during spin");
+ assert.ok(Math.abs(spin.h-spinStartPose.h)>1,"Car turns visibly during spin");
+ assert.ok(Math.hypot(spin.x-spinStartPose.x,spin.y-spinStartPose.y)>30,"Car moves outward during spin");
  for(let i=0;i<60&&st.penalty>0;i++)tick(50);
  assert.equal(st.penalty,0,"Penalty finishes automatically after 3 seconds");
  assert.equal(st.deslot,null,"Car snaps back to slot after animation");
  assert.equal(st.distance,fixedDistance,"Car returns to same point");
  assert.equal(st.lap,lap,"Lap remains valid");
  assert.ok(st.seconds>3,"Chronometer continues throughout the penalty");
- console.log("SlotRace DEV 0.5.4: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
+ console.log("SlotRace DEV 0.5.5: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
