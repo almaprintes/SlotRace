@@ -178,6 +178,80 @@ export function countPieces(types){
   return Object.fromEntries(Object.keys(CATALOG).map(id=>[id,types.filter(t=>t===id).length]));
 }
 
+// Reparación global sin tocar la geometría de los módulos.
+// El buscador antiguo sólo sustituía hasta tres piezas DEL FINAL. Para una
+// separación pequeña originada mucho antes, eso no puede funcionar.
+// Comprobamos una o dos sustituciones EN CUALQUIER POSICIÓN antes de intentar
+// añadir piezas. Las que parecen cerrar se validan con todas las colisiones.
+function findGlobalReplacements(types,{maxStates=24000}={}){
+ const ids=Object.keys(CATALOG),used=countPieces(types);
+ let tested=0,nearest={gap:Infinity,changes:[]};
+ const base=buildTrack(types);
+ if(base.gap<nearest.gap)nearest={gap:base.gap,changes:[]};
+ const angleOf=id=>CATALOG[id].angle||0;
+ const changesAt=(at,to)=>({index:at,from:types[at],to});
+ const candidate=types.slice();
+ function evaluate(changes){
+  if(++tested>maxStates)return null;
+  let pose={...START};
+  for(const id of candidate)pose=positionOnPiece(pose,id,1);
+  const heading=Math.abs(norm(pose.h-START.h));
+  if(heading>SNAP_RAD)return null;
+  const gap=hypot(pose.x-START.x,pose.y-START.y);
+  if(gap<nearest.gap-.01)nearest={gap,changes:changes.map(c=>({...c}))};
+  if(gap>SNAP_MM)return null;
+  const built=buildTrack(candidate);
+  if(!built.valid)return null;
+  return{ok:true,types:candidate.slice(),replaced:changes.length,added:0,
+   changes:changes.map(c=>({...c})),unchanged:false};
+ }
+ for(let i=0;i<types.length;i++){
+  const fromI=types[i];
+  for(const toI of ids){
+   if(toI===fromI||used[toI]>=CATALOG[toI].stock)continue;
+   candidate[i]=toI;
+   const found=evaluate([changesAt(i,toI)]);
+   candidate[i]=fromI;
+   if(found)return {...found,searched:tested};
+  }
+ }
+ // Los dos cambios se exploran en cualquier zona del circuito, no sólo
+ // contiguos al cierre. Una comparación de ángulos evita combinaciones
+ // que nunca pueden recuperar la orientación del conector.
+ for(let i=0;i<types.length;i++){
+  const fromI=types[i];
+  for(const toI of ids){
+   if(toI===fromI)continue;
+   if(used[toI]>=CATALOG[toI].stock)continue;
+   candidate[i]=toI;
+   for(let j=i+1;j<types.length;j++){
+    const fromJ=types[j];
+    for(const toJ of ids){
+     if(toJ===fromJ)continue;
+     const available=CATALOG[toJ].stock-used[toJ]-(toJ===toI?1:0)
+       +(toJ===fromI?1:0);
+     if(available<=0)continue;
+     // Un cambio de radio conserva el giro. Dos cambios opuestos
+     // de sentido pueden compensarse si el rumbo final lo permite.
+     const revisedHeading=norm(base.ends.end.h-START.h+
+       angleOf(toI)-angleOf(fromI)+angleOf(toJ)-angleOf(fromJ));
+     if(Math.abs(revisedHeading)>SNAP_RAD)continue;
+     candidate[j]=toJ;
+     const found=evaluate([changesAt(i,toI),changesAt(j,toJ)]);
+     candidate[j]=fromJ;
+     if(found)return {...found,searched:tested};
+     if(tested>=maxStates)break;
+    }
+    if(tested>=maxStates)break;
+   }
+   candidate[i]=fromI;
+   if(tested>=maxStates)break;
+  }
+  if(tested>=maxStates)break;
+ }
+ return{ok:false,nearest,limited:tested>=maxStates,searched:tested};
+}
+
 // Busca un cierre utilizando sólo módulos que existan realmente en el inventario.
 // Prioriza conservar la mayor parte posible del circuito; comprueba cruces antes
 // de proponer un resultado. No crea piezas de transición deformadas.
@@ -185,6 +259,10 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}=
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
   const current=buildTrack(types);
   if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
+  // Primera oportunidad: reemplazos precisos lejos del último conector.
+  // Importante para pistas largas con error acumulado de decenas de mm.
+  const global=findGlobalReplacements(types,{maxStates:24000});
+  if(global.ok)return global;
   const ids=Object.keys(CATALOG),target=START;
   let visits=0;
   // Cuanto menos se edita, antes se evalúa. Así no se rehace el circuito arbitrariamente.
@@ -223,8 +301,11 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000}=
       }
       const result=recurse(origin,inserted);
       if(result)return result;
-      if(visits>maxStates)return{ok:false,reason:"La búsqueda llegó al límite de combinaciones; elimina el tramo que se cruza.",limited:true};
+      if(visits>maxStates)return{ok:false,reason:"La búsqueda del cierre agotó sus combinaciones; no se ha deformado ninguna pieza.",limited:true,global};
     }
   }
-  return{ok:false,reason:current.intersection?"La pista se cruza a la misma altura; necesitas modificar ese tramo o usar un puente.":"No existe un cierre con las piezas disponibles y los últimos tramos; modifica la dirección o las rectas."};
+  return{ok:false,reason:current.intersection?
+    "Hay un cruce plano: el juego no puede cerrarlo como circuito válido sin puente.":
+    "No se encontró un cierre exacto cambiando hasta dos piezas en cualquier punto ni añadiendo hasta cinco piezas al final. Hace falta modificar más el trazado.",
+    global};
 }
