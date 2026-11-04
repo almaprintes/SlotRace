@@ -1,9 +1,19 @@
-# SlotRace · DEV 0.5.1 — gatillo analógico por gestos
+# SlotRace · DEV 0.5.2 — gatillo progresivo y coche bajo el puente
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## Novedades de DEV 0.5.2
+
+- **El coche circula realmente por debajo del puente en la vista cenital.** La renderización se divide en tres capas: pista inferior, coche del tramo inferior y puente elevado por encima. Cuando el coche llega a una sección elevada, se dibuja después del puente y permanece visible sobre él.
+- El nivel visual se deduce de **qué tramo de la trayectoria recorre el coche**, nunca de cuál de las dos vías aparece más cerca en la pantalla. Así se distinguen correctamente dos puntos que se solapan en el cruce.
+- El coche inferior queda momentáneamente oculto por el puente y vuelve a verse al salir. El HUD muestra «COCHE PASANDO POR DEBAJO DEL PUENTE» durante ese paso.
+- Se ha revisado la física a porcentajes bajos: **25 % de gatillo ya hace avanzar el coche** desde parado. La respuesta gradual con inercia reduce al retroceder el dedo, en vez de comportarse como un interruptor.
+- Las pruebas automatizadas `tests/bridge-occlusion.cjs` y `tests/analog-trigger.cjs` verifican el orden de dibujo y el acelerador progresivo, además de las pruebas geométricas. GitHub Actions exige que pasen las tres antes de publicar.
+
+**Prueba en móvil:** https://almaprintes.github.io/SlotRace/?v=0.5.2 . La pantalla de carga y la cabecera deben mostrar `DEV 0.5.2`.
 
 ## Novedades de DEV 0.5.1
 
