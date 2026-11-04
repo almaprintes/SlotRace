@@ -92,6 +92,15 @@ const path=require("node:path");
  const frame=callbacks.shift();now=16;frame(now);
  assert.ok(state.speed>0&&state.speed<30,"El coche acelera gradualmente con gas parcial");
  fire("pointerup",105,110,13);
+ // Un cuarto de gatillo debe mover el coche desde parado.
+ // La física anterior mantenía velocidad 0 por debajo de aproximadamente 46 %.
+ state.speed=0;
+ fire("pointerdown",105,180,16);
+ fire("pointermove",105,151,16);
+ assert.ok(state.gas>.2&&state.gas<.3,"El 25 % es realmente alcanzable");
+ const lowFrame=callbacks.shift();now=32;lowFrame(now);
+ assert.ok(state.speed>0&&state.speed<12,"El coche avanza también al 25 %");
+ fire("pointerup",105,151,16);
  for(const fn of elements.get("pause").listeners.click)fn();
  assert.equal(state.run,false);assert.equal(power(),0);
  assert.equal(trigger.disabled,true);
