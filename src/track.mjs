@@ -5,13 +5,21 @@ export const TABLE = Object.freeze({width:2200,height:1450,edge:62});
 export const START = Object.freeze({x:750,y:325,h:0});
 export const TRACK_WIDTH = 156;
 export const LANE_OFFSET = 39;
+// Los radios de ~370 mm (R2) y ~214 mm (R1) citados para pistas físicas
+// se refieren al BORDE EXTERIOR, no al eje central del módulo de 156 mm.
+// Calibración provisional de eje R2 para que 8 rectas de 350 mm y
+// 5 curvas de +45° / 5 de -45° den un ocho matemáticamente exacto:
+// R = 2 * L * (sqrt(2) - 1) = 289.94949366 mm.
+// Esta calibración geométrica no certifica el radio de la pieza comercial.
+export const VIRTUAL_R2_RADIUS=2*350*(Math.SQRT2-1);
+export const VIRTUAL_R1_RADIUS=214-TRACK_WIDTH/2;
 export const CATALOG = Object.freeze({
   S350:{name:"Recta larga",code:"350 mm",length:350,stock:8,group:"recta"},
   S175:{name:"Media recta",code:"175 mm",length:175,stock:4,group:"recta"},
-  R2R:{name:"Curva R2 ↷",code:"45° derecha",radius:370,angle:Math.PI/4,stock:12,group:"curva"},
-  R2L:{name:"Curva R2 ↶",code:"45° izquierda",radius:370,angle:-Math.PI/4,stock:12,group:"curva"},
-  R1R:{name:"Curva R1 ↷",code:"45° cerrada",radius:214,angle:Math.PI/4,stock:6,group:"curva"},
-  R1L:{name:"Curva R1 ↶",code:"45° cerrada",radius:214,angle:-Math.PI/4,stock:6,group:"curva"}
+  R2R:{name:"Curva R2 ↷",code:"45° derecha",radius:VIRTUAL_R2_RADIUS,angle:Math.PI/4,stock:12,group:"curva"},
+  R2L:{name:"Curva R2 ↶",code:"45° izquierda",radius:VIRTUAL_R2_RADIUS,angle:-Math.PI/4,stock:12,group:"curva"},
+  R1R:{name:"Curva R1 ↷",code:"45° cerrada",radius:VIRTUAL_R1_RADIUS,angle:Math.PI/4,stock:6,group:"curva"},
+  R1L:{name:"Curva R1 ↶",code:"45° cerrada",radius:VIRTUAL_R1_RADIUS,angle:-Math.PI/4,stock:6,group:"curva"}
 });
 export const STARTER=Object.freeze(["S350","S350","R2R","R2R","R2R","R2R",
   "S350","S350","R2R","R2R","R2R","R2R"]);
@@ -40,7 +48,10 @@ function lineIntersects(a,b,c,d){
   const ax=b.x-a.x,ay=b.y-a.y,bx=d.x-c.x,by=d.y-c.y;
   const det=ax*by-ay*bx;if(Math.abs(det)<EPS)return false;
   const px=c.x-a.x,py=c.y-a.y,t=(px*by-py*bx)/det,u=(px*ay-py*ax)/det;
-  return t>.002&&t<.998&&u>.002&&u<.998;
+  // Un cruce puede coincidir exactamente con el conector de otra pieza
+  // (caso típico: el centro del ocho). Incluimos extremos; las piezas
+  // adyacentes ya se omiten en crossed().
+  return t>=-1e-8&&t<=1+1e-8&&u>=-1e-8&&u<=1+1e-8;
 }
 function crossed(parts,closed){
   for(let i=0;i<parts.length;i++){
