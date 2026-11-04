@@ -119,7 +119,7 @@ const fs=require("node:fs"),path=require("node:path");
  // Safari iOS: confirmar extracción en pointerup aunque no haya click
  // sintético; si llega ese click, tampoco puede duplicar el inventario.
  // Cambiar la caja a curvas a la izquierda sin duplicar huecos.
- elements.get("flip").listeners.click[0]();
+ elements.get("curveDirection").listeners.click[0]();
  assert.equal(st.caseCurveDirection,"L");
  const touchPocket=byId("R1_45R");
  touchPocket.listeners.pointerdown[0](event(150,730,40));
