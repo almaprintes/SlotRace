@@ -38,7 +38,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.8.0");
+ assert.equal(game.version,"DEV 0.8.1");
  assert.equal(st.track.parts.length,18);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -125,5 +125,5 @@ const path=require("node:path");
  assert.ok(Math.abs(stored.origin.x-idealStart.x)<1e-5,"Prepending updates and persists world anchor");
  assert.equal(stored.loose.length,1,"Loose pieces persist to local storage");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
- console.log("SlotRace DEV 0.8.0 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.8.1 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
