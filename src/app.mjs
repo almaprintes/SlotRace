@@ -237,13 +237,17 @@ function inventoryAction(id){
  if(!CATALOG[chosen])return;
  scatterLoose(chosen);
 }
+function toggleCaseCurveDirection(){
+ state.caseCurveDirection=state.caseCurveDirection==="R"?"L":"R";
+ save();updateUI();
+ toast(state.caseCurveDirection==="R"?"Caja: curvas a la derecha.":"Caja: curvas a la izquierda.");
+}
 function flipSelectedCurve(){
  let id=null;
  if(state.looseSelection>=0)id=state.loose[state.looseSelection]?.id;
  else if(state.selectionMode==="piece"&&state.selection>=0)id=state.types[state.selection];
  if(!id||!id.includes("_")||!/[RL]$/.test(id)){
-  state.caseCurveDirection=state.caseCurveDirection==="R"?"L":"R";
-  save();updateUI();toast(state.caseCurveDirection==="R"?"La caja entrega curvas a la derecha.":"La caja entrega curvas a la izquierda.");
+  toast("Selecciona una curva de la mesa para voltearla.");
   return;
  }
  const opposite=id.slice(0,-1)+(id.endsWith("R")?"L":"R");
@@ -565,8 +569,12 @@ function updateUI(){
  $("remove").disabled=state.selectionMode!=="piece"||
   (state.selection<0&&state.looseSelection<0);
  $("rotate").disabled=state.looseSelection<0;
- $("flip").textContent=state.caseCurveDirection==="R"?"↷ DERECHA / INVERTIR":"↶ IZQUIERDA / INVERTIR";
- $("flip").setAttribute("aria-label","Cambiar dirección de las curvas de la caja o invertir la curva seleccionada");
+ $("curveDirection").textContent=state.caseCurveDirection==="R"?"↷ Caja: derecha":"↶ Caja: izquierda";
+ $("curveDirection").setAttribute("aria-pressed",String(state.caseCurveDirection==="L"));
+ $("flip").textContent="⇄ Voltear curva";
+ const selectedCurve=state.looseSelection>=0?state.loose[state.looseSelection]?.id:
+  state.selectionMode==="piece"&&state.selection>=0?state.types[state.selection]:null;
+ $("flip").disabled=!selectedCurve||!selectedCurve.includes("_");
  $("joinPiece").disabled=state.looseSelection<0;
  $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
@@ -1274,6 +1282,7 @@ function initEvents(){
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",rotateLoose);
  $("flip").addEventListener("click",flipSelectedCurve);
+ $("curveDirection").addEventListener("click",toggleCaseCurveDirection);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
   save();updateUI();scheduleResize();
@@ -1336,7 +1345,7 @@ function loop(now){
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.9.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
- puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+ puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
