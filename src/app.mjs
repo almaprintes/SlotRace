@@ -525,8 +525,10 @@ function palette(){
     '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>';
   let suppressNextClick=false;
   // Un toque saca una pieza; el teclado también puede activarla.
-  pocket.addEventListener("click",()=>{
-   if(suppressNextClick){suppressNextClick=false;return;}
+  pocket.addEventListener("click",e=>{
+   // Ratón y teclado siguen funcionando como alternativa al tacto.
+   // El evento click sintético tras pointerup no debe consumir dos piezas.
+   if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
    inventoryAction(id);
   });
   // No hace falta localizar una lengüeta diminuta: se puede coger la
