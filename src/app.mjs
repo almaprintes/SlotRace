@@ -296,12 +296,13 @@ function rotateLoose(){
  pushHistory();
  if(state.selectionMode==="piece")detachLooseMember(state.looseSelection);
  const indices=state.selectionMode==="group"?looseMembers(state.looseSelection):[state.looseSelection];
- const anchor=state.loose[indices[0]],x=anchor.x,y=anchor.y,c=Math.SQRT1_2;
+ const angle=Math.PI/8,c=Math.cos(angle),sn=Math.sin(angle);
+ const anchor=state.loose[indices[0]],x=anchor.x,y=anchor.y;
  for(const i of indices){
   const p=state.loose[i],dx=p.x-x,dy=p.y-y;
-  p.x=x+c*dx-c*dy;p.y=y+c*dx+c*dy;p.h+=Math.PI/4;
+  p.x=x+c*dx-sn*dy;p.y=y+sn*dx+c*dy;p.h+=angle;
  }
- save();updateUI();toast(indices.length>1?"Tramo completo girado 45°.":"Pieza girada 45°.");
+ save();updateUI();toast(indices.length>1?"Tramo completo girado 22,5°.":"Pieza girada 22,5°.");
 }
 function recoverDraft(){
  if(!state.draft)return;
