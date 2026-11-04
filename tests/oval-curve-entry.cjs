@@ -15,7 +15,7 @@ const path=require("node:path");
     appendChild(node){this.children.push(node);},
     getBoundingClientRect(){return{left:0,top:0,right:390,bottom:650,width:390,height:650}},
     querySelectorAll(){return this.children},
-    querySelector(sel){if(sel===".qty")return this.qty??=el("qty");if(sel===".grip")return this.grip??=el("grip");return null;},
+    querySelector(sel){if(sel===".qty")return this.qty??=el("qty");if(sel===".grip"||sel===".foam-drag-grip")return this.grip??=el("grip");return null;},
     addEventListener(type,cb){(this.listeners[type]||=[]).push(cb)}};
  }
  const elements=new Map(ids.map(id=>[id,el(id)]));
@@ -32,7 +32,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.9.1");
+ assert.equal(game.version,"DEV 0.9.2");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
@@ -193,5 +193,5 @@ const path=require("node:path");
   assert.ok(fastOuter.advance>fastOuter.firstLength*.5,
    "El coche no sale antes de media curva exterior del ocho");
  }
- console.log("SlotRace DEV 0.9.1: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
+ console.log("SlotRace DEV 0.9.2: interior 65/70%, exterior 75/80%, radio correcto en ambos giros, salida progresiva — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
