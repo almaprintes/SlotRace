@@ -1,9 +1,23 @@
-# SlotRace LAB 0.4.3 — mesa de montaje y Scalextric virtual
+# SlotRace LAB 0.4.4 — mesa de montaje y Scalextric virtual
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## Corrección del ocho de 225° (0.4.4)
+
+**El error original estaba en las dimensiones del motor**, no en el planteamiento de la construcción del usuario: el motor usaba **370 mm como radio del eje** de una curva R2 de 45°, pero esa medida corresponde aproximadamente al radio de su **borde exterior**. La pista de Scalextric Sport mide unos 156 mm de ancho, por lo que el eje central ronda los 292 mm. El radio usado era demasiado grande.
+
+Para reproducir **matemáticamente** la plantilla de ocho del usuario, este prototipo digital utiliza un radio R2 virtual calibrado de `2 * 350 * (√2 − 1) = 289,94949366 mm`. Esta es una **calibración del juego**, no una especificación de fabricante certificada. El radio provisional R1 pasa a 136 mm de eje, en lugar de utilizar su borde exterior de 214 mm.
+
+La nueva plantilla **«Ocho 225°»** monta **2 rectas → 5 curvas derechas → 4 rectas → 5 curvas izquierdas → 2 rectas** (ocho rectas y diez curvas). El resultado vuelve al origen con error inferior a 0,001 mm y diferencia angular nula, y demuestra el equilibrio de los giros de 225° y −225°.
+
+**El ocho queda geométricamente CERRADO pero todavía no es apto para carreras**, porque el cruce central está a un mismo nivel y necesita puente y soportes. El motor ahora reconoce ese cruce aunque coincida exactamente con el conector inicial. No lo homologa ni engaña al usuario con un carril atravesado.
+
+Referencias:
+- Radio exterior aproximado R2 de 14,57 pulgadas: https://westsidetrains.com/store/scale/132/r2-curve-45-degrees-2pkg-1-32-scalextric/
+- Pista Sport de 156 mm de ancho: https://www.slotcar-boutique.com/en/251-scalextric-track
 
 ## Cierre matemáticamente exacto
 
