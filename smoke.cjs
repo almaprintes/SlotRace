@@ -58,13 +58,11 @@ assert.equal(CATALOG.S175.length,175);
 assert.ok(Math.abs(CATALOG.R2R.angle-Math.PI/4)<1e-8);
 assert.ok(Math.abs(CATALOG.R2R.radius-289.9494936611666)<1e-8,
   "Radio virtual calibrado del EJE del módulo, no del borde exterior");
-// Trazado del usuario: 8 rectas de 350 mm (2 + 4 + 2) y 10 curvas,
-// cinco a derecha y cinco a izquierda. Giro neto = 0° y posición final
-// debe coincidir sin deformar ni añadir una sola pieza.
+// Ocho por defecto: cuatro rectas largas por diagonal; el cruce está
+// entre la segunda y tercera de cada diagonal. Cinco curvas a cada lado.
 const figureEight=[
- "S350","S350",...Array(5).fill("R2R"),
- ...Array(4).fill("S350"),...Array(5).fill("R2L"),
- "S350","S350"
+ ...Array(4).fill("S350"),...Array(5).fill("R2R"),
+ ...Array(4).fill("S350"),...Array(5).fill("R2L")
 ];
 assert.deepEqual(FIGURE_EIGHT,figureEight,"La plantilla del ocho coincide con el circuito del usuario");
 const eight=buildTrack(figureEight);
@@ -73,7 +71,13 @@ assert.equal(eight.closed,true,"El ocho simétrico debe cerrar");
 assert.ok(eight.gap<1e-6,"Extremos exactamente alineados");
 assert.ok(eight.headingGap<1e-8,"Giro de 225° compensado con -225°");
 assert.equal(eight.intersection,true,"El ocho necesita puente, no un cruce plano");
-assert.equal(eight.valid,false,"No homologar cruce sin puente automáticamente");
+assert.equal(eight.valid,true,"El ocho con puente automático debe ser jugable");
+assert.ok(eight.bridge&&eight.bridge.virtual,"Puente elevado reconocido");
+assert.equal(eight.bridge.height,65,"Elevación virtual de 65 mm");
+assert.deepEqual(eight.bridge.overParts,[9,10,11,12],"La diagonal superior cruza con apoyo en sus tramos centrales");
+// No se autoriza un puente para configuraciones distintas con cruces planos.
+const flat=buildTrack([...figureEight.slice(1),figureEight[0]]);
+assert.equal(flat.bridge,null,"Un cruce distinto no gana puente automáticamente");
 assert.equal(eight.onTable,true,"La mesa dinámica debe abarcar el ocho");
 assert.equal(oval.closed,true,"Starter oval must connect with no gap");
 assert.equal(oval.valid,true,"Starter oval must fit on the table and avoid ground-level overlaps");
@@ -110,5 +114,13 @@ const midpoint=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(midpoint.x)&&Number.isFinite(midpoint.y));
 const nearest=nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y);
 assert.equal(nearest.index,0,"Tap should select a physical part");
-console.log("SlotRace LAB 0.4.4 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
+assert.match(html,/id="loadingScreen"/,"Pantalla de carga de desarrollo");
+assert.match(html,/DEV 0\.5\.0/,"Versión de desarrollo visible");
+assert.match(html,/id="loadingStatus"/,"Estado de carga visible");
+assert.match(html,/id="gridToggle"/,"Botón de retícula milimetrada");
+assert.match(app,/const KEY="slotrace-lab-05"/,"Estado nuevo para conservar construcción anterior");
+assert.match(app,/initial=oldValid\?old.types.slice\(\):FIGURE_EIGHT.slice\(\)/,"Ocho inicial por defecto");
+assert.match(app,/splash.classList.add\("is-done"\)/,"Pantalla de carga se oculta después del primer fotograma");
+assert.match(app,/function paintBridgePillars\(/,"Soportes visibles del puente");
+console.log("SlotRace LAB DEV 0.5.0 OK: 12-piece oval, millimetre geometry, table bounds, seams, lanes, stock, touch UI and controls.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
