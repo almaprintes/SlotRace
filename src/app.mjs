@@ -551,8 +551,11 @@ function palette(){
    const d=state.dragging;
    if(!d||d.id!==id||d.pointerId!==e.pointerId)return;
    state.dragging=null;state.viewDirty=true;
-   if(!d.active)return; // se resuelve por el evento click normal
+   // Un toque corto se resuelve directamente en pointerup; Safari
+   // no siempre envía el click sintético al capturar el puntero.
+   // Si lo envía, se suprime para no extraer dos piezas de una vez.
    suppressNextClick=true;
+   if(!d.active){inventoryAction(id);return;}
    const rect=editCanvas.getBoundingClientRect();
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
     toast("Suelta la pieza en el tapete. No se ha gastado ninguna.");return;
