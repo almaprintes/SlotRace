@@ -610,30 +610,57 @@ const pocketNames={
  R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°"
 };
 const pocketIds=Object.keys(CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
+// Fuente de color común entre la pista de la mesa y las miniaturas de la caja.
+const PIECE_LOOK=Object.freeze({
+ shadow:"#0c1518",outer:"#65747a",rim:"#1e282d",deck:"#343e44",
+ inner:"#283139",groove:"#101418",metalA:"#94a5ac",metalB:"#a2b4bc",
+ guide:"#080c0e",edge:"#65787e",seam:"#0c1217"
+});
 function foamSlotSVG(id){
- const spec=CATALOG[id],n=spec.length?2:20;
+ const spec=CATALOG[id],n=spec.length?2:28;
  const pts=Array.from({length:n+1},(_,i)=>positionOnPiece({x:0,y:0,h:0},id,i/n));
- const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
- const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
- const scale=Math.min(.31,80/Math.max(1,maxX-minX),40/Math.max(1,maxY-minY));
+ // El marco incluye el ancho REAL del módulo. Las rectas cortas dejan de
+ // aparecer como píldoras redondeadas: llevan cantos perpendiculares.
+ const half=(TRACK_WIDTH+24)/2;
+ const corners=pts.flatMap(p=>[-half,half].map(d=>({
+  x:p.x-Math.sin(p.h)*d,y:p.y+Math.cos(p.h)*d
+ })));
+ const minX=Math.min(...corners.map(p=>p.x)),maxX=Math.max(...corners.map(p=>p.x));
+ const minY=Math.min(...corners.map(p=>p.y)),maxY=Math.max(...corners.map(p=>p.y));
+ const scale=Math.min(107/Math.max(1,maxX-minX),68/Math.max(1,maxY-minY));
  const tx=(120-(maxX-minX)*scale)/2,ty=(80-(maxY-minY)*scale)/2;
  const xy=p=>[(tx+(p.x-minX)*scale).toFixed(2),(ty+(p.y-minY)*scale).toFixed(2)];
- const path=points=>points.map((p,i)=>{const [x,y]=xy(p);return(i?"L":"M")+x+" "+y;}).join(" ");
- const main=path(pts);
- const slot=off=>path(pts.map(p=>({x:p.x-Math.sin(p.h)*off,
-   y:p.y+Math.cos(p.h)*off,h:p.h})));
- const width=TRACK_WIDTH*scale;
- return '<svg viewBox="0 0 120 80" focusable="false" aria-hidden="true">'+
-  '<path class="foam-cutout-shadow" d="'+main+'" stroke-width="'+(width+13).toFixed(1)+'"/>'+
-  '<path class="foam-cutout" d="'+main+'" stroke-width="'+(width+8).toFixed(1)+'"/>'+
-  '<g class="mini-slot-piece">'+
-   '<path class="mini-slot-stack" transform="translate(0 3)" d="'+main+'" stroke-width="'+(width+4).toFixed(1)+'"/>'+
-   '<path class="mini-slot-rim" d="'+main+'" stroke-width="'+(width+3).toFixed(1)+'"/>'+
-   '<path class="mini-slot-deck" d="'+main+'" stroke-width="'+(width-2).toFixed(1)+'"/>'+
-   '<path class="mini-slot-rail" d="'+slot(-LANE_OFFSET)+'" stroke-width="2"/>'+
-   '<path class="mini-slot-rail" d="'+slot(LANE_OFFSET)+'" stroke-width="2"/>'+
-   '<path class="mini-slot-guide" d="'+slot(-LANE_OFFSET)+'" stroke-width=".8"/>'+
-   '<path class="mini-slot-guide" d="'+slot(LANE_OFFSET)+'" stroke-width=".8"/>'+
+ const path=arr=>arr.map((p,i)=>{const [x,y]=xy(p);return(i?"L":"M")+x+" "+y;}).join(" ");
+ const translated=off=>pts.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));
+ const main=path(pts),width=n=>(n*scale).toFixed(2);
+ const stroke=(klass,shape,size,color,other="")=>
+  '<path class="'+klass+'" d="'+shape+'" fill="none" stroke="'+color+'" stroke-width="'+width(size)+'" stroke-linecap="butt" stroke-linejoin="round" '+other+'/>';
+ const layer=(klass,size,color)=>stroke(klass,main,size,color);
+ const line=(off,klass,size,color)=>stroke(klass,path(translated(off)),size,color);
+ const seam=p=>stroke("mini-slot-seam",path([-TRACK_WIDTH/2,TRACK_WIDTH/2].map(off=>({
+  x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off
+ }))),3,PIECE_LOOK.seam);
+ return '<svg viewBox="0 0 120 80" preserveAspectRatio="xMidYMid meet" focusable="false" aria-hidden="true">'+
+  '<g class="foam-cutout-shape">'+
+   layer("foam-cutout-shadow",TRACK_WIDTH+23,"#e1e3df")+
+   layer("foam-cutout",TRACK_WIDTH+18,"#56615e")+
+  '</g><g class="mini-slot-piece">'+
+   stroke("mini-slot-stack",main,TRACK_WIDTH+19,PIECE_LOOK.shadow,'transform="translate(0 2)"')+
+   layer("mini-slot-outer",TRACK_WIDTH+12,PIECE_LOOK.outer)+
+   layer("mini-slot-rim",TRACK_WIDTH+5,PIECE_LOOK.rim)+
+   layer("mini-slot-deck",TRACK_WIDTH-4,PIECE_LOOK.deck)+
+   layer("mini-slot-inner",TRACK_WIDTH-31,PIECE_LOOK.inner)+
+   line(-LANE_OFFSET,"mini-slot-groove",11,PIECE_LOOK.groove)+
+   line(LANE_OFFSET,"mini-slot-groove",11,PIECE_LOOK.groove)+
+   line(-LANE_OFFSET-7.6,"mini-slot-rail",2.2,PIECE_LOOK.metalA)+
+   line(-LANE_OFFSET+7.6,"mini-slot-rail",2.2,PIECE_LOOK.metalB)+
+   line(LANE_OFFSET-7.6,"mini-slot-rail",2.2,PIECE_LOOK.metalA)+
+   line(LANE_OFFSET+7.6,"mini-slot-rail",2.2,PIECE_LOOK.metalB)+
+   line(-LANE_OFFSET,"mini-slot-guide",5,PIECE_LOOK.guide)+
+   line(LANE_OFFSET,"mini-slot-guide",5,PIECE_LOOK.guide)+
+   line(-72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
+   line(72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
+   seam(pts[0])+seam(pts[pts.length-1])+
   '</g></svg>';
 }
 function palette(){
@@ -808,19 +835,19 @@ function paintContinuousTrack(ctx,track,editing){
  if(!track.parts.length)return;
  const path=track.points;
  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=15;ctx.shadowOffsetY=10;
- strokePath(ctx,path,"#0c1518",TRACK_WIDTH+19);ctx.restore();
- strokePath(ctx,path,"#65747a",TRACK_WIDTH+12);
- strokePath(ctx,path,"#1e282d",TRACK_WIDTH+5);
- strokePath(ctx,path,"#343e44",TRACK_WIDTH-4);
- strokePath(ctx,path,"#283139",TRACK_WIDTH-31);
+ strokePath(ctx,path,PIECE_LOOK.shadow,TRACK_WIDTH+19);ctx.restore();
+ strokePath(ctx,path,PIECE_LOOK.outer,TRACK_WIDTH+12);
+ strokePath(ctx,path,PIECE_LOOK.rim,TRACK_WIDTH+5);
+ strokePath(ctx,path,PIECE_LOOK.deck,TRACK_WIDTH-4);
+ strokePath(ctx,path,PIECE_LOOK.inner,TRACK_WIDTH-31);
  for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
   const line=translated(path,laneOffset);
-  strokePath(ctx,line,"#101418",11);
-  strokePath(ctx,translated(path,laneOffset-7.6),"#94a5ac",2.2);
-  strokePath(ctx,translated(path,laneOffset+7.6),"#a2b4bc",2.2);
-  strokePath(ctx,line,"#080c0e",5);
+  strokePath(ctx,line,PIECE_LOOK.groove,11);
+  strokePath(ctx,translated(path,laneOffset-7.6),PIECE_LOOK.metalA,2.2);
+  strokePath(ctx,translated(path,laneOffset+7.6),PIECE_LOOK.metalB,2.2);
+  strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
- for(const edge of [-72,72])strokePath(ctx,translated(path,edge),"#65787e",2.5);
+ for(const edge of [-72,72])strokePath(ctx,translated(path,edge),PIECE_LOOK.edge,2.5);
  for(const part of track.parts)paintSeam(ctx,part.start);
  if(editing&&state.selectedGroup==="main"&&state.selection>=0){
   ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.20:.42;
