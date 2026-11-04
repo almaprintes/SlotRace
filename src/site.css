@@ -372,11 +372,11 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .mini-slot-piece{pointer-events:none}
 .foam-pocket .foam-drag-grip{
   position:absolute;z-index:5;left:5px;top:4px;
-  width:26px;height:25px;border-radius:8px;
+  width:39px;height:38px;border-radius:10px;
   display:grid;place-items:center;
   background:linear-gradient(150deg,#1b5758,#123438);
   border:1px solid #6dc9b8;box-shadow:0 2px 5px #0006;
-  color:#baffee;font-size:18px;line-height:1;
+  color:#baffee;font-size:24px;line-height:1;
   cursor:grab;pointer-events:auto;touch-action:none;
   -webkit-user-select:none;user-select:none;
 }
@@ -421,3 +421,6 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .tray:not(.case-open){height:124px;min-height:100px}
 }
 @media(prefers-reduced-motion:reduce){.tray{transition:none}}
+
+/* DEV 0.9.2 — el asa controla el arrastre táctil, la espuma controla el scroll. */
+.foam-pocket .foam-drag-grip{-webkit-tap-highlight-color:transparent;overscroll-behavior:contain}
