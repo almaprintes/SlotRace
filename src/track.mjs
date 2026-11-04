@@ -148,7 +148,10 @@ export function positionAt(lane,distance){
   const a=lane.nodes[lo],b=lane.nodes[hi],fraction=(d-lane.lengths[lo])/(lane.lengths[hi]-lane.lengths[lo]||1);
   const dx=b.x-a.x,dy=b.y-a.y;
   return{x:a.x+dx*fraction,y:a.y+dy*fraction,h:Math.atan2(dy,dx),
-    curve:b.curve||a.curve,radius:b.radius===Infinity?a.radius:b.radius,
+    // El tramo activo es el del extremo B del segmento muestreado.
+    // Antes se heredaba la curva del extremo A al entrar en una recta
+    // (b.curve || a.curve), produciendo salidas "dentro" de una recta.
+    curve:b.curve,radius:b.radius,
     // Necesario para saber si el coche circula bajo el puente o sobre él.
     // El tramo se asigna por el segmento de trayectoria, no por la
     // proximidad visual al cruce: dos vías superpuestas son distintas.
