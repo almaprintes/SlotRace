@@ -1,9 +1,23 @@
-# SlotRace · DEV 0.5.6 — cuadro de potencia a la izquierda y rueda a la derecha
+# SlotRace · DEV 0.5.7 — curvas por radio real de cada carril
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## DEV 0.5.7 — interior y exterior corregidos
+
+**Fallo corregido:** se estaba sumando el desplazamiento del carril al radio en vez de restarlo según la dirección del giro, favoreciendo al carril interior. La física utiliza ahora el radio efectivo correspondiente a cada vía y sentido de giro:
+
+- Giro a derecha (R2R): **carril 1 interior** (radio del eje − 39 mm), **carril 0 exterior** (radio del eje + 39 mm).
+- Giro a izquierda (R2L): **carril 0 interior**, **carril 1 exterior**. En el ocho, el mismo carril cambia de interior a exterior entre los lóbulos.
+- Objetivos calibrados para velocidad estabilizada: **65 % interior sin salida, 70 % interior con salida; 75 % exterior sin salida, 80 % exterior con salida**. La salida se produce tras acumular pérdida de agarre dentro de la curva, no en su primera arista.
+- Se comprueba tanto en el óvalo como en los **dos lóbulos del ocho completo**, incluyendo pruebas de simulación con límites intercambiados.
+- No cambia la rueda táctil, el puente, la animación del trompo ni el sistema de récords.
+
+Esta calibración es de jugabilidad para el prototipo, no un ensayo de adherencia de coches Scalextric reales. El porcentaje de aceleración por sí solo no determina la salida en cualquier situación: también importa la velocidad que lleva el coche al entrar en la curva.
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.5.7 — verificar **DEV 0.5.7** en la cabecera.
 
 ## Política de versiones DEV
 
