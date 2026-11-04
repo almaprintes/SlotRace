@@ -1,9 +1,22 @@
-# SlotRace LAB 0.4.4 — mesa de montaje y Scalextric virtual
+# SlotRace · DEV 0.5.0 — ocho con puente y versión visible
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
+
+## Novedades de DEV 0.5.0
+
+- **Pantalla de carga de inicio** con logotipo, estado de preparación y **DEV 0.5.0** en grande. Sólo desaparece después del primer fotograma dibujado. Si ocurre un error, ofrece volver a cargar.
+- **Versión visible en la cabecera del móvil** después de la carga, para saber exactamente qué desarrollo se está probando.
+- **Ocho de 18 piezas como circuito inicial** al entrar por primera vez en esta versión: 4 rectas largas, 5 curvas R2 derechas, 4 rectas largas, 5 curvas R2 izquierdas.
+- El ocho **cierra con exactitud matemática** y el cruce queda en el medio de las dos diagonales, entre las rectas centrales.
+- **Puente automático virtual**, a 65 mm, dibujado sobre la segunda diagonal con sombras y dos soportes. Permite probar la carrera del ocho. **La elevación está representada visualmente, todavía no es una simulación 3D detallada ni un modelo de soporte comercial.**
+- La mesa conserva retícula de 25 mm (marcas de 100 mm), y ajuste de la cámara para girar el iPhone sin el redimensionado continuo anterior.
+- **Migración sin borrar el trabajo:** en la primera apertura de DEV 0.5.0, el circuito de la versión 0.4 se conserva como borrador recuperable. Los récords antiguos permanecen locales. Una vez en 0.5, el circuito actual se guarda en una clave nueva.
+
+### Cómo comprobar la versión
+Abre https://almaprintes.github.io/SlotRace/?v=0.5.0 . Debes ver **DEV 0.5.0** durante la carga y después en la parte derecha de la cabecera. Si no sale, la publicación de GitHub Actions aún no se ha actualizado o el navegador conserva recursos antiguos.
 
 ## Corrección del ocho de 225° (0.4.4)
 
