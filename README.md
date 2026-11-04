@@ -5,6 +5,17 @@ Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, de
 **Enlace:** https://almaprintes.github.io/SlotRace/
 
 
+## Política de versiones DEV
+
+El número de versión sigue el formato `MAYOR.MENOR.PARCHE`:
+
+- **Cambios pequeños** (ajustes visuales, ergonomía, correcciones sin cambios de alcance): incrementar **solo el tercer dígito**, por ejemplo `0.5.5 → 0.5.6`.
+- **Cambios funcionales importantes** (nuevos sistemas, rediseños amplios o hitos del desarrollo): incrementar **el segundo dígito** y reiniciar el tercero, por ejemplo `0.5.6 → 0.6.0`.
+- **Cambio del primer dígito**: reservar para hitos mayores como la versión estable `1.0.0`.
+
+La misma versión debe figurar en la pantalla de carga, la cabecera, el título web, el script y el enlace de prueba con parámetro de caché. No aumentar el segundo dígito por un ajuste menor.
+
+
 ## DEV 0.5.6 — ergonomía de la rueda
 
 - **Cuadro de porcentaje a la izquierda**, con escala y barra de potencia visibles sin que el pulgar los tape.
