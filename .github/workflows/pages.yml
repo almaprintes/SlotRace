@@ -40,6 +40,9 @@ jobs:
       - name: Comprobar entrada realista en curvas del óvalo
         run: node tests/oval-curve-entry.cjs
 
+      - name: Comprobar mesa-puzzle táctil y piezas independientes
+        run: node tests/puzzle-table.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
