@@ -161,7 +161,14 @@ function simulation(dt){
  state.seconds+=dt;
  if(state.penalty>0){state.penalty=Math.max(0,state.penalty-dt);return;}
  const g=state.keyboardGas?1:state.gas;
- state.speed=Math.min(1300,Math.max(0,state.speed+(g*940-(1-g)*725-45)*dt));
+ // Cada porcentaje de gatillo tiene una velocidad objetivo proporcional.
+ // La respuesta con inercia hace que el coche avance incluso a 20-30 %
+ // y que al bajar el dedo reduzca sin detenerse de golpe.
+ const targetSpeed=g*950;
+ const response=g>0?1.9:2.7;
+ state.speed=Math.max(0,Math.min(1300,
+  state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
+ ));
  const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
  if(p?.curve){
   const r=Math.max(130,p.radius+(state.lane?LANE_OFFSET:-LANE_OFFSET)*p.curve);
