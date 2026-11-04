@@ -263,8 +263,15 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
   const current=buildTrack(types,origin);
   if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
-  // Primera oportunidad: reemplazos precisos lejos del último conector.
-  // Importante para pistas largas con error acumulado de decenas de mm.
+  // Primero intentar añadir UNA pieza al extremo: conserva intacto el montaje.
+  // Evita sustituir dos tramos cuando sólo faltaba la última curva.
+  for(const id of Object.keys(CATALOG)){
+   const candidate=[...types,id];
+   if(!allowed(candidate))continue;
+   if(buildTrack(candidate,origin).valid)
+    return{ok:true,types:candidate,replaced:0,added:1,unchanged:false};
+  }
+  // Si no basta una adición, buscar sustituciones en cualquier punto.
   const global=findGlobalReplacements(types,{maxStates:24000,origin});
   if(global.ok)return global;
   const ids=Object.keys(CATALOG),target=origin;
