@@ -19,7 +19,7 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
-  gas:0,buttonGas:false,keyboardGas:false,gasInput:false,
+  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
@@ -54,7 +54,7 @@ function changeTypes(next,msg,loose=state.loose){
  return true;
 }
 function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;
- $("throttle").value="0";$("trigger").classList.remove("pressed");}
+ state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
 function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");return;}
@@ -133,6 +133,7 @@ function recoverDraft(){
  changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[]);
 }
 function play(){
+ state.triggerGesture=null;
  if(!state.track.valid){
   state.draft=snapshot();
   state.types=STARTER.slice();state.loose=[];state.track=buildTrack(state.types);state.selection=-1;state.looseSelection=-1;
@@ -142,9 +143,9 @@ function play(){
  state.mode="race";state.latest=performance.now();updateUI();resize();
  toast("¡Pista lista! Suelta el gatillo antes de las curvas.");
 }
-function back(){state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.mode="build";updateUI();resize();}
-function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;
- $("throttle").value="0";state.latest=performance.now();updateUI();
+function back(){state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;state.mode="build";updateUI();resize();}
+function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+ $("trigger").classList.remove("pressed");state.latest=performance.now();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
 function switchLane(){if(state.run){toast("Pausa primero para cambiar de carril.");return;}state.lane=1-state.lane;resetLap();updateUI();toast("Carril "+(state.lane===0?"izquierdo":"derecho")+" · nueva tanda.");}
 function completeLap(){
@@ -159,7 +160,7 @@ function simulation(dt){
  if(!state.run||!state.track.valid)return;
  state.seconds+=dt;
  if(state.penalty>0){state.penalty=Math.max(0,state.penalty-dt);return;}
- const g=state.buttonGas||state.keyboardGas?1:state.gas;
+ const g=state.keyboardGas?1:state.gas;
  state.speed=Math.min(1300,Math.max(0,state.speed+(g*940-(1-g)*725-45)*dt));
  const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
  if(p?.curve){
@@ -172,11 +173,51 @@ function simulation(dt){
  state.distance+=state.speed*dt;
  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
 }
-function setTrigger(on){state.buttonGas=on;$("trigger").classList.toggle("pressed",on);updateHud();}
+function updateTriggerDisplay(){
+ const percent=Math.round((state.keyboardGas?1:state.gas)*100);
+ $("triggerFill").style.height=percent+"%";
+ $("triggerValue").textContent=percent+"%";
+ $("trigger").setAttribute("data-power",String(percent));
+ $("trigger").classList.toggle("pressed",Boolean(state.triggerGesture));
+}
+function setProgressGas(value){
+ state.gas=Math.max(0,Math.min(1,value));
+ updateTriggerDisplay();
+ updateHud();
+}
+function stopProgressGas(){
+ if(!state.triggerGesture&&state.gas===0)return;
+ state.triggerGesture=null;
+ state.gas=0;
+ updateTriggerDisplay();
+ updateHud();
+}
+function triggerPointerDown(e){
+ if(!state.run||state.triggerGesture)return;
+ e.preventDefault?.();
+ state.triggerGesture={id:e.pointerId,startX:e.clientX,startY:e.clientY,axis:null};
+ setProgressGas(0);
+ try{$("trigger").setPointerCapture(e.pointerId);}catch(err){}
+}
+function triggerPointerMove(e){
+ const gesture=state.triggerGesture;
+ if(!state.run||!gesture||e.pointerId!==gesture.id)return;
+ e.preventDefault?.();
+ const dx=e.clientX-gesture.startX,dy=e.clientY-gesture.startY;
+ if(!gesture.axis&&Math.hypot(dx,dy)>=7)gesture.axis=Math.abs(dx)>Math.abs(dy)?"horizontal":"vertical";
+ if(!gesture.axis)return;
+ const distance=gesture.axis==="vertical"?-dy:dx;
+ const range=gesture.axis==="vertical"?115:Math.max(125,Math.min(200,($("trigger").clientWidth||240)*.65));
+ setProgressGas(distance/range);
+}
+function triggerPointerEnd(e){
+ if(!state.triggerGesture||e.pointerId!==state.triggerGesture.id)return;
+ stopProgressGas();
+}
 function updateHud(){
  $("lap").textContent=state.lap;
  $("lapTime").textContent=format(state.seconds);
- $("power").textContent=Math.round(state.buttonGas||state.keyboardGas?100:state.gas*100)+"%";
+ $("power").textContent=Math.round(state.keyboardGas?100:state.gas*100)+"%";
  $("speed").textContent=Math.round(state.speed/10)+" cm/s";
  const v=record();
  $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
@@ -186,6 +227,7 @@ function updateHud(){
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").disabled=state.run;
  $("trigger").disabled=!state.run;
+ updateTriggerDisplay();
 }
 function updateUI(){
  state.viewDirty=true;
@@ -678,19 +720,16 @@ function initEvents(){
   state.viewDirty=true;
  },{passive:false});
  const trigger=$("trigger");
- trigger.addEventListener("pointerdown",e=>{if(!state.run)return;setTrigger(true);try{trigger.setPointerCapture(e.pointerId);}catch(err){};});
- for(const name of ["pointerup","pointercancel","lostpointercapture"])trigger.addEventListener(name,()=>setTrigger(false));
- const throttle=$("throttle");
- throttle.addEventListener("input",e=>{state.gas=Number(e.target.value)/100;updateHud();});
- const release=()=>{state.gas=0;throttle.value="0";updateHud();};
- for(const name of ["pointerup","pointercancel","lostpointercapture","change"])throttle.addEventListener(name,release);
+ trigger.addEventListener("pointerdown",triggerPointerDown);
+ trigger.addEventListener("pointermove",triggerPointerMove);
+ for(const name of ["pointerup","pointercancel","lostpointercapture"])trigger.addEventListener(name,triggerPointerEnd);
  window.addEventListener("keydown",e=>{
   if(e.code==="Escape"&&state.mode==="race"){back();return;}
   if(state.mode==="race"&&(e.code==="Space"||e.code==="ArrowUp")&&e.target.tagName!=="INPUT"){e.preventDefault();state.keyboardGas=true;}
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
  window.addEventListener("keyup",e=>{if(e.code==="Space"||e.code==="ArrowUp")state.keyboardGas=false;});
- const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;throttle.value="0";if(state.mode==="race")state.run=false;updateHud();};
+ const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;if(state.mode==="race")state.run=false;updateHud();};
  window.addEventListener("blur",pauseBackground);
  document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseBackground();});
  window.addEventListener("resize",scheduleResize);
@@ -711,7 +750,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.5.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
+window.slotraceLab={version:"DEV 0.5.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
