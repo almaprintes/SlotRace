@@ -169,9 +169,13 @@ const path=require("node:path");
   Object.assign(st,{
    lane:laneId,gas,speed:gas*physics.DRIVE.topSpeed,distance:start+1,
    cornerDistance:0,cornerDirection:0,gripDebt:0,penalty:0,
-   deslot:null,drift:0,driftDirection:0,seconds:0,run:true
+   deslot:null,drift:0,driftDirection:0,seconds:0,lap:1,run:true
   });
-  for(let i=0;i<500&&st.penalty===0&&st.distance<lane.lengths[turnEnd];i++)
+  // El segundo lóbulo termina en meta: abandonar la prueba al completar
+  // la vuelta; si continuásemos tras el módulo, entraríamos en la
+  // siguiente curva (con interior/exterior intercambiados).
+  for(let i=0;i<500&&st.penalty===0&&st.lap===1&&
+      st.distance<lane.lengths[turnEnd];i++)
    physics.simulationStep(1/60);
   return{crashed:st.penalty>0,advance:st.distance-start,firstLength};
  }
