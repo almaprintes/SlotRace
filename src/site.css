@@ -287,3 +287,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .panel-line .buttons{flex:1 1 100%}
  .panel-line .buttons .mini{min-height:35px}
 }
+
+/* iOS: la lengüeta de inventario debe seguir el dedo, no desplazar
+   lateralmente la caja mientras se arrastra hacia la mesa. */
+.piece-card .grip{touch-action:none;-webkit-user-select:none;user-select:none}
