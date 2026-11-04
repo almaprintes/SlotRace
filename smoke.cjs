@@ -3,7 +3,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
-const {STARTER,CATALOG,TABLE,buildTrack,allowed,freeStock,positionAt,nearestPiece}=await import("./src/track.mjs");
+const {STARTER,CATALOG,TABLE,buildTrack,allowed,freeStock,positionAt,nearestPiece,findLegalClosure,positionOnPiece,START}=await import("./src/track.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
@@ -24,6 +24,34 @@ assert.match(css,/\.piece-card \.grip/,"Drag handle");
 assert.match(app,/function simulation\(/,"Vehicle physics");
 const oval=buildTrack(STARTER);
 assert.equal(oval.parts.length,12);
+// Invariantes geométricas: curvar a izquierda debe ser el espejo exacto
+// de la misma curva a derecha, sin aproximar el giro por la longitud visual.
+const r=positionOnPiece(START,"R2R",1);
+const l=positionOnPiece(START,"R2L",1);
+assert.ok(Math.abs(r.x-l.x)<1e-9,"Las curvas simétricas comparten avance longitudinal");
+assert.ok(Math.abs((r.y-START.y)+(l.y-START.y))<1e-9,"Curvas especulares exactas");
+assert.ok(Math.abs(r.h+l.h)<1e-10,"Giros opuestos exactos");
+for(const piece of ["R2R","R2L","R1R","R1L"]){
+  const circle=buildTrack(Array(8).fill(piece));
+  assert.equal(circle.closed,true,"Ocho curvas de 45° deben cerrar perfectamente: "+piece);
+  assert.ok(circle.gap<1e-6,"Sin acumulación de error en "+piece);
+}
+// Si una curva falta, se conecta mediante otra curva del inventario;
+// jamás estirando una existente.
+const almost=buildTrack(STARTER.slice(0,-1));
+assert.equal(almost.closed,false);
+const fixed=findLegalClosure(STARTER.slice(0,-1));
+assert.equal(fixed.ok,true,"Cierre automático con curva disponible");
+assert.equal(buildTrack(fixed.types).valid,true,"Cierre propuesto debe ser real");
+assert.equal(fixed.replaced,0);
+assert.equal(fixed.added,1);
+assert.deepEqual(fixed.types,STARTER);
+const halfTurned=buildTrack([...STARTER,"S175"]);
+assert.equal(halfTurned.closed,false,"Una recta sobrante no se cierra por tolerancia");
+assert.ok(halfTurned.gap>=170,"No deformar rectas para cerrar");
+assert.match(html,/id="autoClose"/,"Botón de cálculo de cierre");
+assert.match(app,/function closeExactly\(/,"Resolución automática del conector");
+
 assert.equal(CATALOG.S350.length,350);
 assert.equal(CATALOG.S175.length,175);
 assert.ok(Math.abs(CATALOG.R2R.angle-Math.PI/4)<1e-8);
