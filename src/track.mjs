@@ -154,6 +154,11 @@ export function positionAt(lane,distance){
     // proximidad visual al cruce: dos vías superpuestas son distintas.
     pieceIndex:b.pieceIndex};
 }
+export function carTrackLevel(track,pose){
+ // El nivel se determina por la pieza del recorrido, no por las coordenadas
+ // X/Y: en el cruce ambos carriles pueden ocupar la misma proyección.
+ return track?.bridge?.overParts?.includes(pose?.pieceIndex)?"upper":"lower";
+}
 export function nearestPiece(track,x,y){
   let best={index:-1,distance:Infinity};
   for(const part of track.parts){
