@@ -406,48 +406,113 @@ function flipSelectedCurve(){
   changeTypes(next,"Curva del circuito invertida: revisa los conectores.");
  }
 }
-function measureOpenGap(){
+function openGroups(){
  const groups=[];
  if(state.types.length&&!state.track.closed)
-  groups.push({key:"main",count:state.types.length,
-   start:{...state.origin},end:{...state.track.ends.end}});
+  groups.push({key:"main",count:state.types.length,start:{...state.origin},end:{...state.track.ends.end},index:null});
  const seen=new Set();
  for(let i=0;i<state.loose.length;i++){
   const group=looseGroup(i);
   if(!group||seen.has(group.key))continue;
   seen.add(group.key);
-  groups.push({key:group.key,count:group.indices.length,
-   start:group.start,end:group.end});
+  groups.push({key:group.key,count:group.indices.length,start:group.start,end:group.end,index:i});
  }
- const selected=state.looseSelection>=0?looseGroupKey(state.looseSelection):
+ return groups;
+}
+function measureOpenGap(){
+ const groups=openGroups(),selected=state.looseSelection>=0?looseGroupKey(state.looseSelection):
   state.selection>=0?"main":null;
  let possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{selectedKey:selected,maxDistance:800});
  if(!possible.length&&selected)
   possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{maxDistance:800});
- const result=possible[0]||null;
- state.gapDiagnostic=result?{...result,message:gapAnalysis.gapExplanation(result)}:null;
- $("gapInfo").textContent=gapAnalysis.gapExplanation(result);
- $("gapInfo").hidden=false;
+ // Priorizar el hueco del MISMO tramo: únicamente ese par de extremos
+ // puede convertir una cadena abierta en circuito cerrado. Las distancias
+ // entre dos tramos sueltos son puntos de montaje, no cierres.
+ const sameGroup=p=>p.fromKey===p.toKey&&groups.some(g=>g.key===p.fromKey&&g.count>=4);
+ const self=possible.filter(sameGroup);
+ const result=self[0]||possible[0]||null;
+ let message=gapAnalysis.gapExplanation(result);
+ if(result){
+  if(result.fromKey!==result.toKey){
+   message="UNIÓN ENTRE DOS TRAMOS · "+message+
+    " Esta distancia conecta un extremo con otro, pero NO garantiza cerrar el circuito.";
+  }else if(result.problem==="touching"){
+   const group=groups.find(g=>g.key===result.fromKey);
+   const candidate=group?.index!=null?loopFromLooseGroup(group.index):null;
+   message=candidate?.track.closed?
+    "LOS DOS EXTREMOS COINCIDEN · Pulsa Cerrar exacto para convertir el tramo unido en circuito.":
+    "Los conectores están muy próximos, pero comprueba su orientación y que todas las piezas estén acopladas.";
+  }else{
+   message="HUECO DEL MISMO TRAMO · "+message;
+  }
+ }
+ state.gapDiagnostic=result?{...result,message}:null;
+ $("gapInfo").textContent=message;$("gapInfo").hidden=false;
  state.viewDirty=true;
- toast(result?"Hueco medido en milímetros reales.":"No hay dos extremos cercanos para medir.");
+ toast(result?"Distancia y orientación comprobadas.":"No hay dos extremos cercanos para medir.");
  return result;
 }
 function closeExactly(){
  if(state.track.closed){
-   toast(state.track.intersection?"Los extremos ya conectan, pero hay un cruce sin puente.":"Este circuito ya está cerrado.");return;
+  toast(state.track.intersection&&!state.track.bridge?
+   "Los extremos coinciden, pero falta el kit del puente.":"Este circuito ya está cerrado.");
+  return;
  }
- if(state.loose.length){toast("Recoge o encaja primero las piezas sueltas.");return;}
+ // Si el montaje aún vive como grupo magnético suelto, primero comprobar
+ // sus DOS conectores. Antes este botón se deshabilitaba siempre.
+ if(state.loose.length){
+  if(state.types.length){
+   toast("Hay tramos sin encajar. Une primero esas piezas al circuito iniciado.");
+   return;
+  }
+  const groups=openGroups();
+  for(const group of groups){
+   if(group.index==null||group.count<4)continue;
+   if(closeLooseLoop(group.index,{history:true}))return;
+  }
+  // El jugador puede pedir el cierre con piezas modulares sin añadirlas
+  // manualmente, siempre que ambos extremos estén exactamente alineados.
+  if(groups.length===1&&groups[0].count>=4){
+   const group=looseGroup(groups[0].index);
+   const fit=gapAnalysis.measureGap(group.end,group.start,CATALOG);
+   const added=fit.exact?fit.combination?.ids:null;
+   if(added?.length&&added.length<=5){
+    const types=[...group.parts.map(p=>p.id),...added];
+    const raised=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
+    const built=buildTrack(types,group.start,raised);
+    if(built.valid){
+     pushHistory();
+     state.types=types;state.origin={...group.start};state.bridgeParts=raised;
+     state.loose=[];state.track=built;extendWorkBoard();
+     state.selectedGroup="main";state.selectionMode="group";
+     state.selection=0;state.looseSelection=-1;save();updateUI();
+     toast("¡Circuito cerrado! Añadidas "+added.length+
+      " pieza(s) de ajuste, sin cambiar ninguna medida.");
+     return;
+    }
+   }
+   const detail=gapAnalysis.gapExplanation(fit);
+   $("gapInfo").textContent="No se puede cerrar todavía: "+detail;
+   $("gapInfo").hidden=false;
+   toast("Los dos conectores aún no permiten un cierre válido.");
+   return;
+  }
+  toast("Tienes "+groups.length+" tramos separados. Encaja los dos extremos de cada unión antes de cerrar.");
+  measureOpenGap();
+  return;
+ }
  if(state.types.length<2){toast("Coloca primero varias piezas.");return;}
  $("autoClose").disabled=true;$("autoClose").textContent="Buscando…";
  requestAnimationFrame(()=>{
-   try{
-    const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000,origin:state.origin});
-    if(result.ok){
-     if(result.unchanged)toast("El circuito ya estaba cerrado exactamente.");
-     else changeTypes(result.types,"Cierre calculado: "+result.replaced+" pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.");
-    }else toast(result.reason||"No hay cierre exacto con esas piezas.");
-   }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
-   finally{$("autoClose").textContent="Cerrar exacto";updateUI();}
+  try{
+   const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000,origin:state.origin});
+   if(result.ok){
+    if(result.unchanged)toast("El circuito ya estaba cerrado exactamente.");
+    else changeTypes(result.types,"Cierre calculado: "+result.replaced+
+     " pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.");
+   }else toast(result.reason||"No hay cierre exacto con esas piezas.");
+  }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
+  finally{$("autoClose").textContent="Cerrar exacto";updateUI();}
  });
 }
 function removeSelected(){
@@ -759,7 +824,7 @@ function updateUI(){
  $("flip").disabled=!selectedCurve||!selectedCurve.includes("_");
  $("joinPiece").disabled=state.looseSelection<0;
  $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
- $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
+ $("autoClose").disabled=state.track.closed||(state.types.length<2&&state.loose.length<2);
  $("measureGap").disabled=state.types.length===0&&state.loose.length<2;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
@@ -1826,7 +1891,7 @@ function loop(now){
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.9.7",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{measureOpenGap,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
