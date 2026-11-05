@@ -1,7 +1,7 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel} from "./track.mjs";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel,gapAnalysis} from "./track.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
-const KEY="slotrace-lab-09";
+const KEY="slotrace-lab-10";
 const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return null;}})();
 const legacy=(()=>{try{return JSON.parse(storage("slotrace-lab-04")||"null");}catch(e){return null;}})();
 const oldValid=old?.types&&allowed(old.types);
@@ -27,7 +27,7 @@ const state={
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
-  camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,
+  camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,gapDiagnostic:null,
   dragging:null,latest:performance.now()
 };
 const oldBoard=old?.workBoard;
@@ -66,7 +66,10 @@ function restoreSnapshot(shot){
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
 }
-function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
+function pushHistory(){
+ state.gapDiagnostic=null;
+ state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];
+}
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("La construcción contiene piezas desconocidas.");return false;}
  const wasClosed=state.track.closed;
@@ -283,7 +286,7 @@ function installBridgeKit(){
  const spec=CATALOG[id];
  if(!spec){toast("Selecciona una recta y después toca Kit puente.");return false;}
  if(!spec.length||spec.length<350){
-  toast("Para instalar rampas necesitas una recta de 350 o 584 mm.");return false;
+  toast("Para instalar rampas necesitas una recta de 350 o 600 mm.");return false;
  }
  pushHistory();
  let enabled;
@@ -347,6 +350,32 @@ function flipSelectedCurve(){
   const next=state.types.slice();next[state.selection]=opposite;
   changeTypes(next,"Curva del circuito invertida: revisa los conectores.");
  }
+}
+function measureOpenGap(){
+ const groups=[];
+ if(state.types.length&&!state.track.closed)
+  groups.push({key:"main",count:state.types.length,
+   start:{...state.origin},end:{...state.track.ends.end}});
+ const seen=new Set();
+ for(let i=0;i<state.loose.length;i++){
+  const group=looseGroup(i);
+  if(!group||seen.has(group.key))continue;
+  seen.add(group.key);
+  groups.push({key:group.key,count:group.indices.length,
+   start:group.start,end:group.end});
+ }
+ const selected=state.looseSelection>=0?looseGroupKey(state.looseSelection):
+  state.selection>=0?"main":null;
+ let possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{selectedKey:selected,maxDistance:800});
+ if(!possible.length&&selected)
+  possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{maxDistance:800});
+ const result=possible[0]||null;
+ state.gapDiagnostic=result?{...result,message:gapAnalysis.gapExplanation(result)}:null;
+ $("gapInfo").textContent=gapAnalysis.gapExplanation(result);
+ $("gapInfo").hidden=false;
+ state.viewDirty=true;
+ toast(result?"Hueco medido en milímetros reales.":"No hay dos extremos cercanos para medir.");
+ return result;
 }
 function closeExactly(){
  if(state.track.closed){
@@ -676,6 +705,7 @@ function updateUI(){
  $("joinPiece").disabled=state.looseSelection<0;
  $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
  $("autoClose").disabled=state.types.length<2||state.track.closed||state.loose.length>0;
+ $("measureGap").disabled=state.types.length===0&&state.loose.length<2;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
  const used=state.types.length+state.loose.length;
@@ -713,8 +743,10 @@ function updateUI(){
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
 const pocketNames={
- S078:"RECTA 78",S0875:"RECTA 87,5",S175:"RECTA 175",S350:"RECTA 350",
- S584:"RECTA 584",START350:"SALIDA / META",
+ S0125:"AJUSTE 12,5",S025:"AJUSTE 25",S0375:"AJUSTE 37,5",
+ S050:"RECTA 50",S0625:"AJUSTE 62,5",S075:"RECTA 75",
+ S0875:"RECTA 87,5",S100:"RECTA 100",S175:"RECTA 175",
+ S350:"RECTA 350",S600:"RECTA 600",START350:"SALIDA / META",
  R1_225R:"R1 · 22,5°",R1_45R:"R1 · 45°",R1_90R:"R1 · 90°",
  R2_225R:"R2 · 22,5°",R2_45R:"R2 · 45°",
  R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°"
@@ -1663,7 +1695,7 @@ function initEvents(){
  $("lane").addEventListener("click",switchLane);
  $("oval").addEventListener("click",()=>{changeTypes(STARTER.slice(),"Óvalo de prueba montado; las piezas sueltas vuelven a la caja.",[],START);resetWorkBoard();save();state.camera={panX:0,panY:0,zoom:1};});
  $("eight").addEventListener("click",()=>{
-   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho exacto! Dos rectas 584 y doce curvas de 45°, puente elevado.",[],START);resetWorkBoard();save();
+   changeTypes(FIGURE_EIGHT.slice(),"¡Ocho exacto! Dos rectas 600 y doce curvas de 45°, puente elevado.",[],START);resetWorkBoard();save();
    state.camera={panX:0,panY:0,zoom:1};
    save();
  });
@@ -1677,6 +1709,7 @@ function initEvents(){
  $("flip").addEventListener("click",flipSelectedCurve);
  $("curveDirection").addEventListener("click",toggleCaseCurveDirection);
  $("bridgeKit").addEventListener("click",installBridgeKit);
+ $("measureGap").addEventListener("click",measureOpenGap);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
   save();updateUI();scheduleResize();
@@ -1738,8 +1771,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.6",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.9.7",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+puzzle:{measureOpenGap,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
