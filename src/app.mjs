@@ -2393,7 +2393,7 @@ function initEvents(){
  $("menuNew").addEventListener("click",createNewCircuit);
  $("menuClockwise").addEventListener("click",()=>setNewCircuitDirection(1));
  $("menuCounter").addEventListener("click",()=>setNewCircuitDirection(-1));
- $("goHome").addEventListener("click",showMenu);
+ $("goHome").addEventListener("click",()=>state.mode==="race"?endSession("menu"):showMenu());
  $("raceHome").addEventListener("click",()=>endSession("menu"));
  $("workDirection").addEventListener("click",()=>changeDriveDirection(-state.driveDirection));
   $("play").addEventListener("click",play);
@@ -2452,7 +2452,9 @@ function initEvents(){
  trigger.addEventListener("pointermove",triggerPointerMove);
  for(const name of ["pointerup","pointercancel","lostpointercapture"])trigger.addEventListener(name,triggerPointerEnd);
  window.addEventListener("keydown",e=>{
-  if(e.code==="Escape"&&state.mode!=="menu"){showMenu();return;}
+  if(e.code==="Escape"&&state.mode!=="menu"){
+   if(state.mode==="race")endSession("menu");else showMenu();return;
+  }
   if(state.mode==="race"&&(e.code==="Space"||e.code==="ArrowUp")&&e.target.tagName!=="INPUT"){e.preventDefault();state.keyboardGas=true;}
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
