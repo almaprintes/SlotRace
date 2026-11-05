@@ -156,10 +156,11 @@ export function buildTrack(types,origin=START,raisedParts=[]){
   // Puente inicial incluido en la receta o kit de elevación colocado
   // sobre una recta suficientemente larga. Sin soporte, cruce no validado.
   const automatic=closed&&intersection&&hasAutomaticEightBridge(types);
-  const bridge=automatic?
+  // Si el jugador instala un kit, tiene prioridad sobre el puente de demo.
+  const manual=manualBridge(parts,crossings,raisedParts,closed);
+  const bridge=manual||(automatic?
    {height:BRIDGE_HEIGHT_MM,overParts:[7],underParts:[0],supports:[7],
-    crossing:{x:crossings[0].x,y:crossings[0].y},ramps:true,virtual:true}:
-   manualBridge(parts,crossings,raisedParts,closed);
+    crossing:{x:crossings[0].x,y:crossings[0].y},ramps:true,virtual:true}:null);
   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
   return{parts,types:[...types],points,lanes,closed,onTable,intersection,crossings,bridge,
     valid:closed&&onTable&&(!intersection||Boolean(bridge)),
