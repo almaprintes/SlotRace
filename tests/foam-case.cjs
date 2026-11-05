@@ -1,5 +1,5 @@
 "use strict";
-// El maletín de SlotRace debe ser una única caja con trece cavidades
+// El maletín de SlotRace debe ser una única caja con diecinueve cavidades
 // físicas, apilado real de inventario, extracción táctil y guardado.
 const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path");
@@ -38,12 +38,12 @@ const fs=require("node:fs"),path=require("node:path");
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
- assert.equal(game.version,"DEV 0.9.6");
+ assert.equal(game.version,"DEV 0.9.7");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
  const pockets=elements.get("pieces").children;
- assert.equal(pockets.length,13,"Una caja con trece geometrías físicas distintas");
+ assert.equal(pockets.length,19,"Una caja con diecinueve geometrías virtuales");
  assert.deepEqual(pockets.map(p=>p.dataset.piece),allTypes);
  assert.match(css,/foam-insert/,"La caja tiene espuma troquelada");
  assert.match(css,/foam-cutout/,"La espuma conserva el hueco de cada módulo");
@@ -95,7 +95,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(elements.get("caseClosed").hidden,false);
  assert.equal(toggle.attrs["aria-expanded"],"false");
  assert.equal(st.loose.length,2);
- assert.equal(JSON.parse(data.get("slotrace-lab-09")).caseOpen,false);
+ assert.equal(JSON.parse(data.get("slotrace-lab-10")).caseOpen,false);
  toggle.listeners.click[0]();
  assert.equal(st.caseOpen,true);
  assert.equal(toggle.attrs["aria-expanded"],"true");
@@ -162,7 +162,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(st.loose.length,6,"El toque siguiente vuelve a funcionar");
  assert.equal(st.loose.at(-1).id,"R1_45L","La cavidad invertida suministra curva izquierda");
 
- assert.ok(JSON.parse(data.get("slotrace-lab-09")).loose.length>=4,
+ assert.ok(JSON.parse(data.get("slotrace-lab-10")).loose.length>=4,
   "El contenido extraído queda guardado en el montaje");
  // En el modo pruebas, ni el fin del kit inicial ni el viejo máximo
  // de 48 piezas pueden impedir sacar más módulos del maletín.
@@ -172,5 +172,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.9.6: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.9.7: maletín único, diecinueve recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
