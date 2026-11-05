@@ -1,9 +1,10 @@
 const assert=require("node:assert/strict");
 (async()=>{
  const {GEOMETRY,RADII,PARTS,SPECIALS,RECIPES,endpoint,trace}=await import("../src/pt-precision.mjs");
- assert.equal(GEOMETRY.trackWidth,156);
- assert.equal(GEOMETRY.lanePitch,78);
- assert.deepEqual(Object.values(RADII),[136,292,448,604]);
+ assert.equal(GEOMETRY.trackWidth,150);
+ assert.equal(GEOMETRY.lengthUnit,12.5);
+ assert.equal(GEOMETRY.lanePitch,75);
+ assert.deepEqual(Object.values(RADII),[150,300,450,600]);
  for(const id of ["R1","R2","R3"]){
   const next="R"+(Number(id[1])+1);
   assert.equal(RADII[next]-RADII[id],GEOMETRY.trackWidth,
@@ -11,7 +12,7 @@ const assert=require("node:assert/strict");
  }
  assert.equal(PARTS.S0875.length*4,PARTS.S350.length);
  assert.equal(PARTS.S175.length*2,PARTS.S350.length);
- assert.equal(PARTS.S584.length,2*RADII.R2);
+ assert.equal(PARTS.S600.length,2*RADII.R2);
  assert.equal(PARTS.START350.length,PARTS.S350.length);
  for(const [id,p] of Object.entries(PARTS)){
   const a=endpoint({x:0,y:0,h:0},id);
@@ -36,6 +37,34 @@ const assert=require("node:assert/strict");
  assert.equal(PARTS.R1_90R.degrees,90);
  assert.equal(SPECIALS.X350.requiresLaneRouting,true);
  assert.equal(SPECIALS.BRIDGE.requiresElevation,true);
- assert.equal(Object.keys(PARTS).length,20);
- console.log("PT-Precision OK: 20 piezas dirigidas, radios concéntricos, equivalencias angulares, óvalo y ocho exactos.");
+ assert.equal(Object.keys(PARTS).length,26);
+ const straights=Object.entries(PARTS).filter(([,p])=>p.kind==="straight");
+ assert.equal(straights.length,12);
+ for(const [id,p] of straights){
+  assert.ok(Number.isInteger(p.length/GEOMETRY.lengthUnit),id+" no usa unidades exactas");
+ }
+ for(const radius of Object.values(RADII))
+  assert.ok(Number.isInteger(radius/GEOMETRY.lengthUnit));
+ const sameDistance=[
+  ["S350"],["S175","S175"],
+  Array(4).fill("S0875"),["S100","S100","S100","S050"]
+ ];
+ const baseline=trace(sameDistance[0]).end;
+ for(const recipe of sameDistance){
+  const end=trace(recipe).end;
+  assert.ok(Math.hypot(end.x-baseline.x,end.y-baseline.y)<1e-9,
+   "Las combinaciones suman exactamente 350 mm: "+recipe);
+ }
+ // Otro ejemplo combinando una recta larga con las medidas de los dos
+ // extremos: todas las combinaciones dan el mismo avance de 600 mm.
+ const others=[["S600"],["S350","S175","S075"],
+  Array(6).fill("S100"),Array(8).fill("S075")];
+ const ref=trace(others[0]).end;
+ for(const seq of others){
+  const end=trace(seq).end;
+  assert.ok(Math.hypot(end.x-ref.x,end.y-ref.y)<1e-9,
+   "Mismo avance nominal en diferente número de rectas: "+seq);
+ }
+
+ console.log("SR-Precision OK: 26 IDs, 12 rectas, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
