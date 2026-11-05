@@ -64,10 +64,15 @@ function restoreSnapshot(shot){
  state.bridgeParts=(shot.bridgeParts||[]).filter(i=>Number.isInteger(i)&&i>=0&&i<state.types.length);
  state.origin=shot.origin?{...shot.origin}:{...START};
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ clearGapDiagnostic();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
 }
-function pushHistory(){
+function clearGapDiagnostic(){
  state.gapDiagnostic=null;
+ $("gapInfo").hidden=true;
+}
+function pushHistory(){
+ clearGapDiagnostic();
  state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];
 }
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
@@ -247,6 +252,7 @@ function snapLoose(index,{force=false,history=true}={}){
  const magnet=bestMagnet(index,{distance:force?SNAP_DISTANCE_MM*1.5:SNAP_DISTANCE_MM});
  if(!magnet)return false;
  if(history)pushHistory();
+ else clearGapDiagnostic();
  if(magnet.reversed)reverseLooseSingle(source.indices[0]);
  transformLoose(source.indices,magnet.from,magnet.to);
  const moved=source.indices.map(i=>({...state.loose[i]}));
