@@ -123,7 +123,7 @@ const path=require("node:path");
 
  // Canvas de prueba con instrumentación de textos. No hay red ni
  // motores externos y la exportación se hace completamente en local.
- const renderTexts=[];
+ const renderTexts=[],printStrokes=[],printFills=[];
  const pngCanvas={width:0,height:0,blobType:null,
   getContext(){return pngCtx;},
   toBlob(cb,type){this.blobType=type;cb({type,size:1234});}
@@ -132,6 +132,10 @@ const path=require("node:path");
   get(target,key){
    if(key in target)return target[key];
    if(key==="fillText")return(value)=>renderTexts.push(String(value));
+   if(key==="stroke")return()=>printStrokes.push({
+    color:target.strokeStyle,width:target.lineWidth
+   });
+   if(key==="fill")return()=>printFills.push(target.fillStyle);
    if(key==="createLinearGradient")return()=>({addColorStop(){}});
    return()=>{};
   },set(target,key,value){target[key]=value;return true;}
@@ -140,10 +144,20 @@ const path=require("node:path");
  assert.equal(meta.width,1500);
  assert.ok(meta.height>1400);
  assert.ok(renderTexts.includes("RECETA DE PIEZAS"),"Receta adherida al mismo PNG");
- assert.ok(renderTexts.includes("ORDEN DE MONTAJE"),"Secuencia de piezas adherida");
+ assert.ok(!renderTexts.includes("ORDEN DE MONTAJE"),"El PNG ya no muestra orden de montaje");
+ assert.ok(meta.frame.height>=1100,"Plano ampliado aprovechando el espacio liberado");
+ assert.equal(meta.blueprintStyle,"white-track-black-seams");
+ assert.ok(printStrokes.some(v=>v.color==="#ffffff"&&v.width===geo.TRACK_WIDTH),
+  "La superficie del circuito se pinta en blanco puro");
+ assert.ok(printStrokes.some(v=>v.color==="#080c0f"&&v.width===5),
+  "Las juntas de cada pieza se imprimen en negro");
+ assert.ok(printStrokes.some(v=>v.color==="#10171a"&&v.width===geo.TRACK_WIDTH+8),
+  "El contorno negro separa la vía blanca del fondo verde");
+ assert.ok(meta.scale>0,"El circuito sigue centrado y encuadrado");
  assert.ok(renderTexts.some(v=>v.includes("HORARIO")),"Dirección visible en plano");
  assert.ok(renderTexts.some(v=>v.includes("×")),"Cantidades por modelo visibles");
- assert.ok(renderTexts.some(v=>v.includes("S350")),"Orden de construcción visible");
+ assert.ok(renderTexts.some(v=>v.includes("Recta")||v.includes("Salida")),
+  "La receta muestra los nombres de las piezas, sin códigos de montaje");
  document.createElement=tag=>tag==="canvas"?pngCanvas:node("card");
  const result=await game.exportBlueprint();
  assert.equal(result,true,"Exportador abre menú de compartir en iOS");
