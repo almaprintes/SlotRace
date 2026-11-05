@@ -1,5 +1,5 @@
 import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,gapAnalysis} from "./track.mjs";
-import {buildRecipe,slugName} from "./blueprint.mjs";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -1732,8 +1732,33 @@ function paintBlueprintTrack(ctx,track){
    overParts:[0],underParts:[1],crossing
   }});
 }
+// Identificación visual por TIPO, no por posición: todas las curvas R1
+// 90° derechas llevan la misma letra. El círculo mantiene su tamaño en
+// píxeles exportados independientemente del zoom del plano.
+function paintBlueprintIdentifiers(ctx,track,groups,refs,scale){
+ const pieces=[...track.parts,...groups.flatMap(group=>group.parts)];
+ const markers=[];
+ for(const part of pieces){
+  const code=refs.get(part.id);
+  if(!code)continue;
+  const point=positionOnPiece(part.start,part.id,.5);
+  ctx.save();ctx.translate(point.x,point.y);
+  ctx.scale(1/scale,1/scale);
+  ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);
+  ctx.fillStyle="#102d36";ctx.fill();
+  ctx.strokeStyle="#e9fffa";ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle="#ffffff";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.font=code.length>1?"900 17px system-ui,sans-serif":
+   "900 23px system-ui,sans-serif";
+  ctx.fillText(code,0,1);
+  ctx.restore();
+  markers.push({id:part.id,code,x:point.x,y:point.y});
+ }
+ return markers;
+}
 function drawBlueprint(ctx,recipe,{width=1500}={}){
  const rows=Math.max(1,Math.ceil(recipe.items.length/2));
+ const refs=blueprintReferenceMap(recipe.items);
  const x=Math.round(width*.045),bodyWidth=width-2*x;
  const headingY=74;
  const frame={x:x+13,y:216,width:bodyWidth-26,height:Math.round(width*.79)};
@@ -1781,6 +1806,9 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.translate(frame.x+frame.width/2,frame.y+frame.height/2);
  ctx.scale(scale,scale);ctx.translate(-cx,-cy);
  paintBlueprintTrack(ctx,state.track);
+ // Las letras se dibujan encima de las vías, después de los cruces, para
+ // que sean legibles tanto en rectas como en curvas y en el puente.
+ const markers=paintBlueprintIdentifiers(ctx,state.track,groups,refs,scale);
  ctx.restore();
  // La sección de métricas se conserva debajo del plano ampliado.
  ctx.fillStyle="#102c35";ctx.fillRect(x,metricsY,bodyWidth,104);
@@ -1804,13 +1832,22 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  }
  ctx.fillStyle="#59e3c6";ctx.font="900 32px system-ui,sans-serif";
  ctx.fillText("RECETA DE PIEZAS",x,recipeHeadingY);
+ ctx.textAlign="right";ctx.fillStyle="#8dbdb4";
+ ctx.font="650 18px system-ui,sans-serif";
+ ctx.fillText("LETRA EN PISTA = TIPO DE PIEZA",width-x,recipeHeadingY);
+ ctx.textAlign="left";
  // Sólo la receta agrupada; el orden de montaje ya no forma parte del PNG.
  for(const [i,item] of recipe.items.entries()){
   const row=i>>1,side=i%2,rx=x+side*(bodyWidth/2),ry=recipeRowY+row*59;
   ctx.fillStyle=row%2?"#112831":"#172f37";
   ctx.fillRect(rx,ry,bodyWidth/2-10,51);
+  const reference=refs.get(item.id);
+  if(reference){
+   ctx.fillStyle="#54ecc7";ctx.font="950 26px system-ui,sans-serif";
+   ctx.fillText(reference,rx+12,ry+34);
+  }
   ctx.fillStyle="#edfff7";ctx.font="750 22px system-ui,sans-serif";
-  ctx.fillText(item.name,rx+13,ry+33);
+  ctx.fillText(item.name,rx+(reference?56:13),ry+33);
   ctx.textAlign="right";ctx.fillStyle="#5aefca";
   ctx.font="900 26px system-ui,sans-serif";
   ctx.fillText("×"+item.count,rx+bodyWidth/2-31,ry+34);
@@ -1822,6 +1859,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.textAlign="right";ctx.fillText("TOP DOWN RACE: SLOTRACE",width-x,h-47);
  ctx.textAlign="left";
  return {width,height:h,recipe,bounds,scale,frame,
+  markers,references:Object.fromEntries(refs),
   blueprintStyle:"white-track-black-seams"};
 }
 async function exportBlueprint(){
