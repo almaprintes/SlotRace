@@ -1,3 +1,17 @@
+# SlotRace DEV 0.13.3 · Guardado seguro y rescate de circuitos
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.3
+
+- Corrige el caso real **OchoA → Splash**: si editas el nombre de un circuito abierto y pulsas Guardar, se crea una ficha **nueva con identificador propio**. La receta anterior no se sobrescribe.
+- Guardar con el mismo nombre actualiza únicamente ese circuito. Si cambia su trazado, la receta anterior pasa al **historial de versiones** (hasta 30 revisiones locales, separado del inventario).
+- **Mis circuitos** muestra **Recuperar «OchoA»** si existe un borrador anterior con ese nombre y no está ya en la colección. Se importa con un ID nuevo sin modificar Splash.
+- Al iniciar la PWA se protege una copia del borrador anterior recuperable en el historial antes de que otra navegación pueda desplazarlo.
+- También aparece **Recuperar versión anterior** cuando hay historial, siempre como copia nueva: no se sustituye ninguna pista guardada.
+- El guardado de recetas es más seguro ante errores de almacenamiento y evita actualizar el estado del inventario hasta que el guardado local se confirma.
+- Ninguno de estos mecanismos puede reconstruir un trazado que ya se hubiera perdido **antes** de esta versión si no queda un borrador/otra copia previa en el dispositivo. La PWA no tiene acceso directo al almacenamiento privado del iPhone.
+
+---
+
 # SlotRace DEV 0.13.2 · Montaje automático por pulsación
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.2

@@ -4,6 +4,17 @@ const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
 const LIBRARY_KEY="slotrace-circuit-library-v1";
+const LIBRARY_REVISIONS_KEY="slotrace-circuit-versions-v1";
+const normalCircuitName=name=>String(name||"").trim().replace(/\s+/g," ").toLocaleLowerCase();
+const newCircuitId=()=> "sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+function readCircuitRevisions(){
+ try{
+  const items=JSON.parse(storage(LIBRARY_REVISIONS_KEY)||"[]");
+  return Array.isArray(items)?items.filter(item=>
+   item&&typeof item.name==="string"&&Array.isArray(item.snapshot?.types)
+   &&allowed(item.snapshot.types)).slice(0,30):[];
+ }catch(e){return [];}
+}
 const readLibrary=()=>{try{
  const stored=JSON.parse(storage(LIBRARY_KEY)||"[]");
  return Array.isArray(stored)?stored.filter(item=>item&&typeof item.id==="string"&&
@@ -87,26 +98,112 @@ function restoreSnapshot(shot){
 }
 
 /* Inventario de recetas local, compatible con una futura cuenta y catálogo. */
-function saveLibrary(){storage(LIBRARY_KEY,JSON.stringify(state.library));}
+function saveLibrary(){
+ try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(state.library));return true;}
+ catch(e){toast("No se ha podido guardar la colección. No cierres la PWA.");return false;}
+}
+function safelyWriteLibrary(items){
+ try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(items));return true;}
+ catch(e){toast("Error de almacenamiento. No se ha sustituido ningún circuito.");return false;}
+}
 function circuitLabel(){return state.circuitName.trim()||"Circuito sin nombre";}
+function archiveCircuitRevision(item){
+ const revision={id:newCircuitId(),sourceId:item.id,name:item.name,direction:item.direction,
+  snapshot:JSON.parse(JSON.stringify(item.snapshot)),savedAt:new Date().toISOString()};
+ const next=[revision,...readCircuitRevisions()].slice(0,30);
+ try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify(next));return true;}
+ catch(e){toast("Sin espacio para copia de seguridad. Guardado cancelado.");return false;}
+}
+function snapshotOfDraft(d){
+ if(!d||!Array.isArray(d.types)||!allowed([...d.types,...(d.loose||[]).map(p=>p.id)]))return null;
+ if(!d.types.length&&!(d.loose||[]).length)return null;
+ return{types:d.types.slice(),loose:(d.loose||[]).map(p=>({...p})),
+  bridgeParts:(d.bridgeParts||[]).slice(),origin:{...(d.origin||START)}};
+}
+function recoverableDraft(){
+ const d=state.draft;
+ return d&&typeof d.name==="string"&&d.name.trim()&&snapshotOfDraft(d)
+  &&!state.library.some(c=>normalCircuitName(c.name)===normalCircuitName(d.name))?d:null;
+}
+function protectOrphanDraft(){
+ const d=recoverableDraft();if(!d)return;
+ const shot=snapshotOfDraft(d),key="draft:"+normalCircuitName(d.name);
+ const revisions=readCircuitRevisions();
+ if(revisions.some(v=>v.sourceId===key&&JSON.stringify(v.snapshot)===JSON.stringify(shot)))return;
+ const entry={id:newCircuitId(),sourceId:key,name:d.name.trim().slice(0,64),
+  direction:d.direction===-1?-1:1,snapshot:shot,savedAt:new Date().toISOString()};
+ try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify([entry,...revisions].slice(0,30)));}
+ catch(e){/* Nunca borrar ni modificar el borrador original por un fallo de espacio. */}
+}
+function addRecoveredCircuit(name,shot,direction){
+ if(state.library.length>=120){toast("Inventario completo: no cabe el circuito recuperado.");return false;}
+ if(!shot||!allowed([...shot.types,...shot.loose.map(p=>p.id)]))return false;
+ const date=new Date().toISOString();
+ const item={id:newCircuitId(),name,createdAt:date,updatedAt:date,
+  direction:direction===-1?-1:1,snapshot:shot};
+ const next=[item,...state.library];
+ if(!safelyWriteLibrary(next))return false;
+ state.library=next;
+ save();updateUI();toast("«"+name+"» recuperado como circuito independiente.");
+ return true;
+}
+function recoverDraftToLibrary(){
+ const d=recoverableDraft();
+ if(!d){toast("No hay un borrador anterior recuperable.");return false;}
+ const shot=snapshotOfDraft(d);
+ if(!addRecoveredCircuit(String(d.name).trim().slice(0,64),shot,d.direction))return false;
+ // Mantener el circuito actual sobre la mesa y la recuperación en el inventario.
+ state.draft=null;save();updateUI();return true;
+}
+function restoreLastCircuitRevision(){
+ const versions=readCircuitRevisions();
+ if(!versions.length){toast("No hay versiones guardadas todavía.");return false;}
+ const last=versions[0];
+ const name=state.library.some(item=>normalCircuitName(item.name)===normalCircuitName(last.name))?
+  (last.name.slice(0,48)+" (recuperado)") :last.name;
+ if(!addRecoveredCircuit(name,last.snapshot,last.direction))return false;
+ // Consumir la revisión recuperada para no duplicarla accidentalmente.
+ try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify(versions.slice(1)));}
+ catch(e){/* Conservamos la copia si no es posible actualizar el historial. */}
+ updateUI();return true;
+}
 function saveCircuit(){
  const field=state.mode==="build"?$("workCircuitName"):$("circuitName");
  const name=String(field.value||state.circuitName).trim().replace(/\s+/g," ").slice(0,64);
  if(!name){toast("Ponle nombre al circuito antes de guardarlo.");return false;}
  if(!state.types.length&&!state.loose.length){toast("Añade al menos una pieza.");return false;}
- let item=state.library.find(c=>c.id===state.activeCircuitId);
- if(!item&&state.library.length>=120){toast("Inventario completo (120 circuitos).");return false;}
- const previous=record();
- if(!item){
-  item={id:"sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),
-   createdAt:new Date().toISOString()};
-  state.library.unshift(item);
+ const active=state.library.find(c=>c.id===state.activeCircuitId);
+ const changedName=!!active&&normalCircuitName(name)!==normalCircuitName(active.name);
+ // Un nombre diferente significa OTRO circuito. Nunca renombrar o machacar
+ // la receta original a través del botón Guardar.
+ const create=!active||changedName;
+ if(create&&state.library.length>=120){toast("Inventario completo (120 circuitos).");return false;}
+ if(state.library.some(c=>normalCircuitName(c.name)===normalCircuitName(name)
+   &&(create||c.id!==active.id))){
+  toast("Ya existe un circuito llamado «"+name+"». Abre ese circuito para editarlo.");
+  return false;
  }
- state.circuitName=name;state.activeCircuitId=item.id;
- item.name=name;item.direction=state.driveDirection;item.snapshot=snapshot();
- item.updatedAt=new Date().toISOString();
- if(!state.records[recKey()]&&previous.some(v=>v!==null))state.records[recKey()]=previous.slice();
- saveLibrary();save();updateUI();toast("Guardado en Mis circuitos: «"+name+"».");return true;
+ const currentSnapshot=snapshot();
+ const now=new Date().toISOString();
+ const oldRecord=!active?record():null;
+ const item=create?{id:newCircuitId(),createdAt:now}:active;
+ const nextItem={...item,name,direction:state.driveDirection,
+  snapshot:currentSnapshot,updatedAt:now};
+ if(!create&&JSON.stringify({s:item.snapshot,d:item.direction})!==
+  JSON.stringify({s:nextItem.snapshot,d:nextItem.direction})){
+  if(!archiveCircuitRevision(item))return false;
+ }
+ const next=create?[nextItem,...state.library]:
+  state.library.map(c=>c.id===item.id?nextItem:c);
+ if(!safelyWriteLibrary(next))return false;
+ state.library=next;
+ state.circuitName=name;state.activeCircuitId=nextItem.id;
+ if(create&&oldRecord?.some(v=>v!==null)&&!state.records[recKey()])
+  state.records[recKey()]=oldRecord.slice();
+ save();updateUI();
+ toast(changedName?"«"+name+"» creado. «"+active.name+"» sigue guardado.":
+  "Guardado en Mis circuitos: «"+name+"».");
+ return true;
 }
 function loadSavedCircuit(id){
  const item=state.library.find(c=>c.id===id);
@@ -190,7 +287,9 @@ async function importRecipe(file){
   snapshot:{types:data.types.slice(),loose:data.loose.map(p=>({...p})),
    bridgeParts:data.bridgeParts.slice(),origin:{...data.origin}},
   createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
- state.library.unshift(item);saveLibrary();loadSavedCircuit(item.id);
+ const next=[item,...state.library];
+ if(!safelyWriteLibrary(next))return false;
+ state.library=next;loadSavedCircuit(item.id);
  toast("Receta adquirida para Mis circuitos: «"+item.name+"».");return true;
 }
 function clearGapDiagnostic(){
@@ -1143,6 +1242,12 @@ function updateUI(){
  for(const id of ["circuitName","workCircuitName"])
   if(document.activeElement!==$(id))$(id).value=state.circuitName;
  renderLibrary();
+ const orphan=recoverableDraft(),revisions=readCircuitRevisions();
+ $("libraryDraftRecovery").hidden=!orphan;
+ $("libraryRecoverDraft").textContent=orphan?"Recuperar «"+orphan.name+"»":"Recuperar borrador anterior";
+ $("libraryVersionRecovery").hidden=!revisions.length;
+ $("libraryRestoreVersion").textContent=revisions.length?
+  "Recuperar versión de «"+revisions[0].name+"»":"Recuperar versión anterior";
  $("goHome").hidden=state.mode==="menu";
  $("menuRace").disabled=!state.track.valid;
  $("menuRaceDetail").textContent=state.track.valid?
@@ -2538,6 +2643,8 @@ function initEvents(){
  });
  $("menuRecipe").addEventListener("click",exportRecipe);
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
+ $("libraryRecoverDraft").addEventListener("click",recoverDraftToLibrary);
+ $("libraryRestoreVersion").addEventListener("click",restoreLastCircuitRevision);
  $("workSaveCircuit").addEventListener("click",saveCircuit);
  $("importCircuitFile").addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(file)await importRecipe(file);
@@ -2639,8 +2746,8 @@ function loop(now){
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
 }
-palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.2",state,showHub,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
+window.slotraceLab={version:"DEV 0.13.3",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

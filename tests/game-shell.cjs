@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.2");
+ assert.equal(game.version,"DEV 0.13.3");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -252,6 +252,19 @@ const path=require("node:path");
  assert.equal(library[0].name,"Ocho de pruebas");
  assert.deepEqual(library[0].snapshot.types,st.types);
  assert.equal(game.circuitPackage().name,"Ocho de pruebas");
+ // REGRESIÓN: guardar Splash con la ficha de OchoA abierta NO puede borrarla.
+ const previousId=library[0].id,previousPieces=library[0].snapshot.types.slice();
+ elements.get("workCircuitName").value="Splash";
+ assert.equal(game.saveCircuit(),true,"Cambiar nombre crea un circuito nuevo");
+ const both=JSON.parse(saved.get("slotrace-circuit-library-v1"));
+ assert.equal(both.length,2,"Splash y el anterior permanecen en el inventario");
+ assert.deepEqual(both.map(x=>x.name),["Splash","Ocho de pruebas"]);
+ assert.notEqual(both[0].id,previousId);
+ assert.deepEqual(both[1].snapshot.types,previousPieces,"La receta anterior queda intacta");
+ elements.get("workCircuitName").value="Ocho de pruebas";
+ assert.equal(game.saveCircuit(),false,"No permite sustituir otro circuito por nombre duplicado");
+ assert.equal(JSON.parse(saved.get("slotrace-circuit-library-v1")).length,2);
+ assert.equal(game.loadSavedCircuit(previousId),true,"Ocho de pruebas puede reabrirse");
  const layout=st.types.slice();
  game.changeTypes([],"Mesa de prueba vacía",[],geo.START);
  assert.equal(game.loadSavedCircuit(library[0].id),true);
@@ -287,5 +300,36 @@ const path=require("node:path");
  assert.equal(afterRace.circuitName,"Ocho de pruebas");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
- console.log("SlotRace DEV 0.13.2: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+
+ // Rescate sin sobrescribir Splash si OchoA todavía existe en el borrador.
+ const splashId=both[0].id;
+ st.draft={types:["S350","R1_90R"],loose:[],bridgeParts:[],origin:{...geo.START},
+  name:"OchoA",direction:-1,activeId:splashId};
+ game.showHub("library");
+ assert.equal(elements.get("libraryDraftRecovery").hidden,false);
+ assert.equal(game.recoverDraftToLibrary(),true,"Rescatar OchoA del borrador");
+ const rescued=JSON.parse(saved.get("slotrace-circuit-library-v1"));
+ assert.equal(rescued.length,3);
+ assert.deepEqual(rescued.map(x=>x.name),["OchoA","Splash","Ocho de pruebas"]);
+ assert.notEqual(rescued[0].id,splashId,"OchoA recuperado tiene identidad propia");
+ assert.deepEqual(rescued[0].snapshot.types,["S350","R1_90R"]);
+ assert.deepEqual(rescued[1].snapshot.types,previousPieces,"Splash no se modifica al recuperar");
+ assert.equal(elements.get("libraryDraftRecovery").hidden,true);
+
+ // Cambiar el trazado de un circuito existente preserva la versión anterior.
+ game.loadSavedCircuit(previousId);
+ const stable=st.types.slice();
+ game.changeTypes([...stable,"S075"],"Edición del trazado",[],geo.START);
+ elements.get("workCircuitName").value="Ocho de pruebas";
+ assert.equal(game.saveCircuit(),true);
+ assert.equal(game.readCircuitRevisions()[0].name,"Ocho de pruebas");
+ assert.deepEqual(game.readCircuitRevisions()[0].snapshot.types,stable);
+ assert.equal(game.restoreLastCircuitRevision(),true);
+ const withBackup=JSON.parse(saved.get("slotrace-circuit-library-v1"));
+ assert.ok(withBackup.some(x=>x.name==="Ocho de pruebas (recuperado)"));
+ assert.deepEqual(withBackup.find(x=>x.name==="Ocho de pruebas (recuperado)").snapshot.types,stable);
+ assert.ok(withBackup.some(x=>x.name==="OchoA"));
+ assert.ok(withBackup.some(x=>x.name==="Splash"));
+
+ console.log("SlotRace DEV 0.13.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

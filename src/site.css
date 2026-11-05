@@ -1277,3 +1277,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
  letter-spacing:.3px;text-align:center;
 }
 .builder-screen .foam-pocket:active{border-color:#36cab4!important}
+
+/* DEV 0.13.3 · Rescate de borradores y versiones anteriores, sin sustituir. */
+.library-recovery{display:flex;flex-direction:column;gap:7px;margin-top:11px;
+ padding:12px 13px;border:1px solid #e2c176;border-radius:12px;
+ background:linear-gradient(120deg,#fff9e9,#fffdf6);color:#46351a}
+.library-recovery[hidden]{display:none!important}
+.library-recovery strong{font-size:13px;font-weight:950}
+.library-recovery p{font-size:11px;line-height:1.5;margin:0;color:#6b5942}
+.library-recovery .mini{width:100%;min-height:43px;background:#fff;border:1px solid #ddb952;
+ color:#573c12;font-weight:950;border-radius:10px}
