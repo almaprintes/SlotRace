@@ -1585,7 +1585,16 @@ function paintGhost(ctx,track){
 // Exportación PNG autocontenida. La receta viaja DENTRO de la imagen
 // (no en un archivo secundario), con números de montaje y elevaciones.
 function blueprintData(){
- return buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection);
+ const recipe=buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection);
+ // Los kits son accesorios de montaje, no modifican la geometría
+ // longitudinal de las rectas. Aun así deben aparecer en la receta.
+ const kitCount=Math.max(recipe.bridgeCount,Number(Boolean(state.track.bridge)));
+ if(kitCount){
+  recipe.bridgeCount=kitCount;
+  recipe.items.push({id:"BRIDGE_KIT",name:"Kit puente 65 mm · soportes y rampas",
+   count:kitCount,length:0,accessory:true});
+ }
+ return recipe;
 }
 function drawBlueprint(ctx,recipe,{width=1500}={}){
  const nRows=Math.ceil(recipe.items.length/2);
