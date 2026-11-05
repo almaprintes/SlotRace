@@ -62,7 +62,7 @@ const assert=require("node:assert/strict");
  assert.equal(fit.exact,true);
  assert.equal(fit.combination.length,337.5);
  assert.ok(fit.combination.count>=2);
- assert.match(gapExplanation(fit),/Solución modular exacta/);
+ assert.match(gapExplanation(fit),/Combinación:.*cierre matemáticamente exacto/);
  const wrongLateral=measureGap({x:0,y:0,h:0},{x:350,y:40,h:0},CATALOG);
  assert.equal(wrongLateral.problem,"lateral");
  assert.equal(wrongLateral.exact,false);
