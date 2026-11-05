@@ -77,13 +77,13 @@ function pushHistory(){
  clearGapDiagnostic();
  state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];
 }
-function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
+function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserveBridge=false}={}){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("La construcción contiene piezas desconocidas.");return false;}
  const wasClosed=state.track.closed;
  pushHistory();
  const sameGeometry=next.length===state.types.length&&next.every((id,i)=>id===state.types[i]);
  state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
- if(!sameGeometry)state.bridgeParts=[];
+ if(!sameGeometry&&!preserveBridge)state.bridgeParts=[];
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
  save();updateUI();
@@ -551,7 +551,8 @@ function closeExactly(){
     else changeTypes(result.types,result.rebalanced?
      "¡Cierre proporcional! Rectas reajustadas sin introducir pieza de 12,5 mm.":
      "Cierre calculado: "+result.replaced+
-     " pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.");
+     " pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.",
+     state.loose,state.origin,{preserveBridge:Boolean(result.rebalanced)});
    }else toast(result.reason||"No hay cierre exacto con esas piezas.");
   }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
   finally{$("autoClose").textContent="Cerrar exacto";updateUI();}
