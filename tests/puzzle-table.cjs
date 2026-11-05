@@ -20,7 +20,7 @@ const path=require("node:path");
    getBoundingClientRect(){return{left:0,top:0,width:390,height:600,right:390,bottom:600}},
    querySelectorAll(){return this.children},
    querySelector(sel){
-    if(sel===".qty")return this.qty??=node("qty");
+    if(sel===".bridge-kit-cta")return this.kitCta??=node("kit-cta");if(sel===".qty")return this.qty??=node("qty");
     if(sel===".grip"||sel===".foam-drag-grip")return this.grip??=node("grip");
     return null;
    }};
@@ -40,7 +40,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.3");
+ assert.equal(game.version,"DEV 0.9.4");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -203,5 +203,5 @@ const path=require("node:path");
    label+" queda sin separación");
  }
 
- console.log("SlotRace DEV 0.9.3 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.9.4 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
