@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.10.2");
+ assert.equal(game.version,"DEV 0.10.3");
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
  assert.equal(elements.get("menuScreen").hidden,false,"Menú visible al iniciar");
  assert.equal(elements.get("buildScreen").hidden,true);
