@@ -922,6 +922,38 @@ function paintSeam(ctx,p){
  }
  ctx.restore();
 }
+// Accesorio elevador PT: dos apoyos y dos rampas de 65 mm.
+// Una recta elevada mantiene las medidas de pista originales.
+function paintSupportKit(ctx,part){
+ const spec=CATALOG[part.id];if(!spec?.length||spec.length<350)return;
+ const mid=positionOnPiece(part.start,part.id,.5);
+ ctx.save();ctx.translate(mid.x,mid.y);ctx.rotate(mid.h);
+ ctx.shadowColor="#000b";ctx.shadowBlur=19;ctx.shadowOffsetY=15;
+ for(const x of [-spec.length*.33,spec.length*.33]){
+  ctx.fillStyle="#354c52";roundRect(ctx,x-19,-102,38,204,7);ctx.fill();
+  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+  ctx.fillStyle="#b3cacc";ctx.fillRect(x-7,-94,14,188);
+  ctx.strokeStyle="#8ba9ad";ctx.lineWidth=4;ctx.strokeRect(x-12,-97,24,194);
+ }
+ ctx.shadowColor="#0009";ctx.shadowBlur=12;ctx.shadowOffsetY=12;
+ roundRect(ctx,-spec.length*.5,-82,spec.length,164,5);
+ ctx.fillStyle="#263138";ctx.fill();
+ ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+ ctx.fillStyle="#657780";ctx.fillRect(-spec.length*.5,-80,spec.length,5);
+ ctx.fillRect(-spec.length*.5,75,spec.length,5);
+ ctx.fillStyle="#354249";
+ for(const x of [-spec.length*.47,spec.length*.37]){
+  ctx.save();ctx.translate(x,0);
+  for(let k=0;k<4;k++){ctx.globalAlpha=.2+.18*k;ctx.fillRect(k*7,-73,3,146);}
+  ctx.restore();
+ }
+ for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+  ctx.fillStyle="#080d10";ctx.fillRect(-spec.length*.5,off-5,spec.length,10);
+  ctx.fillStyle="#91a6ad";ctx.fillRect(-spec.length*.5,off-9,spec.length,2);
+  ctx.fillRect(-spec.length*.5,off+7,spec.length,2);
+ }
+ ctx.globalAlpha=1;ctx.restore();
+}
 function paintBridgePillars(ctx,track){
  if(!track.bridge)return;
  const section=track.parts[track.bridge.overParts[0]];
@@ -981,7 +1013,7 @@ function paintContinuousTrack(ctx,track,editing){
 function paintBridgeCrossing(ctx,track){
  if(!track.bridge)return;
  const elevated=track.parts[track.bridge.overParts[0]];
- const middle=positionOnPiece(elevated.start,elevated.id,.5),angle=middle.h;
+ const middle=track.bridge.crossing||positionOnPiece(elevated.start,elevated.id,.5),angle=elevated.start.h;
  const halfLength=185,halfWidth=(TRACK_WIDTH+13)/2;
  ctx.save();ctx.translate(middle.x,middle.y);ctx.rotate(angle);
  // Los soportes están fuera de la intersección, sin invadir las ranuras.
@@ -1202,6 +1234,10 @@ function paintLoose(ctx){
    ctx.setLineDash([]);ctx.restore();
   }
  }
+ // Los kits de una pieza libre permanecen visibles y se mueven con ella.
+ for(const piece of state.loose){
+  if(piece.raised)paintSupportKit(ctx,loosePart(piece,-1));
+ }
  if(state.dragging?.active&&state.mode==="build"){
   const d=state.dragging,rect=editCanvas.getBoundingClientRect();
   const w=worldFromPointer(makeView(editCanvas,"build"),d.x-rect.left,d.y-rect.top);
@@ -1300,6 +1336,11 @@ function renderScene(canvas,mode){
  // Dibujar el circuito completo como un solo tramo continuo evita
  // bandas que se comen otras piezas en las uniones.
  paintContinuousTrack(ctx,track,mode==="build");
+ // Apoyos colocados durante el montaje, antes de cerrar el circuito.
+ for(const index of state.bridgeParts){
+  if(track.bridge?.overParts.includes(index))continue;
+  const part=track.parts[index];if(part)paintSupportKit(ctx,part);
+ }
  if(hasBridge){
   // El coche inferior sólo pasa tras la MÁSCARA PEQUEÑA del cruce;
   // el resto de la diagonal no puede ocultarlo.
