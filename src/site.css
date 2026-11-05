@@ -518,7 +518,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 }
 @media(max-height:670px){.home-hero{min-height:145px;padding-bottom:67px}.home-car{height:118px;bottom:-31px}.home-card{min-height:57px}}
 
-/* DEV 0.11.0 · biblioteca privada y final de carrera. */
+/* DEV 0.11.1 · biblioteca privada y final de carrera. */
 .circuit-inventory{margin-top:12px}
 .circuit-inventory h2{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
 .circuit-inventory h2 small{font-size:12px;color:#6fe8cb;font-weight:800}
@@ -543,6 +543,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .results-hero h1{font-size:clamp(25px,6vw,38px);margin:4px 0}
 .results-hero p{margin:0;color:#bed5d3;overflow-wrap:anywhere}
 .results-stats{font-size:13px;font-weight:850;color:#7beccf;padding:12px;border:1px solid #315a55;border-radius:12px;line-height:1.7}
+.combined-best{border-top:1px solid #315a55;margin-top:10px;padding-top:12px;text-align:center;font-size:clamp(17px,4.5vw,23px);font-weight:950;color:#effff8;letter-spacing:.2px}
 .results-scroll h2{font-size:18px;margin:17px 0 10px}
 .results-laps{display:flex;flex-direction:column;gap:7px}
 .result-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;padding:10px 13px;border-radius:11px;background:#122c33;border:1px solid #325862;font-variant-numeric:tabular-nums}

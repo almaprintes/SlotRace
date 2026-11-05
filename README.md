@@ -1,3 +1,13 @@
+# SlotRace · DEV 0.11.1 — mejor tiempo combinado
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.11.1
+
+- La pantalla «Tus vueltas» muestra **MEJOR COMBINADO** como suma de la mejor vuelta de cada carril en la sesión.
+- Si falta una vuelta completa de alguno de los carriles, se muestra «—».
+- Los mejores registros permanentes por carril y el inventario no se alteran.
+
+---
+
 # SlotRace · DEV 0.10.3 — plano con identificadores por tipo de pieza
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.

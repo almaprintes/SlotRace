@@ -785,8 +785,14 @@ function renderSessionSummary(){
   " · "+state.sessionLaps.length+" vueltas completas";
  const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
   .reduce((min,l)=>Math.min(min,l.seconds),Infinity));
- $("resultsStats").textContent="MEJOR IZQUIERDA: "+(Number.isFinite(best[0])?format(best[0])+" s":"—")+
+ const scores=$("resultsStats");
+ scores.textContent="MEJOR IZQUIERDA: "+(Number.isFinite(best[0])?format(best[0])+" s":"—")+
   "    ·    MEJOR DERECHA: "+(Number.isFinite(best[1])?format(best[1])+" s":"—");
+ const combined=best.every(Number.isFinite)?format(best[0]+best[1])+" s":"—";
+ const combinedLine=document.createElement("div");
+ combinedLine.className="combined-best";
+ combinedLine.textContent="MEJOR COMBINADO: "+combined;
+ scores.appendChild(combinedLine);
  const list=$("resultsLaps");list.innerHTML="";
  for(const lap of state.sessionLaps){
   const row=document.createElement("div");row.className="result-row";
@@ -2480,7 +2486,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.11.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.11.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
