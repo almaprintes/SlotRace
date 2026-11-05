@@ -7,20 +7,20 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
-assert.equal(Object.keys(CATALOG).length,20);
-assert.equal(Object.keys(PARTS).length,20);
-assert.equal(Object.keys(CATALOG).filter(id=>!id.includes("_")||id.endsWith("R")).length,13);
-assert.deepEqual(Object.values(RADII),[136,292,448,604]);
-assert.equal(TRACK_WIDTH,156);assert.equal(LANE_OFFSET,39);
-assert.equal(GEOMETRY.lanePitch,78);
-assert.equal(CATALOG.S078.length,78);
+assert.equal(Object.keys(CATALOG).length,26);
+assert.equal(Object.keys(PARTS).length,26);
+assert.equal(Object.keys(CATALOG).filter(id=>!id.includes("_")||id.endsWith("R")).length,19);
+assert.deepEqual(Object.values(RADII),[150,300,450,600]);
+assert.equal(TRACK_WIDTH,150);assert.equal(LANE_OFFSET,37.5);
+assert.equal(GEOMETRY.lanePitch,75);
+assert.equal(CATALOG.S075.length,75);
 assert.equal(CATALOG.S0875.length,87.5);
 assert.equal(CATALOG.S175.length,175);
 assert.equal(CATALOG.S350.length,350);
-assert.equal(CATALOG.S584.length,584);
+assert.equal(CATALOG.S600.length,600);
 assert.equal(CATALOG.START350.length,350);
-assert.equal(CATALOG.R2_45R.radius,292);
-assert.equal(CATALOG.R1_90L.radius,136);
+assert.equal(CATALOG.R2_45R.radius,300);
+assert.equal(CATALOG.R1_90L.radius,150);
 for(const id of Object.keys(CATALOG)){
  assert.ok(CATALOG[id].length>0||CATALOG[id].radius>0,"Geometría definida: "+id);
  const end=positionOnPiece(START,id,1);
@@ -68,17 +68,17 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.9\.6/);
-for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
+assert.match(html,/DEV 0\.9\.7/);
+for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
 assert.match(css,/\.foam-pocket/);assert.match(css,/foam-insert/);
 for(const fragment of ["function paintTable(","function paintTrack(","function paintBridgeCrossing(","function snapLoose(","function foamSlotSVG(","function flipSelectedCurve(","function palette(","function simulation(","function closeExactly("]){
  assert.ok(app.includes(fragment),fragment);
 }
-assert.match(app,/const KEY="slotrace-lab-09"/);
+assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.9.6 OK: 20 geometrías dirigidas, 13 huellas, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.9.7 OK: 26 geometrías dirigidas, 19 huellas, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
