@@ -1528,10 +1528,12 @@ let dragOrigin=null;
 function canvasPointerDown(e){
  if(state.mode!=="build")return;
  editCanvas.setPointerCapture(e.pointerId);
- const point=screenToWorld(e),single=state.pointer.size===0;
- const loose=single?nearestLoose(point.x,point.y):{index:-1,distance:Infinity};
+ const point=screenToWorld(e);
+ // Ambos dedos pueden comenzar sobre cualquier tramo: si el primero
+ // cae en el tapete y el segundo en la pieza, también admite giro.
+ const loose=nearestLoose(point.x,point.y);
  const looseIndex=loose.distance<TRACK_WIDTH*.55?loose.index:-1;
- const hit=looseIndex<0&&single?nearestPiece(state.track,point.x,point.y):{index:-1,distance:Infinity};
+ const hit=looseIndex<0?nearestPiece(state.track,point.x,point.y):{index:-1,distance:Infinity};
  const trackIndex=hit.distance<TRACK_WIDTH*.55?hit.index:-1;
  const key=trackIndex>=0?"main":looseIndex>=0?looseGroupKey(looseIndex):null;
  // Primer toque selecciona el tramo; el siguiente toque selecciona la
