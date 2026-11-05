@@ -457,3 +457,14 @@ button:disabled{opacity:.35;cursor:not-allowed}
 /* DEV 0.9.7: aviso de diagnóstico geométrico, sin tapar la mesa */
 .gap-info:not([hidden]){display:block;margin:6px 12px 0;padding:10px 12px;border:1px solid #59bdb1;border-radius:10px;background:#123d3e;color:#ddfff5;font-weight:750;font-size:12px;line-height:1.45}
 @media(max-width:450px){.gap-info:not([hidden]){font-size:11px;padding:8px 9px}}
+
+/* DEV 0.9.7: el nuevo medidor y los controles de cierre caben en iPhone.
+   Nunca se recortan ni comprimen fuera de pantalla. */
+.controlbar .right #measureGap{border-color:#68babb;color:#b9f3e7}
+@media(max-width:660px){
+ .controlbar{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:stretch}
+ .controlbar .left{width:100%}
+ .controlbar .status{max-width:100%;font-size:11px}
+ .controlbar .right{display:grid;grid-template-columns:1fr 1fr 1fr;width:100%;gap:6px}
+ .controlbar .right .mini,.controlbar .right .primary{width:100%;min-width:0;padding:8px 5px;font-size:11px;min-height:42px}
+}
