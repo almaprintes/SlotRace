@@ -1,8 +1,21 @@
-# SlotRace · DEV 0.10.1 — plano ampliado con pista blanca y juntas negras
+# SlotRace · DEV 0.10.2 — catálogo sin micro-recta y compensación proporcional
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.10.2 — menos piezas, mismos cierres exactos
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.10.2
+
+- La caja muestra **cinco rectas**: 75, 87,5, 175, 350 y 600 mm. Con la salida/meta y siete moldes de curva, son **13 huecos**.
+- La recta **S0125 de 12,5 mm** se retira del inventario y de los cierres nuevos. Se conserva como tipo **heredado** para que los montajes ya guardados sigan cargando, sin migración destructiva; la clave local sigue siendo `slotrace-lab-10`.
+- La escala matemática conserva unidades de 12,5 mm, pero una diferencia de 12,5 mm **no crea automáticamente una pieza de ese tamaño**. El motor prueba sustituir hasta dos rectas existentes por otras longitudes disponibles —por ejemplo, 75 → 87,5 mm— y comprueba que el circuito completo cierre antes de aceptar el cambio.
+- **Medir hueco** informa de la sustitución propuesta cuando realmente resuelve el mismo tramo; **Cerrar exacto** prioriza la adición de una recta existente si cabe exactamente y, si no es posible, intenta las sustituciones proporcionales. Las pistas con puente conservan sus apoyos si se sustituyen rectas sin alterar el número de piezas.
+- No todos los huecos ni todos los trazados se pueden resolver por restas: el cambio debe compensar exactamente el **vector de separación** de los conectores y respetar la orientación. No se estiran ni se desplazan módulos artificialmente.
+- Pruebas: `tests/modular-closure.cjs` verifica compensaciones de 12,5 mm y 25 mm sin añadir módulos, y `tests/two-end-closure.cjs` comprueba el flujo con grupos magnéticos, el cierre directo de 175 mm y deshacer. **12/12 suites aprobadas** en la validación del código.
+
+---
 
 ## DEV 0.10.1 — plano blanco de alto contraste y receta compacta
 
