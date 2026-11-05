@@ -40,7 +40,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.4");
+ assert.equal(game.version,"DEV 0.9.5");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -203,5 +203,5 @@ const path=require("node:path");
    label+" queda sin separación");
  }
 
- console.log("SlotRace DEV 0.9.4 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.9.5 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
