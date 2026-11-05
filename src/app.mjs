@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel,gapAnalysis} from "./track.mjs";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,gapAnalysis} from "./track.mjs";
 import {buildRecipe,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
@@ -440,6 +440,19 @@ function measureOpenGap(){
  const self=possible.filter(sameGroup);
  const result=self[0]||possible[0]||null;
  let message=gapAnalysis.gapExplanation(result);
+ let balance=null;
+ if(result?.fromKey===result?.toKey){
+  const section=groups.find(g=>g.key===result.fromKey);
+  const pieceTypes=section?.index!=null?
+   looseGroup(section.index)?.parts.map(part=>part.id):
+   section?.key==="main"?state.types:null;
+  if(pieceTypes?.length>=4){
+   const origin=section.start;
+   const raised=section.index!=null?
+    looseGroup(section.index).parts.flatMap((part,i)=>part.raised?[i]:[]):state.bridgeParts;
+   balance=findStraightRebalance(pieceTypes,{origin,raisedParts:raised});
+  }
+ }
  if(result){
   if(result.fromKey!==result.toKey){
    message="UNIÓN ENTRE DOS TRAMOS · "+message+
@@ -452,6 +465,12 @@ function measureOpenGap(){
     "Los conectores están muy próximos, pero comprueba su orientación y que todas las piezas estén acopladas.";
   }else{
    message="HUECO DEL MISMO TRAMO · "+message;
+  }
+  if(balance?.ok&&!balance.unchanged){
+   const edits=balance.changes.map(change=>
+    CATALOG[change.from].length+" → "+CATALOG[change.to].length+" mm").join(" + ");
+   message="CIERRE POR COMPENSACIÓN · Sustituir "+edits+
+    ". Sin pieza de 12,5 mm ni deformaciones. Pulsa Cerrar exacto.";
   }
  }
  state.gapDiagnostic=result?{...result,message}:null;
@@ -483,6 +502,19 @@ function closeExactly(){
   if(groups.length===1&&groups[0].count>=4){
    const group=looseGroup(groups[0].index);
    const fit=gapAnalysis.measureGap(group.end,group.start,CATALOG);
+   const original=group.parts.map(part=>part.id);
+   const raised=group.parts.flatMap((part,i)=>part.raised?[i]:[]);
+   const balanced=findStraightRebalance(original,{origin:group.start,raisedParts:raised});
+   if(balanced.ok&&!balanced.unchanged){
+    pushHistory();
+    state.types=balanced.types;state.origin={...group.start};state.bridgeParts=raised;
+    state.loose=[];state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+    extendWorkBoard();state.selectedGroup="main";state.selectionMode="group";
+    state.selection=0;state.looseSelection=-1;save();updateUI();
+    toast("Cerrado compensando rectas: "+balanced.changes.map(c=>
+     CATALOG[c.from].length+" → "+CATALOG[c.to].length+" mm").join(" + ")+".");
+    return;
+   }
    const added=fit.exact?fit.combination?.ids:null;
    if(added?.length&&added.length<=5){
     const types=[...group.parts.map(p=>p.id),...added];
@@ -513,10 +545,12 @@ function closeExactly(){
  $("autoClose").disabled=true;$("autoClose").textContent="Buscando…";
  requestAnimationFrame(()=>{
   try{
-   const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000,origin:state.origin});
+   const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000,origin:state.origin,raisedParts:state.bridgeParts});
    if(result.ok){
     if(result.unchanged)toast("El circuito ya estaba cerrado exactamente.");
-    else changeTypes(result.types,"Cierre calculado: "+result.replaced+
+    else changeTypes(result.types,result.rebalanced?
+     "¡Cierre proporcional! Rectas reajustadas sin introducir pieza de 12,5 mm.":
+     "Cierre calculado: "+result.replaced+
      " pieza(s) cambiada(s), "+result.added+" añadida(s). Puedes deshacer.");
    }else toast(result.reason||"No hay cierre exacto con esas piezas.");
   }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
@@ -926,14 +960,14 @@ function updateUI(){
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
 const pocketNames={
- S0125:"AJUSTE FINO 12,5",S075:"RECTA 75",S0875:"RECTA 87,5",
+ S075:"RECTA 75",S0875:"RECTA 87,5",
  S175:"RECTA 175",S350:"RECTA 350",S600:"RECTA 600",
  START350:"SALIDA / META",
  R1_225R:"R1 · 22,5°",R1_45R:"R1 · 45°",R1_90R:"R1 · 90°",
  R2_225R:"R2 · 22,5°",R2_45R:"R2 · 45°",
  R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°"
 };
-const pocketIds=Object.keys(CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
+const pocketIds=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
 // Fuente de color común entre la pista de la mesa y las miniaturas de la caja.
 const PIECE_LOOK=Object.freeze({
  shadow:"#0c1518",outer:"#65747a",rim:"#1e282d",deck:"#343e44",
