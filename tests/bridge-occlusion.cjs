@@ -4,6 +4,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const figure=geo.buildTrack(geo.FIGURE_EIGHT);
  assert.equal(figure.closed,true);
  assert.equal(figure.valid,true);
@@ -24,7 +25,7 @@ const path=require("node:path");
  assert.equal(geo.carTrackLevel(geo.buildTrack(geo.STARTER),lower),"lower");
  assert.ok(Math.abs(lower.h-upper.h)>0.01);
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"")
+   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
    .replace('function paintCar(ctx,at,lane,paused=false){','function paintCar(ctx,at,lane,paused=false){window.__drawLog.push("car");')
    .replace('function paintContinuousTrack(ctx,track,editing){','function paintContinuousTrack(ctx,track,editing){window.__drawLog.push("base");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
@@ -51,11 +52,12 @@ const path=require("node:path");
  let now=0;const frames=[];
  const storage=new Map();
  const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
- const keys=Object.keys(geo),values=keys.map(k=>geo[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},fn=>frames.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab;
+ game.openWorkshop();
  assert.equal(game.state.track.valid,true);
  game.openRace();
  const render=(distance,time)=>{
@@ -140,5 +142,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.9.8 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.10.0 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
