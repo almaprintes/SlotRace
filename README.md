@@ -1,3 +1,17 @@
+# SlotRace · DEV 0.12.0 — Clean Premium / estilo C
+
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.12.0
+
+- Portada clara de juego comercial con **imágenes originales en tres cuartos** del Avenir Gripline y Helix Spark, copiadas sin modificación desde `almaprintes/TopdownCraftrace` (`public/assets/cars/workshop`).
+- Presentación temática de pista de slot mediante CSS; los modelos reales aparecen sobre ella. No se utilizan imágenes generadas.
+- Menú principal con **Jugar** como acción roja y Construir / Exportar plano como accesos secundarios reales.
+- **Mis circuitos** conserva sus acciones de guardado, importación y exportación.
+- Resultados con tarjetas azul/rosa para ambos carriles, **mejor combinado** en amarillo y clasificación visual de récord/mejora/retroceso.
+- La física, geometría, controles y el guardado local `slotrace-lab-10` permanecen sin cambios. No se añaden botones falsos de tienda o garaje.
+- Pruebas de regresión en GitHub Actions y verificación de los dos archivos originales durante la publicación.
+
+---
+
 # SlotRace · DEV 0.11.1 — mejor tiempo combinado
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.11.1

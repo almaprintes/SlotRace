@@ -786,20 +786,29 @@ function renderSessionSummary(){
  const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
   .reduce((min,l)=>Math.min(min,l.seconds),Infinity));
  const scores=$("resultsStats");
- scores.textContent="MEJOR IZQUIERDA: "+(Number.isFinite(best[0])?format(best[0])+" s":"—")+
-  "    ·    MEJOR DERECHA: "+(Number.isFinite(best[1])?format(best[1])+" s":"—");
+ scores.textContent="";
+ const lanes=document.createElement("div");lanes.className="results-lane-metrics";
+ function metric(parent,title,value,cssClass){
+  const tile=document.createElement("div");tile.className=cssClass;
+  const label=document.createElement("span");label.textContent=title;
+  const time=document.createElement("strong");time.textContent=value;
+  tile.appendChild(label);tile.appendChild(time);parent.appendChild(tile);
+  return tile;
+ }
+ metric(lanes,"Mejor izquierda",Number.isFinite(best[0])?format(best[0])+" s":"—","result-metric lane-left");
+ metric(lanes,"Mejor derecha",Number.isFinite(best[1])?format(best[1])+" s":"—","result-metric lane-right");
+ scores.appendChild(lanes);
  const combined=best.every(Number.isFinite)?format(best[0]+best[1])+" s":"—";
- const combinedLine=document.createElement("div");
- combinedLine.className="combined-best";
- combinedLine.textContent="MEJOR COMBINADO: "+combined;
- scores.appendChild(combinedLine);
+ metric(scores,"Mejor combinado",combined,"combined-best");
  const list=$("resultsLaps");list.innerHTML="";
  for(const lap of state.sessionLaps){
-  const row=document.createElement("div");row.className="result-row";
+  const row=document.createElement("div");row.className="result-row"+
+   (lap.record?" is-record":"");
   const label=document.createElement("span");
   label.textContent="Vuelta "+lap.number+" · carril "+(lap.lane===0?"izquierdo":"derecho");
   const value=document.createElement("strong");value.textContent=format(lap.seconds)+" s";
   const diff=document.createElement("small");
+  diff.className=lap.previous===null?"is-initial":lap.seconds<=lap.previous?"is-gain":"is-loss";
   diff.textContent=lap.previous===null?"Primera vuelta de este carril":
    (lap.seconds<=lap.previous?"Mejora ":"Retrocede ")+
    format(Math.abs(lap.seconds-lap.previous))+" s";
@@ -2486,7 +2495,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.11.1",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.12.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

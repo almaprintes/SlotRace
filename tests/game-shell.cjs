@@ -48,7 +48,9 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.11.1");
+ assert.equal(game.version,"DEV 0.12.0");
+ assert.match(html,/avenir_gripline_threequarter\.webp/);
+ assert.match(html,/helix_spark_threequarter\.webp/);
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
  assert.equal(elements.get("menuScreen").hidden,false,"Menú visible al iniciar");
  assert.equal(elements.get("buildScreen").hidden,true);
@@ -237,12 +239,14 @@ const path=require("node:path");
  assert.equal(st.mode,"results");
  assert.equal(elements.get("resultsScreen").hidden,false);
  assert.equal(elements.get("resultsLaps").children.length,4);
- assert.equal(elements.get("resultsStats").children[0].textContent,
-  "MEJOR COMBINADO: 23,466 s","El combinado suma los mejores tiempos de cada carril");
+ assert.equal(elements.get("resultsStats").children[1].children[1].textContent,
+  "23,466 s","El combinado suma los mejores tiempos de cada carril");
+ assert.equal(elements.get("resultsStats").children[0].children.length,2,
+  "Los dos carriles muestran tiempos separados");
  const afterRace=JSON.parse(saved.get("slotrace-lab-10"));
  assert.equal("sessionLaps" in afterRace,false);
  assert.equal(afterRace.circuitName,"Ocho de pruebas");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
- console.log("SlotRace DEV 0.11.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.12.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

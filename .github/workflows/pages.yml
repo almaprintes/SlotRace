@@ -73,6 +73,8 @@ jobs:
           test -f _site/src/blueprint.mjs
           test -f _site/src/site.css
           test -s _site/assets/cars/avenir_gripline.webp
+          test -s _site/assets/cars/avenir_gripline_threequarter.webp
+          test -s _site/assets/cars/helix_spark_threequarter.webp
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
