@@ -46,6 +46,9 @@ jobs:
       - name: Comprobar caja de corcho y extracción de inventario
         run: node tests/foam-case.cjs
 
+      - name: Comprobar giro táctil exacto de 22,5 grados con dos dedos
+        run: node tests/twist-rotation.cjs
+
       - name: Comprobar geometría PT-Precision y cierres exactos
         run: node tests/pt-precision.cjs
 
