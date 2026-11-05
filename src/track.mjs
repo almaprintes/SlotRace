@@ -89,8 +89,10 @@ function crossingCandidates(parts,closed){
  }
  return found;
 }
+// La elevación debe verse durante el montaje aunque aún no se haya cerrado
+// el circuito; cerrar el trazado sigue siendo requisito independiente para correr.
 function manualBridge(parts,crossings,raisedParts,closed){
- if(!closed||!crossings.length)return null;
+ if(!crossings.length)return null;
  const raised=[...new Set(raisedParts)].filter(i=>Number.isInteger(i)&&i>=0&&i<parts.length);
  if(raised.length!==1)return null; // Un tramo elevado por kit en esta fase.
  const index=raised[0],piece=parts[index],spec=CATALOG[piece.id];
