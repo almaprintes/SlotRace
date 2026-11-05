@@ -147,6 +147,26 @@ const path=require("node:path");
  assert.ok(!renderTexts.includes("ORDEN DE MONTAJE"),"El PNG ya no muestra orden de montaje");
  assert.ok(meta.frame.height>=1100,"Plano ampliado aprovechando el espacio liberado");
  assert.equal(meta.blueprintStyle,"white-track-black-seams");
+ const referred=rec.items.filter(item=>!item.accessory);
+ assert.equal(meta.markers.length,st.track.parts.length,
+   "Cada pieza colocada tiene una referencia visible");
+ assert.equal(Object.keys(meta.references).length,referred.length,
+   "Una sola letra distinta para cada tipo de módulo");
+ assert.ok(renderTexts.includes("LETRA EN PISTA = TIPO DE PIEZA"),
+   "La leyenda explica cómo se leen las letras del plano");
+ for(const item of referred){
+  const code=meta.references[item.id];
+  assert.match(code,/^[A-Z]+$/,"Referencia legible para "+item.id);
+  assert.equal(meta.markers.filter(marker=>marker.id===item.id).length,item.count,
+    "Número de etiquetas coincide con las piezas "+item.name);
+  assert.ok(meta.markers.filter(marker=>marker.id===item.id).every(marker=>marker.code===code),
+    "Las piezas del mismo tipo repiten el mismo código");
+  assert.equal(renderTexts.filter(text=>text===code).length,item.count+1,
+    "La referencia aparece en cada módulo y otra vez junto a la receta");
+ }
+ assert.equal(meta.references.BRIDGE_KIT,undefined,
+   "El kit de apoyo no se etiqueta como vía física");
+
  assert.ok(printStrokes.some(v=>v.color==="#ffffff"&&v.width===geo.TRACK_WIDTH),
   "La superficie del circuito se pinta en blanco puro");
  assert.ok(printStrokes.some(v=>v.color==="#080c0f"&&v.width===5),
@@ -167,5 +187,5 @@ const path=require("node:path");
  assert.match(navigator.shared.files[0].name,/\.png$/);
  assert.ok(navigator.shared.files[0].parts[0].size>0);
 
- console.log("SlotRace DEV 0.10.2: menú, taller, carrera, dirección inversa, guardado, Gripline y exportación PNG con receta OK");
+ console.log("SlotRace DEV 0.10.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
