@@ -1,8 +1,25 @@
-# SlotRace · DEV 0.9.4 — kit de puente y soportes de 65 mm
+# SlotRace · DEV 0.9.5 — puente integrado sin placa superpuesta
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.9.5 — puente integrado en la vía, también con piezas sueltas
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.5
+
+Corrección de la captura del 5 de noviembre de 2026 en DEV 0.9.4: el kit dibujaba una **placa rectangular opaca sobre los carriles**, haciendo que el puente pareciera una pieza pegada encima, no una elevación del tramo original.
+
+- Los **dos apoyos se dibujan debajo** de la pista y las rampas se indican con marcas laterales suaves. **Se conservan exactamente la superficie, ranuras, guías y conectores** de la recta original, sin ninguna losa superpuesta que los oculte.
+- En el punto donde dos vías se cruzan, el renderer repinta **solo la pequeña zona superior** con los mismos materiales que el resto de la pista. La máscara ahora se adapta al ángulo del cruce.
+- Si dos tramos siguen siendo **piezas sueltas**, el kit también dibuja correctamente el paso superior si existe una intersección geométrica con suficiente longitud de rampa. El usuario puede visualizar el puente antes de completar el circuito.
+- **Aclara el estado:** "Kit fijado a la recta" significa que los apoyos pertenecen a esa pieza; **no** significa que sus conectores estén unidos magnéticamente al resto. Las piezas sueltas siguen contabilizándose como tales hasta usar el acoplamiento.
+- La elevación manual puede reconocerse en un circuito todavía abierto, pero **solo un trazado cerrado y válido** puede competir.
+- Pruebas automatizadas del puente: cruce manual abierto y cerrado, piezas sueltas que se cruzan, ocultación de vías, ausencia de placa ficticia, deshacer y rehacer.
+
+**Límite del prototipo:** los soportes y las marcas de rampa son representación 2.5D; todavía no hay desnivel 3D ni física dinámica de ascenso/descenso.
+
+---
 
 ## DEV 0.9.4 — kit de puente en la caja
 
