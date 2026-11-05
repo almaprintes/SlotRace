@@ -21,7 +21,7 @@ const assert=require("node:assert/strict");
  samePoint(trace(["S350"]),trace(["S175","S175"]));
  samePoint(trace(["S350"]),trace(Array(4).fill("S0875")));
  samePoint(trace(["S600"]),trace(["S350","S175","S075"]));
- samePoint(trace(["S600"]),trace(Array(6).fill("S100")));
+ samePoint(trace(["S600"]),trace(["S175","S175","S175","S075"]));
  samePoint(trace(["S600"]),trace(Array(8).fill("S075")));
  samePoint(trace(Array(2).fill("R2_225R")),trace(["R2_45R"]));
  samePoint(trace(Array(4).fill("R1_225R")),trace(["R1_90R"]));
