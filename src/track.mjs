@@ -69,19 +69,41 @@ function lineIntersects(a,b,c,d){
   // adyacentes ya se omiten en crossed().
   return t>=-1e-8&&t<=1+1e-8&&u>=-1e-8&&u<=1+1e-8;
 }
-function crossed(parts,closed){
-  for(let i=0;i<parts.length;i++){
-    for(let j=i+2;j<parts.length;j++){
-      // Sólo omitimos el empalme entre el primer y último módulo si de verdad cerró.
-      // Los cruces de una pista abierta también cuentan.
-      if(closed&&i===0&&j===parts.length-1)continue;
-      const a=parts[i].points,b=parts[j].points;
-      for(let x=0;x<a.length-1;x++)for(let y=0;y<b.length-1;y++){
-        if(lineIntersects(a[x],a[x+1],b[y],b[y+1]))return true;
-      }
-    }
+// Identificar pares de segmentos que se cruzan y su posición. Un punto
+// común entre piezas ADYACENTES no es una intersección.
+function crossingCandidates(parts,closed){
+ const found=[];
+ for(let i=0;i<parts.length;i++)for(let j=i+2;j<parts.length;j++){
+  if(closed&&i===0&&j===parts.length-1)continue;
+  const a=parts[i].points,b=parts[j].points;
+  for(let x=0;x<a.length-1;x++)for(let y=0;y<b.length-1;y++){
+   const p=a[x],p1=a[x+1],q=b[y],q1=b[y+1];
+   const ax=p1.x-p.x,ay=p1.y-p.y,bx=q1.x-q.x,by=q1.y-q.y;
+   const det=ax*by-ay*bx;if(Math.abs(det)<EPS)continue;
+   const rx=q.x-p.x,ry=q.y-p.y,t=(rx*by-ry*bx)/det,u=(rx*ay-ry*ax)/det;
+   if(t< -1e-8||t>1+1e-8||u< -1e-8||u>1+1e-8)continue;
+   const at={a:i,b:j,x:p.x+t*ax,y:p.y+t*ay};
+   if(!found.some(c=>c.a===i&&c.b===j&&hypot(c.x-at.x,c.y-at.y)<.01))
+    found.push(at);
   }
-  return false;
+ }
+ return found;
+}
+function manualBridge(parts,crossings,raisedParts,closed){
+ if(!closed||!crossings.length)return null;
+ const raised=[...new Set(raisedParts)].filter(i=>Number.isInteger(i)&&i>=0&&i<parts.length);
+ if(raised.length!==1)return null; // Un tramo elevado por kit en esta fase.
+ const index=raised[0],piece=parts[index],spec=CATALOG[piece.id];
+ if(!spec?.length||spec.length<350)return null;
+ const matches=crossings.filter(c=>c.a===index||c.b===index);
+ if(matches.length!==crossings.length||matches.length!==1)return null;
+ const c=matches[0],at=positionOnPiece(piece.start,piece.id,0);
+ const progress=(c.x-at.x)*Math.cos(at.h)+(c.y-at.y)*Math.sin(at.h);
+ // Las rampas y los soportes requieren un tramo recto suficiente a cada lado.
+ if(progress<90||progress>spec.length-90)return null;
+ return{height:BRIDGE_HEIGHT_MM,overParts:[index],
+  underParts:[c.a===index?c.b:c.a],supports:[index],virtual:false,
+  crossing:{x:c.x,y:c.y},ramps:true};
 }
 function laneData(points,side){
   const nodes=points.map(p=>({...p,x:p.x-Math.sin(p.h)*side,y:p.y+Math.cos(p.h)*side}));
@@ -89,7 +111,7 @@ function laneData(points,side){
   for(let i=1;i<nodes.length;i++){total+=hypot(nodes[i].x-nodes[i-1].x,nodes[i].y-nodes[i-1].y);lengths.push(total);}
   return{nodes,lengths,total};
 }
-export function buildTrack(types,origin=START){
+export function buildTrack(types,origin=START,raisedParts=[]){
   if(!Array.isArray(types)||types.some(t=>!CATALOG[t]))throw Error("Catálogo inválido");
   let pose={...origin},points=[{...origin,curve:0,radius:Infinity,pieceIndex:-1}],parts=[];
   for(const [index,id] of types.entries()){
@@ -129,14 +151,17 @@ export function buildTrack(types,origin=START){
   board.expanded=board.width>TABLE.width||board.height>TABLE.height;
   const onTable=bounds.left>=board.left+TABLE.edge&&bounds.right<=board.right-TABLE.edge&&
     bounds.top>=board.top+TABLE.edge&&bounds.bottom<=board.bottom-TABLE.edge;
-  const intersection=crossed(parts,closed);
-  // El ocho exacto PT-Precision cruza dos rectas de 584 mm por su centro.
-  // La primera es inferior (0) y la segunda es el puente elevado (7).
-  const bridge=closed&&intersection&&hasAutomaticEightBridge(types)?
-   {height:BRIDGE_HEIGHT_MM,overParts:[7],
-    underParts:[0],supports:[7],virtual:true}:null;
+  const crossings=crossingCandidates(parts,closed);
+  const intersection=crossings.length>0;
+  // Puente inicial incluido en la receta o kit de elevación colocado
+  // sobre una recta suficientemente larga. Sin soporte, cruce no validado.
+  const automatic=closed&&intersection&&hasAutomaticEightBridge(types);
+  const bridge=automatic?
+   {height:BRIDGE_HEIGHT_MM,overParts:[7],underParts:[0],supports:[7],
+    crossing:{x:crossings[0].x,y:crossings[0].y},ramps:true,virtual:true}:
+   manualBridge(parts,crossings,raisedParts,closed);
   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
-  return{parts,types:[...types],points,lanes,closed,onTable,intersection,bridge,
+  return{parts,types:[...types],points,lanes,closed,onTable,intersection,crossings,bridge,
     valid:closed&&onTable&&(!intersection||Boolean(bridge)),
     ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,bounds,board,
