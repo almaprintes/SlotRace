@@ -12,6 +12,7 @@ export const CATALOG=Object.freeze(Object.fromEntries(
   name:s.name,code:s.reference,
   ...(s.kind==="straight"?{length:s.length}:{radius:s.radius,angle:s.angle}),
   stock:s.kind==="straight"?8:12,group:s.kind==="straight"?"recta":"curva",
+  virtualMicroAdapter:Boolean(s.virtualMicroAdapter),
   radiusId:s.radiusId||null,degrees:s.degrees||0
  })])
 ));
