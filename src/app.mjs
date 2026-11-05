@@ -3,6 +3,14 @@ import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
+const LIBRARY_KEY="slotrace-circuit-library-v1";
+const readLibrary=()=>{try{
+ const stored=JSON.parse(storage(LIBRARY_KEY)||"[]");
+ return Array.isArray(stored)?stored.filter(item=>item&&typeof item.id==="string"&&
+  typeof item.name==="string"&&Array.isArray(item.snapshot?.types)&&
+  allowed(item.snapshot.types)).slice(0,120):[];
+ }catch(e){return [];}};
+const initialLibrary=readLibrary();
 const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return null;}})();
 const legacy=(()=>{try{return JSON.parse(storage("slotrace-lab-04")||"null");}catch(e){return null;}})();
 const oldValid=old?.types&&allowed(old.types);
@@ -17,6 +25,9 @@ const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose
 const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(Number.isFinite)?
  {...old.origin}:{...START};
 const state={
+  circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
+  activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
+  library:initialLibrary,sessionLaps:[],sessionName:"",
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -36,6 +47,7 @@ const boardValid=oldBoard&&["left","top","right","bottom","width","height"].ever
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
+ circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection}));}
 const GRID_MM=25;
@@ -52,11 +64,12 @@ function extendWorkBoard(){
 }
 function resetWorkBoard(){state.workBoard={...state.track.board};}
 
-const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen");
+const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen"),results=$("resultsScreen");
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
 const format=n=>n.toFixed(3).replace(".",",");
-const recKey=()=>state.types.join("-")+(state.driveDirection===-1?"-reverse":"");
+const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
+ state.types.join("-")+(state.driveDirection===-1?"-reverse":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -68,6 +81,114 @@ function restoreSnapshot(shot){
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  clearGapDiagnostic();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
+}
+
+/* Inventario de recetas local, compatible con una futura cuenta y catálogo. */
+function saveLibrary(){storage(LIBRARY_KEY,JSON.stringify(state.library));}
+function circuitLabel(){return state.circuitName.trim()||"Circuito sin nombre";}
+function saveCircuit(){
+ const field=state.mode==="build"?$("workCircuitName"):$("circuitName");
+ const name=String(field.value||state.circuitName).trim().replace(/\s+/g," ").slice(0,64);
+ if(!name){toast("Ponle nombre al circuito antes de guardarlo.");return false;}
+ if(!state.types.length&&!state.loose.length){toast("Añade al menos una pieza.");return false;}
+ let item=state.library.find(c=>c.id===state.activeCircuitId);
+ if(!item&&state.library.length>=120){toast("Inventario completo (120 circuitos).");return false;}
+ const previous=record();
+ if(!item){
+  item={id:"sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),
+   createdAt:new Date().toISOString()};
+  state.library.unshift(item);
+ }
+ state.circuitName=name;state.activeCircuitId=item.id;
+ item.name=name;item.direction=state.driveDirection;item.snapshot=snapshot();
+ item.updatedAt=new Date().toISOString();
+ if(!state.records[recKey()]&&previous.some(v=>v!==null))state.records[recKey()]=previous.slice();
+ saveLibrary();save();updateUI();toast("Guardado en Mis circuitos: «"+name+"».");return true;
+}
+function loadSavedCircuit(id){
+ const item=state.library.find(c=>c.id===id);
+ if(!item||!allowed(item.snapshot.types))return false;
+ if(state.types.length||state.loose.length)state.draft={...snapshot(),
+  name:state.circuitName,direction:state.driveDirection,activeId:state.activeCircuitId};
+ state.circuitName=item.name;state.activeCircuitId=id;
+ state.driveDirection=item.direction===-1?-1:1;
+ state.newCircuitDirection=state.driveDirection;
+ restoreSnapshot(item.snapshot);resetWorkBoard();
+ state.camera={panX:0,panY:0,zoom:1};state.sessionLaps=[];
+ save();openWorkshop();toast("Circuito recuperado: «"+item.name+"».");return true;
+}
+function renderLibrary(){
+ const list=$("circuitLibrary");list.innerHTML="";
+ $("libraryCount").textContent=state.library.length+" guardados";
+ if(!state.library.length){
+  const empty=document.createElement("p");empty.className="library-empty";
+  empty.textContent="Todavía no hay circuitos guardados.";
+  list.appendChild(empty);return;
+ }
+ for(const item of state.library){
+  const row=document.createElement("div");row.className="library-entry";
+  const info=document.createElement("div");info.className="library-info";
+  const name=document.createElement("strong");name.textContent=item.name;
+  const detail=document.createElement("small");
+  detail.textContent=item.snapshot.types.length+" piezas · "+
+   (item.direction===-1?"Antihorario":"Horario")+
+   (item.id===state.activeCircuitId?" · EN MESA":"");
+  info.appendChild(name);info.appendChild(detail);
+  const button=document.createElement("button");button.className="mini";
+  button.type="button";button.textContent="Abrir";
+  button.addEventListener("click",()=>loadSavedCircuit(item.id));
+  row.appendChild(info);row.appendChild(button);list.appendChild(row);
+ }
+}
+function circuitPackage(){
+ const recipe=blueprintData();
+ return{format:"slotrace-recipe",version:1,geometry:"SR-PRECISION",
+  name:circuitLabel(),direction:state.driveDirection,types:state.types.slice(),
+  origin:{...state.origin},bridgeParts:state.bridgeParts.slice(),
+  loose:state.loose.map(p=>({...p})),
+  items:recipe.items.map(({id,name,count})=>({id,name,count})),
+  exportedAt:new Date().toISOString()};
+}
+async function exportRecipe(){
+ if(!state.types.length&&!state.loose.length){toast("No hay piezas para exportar.");return false;}
+ const filename="slotrace-receta-"+slugName(circuitLabel())+".json";
+ const blob=new Blob([JSON.stringify(circuitPackage(),null,2)],{type:"application/json"});
+ if(typeof navigator!=="undefined"&&typeof navigator.share==="function"&&typeof File==="function"){
+  const file=new File([blob],filename,{type:"application/json"});
+  if(typeof navigator.canShare!=="function"||navigator.canShare({files:[file]})){
+   try{await navigator.share({files:[file],title:"Receta "+circuitLabel()});return true;}
+   catch(e){if(e?.name==="AbortError")return false;}
+  }
+ }
+ const link=document.createElement("a"),url=URL.createObjectURL(blob);
+ link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+ if(typeof window.setTimeout==="function")window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+ toast("Receta exportada.");return true;
+}
+async function importRecipe(file){
+ if(!file||file.size>250000){toast("La receta es demasiado grande.");return false;}
+ let data;
+ try{data=JSON.parse(await file.text());}catch(e){toast("No se pudo leer la receta.");return false;}
+ if(data?.format!=="slotrace-recipe"||data.version!==1||
+  !Array.isArray(data.types)||data.types.length>200||
+  !Array.isArray(data.loose)||data.loose.length>200||
+  !allowed([...data.types,...data.loose.map(p=>p?.id)])||
+  !data.origin||![data.origin.x,data.origin.y,data.origin.h].every(Number.isFinite)||
+  !data.loose.every(p=>p&&[p.x,p.y,p.h].every(Number.isFinite))||
+  !Array.isArray(data.bridgeParts)||
+  !data.bridgeParts.every(i=>Number.isInteger(i)&&i>=0&&i<data.types.length)||
+  (!data.types.length&&!data.loose.length)){
+  toast("Receta inválida o incompatible con SR-PRECISION.");return false;
+ }
+ if(state.library.length>=120){toast("Inventario completo (120 circuitos).");return false;}
+ const item={id:"sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),
+  name:String(data.name||"Circuito importado").trim().slice(0,64)||"Circuito importado",
+  direction:data.direction===-1?-1:1,
+  snapshot:{types:data.types.slice(),loose:data.loose.map(p=>({...p})),
+   bridgeParts:data.bridgeParts.slice(),origin:{...data.origin}},
+  createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+ state.library.unshift(item);saveLibrary();loadSavedCircuit(item.id);
+ toast("Receta adquirida para Mis circuitos: «"+item.name+"».");return true;
 }
 function clearGapDiagnostic(){
  state.gapDiagnostic=null;
@@ -587,6 +708,8 @@ function rotateLoose(){
 function recoverDraft(){
  if(!state.draft)return;
  const d=state.draft;state.draft=null;
+ state.circuitName=d.name||"";state.activeCircuitId=d.activeId||null;
+ state.driveDirection=d.direction===-1?-1:1;
  changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[],d.origin||START);
 }
 // Una pieza de SlotRace se recorre en sentido horario o antihorario.
@@ -620,7 +743,9 @@ function changeDriveDirection(direction){
 }
 function createNewCircuit(){
  const hadPieces=state.types.length||state.loose.length;
- if(hadPieces)state.draft=snapshot();
+ if(hadPieces)state.draft={...snapshot(),name:state.circuitName,
+  direction:state.driveDirection,activeId:state.activeCircuitId};
+ state.circuitName="";state.activeCircuitId=null;state.sessionLaps=[];
  state.driveDirection=state.newCircuitDirection;
  changeTypes([],"Nuevo circuito · elige las piezas en el maletín.",[],START);
  resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};
@@ -639,12 +764,45 @@ function play(){
   toast("El circuito todavía no está cerrado. Termina el montaje en el taller.");
   return false;
  }
+ resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
  toast("¡Avenir Gripline en pista! Sentido "+(state.driveDirection===1?"horario.":"antihorario."));
  return true;
 }
-function back(){openWorkshop();}
+
+function endSession(target="menu"){
+ state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+ if(!state.sessionLaps.length){
+  if(target==="build")openWorkshop();else showMenu();
+  return false;
+ }
+ state.mode="results";renderSessionSummary();updateUI();resize();return true;
+}
+function renderSessionSummary(){
+ $("resultsCircuit").textContent=state.sessionName+" · "+
+  (state.driveDirection===1?"Horario":"Antihorario")+
+  " · "+state.sessionLaps.length+" vueltas completas";
+ const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
+  .reduce((min,l)=>Math.min(min,l.seconds),Infinity));
+ $("resultsStats").textContent="MEJOR IZQUIERDA: "+(Number.isFinite(best[0])?format(best[0])+" s":"—")+
+  "    ·    MEJOR DERECHA: "+(Number.isFinite(best[1])?format(best[1])+" s":"—");
+ const list=$("resultsLaps");list.innerHTML="";
+ for(const lap of state.sessionLaps){
+  const row=document.createElement("div");row.className="result-row";
+  const label=document.createElement("span");
+  label.textContent="Vuelta "+lap.number+" · carril "+(lap.lane===0?"izquierdo":"derecho");
+  const value=document.createElement("strong");value.textContent=format(lap.seconds)+" s";
+  const diff=document.createElement("small");
+  diff.textContent=lap.previous===null?"Primera vuelta de este carril":
+   (lap.seconds<=lap.previous?"Mejora ":"Retrocede ")+
+   format(Math.abs(lap.seconds-lap.previous))+" s";
+  if(lap.record)diff.textContent+=" · RÉCORD PERSONAL";
+  row.appendChild(label);row.appendChild(value);row.appendChild(diff);
+  list.appendChild(row);
+ }
+}
+function back(){endSession("build");}
 function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  $("trigger").classList.remove("pressed");state.latest=performance.now();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
@@ -652,8 +810,13 @@ function switchLane(){if(state.run){toast("Pausa primero para cambiar de carril.
 function completeLap(){
  if(state.seconds<.05)return;
  const v=record(),sec=state.seconds;
- if(v[state.lane]===null||v[state.lane]===undefined||sec<v[state.lane]){
-  v[state.lane]=sec;state.records[recKey()]=v;save();toast("¡Récord personal "+(state.lane===0?"izquierda":"derecha")+"! "+format(sec)+" s");
+ const previous=[...state.sessionLaps].reverse().find(l=>l.lane===state.lane)?.seconds??null;
+ const isRecord=v[state.lane]==null||sec<v[state.lane];
+ state.sessionLaps.push({number:state.sessionLaps.length+1,lane:state.lane,
+  seconds:sec,previous,record:isRecord});
+ if(isRecord){
+  v[state.lane]=sec;state.records[recKey()]=v;save();
+  toast("¡Récord personal "+(state.lane===0?"izquierda":"derecha")+"! "+format(sec)+" s");
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
  state.seconds=0;state.lap++;
 }
@@ -858,6 +1021,10 @@ function updateUI(){
  state.viewDirty=true;
  menu.hidden=state.mode!=="menu";
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
+ results.hidden=state.mode!=="results";
+ for(const id of ["circuitName","workCircuitName"])
+  if(document.activeElement!==$(id))$(id).value=state.circuitName;
+ renderLibrary();
  $("goHome").hidden=state.mode==="menu";
  $("menuRace").disabled=!state.track.valid;
  $("menuRaceDetail").textContent=state.track.valid?
@@ -1788,6 +1955,8 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.textAlign="left";ctx.fillText("SLOTRACE",x+36,headingY+59);
  ctx.fillStyle="#7adccc";ctx.font="800 24px system-ui,sans-serif";
  ctx.fillText("CRAFT RACE STUDIO · PLANO DE CIRCUITO",x+36,headingY+100);
+ ctx.fillStyle="#effff7";ctx.font="800 33px system-ui,sans-serif";
+ ctx.fillText(circuitLabel().slice(0,45),x+36,headingY+151);
  ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
  ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",
   width-x,headingY+51);
@@ -1886,7 +2055,7 @@ async function exportBlueprint(){
  drawBlueprint(ctx,recipe);
  const blob=await new Promise(resolve=>canvas.toBlob?canvas.toBlob(resolve,"image/png"):resolve(null));
  if(!blob){toast("No se pudo generar el PNG. Prueba en Safari.");return false;}
- const filename="slotrace-"+slugName(state.track.valid?"circuito-cerrado":"montaje")+
+ const filename="slotrace-"+slugName(circuitLabel())+
   "-"+(state.driveDirection===1?"horario":"antihorario")+".png";
  const canShare=typeof navigator!=="undefined"&&typeof navigator.share==="function"&&
   typeof File==="function";
@@ -2206,6 +2375,17 @@ function canvasPointerEnd(e){
  }
 }
 function initEvents(){
+
+ $("menuRecipe").addEventListener("click",exportRecipe);
+ $("menuSaveCircuit").addEventListener("click",saveCircuit);
+ $("workSaveCircuit").addEventListener("click",saveCircuit);
+ $("importCircuitFile").addEventListener("change",async e=>{
+  const file=e.target.files?.[0];if(file)await importRecipe(file);
+  e.target.value="";
+ });
+ $("resultsBack").addEventListener("click",openWorkshop);
+ $("resultsHome").addEventListener("click",showMenu);
+ $("resultsAgain").addEventListener("click",play);
  $("menuExport").addEventListener("click",exportBlueprint);
  $("exportBlueprint").addEventListener("click",exportBlueprint);
   $("menuContinue").addEventListener("click",openWorkshop);
@@ -2214,7 +2394,7 @@ function initEvents(){
  $("menuClockwise").addEventListener("click",()=>setNewCircuitDirection(1));
  $("menuCounter").addEventListener("click",()=>setNewCircuitDirection(-1));
  $("goHome").addEventListener("click",showMenu);
- $("raceHome").addEventListener("click",showMenu);
+ $("raceHome").addEventListener("click",()=>endSession("menu"));
  $("workDirection").addEventListener("click",()=>changeDriveDirection(-state.driveDirection));
   $("play").addEventListener("click",play);
  $("back").addEventListener("click",back);
@@ -2298,7 +2478,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.10.3",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.11.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

@@ -81,5 +81,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.10.3 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.11.0 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

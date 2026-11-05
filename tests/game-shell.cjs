@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.10.3");
+ assert.equal(game.version,"DEV 0.11.0");
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
  assert.equal(elements.get("menuScreen").hidden,false,"Menú visible al iniciar");
  assert.equal(elements.get("buildScreen").hidden,true);
@@ -201,5 +201,45 @@ const path=require("node:path");
  st.loose.pop();
 
 
- console.log("SlotRace DEV 0.10.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+
+ // Mis circuitos: nombrar, guardar, reabrir y mostrar el nombre en el plano.
+ game.openWorkshop();
+ elements.get("workCircuitName").value="Ocho de pruebas";
+ assert.equal(game.saveCircuit(),true);
+ const library=JSON.parse(saved.get("slotrace-circuit-library-v1"));
+ assert.equal(library.length,1);
+ assert.equal(library[0].name,"Ocho de pruebas");
+ assert.deepEqual(library[0].snapshot.types,st.types);
+ assert.equal(game.circuitPackage().name,"Ocho de pruebas");
+ const layout=st.types.slice();
+ game.changeTypes([],"Mesa de prueba vacía",[],geo.START);
+ assert.equal(game.loadSavedCircuit(library[0].id),true);
+ assert.deepEqual(st.types,layout);
+ const namePrint=[];
+ game.drawBlueprint(new Proxy({canvas:{width:0,height:0}},{
+  get(target,key){if(key in target)return target[key];
+   if(key==="fillText")return v=>namePrint.push(String(v));
+   if(key==="createLinearGradient")return()=>({addColorStop(){}});
+   return()=>{};},
+  set(target,key,value){target[key]=value;return true;}
+ }),game.blueprintData());
+ assert.ok(namePrint.includes("Ocho de pruebas"));
+
+ // Los tiempos de TODAS las vueltas se ven al salir, pero no se persisten.
+ game.openRace();
+ st.seconds=16.75;game.completeLap();
+ st.seconds=15.20;game.completeLap();
+ st.seconds=16.10;game.completeLap();
+ assert.deepEqual(st.sessionLaps.map(l=>l.seconds),[16.75,15.20,16.10]);
+ assert.equal(st.records["library-"+library[0].id+"-"+st.types.join("-")][0],15.20);
+ assert.equal(game.endSession("menu"),true);
+ assert.equal(st.mode,"results");
+ assert.equal(elements.get("resultsScreen").hidden,false);
+ assert.equal(elements.get("resultsLaps").children.length,3);
+ const afterRace=JSON.parse(saved.get("slotrace-lab-10"));
+ assert.equal("sessionLaps" in afterRace,false);
+ assert.equal(afterRace.circuitName,"Ocho de pruebas");
+ elements.get("resultsHome").listeners.click[0]();
+ assert.equal(st.mode,"menu");
+ console.log("SlotRace DEV 0.11.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

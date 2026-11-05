@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.10.3: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.10.3 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.10.3">
+  <meta name="description" content="SlotRace DEV 0.11.0: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.11.0 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.11.0">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.10.3">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.11.0">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.10.3</div>
+    <div class="splash-version">DEV 0.11.0</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.10.3">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.11.0">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.10.3">DEV 0.10.3<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.11.0">DEV 0.11.0<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -70,7 +70,17 @@
       <div class="home-actions">
         <button id="menuContinue" class="home-card" type="button"><span class="home-card-icon">⌁</span><span><strong>Entrar al taller</strong><small>Continuar el circuito que tienes sobre la mesa</small></span><span aria-hidden="true">›</span></button>
         <button id="menuRace" class="home-card is-accent" type="button"><span class="home-card-icon">🏁</span><span><strong>Correr</strong><small id="menuRaceDetail">Termina el circuito para desbloquear</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuExport" class="home-card" type="button"><span class="home-card-icon">▤</span><span><strong>Exportar plano</strong><small>PNG cenital con receta y orden de montaje</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuExport" class="home-card" type="button"><span class="home-card-icon">▤</span><span><strong>Exportar plano</strong><small>PNG con el nombre del circuito y su receta</small></span><span aria-hidden="true">›</span></button>
+      </div>
+
+      <div class="home-create circuit-inventory">
+        <h2>Mis circuitos <small id="libraryCount">0 guardados</small></h2>
+        <p>Guarda tus diseños en este inventario local. La vinculación con tu cuenta llegará más adelante.</p>
+        <label class="circuit-label" for="circuitName">Nombre del circuito de la mesa</label>
+        <div class="circuit-name-row"><input id="circuitName" type="text" maxlength="64" placeholder="Ej. Ocho de Juan" autocomplete="off"><button id="menuSaveCircuit" class="mini primary" type="button">Guardar</button></div>
+        <div class="circuit-tools"><button id="menuRecipe" class="mini" type="button">Compartir receta JSON</button><label class="mini import-label" for="importCircuitFile">Adquirir receta</label><input id="importCircuitFile" type="file" accept=".json,application/json" hidden></div>
+        <div id="circuitLibrary" class="circuit-list" aria-label="Inventario de circuitos personales"></div>
+        <small>Los circuitos pertenecen por ahora a este navegador, sin sincronización ni compras.</small>
       </div>
       <div class="home-create">
         <h2>Crear un circuito nuevo</h2>
@@ -85,7 +95,7 @@
     </div>
   </section>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
-    <div class="build-topbar"><strong>CONSTRUCTOR DE CIRCUITOS</strong><button id="workDirection" class="mini direction-toggle" type="button" aria-label="Cambiar sentido de conducción">↻ Horario</button></div>
+    <div class="build-topbar"><strong>CONSTRUCTOR DE CIRCUITOS</strong><div class="work-name"><input id="workCircuitName" maxlength="64" type="text" placeholder="Nombre del circuito" autocomplete="off" aria-label="Nombre del circuito"><button id="workSaveCircuit" class="mini primary" type="button">Guardar</button></div><button id="workDirection" class="mini direction-toggle" type="button" aria-label="Cambiar sentido de conducción">↻ Horario</button></div>
     <div class="worktop">
       <div id="tableSpace" class="tableframe">
         <canvas id="editCanvas" aria-label="Mesa de montaje: toca una pieza para seleccionarla; gírala con dos dedos en pasos exactos de 22,5 grados; pellizca sobre el fondo para zoom"></canvas>
@@ -195,6 +205,17 @@
       </div>
     </div>
   </section>
+
+  <section id="resultsScreen" class="screen results-screen" hidden aria-label="Resultado de la sesión de carrera">
+    <div class="results-scroll">
+      <div class="results-hero"><small>🏁 SESIÓN FINALIZADA</small><h1>Tus vueltas</h1><p id="resultsCircuit"></p></div>
+      <div id="resultsStats" class="results-stats" aria-label="Mejores tiempos de la sesión"></div>
+      <h2>Progreso vuelta a vuelta</h2>
+      <div id="resultsLaps" class="results-laps"></div>
+      <p class="results-note">Estas vueltas solo se conservan durante la sesión. Los mejores tiempos de cada carril sí quedan guardados.</p>
+    </div>
+    <div class="results-actions"><button id="resultsBack" class="mini" type="button">⌁ Taller</button><button id="resultsHome" class="mini" type="button">☰ Menú</button><button id="resultsAgain" class="mini primary" type="button">🏁 Otra sesión</button></div>
+  </section>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
 <script>
@@ -206,6 +227,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.10.3"></script>
+<script type="module" src="./src/app.mjs?v=0.11.0"></script>
 </body>
 </html>
