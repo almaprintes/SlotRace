@@ -27,6 +27,23 @@ export function buildRecipe(types,catalog,bridgeParts=[],loose=[],direction=1){
   groupCount:items.length
  };
 }
+// Referencias cortas por TIPO de pieza, nunca por orden de montaje.
+// A, B, ... Z, AA, AB... El mismo tipo lleva la misma letra en TODO el
+// plano, y los accesorios (kit puente) no se confunden con piezas de vía.
+export function blueprintReferenceMap(items){
+ const refs=new Map();let index=0;
+ for(const item of items){
+  if(item.accessory)continue;
+  if(refs.has(item.id))continue;
+  let n=++index,code="";
+  do{
+   n--;code=String.fromCharCode(65+n%26)+code;
+   n=Math.floor(n/26);
+  }while(n>0);
+  refs.set(item.id,code);
+ }
+ return refs;
+}
 export function recipeRows(recipe){
  return recipe.items.map(item=>({
   label:item.name,quantity:item.count,id:item.id
