@@ -1444,6 +1444,86 @@ function screenToWorld(e){
  const rect=editCanvas.getBoundingClientRect(),v=makeView(editCanvas,"build");
  return worldFromPointer(v,e.clientX-rect.left,e.clientY-rect.top);
 }
+// Rotación táctil discreta: cada salto corresponde exactamente a 22,5°.
+// La posición base se conserva durante todo el gesto para no acumular error.
+const TOUCH_ROTATION_STEP=Math.PI/8;
+const rotatePoint=(p,c,s,center)=>({
+ x:center.x+(p.x-center.x)*c-(p.y-center.y)*s,
+ y:center.y+(p.x-center.x)*s+(p.y-center.y)*c
+});
+function startTwoFingerGesture(){
+ const pair=[...state.pointer.values()];
+ if(pair.length!==2)return;
+ const dx=pair[1].x-pair[0].x,dy=pair[1].y-pair[0].y;
+ const bearing=Math.atan2(dy,dx);
+ const hit=pair.find(p=>p.looseIndex>=0||p.trackIndex>=0);
+ const dragging=pair.some(p=>p.dragged);
+ // Ambos dedos sobre zona libre: mantener pinch-to-zoom + desplazamiento.
+ for(const p of pair)p.consumed=true;
+ if(!hit||dragging){
+  state.pinch={mode:"camera",distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
+  return;
+ }
+ const target=hit.looseIndex>=0?"loose":"main";
+ const index=target==="loose"?hit.looseIndex:hit.trackIndex;
+ const key=target==="loose"?looseGroupKey(index):"main";
+ const single=state.selectedGroup===key&&state.selectionMode==="piece"&&
+  (target==="loose"?state.looseSelection===index:state.selection===index);
+ state.pinch={mode:"rotate",bearing,travel:0,steps:0,started:false,
+  target,index,single};
+}
+function rotateGestureToSteps(g,steps){
+ if(!Number.isInteger(steps)||steps===g.steps)return;
+ if(!g.started){
+  pushHistory(); // Un solo punto de deshacer por todo el gesto.
+  if(g.target==="main"&&g.single){
+   const moved=detachConnected(g.index,{history:false});
+   if(moved<0)return;
+   if(looseMembers(moved).length>1)detachLooseMember(moved);
+   g.target="loose";g.index=moved;
+  }else if(g.target==="loose"&&g.single){
+   detachLooseMember(g.index);
+  }
+  if(g.target==="main"){
+   const b=state.track.bounds;
+   g.pivot={x:(b.left+b.right)/2,y:(b.top+b.bottom)/2};
+   g.originalOrigin={...state.origin};
+   state.selectedGroup="main";state.selectionMode="group";
+   state.selection=g.index;state.looseSelection=-1;
+  }else{
+   g.indices=g.single?[g.index]:looseMembers(g.index);
+   g.originalPieces=g.indices.map(i=>({i,...state.loose[i]}));
+   const pts=g.indices.flatMap(i=>loosePart(state.loose[i],i).points);
+   g.pivot={x:(Math.min(...pts.map(p=>p.x))+Math.max(...pts.map(p=>p.x)))/2,
+    y:(Math.min(...pts.map(p=>p.y))+Math.max(...pts.map(p=>p.y)))/2};
+   state.selectedGroup=looseGroupKey(g.index);
+   state.selectionMode=g.single?"piece":"group";
+   state.looseSelection=g.index;state.selection=-1;
+  }
+  g.started=true;
+ }
+ const angle=steps*TOUCH_ROTATION_STEP,c=Math.cos(angle),sn=Math.sin(angle);
+ if(g.target==="main"){
+  const p=rotatePoint(g.originalOrigin,c,sn,g.pivot);
+  state.origin={x:p.x,y:p.y,h:g.originalOrigin.h+angle};
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+ }else for(const original of g.originalPieces){
+  const p=rotatePoint(original,c,sn,g.pivot),item=state.loose[original.i];
+  if(!item)continue;
+  item.x=p.x;item.y=p.y;item.h=original.h+angle;
+ }
+ g.steps=steps;
+ state.viewDirty=true;
+}
+function moveTwoFingerRotation(g){
+ const pair=[...state.pointer.values()];
+ if(pair.length!==2)return;
+ const bearing=Math.atan2(pair[1].y-pair[0].y,pair[1].x-pair[0].x);
+ g.travel+=angleDiff(bearing,g.bearing);
+ g.bearing=bearing;
+ const steps=Math.round(g.travel/TOUCH_ROTATION_STEP);
+ rotateGestureToSteps(g,steps);
+}
 let dragOrigin=null;
 function canvasPointerDown(e){
  if(state.mode!=="build")return;
@@ -1463,15 +1543,18 @@ function canvasPointerDown(e){
   originWorld:point,looseIndex,trackIndex,dragMode,dragged:false,
   pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null
  });
- if(state.pointer.size===2){
-  const p=[...state.pointer.values()],dx=p[0].x-p[1].x,dy=p[0].y-p[1].y;
-  state.pinch={distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
- }
+ if(state.pointer.size===2)startTwoFingerGesture();
 }
 function canvasPointerMove(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  const oldX=p.x,oldY=p.y;p.x=e.clientX;p.y=e.clientY;
  const distance=Math.hypot(p.x-p.originX,p.y-p.originY);
+ if(state.pointer.size>=2&&state.pinch?.mode==="rotate"){
+  moveTwoFingerRotation(state.pinch);return;
+ }
+ // Tras acabar un gesto de dos dedos, el dedo restante nunca activa
+ // accidentalmente el arrastre normal ni cambia la selección.
+ if(p.consumed&&state.pointer.size<2)return;
  if(state.pointer.size===1&&p.trackIndex>=0&&distance>=7){
   if(!p.dragged){
    if(p.dragMode==="piece"){
@@ -1535,7 +1618,16 @@ function canvasPointerMove(e){
 }
 function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
- state.pointer.delete(e.pointerId);if(state.pointer.size<2)state.pinch=null;
+ state.pointer.delete(e.pointerId);
+ if(state.pointer.size<2&&state.pinch){
+  const g=state.pinch;state.pinch=null;
+  if(g.mode==="rotate"&&g.started){
+   if(g.target==="main")extendWorkBoard();
+   save();updateUI();
+   toast("Tramo girado "+(g.steps*22.5).toLocaleString("es-ES")+"° · pasos exactos de 22,5°");
+  }
+ }
+ if(p.consumed)return;
  if(p.dragged){
   if(p.looseIndex>=0&&!snapLoose(p.looseIndex,{history:false})){
    save();updateUI();
@@ -1632,8 +1724,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.5",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.9.6",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
