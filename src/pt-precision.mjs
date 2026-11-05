@@ -1,6 +1,7 @@
-// SlotRace — familia modular PT-Precision (geometría nominal de diseño).
-// Integrado como catálogo jugable en DEV 0.9.0. NO certifica acoplamiento físico.
-export const FAMILY_ID = "pt-precision-v1";
+// SlotRace — familia modular SR-Precision, fase experimental DEV 0.9.7.
+// Sistema geométrico virtual inspirado en la modularidad de Scalextric,
+// NO es una reproducción exacta de piezas o conectores comerciales.
+export const FAMILY_ID = "sr-precision-v1";
 // Familia virtual proporcional. Cada recta mide un número entero de
 // unidades de 12,5 mm. Radios, anchura y doble de R2 se expresan también
 // en esa unidad. No son dimensiones de un catálogo físico certificado.
@@ -62,7 +63,7 @@ export const SPECIALS=frozen({
   BORDERS:frozen({name:"Bordes rectos y curvos",reference:"T/39—T/45",sceneryOnly:true})
 });
 export function endpoint(pose,id){
-  const p=PARTS[id];if(!p)throw Error("Pieza PT-Precision desconocida: "+id);
+  const p=PARTS[id];if(!p)throw Error("Pieza SR-Precision desconocida: "+id);
   const h=pose.h;
   if(p.kind==="straight")return {x:pose.x+Math.cos(h)*p.length,y:pose.y+Math.sin(h)*p.length,h};
   const h2=h+p.angle, signedRadius=p.radius*Math.sign(p.angle);
