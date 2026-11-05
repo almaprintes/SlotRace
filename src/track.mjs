@@ -2,7 +2,7 @@
 // Catálogo virtual experimental; no se afirma compatibilidad física entre sistemas.
 import {GEOMETRY,RADII,PARTS,RECIPES} from "./pt-precision.mjs";
 import {analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance} from "./gap-analysis.mjs";
-export const gapAnalysis=Object.freeze({analyzeOpenEnds,gapExplanation});
+export const gapAnalysis=Object.freeze({analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance});
 export const TABLE=Object.freeze({width:2200,height:1450,edge:62});
 export const START=Object.freeze({x:750,y:325,h:0});
 export const TRACK_WIDTH=GEOMETRY.trackWidth;
