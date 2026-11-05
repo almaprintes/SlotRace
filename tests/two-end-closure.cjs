@@ -5,8 +5,9 @@ const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"")
+  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
   .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
   .replace("function strokePath(ctx,points,color,width){","function strokePath(ctx,points,color,width){if(color===\"#0c1518\"&&width===TRACK_WIDTH+19)window.__shadowLog.push(points.length);");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -35,11 +36,12 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=Object.keys(geo),values=keys.map(k=>geo[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
+ game.openWorkshop();
  const recipe=["S350","S175",...Array(4).fill("R2_45R"),
    "S350","S175",...Array(4).fill("R2_45R")];
  const types=[...recipe.slice(2),...recipe.slice(0,2)];
@@ -111,5 +113,5 @@ const path=require("node:path");
  st.loose.at(-1).h+=Math.PI/4;
  assert.equal(game.puzzle.loopFromLooseGroup(0),null,
    "No cerrar una cadena con un conector interno mal orientado");
- console.log("DEV 0.9.8: hueco 175 mm, segundo conector, cierre suelto, deshacer y diagnóstico de dos tramos OK");
+ console.log("DEV 0.10.0: hueco 175 mm, segundo conector, cierre suelto, deshacer y diagnóstico de dos tramos OK");
 })().catch(e=>{console.error(e);process.exitCode=1;});
