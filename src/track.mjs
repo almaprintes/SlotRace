@@ -1,7 +1,7 @@
 // SlotRace DEV 0.9.0 · Geometría modular PT-Precision: radios y rectas exactos.
 // Catálogo virtual experimental; no se afirma compatibilidad física entre sistemas.
 import {GEOMETRY,RADII,PARTS,RECIPES} from "./pt-precision.mjs";
-import {analyzeOpenEnds,gapExplanation} from "./gap-analysis.mjs";
+import {analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance} from "./gap-analysis.mjs";
 export const gapAnalysis=Object.freeze({analyzeOpenEnds,gapExplanation});
 export const TABLE=Object.freeze({width:2200,height:1450,edge:62});
 export const START=Object.freeze({x:750,y:325,h:0});
@@ -294,6 +294,22 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
   const current=buildTrack(types,origin);
   if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
+  // Caso proporcional: los conectores se enfrentan, no tienen desfase
+  // lateral ni angular, y el avance exacto se expresa en unidades de 12,5.
+  // En ese caso la solución más corta sale por programación dinámica,
+  // evitando una búsqueda combinatoria innecesaria.
+  if(types.length>=3){
+   const gap=measureGap(current.ends.end,origin,CATALOG);
+   if(gap.problem==="composition"&&gap.exact){
+    const fill=composeStraightDistance(gap.forward,CATALOG,GEOMETRY.lengthUnit);
+    if(fill&&fill.count<=maxAdd){
+     const next=[...types,...fill.ids];
+     if(buildTrack(next,origin).valid)
+      return{ok:true,types:next,replaced:0,added:fill.count,
+       unchanged:false,modular:true};
+    }
+   }
+  }
   // Primero intentar añadir UNA pieza al extremo: conserva intacto el montaje.
   // Evita sustituir dos tramos cuando sólo faltaba la última curva.
   for(const id of Object.keys(CATALOG)){
