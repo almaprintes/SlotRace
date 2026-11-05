@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.10.0");
+ assert.equal(game.version,"DEV 0.10.1");
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
  assert.equal(elements.get("menuScreen").hidden,false,"Menú visible al iniciar");
  assert.equal(elements.get("buildScreen").hidden,true);
@@ -167,5 +167,5 @@ const path=require("node:path");
  assert.match(navigator.shared.files[0].name,/\.png$/);
  assert.ok(navigator.shared.files[0].parts[0].size>0);
 
- console.log("SlotRace DEV 0.10.0: menú, taller, carrera, dirección inversa, guardado, Gripline y exportación PNG con receta OK");
+ console.log("SlotRace DEV 0.10.1: menú, taller, carrera, dirección inversa, guardado, Gripline y exportación PNG con receta OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
