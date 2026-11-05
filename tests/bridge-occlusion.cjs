@@ -107,7 +107,7 @@ const path=require("node:path");
  game.redo();
  assert.equal(game.state.track.valid,true,"Rehacer reinstala el puente");
  game.changeTypes([],"Probar soporte en pieza suelta",[],geo.START);
- game.puzzle.scatterLoose("S584");
+ game.puzzle.scatterLoose("S600");
  assert.equal(game.state.loose.length,1);
  assert.equal(game.puzzle.installBridgeKit(),true);
  assert.equal(game.state.loose[0].raised,true,"Soportes visibles en una pieza suelta");
@@ -122,11 +122,11 @@ const path=require("node:path");
  game.changeTypes([],"Prueba del cruce entre piezas sueltas",[],geo.START);
  game.state.loose=[
   {id:"S350",x:400,y:800,h:0},
-  {id:"S584",x:560,y:500,h:Math.PI/2,raised:true}
+  {id:"S600",x:560,y:500,h:Math.PI/2,raised:true}
  ];
  const looseCrossing=game.puzzle.looseOverpasses();
  assert.equal(looseCrossing.length,1,"Un cruce entre dos tramos sueltos elevados");
- assert.equal(looseCrossing[0].upper.id,"S584","La vía con kit es la elevada");
+ assert.equal(looseCrossing[0].upper.id,"S600","La vía con kit es la elevada");
  assert.ok(Math.abs(looseCrossing[0].crossing.x-560)<.01);
  assert.ok(Math.abs(looseCrossing[0].crossing.y-800)<.01);
  window.__drawLog.length=0;
@@ -140,5 +140,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.9.6 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.9.7 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
