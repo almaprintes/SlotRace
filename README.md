@@ -1,8 +1,24 @@
-# SlotRace · DEV 0.9.5 — puente integrado sin placa superpuesta
+# SlotRace · DEV 0.9.6 — giro con dos dedos en pasos de 22,5°
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.9.6 — rotación exacta con dos dedos
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.6
+
+- **Gira con dos dedos sobre una pieza o tramo**: la orientación salta en múltiplos exactos de **22,5°** (±22,5°, ±45°, ±67,5°…). No se asignan ángulos intermedios al levantar los dedos. El giro se calcula siempre desde la posición inicial para evitar errores acumulados.
+- **Tramo unido magnéticamente**: gira como un único bloque alrededor de su centro, sin alterar sus conectores internos. **Circuito ya iniciado**: también puede girar entero.
+- **Pieza seleccionada individualmente** (segunda pulsación sobre el mismo tramo): se puede girar por separado; si estaba conectada, se separa sin mover las piezas restantes.
+- **Zoom y movimiento de la cámara**: siguen operativos con dos dedos cuando el gesto comienza sobre el tapete sin seleccionar ninguna pieza.
+- **Deshacer/Rehacer**: una sola entrada para cada giro completo, aunque se atraviesen varios saltos angulares.
+- El texto de la mesa explica el gesto en la propia interfaz.
+- Nueva prueba `tests/twist-rotation.cjs`, incluida como paso obligatorio de GitHub Actions; comprueba ángulos exactos, giro de grupos, pieza individual, deshacer, conectores y zoom sobre vacío.
+
+**Validación:** nueve suites JavaScript completas superadas. Falta comprobar el gesto con dos dedos directamente en Safari/iPhone.
+
+---
 
 ## DEV 0.9.5 — puente integrado en la vía, también con piezas sueltas
 
