@@ -40,7 +40,7 @@ const fs=require("node:fs"),path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.10.0");
+ assert.equal(game.version,"DEV 0.10.1");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
@@ -174,5 +174,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.10.0: maletín único, catorce recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.10.1: maletín único, catorce recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
