@@ -1590,7 +1590,7 @@ function blueprintData(){
 function drawBlueprint(ctx,recipe,{width=1500}={}){
  const nRows=Math.ceil(recipe.items.length/2);
  const sequenceRows=Math.ceil(recipe.sequence.length/4);
- const h=1270+Math.max(1,nRows)*57+Math.max(1,sequenceRows)*47;
+ const h=1480+Math.max(1,nRows)*57+Math.max(1,sequenceRows)*47;
  const x=75,bodyWidth=width-150;
  ctx.canvas.width=width;ctx.canvas.height=h;
  ctx.fillStyle="#091921";ctx.fillRect(0,0,width,h);
@@ -1651,7 +1651,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.restore();
  const metaY=1048;
  ctx.fillStyle="#102c35";ctx.fillRect(x,metaY,bodyWidth,104);
- const length=(state.track.length/1000);
+ const length=(state.track.parts.length?state.track.length:recipe.nominalLength)/1000;
  const label=state.track.valid?"CIRCUITO CERRADO":state.loose.length?"MONTAJE EN PROGRESO":"EXTREMOS ABIERTOS";
  const metrics=[
   [String(recipe.pieces),"PIEZAS"],[length.toFixed(2)+" m","LONGITUD DE CARRERA"],
