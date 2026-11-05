@@ -95,6 +95,10 @@ function addLoose(id,x,y,h=0){
 
 /* DEV 0.8.0 · imanes entre cualquier par de grupos o piezas sueltas. */
 const SNAP_DISTANCE_MM=135, SNAP_ROTATION_RAD=Math.PI/2+1e-5;
+// Una pieza individual se puede girar libremente al acercar conectores.
+// Los tramos de varias piezas conservan el límite de giro para evitar
+// giros bruscos que desplacen un montaje grande contra otras piezas.
+const SINGLE_SNAP_ROTATION_RAD=Math.PI+1e-5;
 let magnetSerial=1+Math.max(0,...state.loose.map(p=>{const m=/^magnet-(\d+)$/.exec(p.magnetGroup||"");return m?+m[1]:0;}));
 const newMagnetGroup=()=> "magnet-"+magnetSerial++;
 const angleDiff=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
@@ -115,6 +119,14 @@ function looseGroup(index){
  return{indices,parts,start,end,key:parts[0].magnetGroup||"single-"+indices[0]};
 }
 function looseGroupKey(index){return state.loose[index]?.magnetGroup||"single-"+index;}
+function reversedPartId(id){
+ const spec=CATALOG[id];
+ if(!spec)return null;
+ if(spec.length)return id; // Una recta es simétrica respecto a sus extremos.
+ if(id.endsWith("R"))return CATALOG[id.slice(0,-1)+"L"]?id.slice(0,-1)+"L":null;
+ if(id.endsWith("L"))return CATALOG[id.slice(0,-1)+"R"]?id.slice(0,-1)+"R":null;
+ return null;
+}
 function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
  const moving=looseGroup(index);if(!moving)return null;
  const excluded=new Set(moving.indices),targets=[];
@@ -125,15 +137,44 @@ function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
   const group=looseGroup(i);if(!group||seen.has(group.key))continue;
   seen.add(group.key);targets.push({kind:"loose",index:i,start:group.start,end:group.end});
  }
+ // Los dos extremos son equivalentes físicamente en una pieza sola.
+ // Antes sólo probábamos inicio→final y final→inicio. Quedaban sin opción
+ // de acoplamiento las combinaciones inicio→inicio y final→final.
+ const canReverse=moving.indices.length===1&&Boolean(reversedPartId(moving.parts[0].id));
+ const hReverseStart=moving.end.h+Math.PI,hReverseEnd=moving.start.h+Math.PI;
+ const reversedStart={...moving.end,h:hReverseStart};
+ const reversedEnd={...moving.start,h:hReverseEnd};
+ const maxAngle=moving.indices.length===1?SINGLE_SNAP_ROTATION_RAD:SNAP_ROTATION_RAD;
  let best=null;
- for(const target of targets)for(const [side,from,to] of [
-  ["append",moving.start,target.end],["prepend",moving.end,target.start]]){
-  const gap=connectorDistance(from,to),rotation=angleDiff(to.h,from.h);
-  if(gap>distance||Math.abs(rotation)>SNAP_ROTATION_RAD)continue;
-  const score=gap+Math.abs(rotation)*22;
-  if(!best||score<best.score)best={...target,side,from,to,gap,rotation,score};
+ for(const target of targets){
+  const candidates=[
+   {side:"append",from:moving.start,to:target.end,reversed:false},
+   {side:"prepend",from:moving.end,to:target.start,reversed:false}
+  ];
+  if(canReverse)candidates.push(
+   {side:"append",from:reversedStart,to:target.end,reversed:true},
+   {side:"prepend",from:reversedEnd,to:target.start,reversed:true}
+  );
+  for(const candidate of candidates){
+   const {from,to}=candidate,gap=connectorDistance(from,to),
+    rotation=angleDiff(to.h,from.h);
+   if(gap>distance||Math.abs(rotation)>maxAngle)continue;
+   // Favorecer conectores próximos y cambios mínimos de orientación,
+   // pero nunca bloquear un empalme válido sólo por girar 180°.
+   const score=gap+Math.abs(rotation)*22;
+   if(!best||score<best.score)
+    best={...target,...candidate,gap,rotation,score};
+  }
  }
  return best;
+}
+function reverseLooseSingle(index){
+ const piece=state.loose[index],reversedId=reversedPartId(piece.id);
+ if(!reversedId)return false;
+ const end=positionOnPiece(piece,piece.id,1);
+ piece.x=end.x;piece.y=end.y;piece.h=end.h+Math.PI;
+ piece.id=reversedId;
+ return true;
 }
 function transformLoose(indices,from,to){
  const angle=angleDiff(to.h,from.h),c=Math.cos(angle),sn=Math.sin(angle);
@@ -147,6 +188,7 @@ function snapLoose(index,{force=false,history=true}={}){
  const magnet=bestMagnet(index,{distance:force?SNAP_DISTANCE_MM*1.5:SNAP_DISTANCE_MM});
  if(!magnet)return false;
  if(history)pushHistory();
+ if(magnet.reversed)reverseLooseSingle(source.indices[0]);
  transformLoose(source.indices,magnet.from,magnet.to);
  const moved=source.indices.map(i=>({...state.loose[i]}));
  if(magnet.kind==="main"){
