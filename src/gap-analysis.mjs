@@ -13,7 +13,7 @@ export function composeStraightDistance(distance,catalog,unit=12.5,{maxUnits=800
  const units=Math.round(distance/unit);
  if(units<1||units>maxUnits||Math.abs(distance-units*unit)>1e-6)return null;
  const options=Object.entries(catalog)
-  .filter(([,p])=>Number.isFinite(p.length)&&p.length>0&&!p.startFinish)
+  .filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&id!=="START350")
   .map(([id,p])=>({id,units:Math.round(p.length/unit),length:p.length}))
   .filter(p=>p.units>=1&&Math.abs(p.length-p.units*unit)<1e-7)
   .sort((a,b)=>b.units-a.units||a.id.localeCompare(b.id));
@@ -24,7 +24,7 @@ export function composeStraightDistance(distance,catalog,unit=12.5,{maxUnits=800
   const candidate=[...best[rem],option.id];
   if(!best[n]||candidate.length<best[n].length)best[n]=candidate;
  }
- return best[units]?{ids:best[units],length:units*unit,units,count:best[units].length}:null;
+ return best[units]?{ids:best[units],names:best[units].map(id=>catalog[id].name),length:units*unit,units,count:best[units].length}:null;
 }
 export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
  if(!from||!to||![from.x,from.y,from.h,to.x,to.y,to.h].every(Number.isFinite))
@@ -78,9 +78,9 @@ export function gapExplanation(result){
  if(result.problem==="backward")return "Los extremos se superponen en sentido longitudinal. Revisa la orientación de los tramos.";
  if(result.combination){
   const ids=result.combination.ids;
-  return "HUECO "+m.forward+" mm · Solución modular exacta: "+ids.length+
-    " pieza(s) ("+ids.map(id=>result.partNames?.[id]||id).join(" + ")+
-    "). Sólo válido con extremos exactamente alineados.";
+  return "HUECO "+m.forward+" mm · Combinación: "+ids.length+
+    " pieza(s) ("+result.combination.names.join(" + ")+")."+
+    (result.exact?" Conectores alineados: cierre matemáticamente exacto.":" Alinea antes los extremos; todavía hay un pequeño desfase.");
  }
  if(result.matching)return "HUECO "+m.distance+" mm · La recta "+result.matching.length+
   " mm está a "+Math.round(result.matching.difference*10)/10+
