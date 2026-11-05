@@ -1,8 +1,26 @@
-# SlotRace · DEV 0.9.8 — cierre doble real y huecos medidos correctamente
+# SlotRace · DEV 0.10.0 — menú principal, Avenir Gripline, exportación PNG y sentido de carrera
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.## DEV 0.9.8 — corregido el fallo de cierre con una recta de 175 mm
+**Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.10.0 — experiencia de juego con taller y carreras separados
+
+**Probar PWA:** https://almaprintes.github.io/SlotRace/?v=0.10.0
+
+- **Menú principal:** tres entradas claras «Entrar al taller», «Correr» y «Exportar plano». El acceso a carrera se habilita si el circuito guardado está cerrado y validado. Inicio en el menú sin borrar la mesa existente.
+- **Nuevo circuito:** selector previo de sentido de conducción **horario / antihorario**. La selección se guarda en `slotrace-lab-10`, se mantiene tras cerrar la PWA y puede cambiarse desde el taller. En sentido inverso se invierten la trayectoria, el rumbo y la referencia de carril, sin alterar la geometría del circuito. Los récords se separan por orientación.
+- **Avenir Gripline original:** sustituye al coche procedural. Se ha importado la piel cenital `assets/skins/skin_avenir_gripline.webp` del repositorio hermano `almaprintes/TopdownCraftrace` a `assets/cars/avenir_gripline.webp`. Pintado con textura real y proporciones **98 × 49 mm**, frente al antiguo coche de 154 mm de largo. Sin modificar la física, control táctil, derrape ni cronometraje.
+- **Exportación técnica en PNG:** genera una sola imagen cenital de alta resolución con la pista, piezas y sus cantidades, número total, longitud de carrera, puentes, orientación, y **orden de montaje dentro del mismo archivo**. No exporta HUD ni coche. En iPhone usa Web Share para «Guardar imagen» o compartir; existe descarga estándar de respaldo para otros navegadores.
+- **Sin carreras de sustitución:** pulsar «Correr» en un circuito incompleto ya no cambia silenciosamente el trazado por el óvalo de demostración. El óvalo sigue accesible de forma explícita desde el taller.
+- **Despliegue:** GitHub Actions copia tanto `src/` como `assets/` a GitHub Pages y comprueba que la textura original existe. El flujo incluye `tests/game-shell.cjs` además de las 11 suites existentes. **12/12 suites JavaScript superadas** en pruebas y GitHub Actions.
+- **Guardado:** sigue siendo `slotrace-lab-10` sin reiniciar construcciones. Al pulsar «Crear circuito» se ofrece «Recuperar trazado» para volver al montaje anterior.
+
+**Pendiente de comprobar en iPhone:** presentación del menú como PWA, hoja de compartir el PNG y tamaño visual del Gripline en carrera.
+
+---
+
+## DEV 0.9.8 — corregido el fallo de cierre con una recta de 175 mm
 
 **Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.8
 
@@ -37,7 +55,6 @@ Se simplifica la familia experimental **SR-Precision**: **solo seis tamaños de 
 
 ---
 
-io/SlotRace/
 
 ## DEV 0.9.6 — rotación exacta con dos dedos
 
