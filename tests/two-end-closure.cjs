@@ -113,5 +113,30 @@ const path=require("node:path");
  st.loose.at(-1).h+=Math.PI/4;
  assert.equal(game.puzzle.loopFromLooseGroup(0),null,
    "No cerrar una cadena con un conector interno mal orientado");
- console.log("DEV 0.10.1: hueco 175 mm, segundo conector, cierre suelto, deshacer y diagnóstico de dos tramos OK");
+ // La nueva solución de 12,5 mm no usa módulo diminuto: corrige
+ // longitudes del mismo trazado con una recta de 75 y otra de 87,5.
+ const balancing=["S075",...Array(4).fill("R2_45R"),
+  "S0875",...Array(4).fill("R2_45R")];
+ const openTrack=geo.buildTrack(balancing,geo.START);
+ assert.equal(openTrack.closed,false);
+ assert.ok(Math.abs(openTrack.gap-12.5)<1e-7);
+ game.changeTypes([],"Equilibrio entre rectas",[],geo.START);
+ st.loose=openTrack.parts.map((part,i)=>({
+  id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+  magnetGroup:"offset-test",magnetOrder:i
+ }));
+ st.looseSelection=0;st.selectedGroup="offset-test";st.selection=-1;
+ const measurement=game.puzzle.measureOpenGap();
+ assert.ok(measurement,"Hueco de 12,5 mm entre extremos del tramo");
+ assert.match(elements.get("gapInfo").textContent,/CIERRE POR COMPENSACIÓN/);
+ assert.match(elements.get("gapInfo").textContent,/75 → 87,5 mm/);
+ game.puzzle.closeExactly();
+ assert.equal(st.loose.length,0);
+ assert.equal(st.track.valid,true);
+ assert.equal(st.types.length,balancing.length,"Sin añadir ninguna pieza");
+ assert.ok(!st.types.includes("S0125"),"La recta diminuta no se crea automáticamente");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).types.length,balancing.length);
+ game.undo();
+ assert.equal(st.loose.length,balancing.length,"El deshacer restaura el tramo original");
+ console.log("DEV 0.10.2: cierre doble 175 mm, compensación 12,5 sin pieza nueva y deshacer OK");
 })().catch(e=>{console.error(e);process.exitCode=1;});
