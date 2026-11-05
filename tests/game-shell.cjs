@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.0");
+ assert.equal(game.version,"DEV 0.13.1");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -286,5 +286,5 @@ const path=require("node:path");
  assert.equal(afterRace.circuitName,"Ocho de pruebas");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
- console.log("SlotRace DEV 0.13.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.13.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

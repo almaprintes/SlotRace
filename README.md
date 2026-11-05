@@ -1,6 +1,8 @@
-# SlotRace DEV 0.13.0 · Constructor comercial rediseñado
+# SlotRace DEV 0.13.1 · Constructor comercial rediseñado
 
-**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.0
+- En iPhone grande, nombre, sentido y Guardar se mantienen en una sola fila como el diseño aprobado.
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.1
 
 - Nueva pantalla de construcción inspirada en el mockup aprobado: título deportivo, campo de nombre, sentido y Guardar; mesa de mayor tamaño; cuatro acciones principales.
 - Caja de piezas en cuatro categorías reales: **Rectas (5)**, **Curvas (7)**, **Especiales (salida/meta)** y **Puentes (kit físico)**, con tres módulos visibles por página y navegación anterior/siguiente.

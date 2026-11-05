@@ -1258,3 +1258,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .builder-screen #pieces[hidden],
 .builder-screen #bridgeKit[hidden],
 .builder-screen #casePagination[hidden]{display:none!important}
+
+/* DEV 0.13.1 · Mantener nombre, sentido y guardar en una sola fila en iPhone grande. */
+@media (min-width:390px) and (max-width:660px){
+ .builder-screen .build-topbar{grid-template-columns:minmax(0,1fr) auto auto!important;gap:6px!important}
+ .builder-screen .build-topbar #workSaveCircuit{grid-column:auto!important;width:auto!important;min-width:87px!important;padding:8px!important}
+ .builder-screen .build-topbar .direction-toggle{min-width:116px!important;max-width:none!important;padding:7px!important;gap:4px!important}
+ .builder-screen .build-topbar .work-name{padding-left:8px;padding-right:5px}
+ .builder-screen .build-topbar .work-name .ui-glyph{width:15px;height:15px}
+ .builder-screen .build-topbar .work-name input{font-size:12px}
+}
