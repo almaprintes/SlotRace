@@ -1385,42 +1385,48 @@ function visualCarPose(at){
   h:at.h+side*DRIVE.driftMaxAngle*d,
   smoke:d,spin:0};
 }
+// La piel cenital ORIGINAL del Avenir Gripline viene del repositorio
+// Top Down RACE. Se pinta como una imagen real, no como un coche dibujado
+// con rectángulos. Silueta de 98 mm frente a los 154 mm anteriores.
+const GRIPLINE_SPRITE_URL="./assets/cars/avenir_gripline.webp";
+const GRIPLINE_LENGTH_MM=98;
+const GRIPLINE_WIDTH_MM=49;
+const griplineImage=typeof Image==="function"?new Image():null;
+if(griplineImage){
+ griplineImage.onload=()=>{state.viewDirty=true;};
+ griplineImage.onerror=()=>{state.viewDirty=true;};
+ griplineImage.src=GRIPLINE_SPRITE_URL;
+}
 function paintCar(ctx,at,lane,paused=false){
  if(!at)return;
- const color=lane===0?"#55eecf":"#ffc267";
  const visual=visualCarPose(at);
  ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h);
  if(visual.smoke>.03){
-  // Estelas breves de las ruedas posteriores, sin imágenes ni partículas
-  // persistentes que penalicen el rendimiento en el iPhone.
-  ctx.save();
-  ctx.globalAlpha=Math.min(.45,.38*visual.smoke);
+  ctx.save();ctx.globalAlpha=Math.min(.42,.36*visual.smoke);
   for(let i=0;i<3;i++){
-   const x=-83-i*23,y=(i-1)*20;
-   ctx.beginPath();ctx.ellipse(x,y,9+i*6,4+i*4,.2,0,Math.PI*2);
+   ctx.beginPath();ctx.ellipse(-51-i*13,(i-1)*15,5+i*4,3+i*2,.2,0,Math.PI*2);
    ctx.fillStyle="#d9e7e0";ctx.fill();
   }
   if(visual.spin){
-   ctx.strokeStyle="#def0e2";ctx.lineWidth=3;
-   ctx.beginPath();ctx.arc(0,0,104,visual.h,visual.h+Math.PI*.9);ctx.stroke();
+   ctx.strokeStyle="#def0e2";ctx.lineWidth=2;
+   ctx.beginPath();ctx.arc(0,0,71,visual.h,visual.h+Math.PI*.9);ctx.stroke();
   }
   ctx.restore();
  }
- ctx.shadowColor="#000a";ctx.shadowBlur=17;ctx.shadowOffsetY=9;
- ctx.fillStyle="#0b1013";roundRect(ctx,-77,-32,154,64,16);ctx.fill();ctx.shadowBlur=0;ctx.shadowOffsetY=0;
- for(const x of [-53,49])for(const y of [-33,25]){
-  ctx.fillStyle="#0c1215";roundRect(ctx,x,y,32,10,4);ctx.fill();
-  ctx.fillStyle="#69787b";ctx.fillRect(x+4,y+4,23,2);
+ ctx.shadowColor="#000a";ctx.shadowBlur=11;ctx.shadowOffsetY=6;
+ if(griplineImage&&griplineImage.complete&&griplineImage.naturalWidth>0){
+  // El frontal de la imagen apunta hacia ARRIBA; la pista h=0
+  // apunta hacia la DERECHA. Sumamos 90° para mantener rumbo.
+  ctx.rotate(Math.PI/2);
+  ctx.drawImage(griplineImage,-GRIPLINE_WIDTH_MM/2,-GRIPLINE_LENGTH_MM/2,
+   GRIPLINE_WIDTH_MM,GRIPLINE_LENGTH_MM);
+ }else{
+  // Sólo durante la carga o fallo del fichero: indicador discreto
+  // para que el coche jamás desaparezca de una carrera.
+  ctx.fillStyle="#f8faff";roundRect(ctx,-49,-21,98,42,13);ctx.fill();
+  ctx.shadowBlur=0;ctx.fillStyle="#187ac0";
+  ctx.fillRect(-27,-8,52,16);
  }
- const paint=ctx.createLinearGradient(0,-30,0,30);
- paint.addColorStop(0,"#e2fff2");paint.addColorStop(.2,color);paint.addColorStop(.8,lane===0?"#159380":"#ad681d");paint.addColorStop(1,"#062125");
- ctx.fillStyle=paint;roundRect(ctx,-70,-27,140,54,19);ctx.fill();
- ctx.fillStyle="#111d23";roundRect(ctx,-8,-23,49,46,11);ctx.fill();
- ctx.fillStyle="#416972";roundRect(ctx,11,-19,22,38,6);ctx.fill();
- ctx.fillStyle="#faf9ee";ctx.fillRect(-47,-24,54,6);ctx.fillRect(-47,18,54,6);
- ctx.fillStyle="#fffef1";ctx.fillRect(58,-20,7,11);ctx.fillRect(58,9,7,11);
- ctx.fillStyle="#b41d27";ctx.fillRect(-65,-19,5,12);ctx.fillRect(-65,7,5,12);
- ctx.fillStyle="#092b30";ctx.font="bold 21px sans-serif";ctx.textAlign="center";ctx.fillText("7",-38,8);
  ctx.restore();
 }
 function loosePart(piece,index){
