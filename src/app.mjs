@@ -1196,7 +1196,7 @@ function loosePart(piece,index){
  const n=CATALOG[piece.id].length?7:20;
  const pose={x:piece.x,y:piece.y,h:piece.h};
  const points=Array.from({length:n+1},(_,k)=>positionOnPiece(pose,piece.id,k/n));
- return{id:piece.id,index,start:pose,end:points[points.length-1],points};
+ return{id:piece.id,index,start:pose,end:points[points.length-1],points,raised:Boolean(piece.raised)};
 }
 // Una unión magnética se dibuja como UNA superficie continua. La sombra,
 // los cantos y las juntas de conector sólo aparecen en el perímetro del
@@ -1213,10 +1213,60 @@ function loosePaintGroups(){
  }
  return groups;
 }
+// Dibujo de puentes en trazados todavía sin homologar. Una recta suelta
+// puede cruzar otra pieza o un tramo magnético, aunque aún no se haya
+// pulsado Iniciar. La intersección no equivale a conexión magnética.
+function crossingOnLooseParts(upper,lower){
+ const a=upper.points,b=lower.points;
+ for(let i=1;i<a.length;i++)for(let j=1;j<b.length;j++){
+  const p=a[i-1],q=b[j-1],dx=a[i].x-p.x,dy=a[i].y-p.y,
+   ex=b[j].x-q.x,ey=b[j].y-q.y;
+  const det=dx*ey-dy*ex;if(Math.abs(det)<1e-8)continue;
+  const rx=q.x-p.x,ry=q.y-p.y;
+  const t=(rx*ey-ry*ex)/det,u=(rx*dy-ry*dx)/det;
+  if(t<0||t>1||u<0||u>1)continue;
+  const x=p.x+t*dx,y=p.y+t*dy;
+  const span=CATALOG[upper.id]?.length||0;
+  const progress=(x-upper.start.x)*Math.cos(upper.start.h)+
+   (y-upper.start.y)*Math.sin(upper.start.h);
+  // El cruce debe dejar 90 mm disponibles para cada rampa.
+  if(progress<90||progress>span-90)return null;
+  return{x,y};
+ }
+ return null;
+}
+function looseOverpasses(groups=loosePaintGroups()){
+ const out=[],parts=groups.flatMap(group=>group.parts.map((part,i)=>({
+  ...part,key:group.key,order:i
+ })));
+ for(const upper of parts){
+  if(!upper.raised)continue;
+  for(const lower of parts){
+   if(upper.index===lower.index)continue;
+   // Uniones adyacentes del mismo tramo no son cruces.
+   if(upper.key===lower.key&&Math.abs(upper.order-lower.order)<=1)continue;
+   const crossing=crossingOnLooseParts(upper,lower);
+   if(!crossing)continue;
+   // Un solo paso a distinto nivel por pieza para este kit experimental.
+   if(out.some(x=>x.upper.index===upper.index))continue;
+   out.push({upper,lower,crossing});
+  }
+ }
+ return out;
+}
+function paintLooseOverpasses(ctx,groups){
+ for(const {upper,lower,crossing} of looseOverpasses(groups)){
+  paintBridgeCrossing(ctx,{parts:[upper,lower],bridge:{
+   overParts:[0],underParts:[1],crossing,virtual:false,height:65
+  }});
+ }
+}
 function paintLoose(ctx){
- for(const group of loosePaintGroups()){
+ const groups=loosePaintGroups();
+ for(const group of groups){
   const {points,parts,indices}=group;
   if(!points.length)continue;
+  for(const part of parts)if(part.raised)paintSupportKit(ctx,part);
   ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=18;ctx.shadowOffsetY=12;
   strokePath(ctx,points,PIECE_LOOK.shadow,TRACK_WIDTH+19);
   ctx.restore();
@@ -1235,6 +1285,7 @@ function paintLoose(ctx){
   // oscura entre dos módulos magnéticamente unidos.
   paintSeam(ctx,parts[0].start);
   paintSeam(ctx,parts[parts.length-1].end);
+  for(const part of parts)if(part.raised)paintBridgeRampProfile(ctx,part);
   if(state.mode==="build"&&state.looseSelection>=0){
    if(state.selectionMode==="group"&&group.key===state.selectedGroup){
     ctx.save();ctx.globalAlpha=.22;
@@ -1246,6 +1297,7 @@ function paintLoose(ctx){
    }
   }
  }
+ paintLooseOverpasses(ctx,groups);
  if(state.mode==="build"&&state.looseSelection>=0){
   const magnet=bestMagnet(state.looseSelection);
   if(magnet){
@@ -1254,10 +1306,6 @@ function paintLoose(ctx){
    ctx.lineTo(magnet.to.x,magnet.to.y);ctx.stroke();
    ctx.setLineDash([]);ctx.restore();
   }
- }
- // Los kits de una pieza libre permanecen visibles y se mueven con ella.
- for(const piece of state.loose){
-  if(piece.raised)paintSupportKit(ctx,loosePart(piece,-1));
  }
  if(state.dragging?.active&&state.mode==="build"){
   const d=state.dragging,rect=editCanvas.getBoundingClientRect();
@@ -1354,13 +1402,14 @@ function renderScene(canvas,mode){
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=positionAt(track.lanes[state.lane],mode==="race"?state.distance:0);
  const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
- // Dibujar el circuito completo como un solo tramo continuo evita
- // bandas que se comen otras piezas en las uniones.
- paintContinuousTrack(ctx,track,mode==="build");
- // Apoyos colocados durante el montaje, antes de cerrar el circuito.
+ // Las patas van bajo la pista. No dibujar una placa sobre el asfalto.
  for(const index of state.bridgeParts){
-  if(track.bridge?.overParts.includes(index))continue;
   const part=track.parts[index];if(part)paintSupportKit(ctx,part);
+ }
+ // Dibujo continuo: los carriles de los módulos acoplados nunca se cortan.
+ paintContinuousTrack(ctx,track,mode==="build");
+ for(const index of state.bridgeParts){
+  const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part);
  }
  if(hasBridge){
   // El coche inferior sólo pasa tras la MÁSCARA PEQUEÑA del cruce;
@@ -1565,8 +1614,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.4",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,paintLoose,installBridgeKit,paintSupportKit,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.9.5",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
