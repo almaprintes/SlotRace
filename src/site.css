@@ -1268,3 +1268,12 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .builder-screen .build-topbar .work-name .ui-glyph{width:15px;height:15px}
  .builder-screen .build-topbar .work-name input{font-size:12px}
 }
+
+/* DEV 0.13.2 · Toque = acoplar por orden, asa = arrastrar suelta */
+.builder-screen .case-mount-guide{
+ margin:0 0 10px;padding:9px 11px;border-radius:10px;
+ border:1px solid #386e69;background:#0a2a33;
+ color:#acffe4;font-size:10px;line-height:1.45;font-weight:900;
+ letter-spacing:.3px;text-align:center;
+}
+.builder-screen .foam-pocket:active{border-color:#36cab4!important}

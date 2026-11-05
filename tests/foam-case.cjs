@@ -40,7 +40,7 @@ const fs=require("node:fs"),path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.13.1");
+ assert.equal(game.version,"DEV 0.13.2");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(st.caseCategory,"straight","La caja comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -195,5 +195,32 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.13.1: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ // Montaje secuencial: tocar tarjetas y pulsar + forman exactamente
+ // una cadena, sin piezas sueltas y sin deformar conexiones.
+ game.createNewCircuit();
+ if(st.caseCurveDirection==="L")elements.get("curveDirection").listeners.click[0]();
+ assert.equal(st.types.length,0);
+ assert.equal(st.loose.length,0);
+ tap("S350");tap("R2_45R");tap("S175");
+ assert.deepEqual(st.types,["S350","R2_45R","S175"]);
+ assert.equal(st.loose.length,0,"Los toques encajan, no dispersan piezas");
+ for(let i=1;i<st.track.parts.length;i++){
+  const a=st.track.parts[i-1].end,b=st.track.parts[i].start;
+  assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<1e-6,"Conectores unidos sin hueco");
+  assert.ok(Math.abs(a.h-b.h)<1e-6,"El rumbo se conserva en cada unión");
+ }
+ assert.equal(game.removeLooseFromCase("S175"),true,"− devuelve el último módulo encajado");
+ assert.deepEqual(st.types,["S350","R2_45R"]);
+ assert.equal(st.loose.length,0,"− no desmonta el tramo completo");
+ tap("S175");assert.equal(st.types.length,3,"Se puede volver a añadir");
+ game.createNewCircuit();
+ for(const id of game.STARTER)tap(id);
+ assert.deepEqual(st.types,game.STARTER,"Montaje exacto de un óvalo, pieza a pieza");
+ assert.equal(st.track.closed,true,"La última unión cierra el circuito");
+ assert.equal(st.track.valid,true,"El circuito cerrado es apto para correr");
+ const count=st.types.length;
+ tap("S175");
+ assert.equal(st.types.length,count,"Una pista cerrada no se deforma por tocar otra pieza");
+ assert.equal(st.loose.length,1,"Con el circuito cerrado la pieza se deposita suelta");
+ console.log("SlotRace DEV 0.13.2: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

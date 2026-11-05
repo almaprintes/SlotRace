@@ -1,8 +1,21 @@
-# SlotRace DEV 0.13.1 · Constructor comercial rediseñado
+# SlotRace DEV 0.13.2 · Montaje automático por pulsación
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.2
+
+- Tocar una pieza de la caja, o su botón **+**, ahora **la acopla inmediatamente al conector final** del circuito en construcción. Cada nueva pulsación respeta el orden de las piezas elegidas y usa la geometría exacta de SR-Precision.
+- El botón **−** de la última pieza añadida automáticamente permite revertirla de forma segura; los demás botones «−» solo devuelven piezas sueltas, sin desmontar el resto del circuito.
+- El **asa de arrastre** sigue permitiendo sacar piezas sueltas para construcción y ensamblaje manual con imanes.
+- Si el circuito ya está **cerrado**, un toque deja la pieza **suelta** en la mesa en lugar de modificar el lazo cerrado.
+- La pista mantiene el sentido de curvas configurable (derecha/izquierda), la función Deshacer y el guardado local existente; sin modificar física, tiempos o catálogo.
+- Nueva ayuda visible en la caja que explica las dos formas de añadir piezas. Tests adicionales comprueban conexión exacta, deshacer la última pieza y construcción de un óvalo completo mediante toques.
+
+---
+
+# SlotRace DEV 0.13.2 · Constructor comercial rediseñado
 
 - En iPhone grande, nombre, sentido y Guardar se mantienen en una sola fila como el diseño aprobado.
 
-**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.1
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.2
 
 - Nueva pantalla de construcción inspirada en el mockup aprobado: título deportivo, campo de nombre, sentido y Guardar; mesa de mayor tamaño; cuatro acciones principales.
 - Caja de piezas en cuatro categorías reales: **Rectas (5)**, **Curvas (7)**, **Especiales (salida/meta)** y **Puentes (kit físico)**, con tres módulos visibles por página y navegación anterior/siguiente.

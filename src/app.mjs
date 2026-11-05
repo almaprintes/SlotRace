@@ -510,10 +510,31 @@ function scatterLoose(id){
  return addLoose(id,x,y,0);
 }
 const pocketPartId=id=>id.includes("_")&&id.endsWith("R")?id.slice(0,-1)+state.caseCurveDirection:id;
+// Tocar la caja monta por orden en el conector libre final.
+ // El arrastre desde el asa sigue creando una pieza libre en el tapete.
+let lastCaseAppend=null;
 function inventoryAction(id){
  const chosen=pocketPartId(id);
- if(!CATALOG[chosen])return;
- scatterLoose(chosen);
+ if(!CATALOG[chosen])return false;
+ if(state.track.closed){
+  const placed=scatterLoose(chosen);
+  if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala si quieres iniciar otro tramo.");
+  return placed;
+ }
+ const next=[...state.types,chosen];
+ if(!allowed([...next,...state.loose.map(p=>p.id)])){
+  toast("No puedes utilizar más piezas de ese tipo.");return false;
+ }
+ // No cambiar origen, radios ni ángulos: buildTrack calcula todos los conectores.
+ const didClose=buildTrack(next,state.origin,state.bridgeParts).closed;
+ if(!changeTypes(next,"",state.loose,state.origin,{preserveBridge:true}))return false;
+ state.selectedGroup="main";
+ state.selection=state.types.length-1;
+ state.selectionMode="piece";
+ lastCaseAppend={id:chosen,count:state.types.length,history:state.history.length};
+ updateUI();
+ if(!didClose)toast("✓ Pieza "+state.types.length+" encajada al final del circuito.");
+ return true;
 }
 function toggleCaseCurveDirection(){
  state.caseCurveDirection=state.caseCurveDirection==="R"?"L":"R";
@@ -1078,6 +1099,17 @@ function renderCasePages(){
 }
 function removeLooseFromCase(id){
  const chosen=pocketPartId(id);
+ // «−» deshace la última pieza incorporada automáticamente, nunca una
+ // pieza anterior de la pista ni un cambio posterior del usuario.
+ if(lastCaseAppend?.id===chosen&&
+    lastCaseAppend.count===state.types.length&&
+    lastCaseAppend.history===state.history.length&&
+    state.types.at(-1)===chosen){
+  lastCaseAppend=null;
+  undo();
+  toast("Última pieza acoplada devuelta a la caja.");
+  return true;
+ }
  const latest=state.loose.findLastIndex(p=>p.id===chosen);
  const index=state.looseSelection>=0&&state.loose[state.looseSelection]?.id===chosen?
   state.looseSelection:latest;
@@ -1200,15 +1232,22 @@ function updateUI(){
   const id=el.dataset.piece,chosen=pocketPartId(id),free=freeStock([...state.types,...state.loose.map(p=>p.id)],chosen);
   const unlimited=free===Infinity;
   el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
-  el.setAttribute("aria-label",CATALOG[chosen].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+". Toca para sacar o arrastra a la mesa.");
+  el.setAttribute("aria-label",CATALOG[chosen].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+
+   (state.track.closed?". Toca para colocar suelta.":". Toca para encajar en orden.")+
+   " Arrastra desde el asa para colocar una pieza suelta.");
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
   const minus=el.querySelector(".pocket-minus"),plus=el.querySelector(".pocket-plus");
-  if(minus)minus.disabled=!state.loose.some(p=>p.id===chosen);
+  if(minus)minus.disabled=!state.loose.some(p=>p.id===chosen)&&
+   !(lastCaseAppend?.id===chosen&&lastCaseAppend.count===state.types.length&&
+     lastCaseAppend.history===state.history.length&&state.types.at(-1)===chosen);
   if(plus)plus.disabled=free===0;
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===chosen)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen));
  }
  renderCasePages();
+ $("caseMountGuide").textContent=state.track.closed?
+  "CIRCUITO CERRADO · Toque: pieza suelta · Asa: arrastrar":
+  "TOCA UNA PIEZA O + PARA ACOPLARLA AL FINAL · ARRASTRA EL ASA PARA DEJARLA SUELTA";
  $("tableCaption").textContent=state.pinch?.mode==="rotate"?
   "GIRANDO · SALTOS EXACTOS DE 22,5°":
  state.looseSelection>=0?"DOS DEDOS: GIRAR 22,5° · ARRASTRA PARA ACOPLAR":
@@ -1296,7 +1335,7 @@ function palette(){
     '<div class="pocket-qty-controls">'+
      '<button type="button" class="pocket-minus" aria-label="Devolver una pieza suelta '+pocketNames[id]+'">−</button>'+
      '<span class="pocket-stock" aria-label="Inventario ilimitado">∞</span>'+
-     '<button type="button" class="pocket-plus" aria-label="Sacar una pieza '+pocketNames[id]+'">+</button>'+
+     '<button type="button" class="pocket-plus" aria-label="Acoplar una pieza '+pocketNames[id]+' al final del circuito">+</button>'+
     '</div>';
   const grip=pocket.querySelector(".foam-drag-grip");
   const minus=pocket.querySelector(".pocket-minus");
@@ -2601,7 +2640,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.1",state,showHub,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.13.2",state,showHub,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
