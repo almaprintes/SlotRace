@@ -1461,9 +1461,16 @@ function startTwoFingerGesture(){
  const bearing=Math.atan2(dy,dx);
  const hit=pair.find(p=>p.looseIndex>=0||p.trackIndex>=0);
  const dragging=pair.some(p=>p.dragged);
+ // Si un dedo ya estaba arrastrando, el gesto no cancela ni pierde
+ // ese movimiento: sólo el nuevo dedo queda consumido por el pellizco.
+ if(dragging){
+  for(const p of pair)if(!p.dragged)p.consumed=true;
+  state.pinch={mode:"camera",distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
+  return;
+ }
  // Ambos dedos sobre zona libre: mantener pinch-to-zoom + desplazamiento.
  for(const p of pair)p.consumed=true;
- if(!hit||dragging){
+ if(!hit){
   state.pinch={mode:"camera",distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
   return;
  }
@@ -1516,6 +1523,8 @@ function rotateGestureToSteps(g,steps){
   item.x=p.x;item.y=p.y;item.h=original.h+angle;
  }
  g.steps=steps;
+ $("tableCaption").textContent="GIRANDO "+(steps*22.5).toLocaleString("es-ES")+
+  "° · PASOS EXACTOS DE 22,5°";
  state.viewDirty=true;
 }
 function moveTwoFingerRotation(g){
