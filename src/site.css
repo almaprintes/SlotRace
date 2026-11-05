@@ -830,3 +830,31 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .hero-spark{right:3%;width:44%}
  .home-hero h1{font-size:36px}
 }
+
+
+/* DEV 0.12.2 · Portada con fotografía aprobada del duelo de dos carriles.
+   Proporción original: ninguna carrocería se corta en iPhone. */
+.home-hero{
+ display:flex;flex-direction:column;min-height:0!important;padding:0!important;
+ border-radius:18px;background:#fff;overflow:hidden;
+}
+.home-hero::before,.home-hero::after{display:none!important;content:none!important}
+.home-hero-heading{
+ position:relative;z-index:1;max-width:none;pointer-events:auto;
+ padding:17px clamp(15px,3.5vw,25px) 13px;
+ background:linear-gradient(120deg,#fff,#f6f8fb);
+ text-shadow:none;
+}
+.home-hero-photo{
+ display:block;position:relative;width:100%;height:auto;
+ aspect-ratio:900 / 507;max-width:100%;object-fit:contain;flex:none;
+ background:#26313a;
+}
+@media(max-width:660px){
+ .home-hero{min-height:0!important}
+ .home-hero-heading{padding:13px 15px 12px}
+ .home-hero h1{margin:7px 0 6px}
+}
+@media(max-height:650px){
+ .home-hero{min-height:0!important}
+}

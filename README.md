@@ -1,3 +1,14 @@
+# SlotRace DEV 0.12.2 · Portada de competición
+
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.12.2
+
+- La portada incorpora la fotografía **aprobada por el usuario** del Avenir Gripline en el carril interior y Helix Spark siguiéndolo por el exterior de una curva de slot.
+- Asset local versionado en `assets/ui/slotrace-duelo-curva.avif`: optimización del PNG original a 900×507 píxeles, 15 KB, compatible con el iPhone y cargado de forma autónoma desde GitHub Pages.
+- La imagen ocupa su proporción natural 16:9 sin zoom, recortes ni coches superpuestos; el logotipo permanece encima y los seis botones comerciales permanecen funcionales debajo.
+- La acción de publicación verifica el asset. No cambian las físicas, la mesa, los circuitos ni los récords.
+
+---
+
 # SlotRace DEV 0.12.1 · Menú comercial con navegación a seis pantallas
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.12.1

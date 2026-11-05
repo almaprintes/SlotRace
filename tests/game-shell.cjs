@@ -48,7 +48,10 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.12.1");
+ assert.equal(game.version,"DEV 0.12.2");
+ assert.match(html,/class="home-hero-photo"/);
+ assert.match(html,/slotrace-duelo-curva\.avif/);
+ assert.doesNotMatch(html,/class="hero-cars"/);
  assert.match(html,/avenir_gripline_threequarter\.webp/);
  assert.match(html,/helix_spark_threequarter\.webp/);
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
@@ -276,5 +279,5 @@ const path=require("node:path");
  assert.equal(afterRace.circuitName,"Ocho de pruebas");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
- console.log("SlotRace DEV 0.12.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.12.2: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

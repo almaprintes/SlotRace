@@ -75,6 +75,7 @@ jobs:
           test -s _site/assets/cars/avenir_gripline.webp
           test -s _site/assets/cars/avenir_gripline_threequarter.webp
           test -s _site/assets/cars/helix_spark_threequarter.webp
+          test -s _site/assets/ui/slotrace-duelo-curva.avif
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
