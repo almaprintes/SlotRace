@@ -466,7 +466,7 @@ function measureOpenGap(){
   }else{
    message="HUECO DEL MISMO TRAMO · "+message;
   }
-  if(balance?.ok&&!balance.unchanged){
+  if(balance?.ok&&!balance.unchanged&&!result?.combination){
    const edits=balance.changes.map(change=>
     CATALOG[change.from].length+" → "+CATALOG[change.to].length+" mm").join(" + ");
    message="CIERRE POR COMPENSACIÓN · Sustituir "+edits+
@@ -504,17 +504,6 @@ function closeExactly(){
    const fit=gapAnalysis.measureGap(group.end,group.start,CATALOG);
    const original=group.parts.map(part=>part.id);
    const raised=group.parts.flatMap((part,i)=>part.raised?[i]:[]);
-   const balanced=findStraightRebalance(original,{origin:group.start,raisedParts:raised});
-   if(balanced.ok&&!balanced.unchanged){
-    pushHistory();
-    state.types=balanced.types;state.origin={...group.start};state.bridgeParts=raised;
-    state.loose=[];state.track=buildTrack(state.types,state.origin,state.bridgeParts);
-    extendWorkBoard();state.selectedGroup="main";state.selectionMode="group";
-    state.selection=0;state.looseSelection=-1;save();updateUI();
-    toast("Cerrado compensando rectas: "+balanced.changes.map(c=>
-     CATALOG[c.from].length+" → "+CATALOG[c.to].length+" mm").join(" + ")+".");
-    return;
-   }
    const added=fit.exact?fit.combination?.ids:null;
    if(added?.length&&added.length<=5){
     const types=[...group.parts.map(p=>p.id),...added];
@@ -530,6 +519,17 @@ function closeExactly(){
       " pieza(s) de ajuste, sin cambiar ninguna medida.");
      return;
     }
+   }
+   const balanced=findStraightRebalance(original,{origin:group.start,raisedParts:raised});
+   if(balanced.ok&&!balanced.unchanged){
+    pushHistory();
+    state.types=balanced.types;state.origin={...group.start};state.bridgeParts=raised;
+    state.loose=[];state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+    extendWorkBoard();state.selectedGroup="main";state.selectionMode="group";
+    state.selection=0;state.looseSelection=-1;save();updateUI();
+    toast("Cerrado compensando rectas: "+balanced.changes.map(c=>
+     CATALOG[c.from].length+" → "+CATALOG[c.to].length+" mm").join(" + ")+".");
+    return;
    }
    const detail=gapAnalysis.gapExplanation(fit);
    $("gapInfo").textContent="No se puede cerrar todavía: "+detail;
