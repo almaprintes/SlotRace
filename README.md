@@ -1,8 +1,25 @@
-# SlotRace · DEV 0.9.7 — seis rectas proporcionales y cierre modular exacto
+# SlotRace · DEV 0.9.8 — cierre doble real y huecos medidos correctamente
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.## DEV 0.9.7 — seis longitudes de recta, todas proporcionales
+**Enlace:** https://almaprintes.github.## DEV 0.9.8 — corregido el fallo de cierre con una recta de 175 mm
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.8
+
+Se reproduce el fallo del 5 de noviembre: «Medir hueco» indicaba 175 mm, pero la recta colocada sólo se acoplaba por un lado y «Cerrar exacto» aparecía deshabilitado porque el circuito todavía constaba como piezas sueltas.
+
+- **Acoplamiento por ambos extremos.** Al unir la última pieza de un grupo, el motor comprueba la continuidad de cada conector y también el extremo contrario. Si la cadena forma un lazo geométricamente cerrado, el grupo se convierte automáticamente en circuito montado. La pieza que realmente completa los dos extremos tiene prioridad frente a una unión aislada que no cerraría.
+- **Cerrar exacto habilitado para grupos magnéticos.** Si el tramo suelto ya está cerrado, puede finalizarse; si le falta una longitud modular exactamente alineada, el botón puede añadir una composición de hasta cinco rectas del catálogo, sin modificar ni estirar las piezas existentes.
+- **Diagnóstico con significado.** Se distingue expresamente entre el hueco de cierre de un mismo tramo y una simple unión entre dos tramos separados, que NO garantiza cerrar el circuito. Tener dos conectores muy cerca tampoco basta cuando su orientación es distinta.
+- **Mensaje obsoleto eliminado.** Después de mover, unir o deshacer, se descarta el diagnóstico anterior para no recomendar una longitud que ya no corresponde al estado actual.
+- **Guardado conservado:** sigue siendo `slotrace-lab-10`, compatible con DEV 0.9.7. El montaje del usuario no se reinicia.
+- **Regresión añadida:** `tests/two-end-closure.cjs` monta un óvalo con hueco exacto de 175 mm, acopla la última pieza, comprueba ambos conectores, permite deshacer y verifica el cierre directo de un tramo suelto. GitHub Actions ejecuta esta prueba antes de publicar. **11/11 suites JavaScript superadas** en validación de código.
+
+Pendiente: comprobación de la experiencia táctil con el montaje real del usuario en Safari iPhone.
+
+---
+
+## DEV 0.9.7 — seis longitudes de recta, todas proporcionales
 
 **Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.7
 
