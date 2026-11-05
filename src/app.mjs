@@ -623,7 +623,7 @@ function updateUI(){
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  const t=state.track;
  const degrees=t.headingGap*180/Math.PI;
- const status=t.bridge?"OCHO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
+ const status=t.bridge?"CIRCUITO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
  t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
   !t.types.length?(state.loose.length?state.loose.length+" PIEZAS SUELTAS · INICIA LA CADENA":"MESA VACÍA · COLOCA PIEZAS"): t.closed?"CONECTADO · CRUCE SIN PUENTE":
   "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
@@ -631,7 +631,7 @@ function updateUI(){
  t.intersection?"Cruce al mismo nivel: necesita puente":
   !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
   t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":state.loose.length+" piezas sueltas · toca una y pulsa Iniciar";
- $("stateChip").textContent=t.bridge?"✓ OCHO CON PUENTE":
+ $("stateChip").textContent=t.bridge?"✓ PUENTE ELEVADO":
  t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
  $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
  $("buildStatus").textContent=status;
@@ -671,6 +671,10 @@ function updateUI(){
  $("redo").disabled=!state.redo.length;
  const used=state.types.length+state.loose.length;
  const total=Object.values(CATALOG).reduce((sum,spec)=>sum+spec.stock,0);
+ const kitOn=state.looseSelection>=0?Boolean(state.loose[state.looseSelection]?.raised):
+  state.selection>=0&&state.bridgeParts.includes(state.selection);
+ $("bridgeKit").setAttribute("aria-pressed",String(Boolean(kitOn)));
+ $("bridgeKit").querySelector(".bridge-kit-cta").textContent=kitOn?"− RETIRAR":"⠿ COLOCAR";
  $("caseCount").textContent=UNLIMITED_DEVELOPMENT_STOCK?
   "∞ piezas disponibles · "+used+" en la mesa":
   (total-used)+" de "+total+" piezas en sus huecos";
@@ -1482,6 +1486,7 @@ function initEvents(){
  $("rotate").addEventListener("click",rotateLoose);
  $("flip").addEventListener("click",flipSelectedCurve);
  $("curveDirection").addEventListener("click",toggleCaseCurveDirection);
+ $("bridgeKit").addEventListener("click",installBridgeKit);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
   save();updateUI();scheduleResize();
@@ -1543,8 +1548,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.3",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
-puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,paintLoose,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.9.4",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+puzzle:{detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,paintLoose,installBridgeKit,paintSupportKit,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
