@@ -83,5 +83,5 @@ const assert=require("node:assert/strict");
   start:{x:337.5,y:0,h:0},end:{x:0,y:0,h:0}}],CATALOG);
  assert.equal(pairs.length,1);
  assert.equal(pairs[0].exact,true);
- console.log("SR-Precision DEV 0.9.8: escala modular, 80 longitudes componibles, equivalencias, óvalo, ocho y errores de ángulo/desfase — OK");
+ console.log("SR-Precision DEV 0.10.0: escala modular, 80 longitudes componibles, equivalencias, óvalo, ocho y errores de ángulo/desfase — OK");
 })().catch(e=>{console.error(e);process.exitCode=1;});
