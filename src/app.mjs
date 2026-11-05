@@ -1581,6 +1581,158 @@ function paintGhost(ctx,track){
  ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.h)*67,e.y+Math.sin(e.h)*67);ctx.stroke();
  ctx.restore();
 }
+// Exportación PNG autocontenida. La receta viaja DENTRO de la imagen
+// (no en un archivo secundario), con números de montaje y elevaciones.
+function blueprintData(){
+ return buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection);
+}
+function drawBlueprint(ctx,recipe,{width=1500}={}){
+ const nRows=Math.ceil(recipe.items.length/2);
+ const sequenceRows=Math.ceil(recipe.sequence.length/4);
+ const h=1270+Math.max(1,nRows)*57+Math.max(1,sequenceRows)*47;
+ const x=75,bodyWidth=width-150;
+ ctx.canvas.width=width;ctx.canvas.height=h;
+ ctx.fillStyle="#091921";ctx.fillRect(0,0,width,h);
+ // Cabecera tipo plano de ingeniería de una maqueta de slot.
+ ctx.fillStyle="#48e4c1";ctx.fillRect(x,74,15,105);
+ ctx.fillStyle="#f5fffb";ctx.font="900 76px system-ui,sans-serif";
+ ctx.textAlign="left";ctx.fillText("SLOTRACE",110,133);
+ ctx.fillStyle="#7adccc";ctx.font="800 24px system-ui,sans-serif";
+ ctx.fillText("CRAFT RACE STUDIO · PLANO DE CIRCUITO",110,174);
+ ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
+ ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",width-x,125);
+ ctx.fillStyle="#a1b9bc";ctx.font="600 22px system-ui,sans-serif";
+ ctx.fillText("SR-PRECISION · ESCALA PROPORCIONAL",width-x,161);
+ ctx.textAlign="left";
+ ctx.strokeStyle="#4d857e";ctx.lineWidth=2;ctx.strokeRect(x,210,bodyWidth,790);
+ const frame={x:x+16,y:226,width:bodyWidth-32,height:758};
+ ctx.fillStyle="#17433b";ctx.fillRect(frame.x,frame.y,frame.width,frame.height);
+ // Delimitar el dibujo a la zona útil. Los límites incluyen las piezas
+ // no acopladas: nunca recortamos partes de la construcción.
+ const pts=[...state.track.parts.flatMap(p=>p.points),
+  ...loosePaintGroups().flatMap(g=>g.points)];
+ const bounds=pts.length?{
+  minX:Math.min(...pts.map(p=>p.x))-140,
+  maxX:Math.max(...pts.map(p=>p.x))+140,
+  minY:Math.min(...pts.map(p=>p.y))-140,
+  maxY:Math.max(...pts.map(p=>p.y))+140
+ }:{minX:0,maxX:TABLE.width,minY:0,maxY:TABLE.height};
+ const actualW=Math.max(100,bounds.maxX-bounds.minX);
+ const actualH=Math.max(100,bounds.maxY-bounds.minY);
+ const scale=Math.min((frame.width-110)/actualW,(frame.height-110)/actualH);
+ const cx=(bounds.minX+bounds.maxX)/2,cy=(bounds.minY+bounds.maxY)/2;
+ ctx.save();ctx.beginPath();ctx.rect(frame.x,frame.y,frame.width,frame.height);ctx.clip();
+ ctx.strokeStyle="#ffffff0d";ctx.lineWidth=1;
+ for(let i=0;i<frame.width;i+=42){
+  ctx.beginPath();ctx.moveTo(frame.x+i,frame.y);ctx.lineTo(frame.x+i,frame.y+frame.height);ctx.stroke();
+ }
+ for(let i=0;i<frame.height;i+=42){
+  ctx.beginPath();ctx.moveTo(frame.x,frame.y+i);ctx.lineTo(frame.x+frame.width,frame.y+i);ctx.stroke();
+ }
+ ctx.translate(frame.x+frame.width/2,frame.y+frame.height/2);
+ ctx.scale(scale,scale);ctx.translate(-cx,-cy);
+ for(const index of state.bridgeParts){
+  const part=state.track.parts[index];if(part)paintSupportKit(ctx,part);
+ }
+ paintContinuousTrack(ctx,state.track,false);
+ for(const index of state.bridgeParts){
+  const part=state.track.parts[index];if(part)paintBridgeRampProfile(ctx,part);
+ }
+ paintBridgeCrossing(ctx,state.track);
+ // La vista técnica nunca incorpora resaltados, coches ni controles.
+ const originalMode=state.mode,originalSelection=state.looseSelection;
+ try{
+  state.mode="export";state.looseSelection=-1;
+  paintLoose(ctx);
+ }finally{
+  state.mode=originalMode;state.looseSelection=originalSelection;
+ }
+ ctx.restore();
+ const metaY=1048;
+ ctx.fillStyle="#102c35";ctx.fillRect(x,metaY,bodyWidth,104);
+ const length=(state.track.length/1000);
+ const label=state.track.valid?"CIRCUITO CERRADO":state.loose.length?"MONTAJE EN PROGRESO":"EXTREMOS ABIERTOS";
+ const metrics=[
+  [String(recipe.pieces),"PIEZAS"],[length.toFixed(2)+" m","LONGITUD DE CARRERA"],
+  [String(recipe.bridgeCount||Number(Boolean(state.track.bridge))),"KITS ELEVACIÓN"],
+  [label,"ESTADO"]
+ ];
+ const col=bodyWidth/4;
+ for(const [i,metric] of metrics.entries()){
+  const px=x+23+i*col;
+  ctx.fillStyle="#effff8";ctx.font=i===3?"800 24px system-ui,sans-serif":"900 34px system-ui,sans-serif";
+  ctx.fillText(metric[0],px,metaY+49);
+  ctx.fillStyle="#85bbb4";ctx.font="750 16px system-ui,sans-serif";
+  ctx.fillText(metric[1],px,metaY+79);
+ }
+ let y=1215;
+ ctx.fillStyle="#59e3c6";ctx.font="900 32px system-ui,sans-serif";
+ ctx.fillText("RECETA DE PIEZAS",x,y);y+=24;
+ for(const [i,item] of recipe.items.entries()){
+  const row=i>>1,side=i%2,rx=x+side*(bodyWidth/2),ry=y+row*57;
+  ctx.fillStyle=row%2?"#112831":"#172f37";ctx.fillRect(rx,ry,bodyWidth/2-10,51);
+  ctx.fillStyle="#edfff7";ctx.font="750 22px system-ui,sans-serif";
+  ctx.fillText(item.name,rx+13,ry+33);
+  ctx.textAlign="right";ctx.fillStyle="#5aefca";
+  ctx.font="900 26px system-ui,sans-serif";
+  ctx.fillText("×"+item.count,rx+bodyWidth/2-31,ry+34);
+  ctx.textAlign="left";
+ }
+ y+=Math.max(1,nRows)*57+60;
+ ctx.fillStyle="#59e3c6";ctx.font="900 32px system-ui,sans-serif";
+ ctx.fillText("ORDEN DE MONTAJE",x,y);y+=24;
+ if(recipe.sequence.length){
+  for(const [i,item] of recipe.sequence.entries()){
+   const row=Math.floor(i/4),side=i%4,rx=x+side*(bodyWidth/4),ry=y+row*47;
+   ctx.fillStyle="#142f37";ctx.fillRect(rx,ry,bodyWidth/4-7,41);
+   ctx.fillStyle="#d9fff0";ctx.font="800 18px system-ui,sans-serif";
+   ctx.fillText(String(item.position).padStart(2,"0")+" · "+item.id,rx+10,ry+27);
+   if(item.raised){ctx.fillStyle="#ffda87";ctx.fillText("↑",rx+bodyWidth/4-35,ry+27);}
+  }
+ }else{
+  ctx.fillStyle="#96b7bb";ctx.font="600 21px system-ui,sans-serif";
+  ctx.fillText("Circuito pendiente de iniciar. Orden todavía no determinado.",x,y+26);
+ }
+ ctx.fillStyle="#6a8f96";ctx.font="650 18px system-ui,sans-serif";
+ ctx.fillText("SLOTRACE · Receta integrada · Dimensiones nominales en mm · Generado localmente",x,h-56);
+ ctx.textAlign="right";ctx.fillText("TOP DOWN RACE: SLOTRACE",width-x,h-56);ctx.textAlign="left";
+ return {width,height:h,recipe,bounds,scale};
+}
+async function exportBlueprint(){
+ const recipe=blueprintData();
+ if(!recipe.pieces){toast("Construye al menos una pieza para exportar el plano.");return false;}
+ const canvas=document.createElement("canvas");
+ if(!canvas||typeof canvas.getContext!=="function"){toast("No se pudo preparar el plano.");return false;}
+ const ctx=canvas.getContext("2d",{alpha:false});
+ if(!ctx){toast("No hay soporte de dibujo para exportar.");return false;}
+ drawBlueprint(ctx,recipe);
+ const blob=await new Promise(resolve=>canvas.toBlob?canvas.toBlob(resolve,"image/png"):resolve(null));
+ if(!blob){toast("No se pudo generar el PNG. Prueba en Safari.");return false;}
+ const filename="slotrace-"+slugName(state.track.valid?"circuito-cerrado":"montaje")+
+  "-"+(state.driveDirection===1?"horario":"antihorario")+".png";
+ const canShare=typeof navigator!=="undefined"&&typeof navigator.share==="function"&&
+  typeof File==="function";
+ if(canShare){
+  const file=new File([blob],filename,{type:"image/png"});
+  if(typeof navigator.canShare!=="function"||navigator.canShare({files:[file]})){
+   try{
+    await navigator.share({files:[file],title:"Plano SlotRace",text:"Plano con receta de piezas"});
+    return true;
+   }catch(e){
+    if(e?.name==="AbortError")return false; // Compartir cancelado
+   }
+  }
+ }
+ // Safari normal y navegadores sin Web Share: descarga estándar.
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;a.rel="noopener";
+ document.body.appendChild(a);a.click();a.remove();
+ if(typeof window.setTimeout==="function")
+  window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+ toast("Plano PNG generado con la receta adherida.");
+ return true;
+}
+
 function resize(){
  // iPhone Safari ajusta el viewport varias veces al girar o esconder barras.
  // Sólo cambiamos el backing buffer cuando cambia realmente el tamaño.
@@ -1876,7 +2028,9 @@ function canvasPointerEnd(e){
  }
 }
 function initEvents(){
- $("menuContinue").addEventListener("click",openWorkshop);
+ $("menuExport").addEventListener("click",exportBlueprint);
+ $("exportBlueprint").addEventListener("click",exportBlueprint);
+  $("menuContinue").addEventListener("click",openWorkshop);
  $("menuRace").addEventListener("click",menuRace);
  $("menuNew").addEventListener("click",createNewCircuit);
  $("menuClockwise").addEventListener("click",()=>setNewCircuitDirection(1));
@@ -1966,7 +2120,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.8",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.9.8",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
