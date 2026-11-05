@@ -1596,91 +1596,184 @@ function blueprintData(){
  }
  return recipe;
 }
+// El plano usa su propio estilo de impresión: toda la pista es blanca
+// y todas las juntas entre piezas son negras. No altera el color de la
+// mesa, la caja de piezas ni la representación de la carrera.
+const BLUEPRINT_TRACK=Object.freeze({
+ outline:"#10171a",paper:"#ffffff",lane:"#333b40",
+ rail:"#9da8ad",seam:"#080c0f",supports:"#aab8bd"
+});
+function paintBlueprintRibbon(ctx,points){
+ if(points.length<2)return;
+ ctx.save();ctx.lineCap="butt";ctx.lineJoin="round";
+ // Contorno fino y negro, con un único tablero blanco continuo.
+ strokePath(ctx,points,BLUEPRINT_TRACK.outline,TRACK_WIDTH+8);
+ strokePath(ctx,points,BLUEPRINT_TRACK.paper,TRACK_WIDTH);
+ // Dos ranuras de guía contrastadas, manteniendo la zona blanca.
+ for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
+  strokePath(ctx,translated(points,laneOffset),BLUEPRINT_TRACK.lane,4.4);
+  for(const side of [-7.6,7.6])
+   strokePath(ctx,translated(points,laneOffset+side),BLUEPRINT_TRACK.rail,2);
+ }
+ ctx.restore();
+}
+function paintBlueprintSeam(ctx,p){
+ const nx=-Math.sin(p.h),ny=Math.cos(p.h);
+ ctx.save();ctx.strokeStyle=BLUEPRINT_TRACK.seam;ctx.lineWidth=5;
+ ctx.lineCap="butt";
+ ctx.beginPath();
+ ctx.moveTo(p.x-nx*(TRACK_WIDTH/2-2),p.y-ny*(TRACK_WIDTH/2-2));
+ ctx.lineTo(p.x+nx*(TRACK_WIDTH/2-2),p.y+ny*(TRACK_WIDTH/2-2));
+ ctx.stroke();
+ // Pequeños conectores visibles a cada lado, sin sombreado negro que
+ // convierta los módulos en objetos visualmente separados.
+ ctx.fillStyle=BLUEPRINT_TRACK.seam;
+ for(const off of [-TRACK_WIDTH/2+7,TRACK_WIDTH/2-7]){
+  ctx.beginPath();ctx.arc(p.x+nx*off,p.y+ny*off,4.2,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+}
+function paintBlueprintSupports(ctx,part){
+ if(!part||!(CATALOG[part.id]?.length>=350))return;
+ for(const t of [.24,.76]){
+  const p=positionOnPiece(part.start,part.id,t);
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
+  ctx.fillStyle=BLUEPRINT_TRACK.supports;
+  ctx.strokeStyle=BLUEPRINT_TRACK.outline;ctx.lineWidth=3;
+  ctx.fillRect(-14,-99,28,198);
+  ctx.strokeRect(-14,-99,28,198);
+  ctx.restore();
+ }
+}
+function paintBlueprintOverpass(ctx,track){
+ if(!track.bridge)return;
+ const upper=track.parts[track.bridge.overParts[0]];
+ if(!upper)return;
+ const lower=track.parts[track.bridge.underParts?.[0]];
+ const center=track.bridge.crossing||positionOnPiece(upper.start,upper.id,.5);
+ const angle=upper.start.h;
+ const slope=Math.abs(Math.sin(angle-(lower?.start?.h??angle+Math.PI/2)));
+ const halfLength=Math.min(210,Math.max(103,
+  Math.ceil((TRACK_WIDTH/2+16)/Math.max(.55,slope))));
+ ctx.save();ctx.translate(center.x,center.y);ctx.rotate(angle);
+ ctx.beginPath();ctx.rect(-halfLength,-(TRACK_WIDTH+12)/2,
+  halfLength*2,TRACK_WIDTH+12);ctx.clip();
+ ctx.rotate(-angle);ctx.translate(-center.x,-center.y);
+ const pts=track.bridge.overParts.flatMap((index,i)=>
+  i?track.parts[index].points.slice(1):track.parts[index].points);
+ paintBlueprintRibbon(ctx,pts);
+ for(const partIndex of track.bridge.overParts){
+  const part=track.parts[partIndex];
+  if(part)paintBlueprintSeam(ctx,part.start);
+ }
+ ctx.restore();
+}
+function paintBlueprintTrack(ctx,track){
+ const groups=loosePaintGroups();
+ // Los soportes se dibujan primero para no tapar nunca los carriles.
+ const raised=new Set([
+  ...state.bridgeParts,
+  ...(track.bridge?.overParts||[])
+ ]);
+ for(const index of raised)paintBlueprintSupports(ctx,track.parts[index]);
+ for(const group of groups)for(const part of group.parts)
+  if(part.raised)paintBlueprintSupports(ctx,part);
+ if(track.parts.length){
+  paintBlueprintRibbon(ctx,track.points);
+  for(const part of track.parts)paintBlueprintSeam(ctx,part.start);
+  if(!track.closed)paintBlueprintSeam(ctx,track.ends.end);
+  paintBlueprintOverpass(ctx,track);
+ }
+ // También exporta un montaje sin iniciar; cada costura del grupo
+ // es visible en negro, incluso si las piezas están imantadas.
+ for(const group of groups){
+  if(!group.points.length)continue;
+  paintBlueprintRibbon(ctx,group.points);
+  for(const part of group.parts)paintBlueprintSeam(ctx,part.start);
+  paintBlueprintSeam(ctx,group.parts[group.parts.length-1].end);
+ }
+ for(const {upper,lower,crossing} of looseOverpasses(groups))
+  paintBlueprintOverpass(ctx,{parts:[upper,lower],bridge:{
+   overParts:[0],underParts:[1],crossing
+  }});
+}
 function drawBlueprint(ctx,recipe,{width=1500}={}){
- const nRows=Math.ceil(recipe.items.length/2);
- const sequenceRows=Math.ceil(recipe.sequence.length/4);
- const h=1480+Math.max(1,nRows)*57+Math.max(1,sequenceRows)*47;
- const x=75,bodyWidth=width-150;
+ const rows=Math.max(1,Math.ceil(recipe.items.length/2));
+ const x=Math.round(width*.045),bodyWidth=width-2*x;
+ const headingY=74;
+ const frame={x:x+13,y:216,width:bodyWidth-26,height:Math.round(width*.79)};
+ const metricsY=frame.y+frame.height+42;
+ const recipeHeadingY=metricsY+170;
+ const recipeRowY=recipeHeadingY+33;
+ const h=Math.ceil(recipeRowY+rows*59+104);
  ctx.canvas.width=width;ctx.canvas.height=h;
  ctx.fillStyle="#091921";ctx.fillRect(0,0,width,h);
- // Cabecera tipo plano de ingeniería de una maqueta de slot.
- ctx.fillStyle="#48e4c1";ctx.fillRect(x,74,15,105);
+ // Cabecera técnica, sin elementos propios del HUD de carrera.
+ ctx.fillStyle="#48e4c1";ctx.fillRect(x,headingY,15,105);
  ctx.fillStyle="#f5fffb";ctx.font="900 76px system-ui,sans-serif";
- ctx.textAlign="left";ctx.fillText("SLOTRACE",110,133);
+ ctx.textAlign="left";ctx.fillText("SLOTRACE",x+36,headingY+59);
  ctx.fillStyle="#7adccc";ctx.font="800 24px system-ui,sans-serif";
- ctx.fillText("CRAFT RACE STUDIO · PLANO DE CIRCUITO",110,174);
+ ctx.fillText("CRAFT RACE STUDIO · PLANO DE CIRCUITO",x+36,headingY+100);
  ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
- ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",width-x,125);
+ ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",
+  width-x,headingY+51);
  ctx.fillStyle="#a1b9bc";ctx.font="600 22px system-ui,sans-serif";
- ctx.fillText("SR-PRECISION · ESCALA PROPORCIONAL",width-x,161);
+ ctx.fillText("SR-PRECISION · ESCALA PROPORCIONAL",width-x,headingY+87);
  ctx.textAlign="left";
- ctx.strokeStyle="#4d857e";ctx.lineWidth=2;ctx.strokeRect(x,210,bodyWidth,790);
- const frame={x:x+16,y:226,width:bodyWidth-32,height:758};
+ ctx.strokeStyle="#57958c";ctx.lineWidth=2;
+ ctx.strokeRect(x,frame.y-13,bodyWidth,frame.height+26);
  ctx.fillStyle="#17433b";ctx.fillRect(frame.x,frame.y,frame.width,frame.height);
- // Delimitar el dibujo a la zona útil. Los límites incluyen las piezas
- // no acopladas: nunca recortamos partes de la construcción.
- const pts=[...state.track.parts.flatMap(p=>p.points),
-  ...loosePaintGroups().flatMap(g=>g.points)];
+ const groups=loosePaintGroups();
+ const pts=[...state.track.parts.flatMap(p=>p.points),...groups.flatMap(g=>g.points)];
  const bounds=pts.length?{
-  minX:Math.min(...pts.map(p=>p.x))-140,
-  maxX:Math.max(...pts.map(p=>p.x))+140,
-  minY:Math.min(...pts.map(p=>p.y))-140,
-  maxY:Math.max(...pts.map(p=>p.y))+140
+  minX:Math.min(...pts.map(p=>p.x))-92,maxX:Math.max(...pts.map(p=>p.x))+92,
+  minY:Math.min(...pts.map(p=>p.y))-92,maxY:Math.max(...pts.map(p=>p.y))+92
  }:{minX:0,maxX:TABLE.width,minY:0,maxY:TABLE.height};
  const actualW=Math.max(100,bounds.maxX-bounds.minX);
  const actualH=Math.max(100,bounds.maxY-bounds.minY);
- const scale=Math.min((frame.width-110)/actualW,(frame.height-110)/actualH);
+ const scale=Math.min((frame.width-35)/actualW,(frame.height-35)/actualH);
  const cx=(bounds.minX+bounds.maxX)/2,cy=(bounds.minY+bounds.maxY)/2;
  ctx.save();ctx.beginPath();ctx.rect(frame.x,frame.y,frame.width,frame.height);ctx.clip();
- ctx.strokeStyle="#ffffff0d";ctx.lineWidth=1;
+ ctx.strokeStyle="#ffffff0c";ctx.lineWidth=1;
  for(let i=0;i<frame.width;i+=42){
-  ctx.beginPath();ctx.moveTo(frame.x+i,frame.y);ctx.lineTo(frame.x+i,frame.y+frame.height);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(frame.x+i,frame.y);
+  ctx.lineTo(frame.x+i,frame.y+frame.height);ctx.stroke();
  }
  for(let i=0;i<frame.height;i+=42){
-  ctx.beginPath();ctx.moveTo(frame.x,frame.y+i);ctx.lineTo(frame.x+frame.width,frame.y+i);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(frame.x,frame.y+i);
+  ctx.lineTo(frame.x+frame.width,frame.y+i);ctx.stroke();
  }
  ctx.translate(frame.x+frame.width/2,frame.y+frame.height/2);
  ctx.scale(scale,scale);ctx.translate(-cx,-cy);
- for(const index of state.bridgeParts){
-  const part=state.track.parts[index];if(part)paintSupportKit(ctx,part);
- }
- paintContinuousTrack(ctx,state.track,false);
- for(const index of state.bridgeParts){
-  const part=state.track.parts[index];if(part)paintBridgeRampProfile(ctx,part);
- }
- paintBridgeCrossing(ctx,state.track);
- // La vista técnica nunca incorpora resaltados, coches ni controles.
- const originalMode=state.mode,originalSelection=state.looseSelection;
- try{
-  state.mode="export";state.looseSelection=-1;
-  paintLoose(ctx);
- }finally{
-  state.mode=originalMode;state.looseSelection=originalSelection;
- }
+ paintBlueprintTrack(ctx,state.track);
  ctx.restore();
- const metaY=1048;
- ctx.fillStyle="#102c35";ctx.fillRect(x,metaY,bodyWidth,104);
+ // La sección de métricas se conserva debajo del plano ampliado.
+ ctx.fillStyle="#102c35";ctx.fillRect(x,metricsY,bodyWidth,104);
  const length=(state.track.parts.length?state.track.length:recipe.nominalLength)/1000;
- const label=state.track.valid?"CIRCUITO CERRADO":state.loose.length?"MONTAJE EN PROGRESO":"EXTREMOS ABIERTOS";
+ const status=state.track.valid?"CIRCUITO CERRADO":
+  state.loose.length?"MONTAJE EN PROGRESO":"EXTREMOS ABIERTOS";
  const metrics=[
-  [String(recipe.pieces),"PIEZAS"],[length.toFixed(2)+" m","LONGITUD DE CARRERA"],
+  [String(recipe.pieces),"PIEZAS"],
+  [length.toFixed(2)+" m","LONGITUD DE CARRERA"],
   [String(recipe.bridgeCount||Number(Boolean(state.track.bridge))),"KITS ELEVACIÓN"],
-  [label,"ESTADO"]
+  [status,"ESTADO"]
  ];
  const col=bodyWidth/4;
  for(const [i,metric] of metrics.entries()){
-  const px=x+23+i*col;
-  ctx.fillStyle="#effff8";ctx.font=i===3?"800 24px system-ui,sans-serif":"900 34px system-ui,sans-serif";
-  ctx.fillText(metric[0],px,metaY+49);
+  const px=x+21+i*col;
+  ctx.fillStyle="#effff8";
+  ctx.font=i===3?"800 23px system-ui,sans-serif":"900 34px system-ui,sans-serif";
+  ctx.fillText(metric[0],px,metricsY+49);
   ctx.fillStyle="#85bbb4";ctx.font="750 16px system-ui,sans-serif";
-  ctx.fillText(metric[1],px,metaY+79);
+  ctx.fillText(metric[1],px,metricsY+79);
  }
- let y=1215;
  ctx.fillStyle="#59e3c6";ctx.font="900 32px system-ui,sans-serif";
- ctx.fillText("RECETA DE PIEZAS",x,y);y+=24;
+ ctx.fillText("RECETA DE PIEZAS",x,recipeHeadingY);
+ // Sólo la receta agrupada; el orden de montaje ya no forma parte del PNG.
  for(const [i,item] of recipe.items.entries()){
-  const row=i>>1,side=i%2,rx=x+side*(bodyWidth/2),ry=y+row*57;
-  ctx.fillStyle=row%2?"#112831":"#172f37";ctx.fillRect(rx,ry,bodyWidth/2-10,51);
+  const row=i>>1,side=i%2,rx=x+side*(bodyWidth/2),ry=recipeRowY+row*59;
+  ctx.fillStyle=row%2?"#112831":"#172f37";
+  ctx.fillRect(rx,ry,bodyWidth/2-10,51);
   ctx.fillStyle="#edfff7";ctx.font="750 22px system-ui,sans-serif";
   ctx.fillText(item.name,rx+13,ry+33);
   ctx.textAlign="right";ctx.fillStyle="#5aefca";
@@ -1688,25 +1781,13 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
   ctx.fillText("×"+item.count,rx+bodyWidth/2-31,ry+34);
   ctx.textAlign="left";
  }
- y+=Math.max(1,nRows)*57+60;
- ctx.fillStyle="#59e3c6";ctx.font="900 32px system-ui,sans-serif";
- ctx.fillText("ORDEN DE MONTAJE",x,y);y+=24;
- if(recipe.sequence.length){
-  for(const [i,item] of recipe.sequence.entries()){
-   const row=Math.floor(i/4),side=i%4,rx=x+side*(bodyWidth/4),ry=y+row*47;
-   ctx.fillStyle="#142f37";ctx.fillRect(rx,ry,bodyWidth/4-7,41);
-   ctx.fillStyle="#d9fff0";ctx.font="800 18px system-ui,sans-serif";
-   ctx.fillText(String(item.position).padStart(2,"0")+" · "+item.id,rx+10,ry+27);
-   if(item.raised){ctx.fillStyle="#ffda87";ctx.fillText("↑",rx+bodyWidth/4-35,ry+27);}
-  }
- }else{
-  ctx.fillStyle="#96b7bb";ctx.font="600 21px system-ui,sans-serif";
-  ctx.fillText("Circuito pendiente de iniciar. Orden todavía no determinado.",x,y+26);
- }
- ctx.fillStyle="#6a8f96";ctx.font="650 18px system-ui,sans-serif";
- ctx.fillText("SLOTRACE · Receta integrada · Dimensiones nominales en mm · Generado localmente",x,h-56);
- ctx.textAlign="right";ctx.fillText("TOP DOWN RACE: SLOTRACE",width-x,h-56);ctx.textAlign="left";
- return {width,height:h,recipe,bounds,scale};
+ ctx.fillStyle="#779ba3";ctx.font="650 18px system-ui,sans-serif";
+ ctx.fillText("SLOTRACE · Receta integrada · Medidas nominales en mm · Generado localmente",
+  x,h-47);
+ ctx.textAlign="right";ctx.fillText("TOP DOWN RACE: SLOTRACE",width-x,h-47);
+ ctx.textAlign="left";
+ return {width,height:h,recipe,bounds,scale,frame,
+  blueprintStyle:"white-track-black-seams"};
 }
 async function exportBlueprint(){
  const recipe=blueprintData();
