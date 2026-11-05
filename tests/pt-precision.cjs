@@ -39,7 +39,9 @@ const assert=require("node:assert/strict");
  assert.equal(SPECIALS.BRIDGE.requiresElevation,true);
  assert.equal(Object.keys(PARTS).length,21);
  const straights=Object.entries(PARTS).filter(([,p])=>p.kind==="straight");
- assert.equal(straights.length,7,"Seis longitudes y la salida/meta");
+ assert.equal(straights.length,7,"Cinco longitudes activas, salida/meta y pieza heredada");
+ assert.equal(PARTS.S0125.legacy,true,"12,5 mm sólo se conserva para circuitos antiguos");
+ assert.equal(straights.filter(([,p])=>!p.legacy&&!p.startFinish).length,5);
  for(const [id,p] of straights){
   assert.ok(Number.isInteger(p.length/GEOMETRY.lengthUnit),id+" no usa unidades exactas");
  }
@@ -47,7 +49,7 @@ const assert=require("node:assert/strict");
   assert.ok(Number.isInteger(radius/GEOMETRY.lengthUnit));
  const sameDistance=[
   ["S350"],["S175","S175"],
-  Array(4).fill("S0875"),["S175","S0875","S075",...Array(1).fill("S0125")]
+  Array(4).fill("S0875"),["S175","S0875","S0875"]
  ];
  const baseline=trace(sameDistance[0]).end;
  for(const recipe of sameDistance){
@@ -66,5 +68,5 @@ const assert=require("node:assert/strict");
    "Mismo avance nominal en diferente número de rectas: "+seq);
  }
 
- console.log("SR-Precision OK: 21 IDs, 6 longitudes de rectas, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
+ console.log("SR-Precision OK: 21 IDs (1 heredada), 5 longitudes de rectas visibles, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
