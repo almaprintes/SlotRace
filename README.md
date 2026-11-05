@@ -1,8 +1,26 @@
-# SlotRace · DEV 0.9.6 — giro con dos dedos en pasos de 22,5°
+# SlotRace · DEV 0.9.7 — seis rectas proporcionales y cierre modular exacto
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.io/SlotRace/
+**Enlace:** https://almaprintes.github.## DEV 0.9.7 — seis longitudes de recta, todas proporcionales
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.7
+
+Se simplifica la familia experimental **SR-Precision**: **solo seis tamaños de recta** (12,5; 75; 87,5; 175; 350; 600 mm), más una salida/meta de 350 mm. La caja presenta **14 huecos en total** (seis rectas, salida/meta y siete moldes de curva), con inventario infinito.
+
+- Todas las longitudes son múltiplos de **12,5 mm** y las equivalencias están verificadas: 350 = 2 × 175 = 4 × 87,5; 600 = 8 × 75 = 350 + 175 + 75. La pieza de 12,5 permite ajustes que no encajen con las medidas largas sin crear decenas de modelos.
+- Los radios R1–R4 son **150, 300, 450 y 600 mm**. El ancho es 150 mm y la separación central entre carriles 75 mm. Son dimensiones **virtuales propias**, no dimensiones homologadas de una gama Scalextric.
+- **Medir hueco:** calcula longitud longitudinal, desviación lateral y diferencia angular entre conectores. Sugiere una composición exacta de rectas cuando los extremos están alineados, sin estirar piezas.
+- **Cerrar exacto:** primero prueba una composición con las seis rectas del catálogo y, si no basta, continúa con búsqueda geométrica.
+- Se prueba específicamente un óvalo cerrado con un hueco de 25 mm que se completa mediante **dos rectas de ajuste de 12,5 mm**, así como 80 longitudes de prueba y casos de desfase angular/lateral que no se deben cerrar falsamente.
+- Clave de guardado independiente `slotrace-lab-10`, porque la familia de geometrías cambió; las construcciones de la DEV 0.9.6 se conservan en su guardado anterior, pero no se cargan automáticamente en el nuevo catálogo.
+- **10/10 suites JavaScript** superadas, incluida prueba obligatoria de proporcionalidad en GitHub Actions. Falta comprobar en iPhone el manejo de las seis rectas.
+
+**Límite matemático:** un conjunto proporcional de rectas garantiza composiciones para huecos rectos alineados cuya distancia sea múltiplo de la unidad, pero **no** que cualquier circuito arbitrario con curvas cierre. La orientación y el desplazamiento lateral siguen siendo condiciones imprescindibles.
+
+---
+
+io/SlotRace/
 
 ## DEV 0.9.6 — rotación exacta con dos dedos
 
