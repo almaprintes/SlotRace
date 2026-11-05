@@ -23,19 +23,22 @@ const curve = (radiusId,deg,reference,direction) =>
   frozen({kind:"curve",name:`${radiusId} ${deg}° ${direction===1?"derecha":"izquierda"}`,
     radiusId,radius:RADII[radiusId],angle:direction*deg*Math.PI/180,
     degrees:deg,direction,reference});
-// Las rectas se pueden componer indistintamente a partir de la unidad.
-// Seis longitudes visibles, no una estantería de microajustes.
-// El paso de 12,5 mm sólo es una opción de precisión; el constructor
-// prioriza automáticamente la combinación con menos piezas.
+// Cinco longitudes visibles. La unidad matemática sigue siendo 12,5 mm,
+// pero ya NO hay una pieza física de esa longitud en la caja.
+// Las construcciones existentes con S0125 conservan su geometría exacta.
 const straightSizes = Object.freeze([
- ["S0125",1,"Ajuste fino 12,5"],
  ["S075",6,"Recta corta 75"],
  ["S0875",7,"Recta 87,5"],
  ["S175",14,"Media recta 175"],
  ["S350",28,"Recta 350"],
  ["S600",48,"Recta puente 600"]
 ]);
-const parts={};
+const parts={
+ // Referencia heredada: sólo lectura/edición de circuitos guardados.
+ // No aparece en el inventario ni se utiliza en cierres nuevos.
+ S0125:straight("Ajuste fino 12,5 (heredada)",12.5,"SR/01",
+  {units:1,virtualPrecision:true,virtualMicroAdapter:true,legacy:true})
+};
 for(const [id,units,name] of straightSizes)
  parts[id]=straight(name,units*GEOMETRY.lengthUnit,
   "SR/"+String(units).padStart(2,"0"),
