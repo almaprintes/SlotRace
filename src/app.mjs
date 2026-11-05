@@ -622,16 +622,25 @@ function updateUI(){
  state.viewDirty=true;
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  const t=state.track;
+ const looseKit=state.loose.some(p=>p.raised);
  const degrees=t.headingGap*180/Math.PI;
- const status=t.bridge?"CIRCUITO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
+ const status=t.bridge&&t.valid?"CIRCUITO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
  t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
-  !t.types.length?(state.loose.length?state.loose.length+" PIEZAS SUELTAS · INICIA LA CADENA":"MESA VACÍA · COLOCA PIEZAS"): t.closed?"CONECTADO · CRUCE SIN PUENTE":
-  "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
- const notice=t.bridge?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
+ t.bridge?"PUENTE COLOCADO · CIRCUITO AÚN ABIERTO":
+ !t.types.length?(state.loose.length?
+  (looseKit?"KIT PUENTE EN MESA · ":"")+state.loose.length+" PIEZAS SUELTAS":
+  "MESA VACÍA · COLOCA PIEZAS"):
+ t.closed?"CONECTADO · CRUCE SIN PUENTE":
+ "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
+ const notice=t.bridge?(t.valid?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
+  "Kit instalado. Falta unir extremos y cerrar el circuito para correr."):
  t.intersection?"Cruce al mismo nivel: necesita puente":
-  !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
-  t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":state.loose.length+" piezas sueltas · toca una y pulsa Iniciar";
- $("stateChip").textContent=t.bridge?"✓ PUENTE ELEVADO":
+ !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
+ t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":
+ looseKit?"Kit unido a la recta; el tramo sigue suelto hasta acoplarlo.":
+ state.loose.length+" piezas sueltas · toca una y pulsa Iniciar";
+ $("stateChip").textContent=t.bridge&&t.valid?"✓ PUENTE ELEVADO":
+ t.bridge||looseKit?"◉ PUENTE EN MONTAJE":
  t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
  $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
  $("buildStatus").textContent=status;
@@ -675,6 +684,12 @@ function updateUI(){
   state.selection>=0&&state.bridgeParts.includes(state.selection);
  $("bridgeKit").setAttribute("aria-pressed",String(Boolean(kitOn)));
  $("bridgeKit").querySelector(".bridge-kit-cta").textContent=kitOn?"− RETIRAR":"⠿ COLOCAR";
+ if(kitOn&&state.looseSelection>=0){
+  const members=looseMembers(state.looseSelection);
+  $("selected").textContent=members.length>1?
+   "KIT FIJADO A LA RECTA · TRAMO MAGNÉTICO DE "+members.length+" PIEZAS":
+   "KIT FIJADO A LA RECTA · PIEZA AÚN SUELTA";
+ }
  $("caseCount").textContent=UNLIMITED_DEVELOPMENT_STOCK?
   "∞ piezas disponibles · "+used+" en la mesa":
   (total-used)+" de "+total+" piezas en sus huecos";
