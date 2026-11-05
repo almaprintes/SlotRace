@@ -37,9 +37,9 @@ const assert=require("node:assert/strict");
  assert.equal(PARTS.R1_90R.degrees,90);
  assert.equal(SPECIALS.X350.requiresLaneRouting,true);
  assert.equal(SPECIALS.BRIDGE.requiresElevation,true);
- assert.equal(Object.keys(PARTS).length,26);
+ assert.equal(Object.keys(PARTS).length,21);
  const straights=Object.entries(PARTS).filter(([,p])=>p.kind==="straight");
- assert.equal(straights.length,12);
+ assert.equal(straights.length,7,"Seis longitudes y la salida/meta");
  for(const [id,p] of straights){
   assert.ok(Number.isInteger(p.length/GEOMETRY.lengthUnit),id+" no usa unidades exactas");
  }
@@ -47,7 +47,7 @@ const assert=require("node:assert/strict");
   assert.ok(Number.isInteger(radius/GEOMETRY.lengthUnit));
  const sameDistance=[
   ["S350"],["S175","S175"],
-  Array(4).fill("S0875"),["S100","S100","S100","S050"]
+  Array(4).fill("S0875"),["S175","S0875","S075",...Array(1).fill("S0125")]
  ];
  const baseline=trace(sameDistance[0]).end;
  for(const recipe of sameDistance){
@@ -58,7 +58,7 @@ const assert=require("node:assert/strict");
  // Otro ejemplo combinando una recta larga con las medidas de los dos
  // extremos: todas las combinaciones dan el mismo avance de 600 mm.
  const others=[["S600"],["S350","S175","S075"],
-  Array(6).fill("S100"),Array(8).fill("S075")];
+  Array(8).fill("S075"),["S350","S175","S075"]];
  const ref=trace(others[0]).end;
  for(const seq of others){
   const end=trace(seq).end;
@@ -66,5 +66,5 @@ const assert=require("node:assert/strict");
    "Mismo avance nominal en diferente número de rectas: "+seq);
  }
 
- console.log("SR-Precision OK: 26 IDs, 12 rectas, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
+ console.log("SR-Precision OK: 21 IDs, 6 longitudes de rectas, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
