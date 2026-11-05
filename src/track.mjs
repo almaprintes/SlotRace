@@ -15,6 +15,7 @@ export const CATALOG=Object.freeze(Object.fromEntries(
   ...(s.kind==="straight"?{length:s.length}:{radius:s.radius,angle:s.angle}),
   stock:s.kind==="straight"?8:12,group:s.kind==="straight"?"recta":"curva",
   virtualMicroAdapter:Boolean(s.virtualMicroAdapter),
+  legacy:Boolean(s.legacy),
   radiusId:s.radiusId||null,degrees:s.degrees||0
  })])
 ));
@@ -312,7 +313,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   }
   // Primero intentar añadir UNA pieza al extremo: conserva intacto el montaje.
   // Evita sustituir dos tramos cuando sólo faltaba la última curva.
-  for(const id of Object.keys(CATALOG)){
+  for(const id of Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy)){
    const candidate=[...types,id];
    if(!allowed(candidate))continue;
    if(buildTrack(candidate,origin).valid)
@@ -321,7 +322,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   // Si no basta una adición, buscar sustituciones en cualquier punto.
   const global=findGlobalReplacements(types,{maxStates:24000,origin});
   if(global.ok)return global;
-  const ids=Object.keys(CATALOG),target=origin;
+  const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy),target=origin;
   let visits=0;
   // Cuanto menos se edita, antes se evalúa. Así no se rehace el circuito arbitrariamente.
   for(let cost=1;cost<=maxReplace+maxAdd;cost++){
