@@ -1,8 +1,22 @@
-# SlotRace · DEV 0.10.2 — catálogo sin micro-recta y compensación proporcional
+# SlotRace · DEV 0.10.3 — plano con identificadores por tipo de pieza
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.10.3 — referencias visibles de cada pieza en el plano PNG
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.10.3
+
+- El **plano blanco** lleva una etiqueta circular oscura con una letra A, B, C… sobre **cada módulo colocado**, incluidas piezas sueltas aún sin imantar al trazado.
+- La **receta** muestra esa misma letra delante del nombre del tipo de pieza, además de la cantidad. Todas las unidades del mismo modelo (incluida la dirección de la curva) comparten la letra; así se pueden reconocer sin añadir instrucciones de orden de montaje.
+- El **kit de puente** sigue en la receta como accesorio y no recibe letra de módulo de vía.
+- Las etiquetas de un tramo inferior se desplazan a lo largo de su propia pieza cuando su centro cae en el cruce del puente, evitando confundirlas con las etiquetas de la vía superior.
+- Soporta más de 26 tipos distintos mediante códigos AA, AB… sin cambiar el formato del PNG.
+- **12/12 suites** superadas. `tests/game-shell.cjs` comprueba una etiqueta por pieza, la correspondencia con las entradas de receta, módulos sueltos, el puente y que no reaparezca «Orden de montaje».
+- Mantiene el mismo guardado local `slotrace-lab-10`. No modifica las geometrías, las físicas ni el tamaño visual del coche.
+
+---
 
 ## DEV 0.10.2 — menos piezas, mismos cierres exactos
 
