@@ -40,7 +40,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.6");
+ assert.equal(game.version,"DEV 0.9.7");
  const step=Math.PI/8,deg=n=>n*Math.PI/180;
  const event=(x,y,pointerId)=>({clientX:x,clientY:y,pointerId,preventDefault(){}});
  const close=(a,b,tolerance=1e-8)=>assert.ok(Math.abs(a-b)<tolerance,
@@ -163,9 +163,9 @@ const path=require("node:path");
  game.puzzle.canvasPointerEnd(event(dragPoint.x+90,dragPoint.y+5,202));
  game.puzzle.canvasPointerEnd(event(dragPoint.x+35,dragPoint.y+4,201));
  assert.notDeepEqual(st.origin,originBefore,"Se conserva la traslación original");
- const savedDrag=JSON.parse(saved.get("slotrace-lab-09"));
+ const savedDrag=JSON.parse(saved.get("slotrace-lab-10"));
  close(savedDrag.origin.x,st.origin.x);
  close(savedDrag.origin.y,st.origin.y);
 
- console.log("SlotRace DEV 0.9.6: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
+ console.log("SlotRace DEV 0.9.7: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
