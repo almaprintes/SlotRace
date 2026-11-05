@@ -113,5 +113,5 @@ const path=require("node:path");
  st.loose.at(-1).h+=Math.PI/4;
  assert.equal(game.puzzle.loopFromLooseGroup(0),null,
    "No cerrar una cadena con un conector interno mal orientado");
- console.log("DEV 0.10.0: hueco 175 mm, segundo conector, cierre suelto, deshacer y diagnóstico de dos tramos OK");
+ console.log("DEV 0.10.1: hueco 175 mm, segundo conector, cierre suelto, deshacer y diagnóstico de dos tramos OK");
 })().catch(e=>{console.error(e);process.exitCode=1;});
