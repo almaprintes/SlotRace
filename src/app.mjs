@@ -1278,10 +1278,13 @@ function paintLooseOverpasses(ctx,groups){
 }
 function paintLoose(ctx){
  const groups=loosePaintGroups();
+ // Los soportes se sitúan bajo TODAS las piezas, no sólo bajo el tramo
+ // que lleva el kit. Así nunca quedan sobre la vía inferior del cruce.
+ for(const group of groups)for(const part of group.parts)
+  if(part.raised)paintSupportKit(ctx,part);
  for(const group of groups){
   const {points,parts,indices}=group;
   if(!points.length)continue;
-  for(const part of parts)if(part.raised)paintSupportKit(ctx,part);
   ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=18;ctx.shadowOffsetY=12;
   strokePath(ctx,points,PIECE_LOOK.shadow,TRACK_WIDTH+19);
   ctx.restore();
