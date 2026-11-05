@@ -73,7 +73,8 @@ const path=require("node:path");
   return window.__drawLog.slice();
  };
  // La máscara del puente sólo cubre el tramo central, no la diagonal entera.
- assert.match(source,/const halfLength=185/,"Se usa un puente local de anchura limitada");
+ assert.match(source,/const halfLength=Math\.min\(210/,"La máscara se ajusta al cruce y no tapa toda la recta");
+ assert.doesNotMatch(source.slice(source.indexOf("function paintSupportKit("),source.indexOf("function paintBridgeRampProfile(")),/fillRect\(-spec\.length\*\.5/,"El soporte no dibuja una placa separada sobre la pista");
  assert.match(source,/paintContinuousTrack\(ctx,track,mode==="build"\)/,"Una única capa continua para todas las piezas");
  const groundOrder=render(dForPiece(0),16);
  assert.deepEqual(groundOrder,["base","car","bridge"],
@@ -115,5 +116,29 @@ const path=require("node:path");
  assert.equal(game.state.loose.length,0);
  game.undo();
  assert.equal(game.state.loose[0].raised,true,"Deshacer conserva los soportes en el inventario");
- console.log("SlotRace DEV 0.9.4 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ // Reproducción de la captura: dos tramos aún sueltos, uno cruza al
+ // otro y tiene el kit acoplado. Debe verse como puente, SIN una placa
+ // que sustituya a las ranuras del carril original.
+ game.changeTypes([],"Prueba del cruce entre piezas sueltas",[],geo.START);
+ game.state.loose=[
+  {id:"S350",x:400,y:800,h:0},
+  {id:"S584",x:560,y:500,h:Math.PI/2,raised:true}
+ ];
+ const looseCrossing=game.puzzle.looseOverpasses();
+ assert.equal(looseCrossing.length,1,"Un cruce entre dos tramos sueltos elevados");
+ assert.equal(looseCrossing[0].upper.id,"S584","La vía con kit es la elevada");
+ assert.ok(Math.abs(looseCrossing[0].crossing.x-560)<.01);
+ assert.ok(Math.abs(looseCrossing[0].crossing.y-800)<.01);
+ window.__drawLog.length=0;
+ game.puzzle.paintLoose(ctx);
+ assert.deepEqual(window.__drawLog,["bridge"],"La vía superior se repinta sólo sobre el cruce suelto");
+ game.state.loose[1].raised=false;
+ assert.equal(game.puzzle.looseOverpasses().length,0,"Sin kit no puede aparentar un puente");
+ // Los cruces del circuito principal también deben verse con la pista
+ // todavía abierta; validez de carrera = cerrado + apoyado.
+ const openKit=geo.buildTrack(customEight.slice(0,-1),geo.START,[0]);
+ assert.equal(openKit.closed,false,"Tramo aún abierto");
+ assert.ok(openKit.bridge,"El puente es visible durante la construcción");
+ assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
+ console.log("SlotRace DEV 0.9.5 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
