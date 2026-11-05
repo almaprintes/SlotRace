@@ -24,15 +24,13 @@ const curve = (radiusId,deg,reference,direction) =>
     radiusId,radius:RADII[radiusId],angle:direction*deg*Math.PI/180,
     degrees:deg,direction,reference});
 // Las rectas se pueden componer indistintamente a partir de la unidad.
+// Seis longitudes visibles, no una estantería de microajustes.
+// El paso de 12,5 mm sólo es una opción de precisión; el constructor
+// prioriza automáticamente la combinación con menos piezas.
 const straightSizes = Object.freeze([
- ["S0125",1,"Recta ajuste 12,5"],
- ["S025",2,"Recta ajuste 25"],
- ["S0375",3,"Recta ajuste 37,5"],
- ["S050",4,"Recta ajuste 50"],
- ["S0625",5,"Recta ajuste 62,5"],
+ ["S0125",1,"Ajuste fino 12,5"],
  ["S075",6,"Recta corta 75"],
  ["S0875",7,"Recta 87,5"],
- ["S100",8,"Recta 100"],
  ["S175",14,"Media recta 175"],
  ["S350",28,"Recta 350"],
  ["S600",48,"Recta puente 600"]
