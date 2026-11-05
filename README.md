@@ -1,8 +1,25 @@
-# SlotRace · DEV 0.9.3 — conectores magnéticos reversibles
+# SlotRace · DEV 0.9.4 — kit de puente y soportes de 65 mm
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.io/Sl### DEV 0.9.3 — conectores magnéticos por ambos extremos
+**Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.9.4 — kit de puente en la caja
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.4
+
+- La caja PT-Precision incluye un **kit de puente de 65 mm** con **dos soportes y dos rampas**, de suministro infinito durante las pruebas. Es un accesorio independiente, no una pieza de pista que altere la longitud del circuito.
+- **Uso:** toca una recta de **350 o 584 mm** en la mesa para seleccionarla; abre el maletín y pulsa **KIT PUENTE · ⠿ COLOCAR**. El mismo botón retira los apoyos de esa recta. No se puede instalar sobre una curva ni sobre una recta demasiado corta.
+- Los apoyos aparecen también en las piezas **sueltas**, y siguen asociados a la pieza al moverla, unirla con otras o pulsar **Iniciar**. Persisten en el guardado local y se pueden **deshacer / rehacer**.
+- La geometría calcula la ubicación del **cruce real**. Cuando un circuito está cerrado, cruza en un solo punto, la recta elevada dispone de espacio para rampas y tiene el kit instalado, el motor reconoce **un puente elevado** y permite correr. Sin kit, el cruce al mismo nivel sigue inválido.
+- Un kit manual instalado en el ocho de demostración puede elegir qué recta pasa por encima.
+- Pruebas: validadas las ocho suites JavaScript, con casos nuevos de cruce manual sin/ con soportes y persistencia al fijar un tramo.
+
+**Limitación del prototipo:** la subida/bajada se representa visualmente y la pista se clasifica como elevada, pero todavía **no hay física 3D de pendientes**. La validación actual admite un único punto de cruce elevado por kit sobre una recta y no pretende reproducir piezas físicas certificadas.
+
+---
+
+## DEV 0.9.3 — conectores magnéticos por ambos extremos
 
 **Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.3
 
