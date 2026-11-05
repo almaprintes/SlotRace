@@ -5,8 +5,9 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"");
+   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const css=fs.readFileSync(path.join(__dirname,"../src/site.css"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -33,12 +34,13 @@ const fs=require("node:fs"),path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){}};
  const data=new Map(),localStorage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};
  const callbacks=[];
- const keys=Object.keys(geo),values=keys.map(k=>geo[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
- assert.equal(game.version,"DEV 0.9.8");
+ game.openWorkshop();
+ assert.equal(game.version,"DEV 0.10.0");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
@@ -172,5 +174,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- console.log("SlotRace DEV 0.9.8: maletín único, catorce recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.10.0: maletín único, catorce recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
