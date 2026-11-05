@@ -40,7 +40,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.6");
+ assert.equal(game.version,"DEV 0.9.7");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -123,7 +123,7 @@ const path=require("node:path");
                       st.track.parts[i+1].start.y-prior[i].y)<1e-6,
     "Prepending cannot move original assembled pieces");
  }
- const previousStored=JSON.parse(saved.get("slotrace-lab-09"));
+ const previousStored=JSON.parse(saved.get("slotrace-lab-10"));
  assert.ok(Math.abs(previousStored.origin.x-idealStart.x)<1e-5,
   "Prepending updates and persists world anchor");
  assert.equal(previousStored.loose.length,1,"Loose piece persists to local storage");
@@ -148,7 +148,7 @@ const path=require("node:path");
  assert.equal(window.__seamLog.length,2,"Sin sombra ni costura interior entre las piezas");
  assert.ok(window.__shadowLog[0]>groups[0].parts[0].points.length,
   "La sombra debe cubrir las dos rectas como un único contorno");
- const stored=JSON.parse(saved.get("slotrace-lab-09"));
+ const stored=JSON.parse(saved.get("slotrace-lab-10"));
  assert.equal(stored.types.length,0,"Las piezas se guardan como tramo libre");
  assert.equal(stored.loose.length,2,"El grupo de dos piezas se guarda completo");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
@@ -203,5 +203,5 @@ const path=require("node:path");
    label+" queda sin separación");
  }
 
- console.log("SlotRace DEV 0.9.6 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.9.7 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
