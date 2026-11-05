@@ -65,6 +65,9 @@ function extendWorkBoard(){
 function resetWorkBoard(){state.workBoard={...state.track.board};}
 
 const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen"),results=$("resultsScreen");
+const hubScreens={
+ library:$("libraryScreen"),garage:$("garageScreen"),store:$("storeScreen"),settings:$("settingsScreen")
+};
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
 const format=n=>n.toFixed(3).replace(".",",");
@@ -725,6 +728,13 @@ function openWorkshop(){
  state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
  updateUI();resize();
 }
+function showHub(which){
+ if(!hubScreens[which])return false;
+ state.run=false;state.gas=0;state.buttonGas=false;
+ state.keyboardGas=false;state.triggerGesture=null;
+ state.mode=which;
+ updateUI();return true;
+}
 function showMenu(){
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;state.mode="menu";
@@ -1037,6 +1047,12 @@ function updateUI(){
  menu.hidden=state.mode!=="menu";
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  results.hidden=state.mode!=="results";
+ for(const [name,screen] of Object.entries(hubScreens))screen.hidden=state.mode!==name;
+ $("garageRace").disabled=!state.track.valid;
+ $("settingsSound").textContent=state.clicksEnabled?"Activado":"Silenciado";
+ $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
+ $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
+ $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
  for(const id of ["circuitName","workCircuitName"])
   if(document.activeElement!==$(id))$(id).value=state.circuitName;
  renderLibrary();
@@ -2390,7 +2406,22 @@ function canvasPointerEnd(e){
  }
 }
 function initEvents(){
-
+ for(const [button,section] of [
+  ["menuLibrary","library"],["menuGarage","garage"],["menuStore","store"],["menuSettings","settings"]
+ ])$(button).addEventListener("click",()=>showHub(section));
+ for(const id of ["libraryHome","garageHome","storeHome","settingsHome"])
+  $(id).addEventListener("click",showMenu);
+ $("libraryBuild").addEventListener("click",openWorkshop);
+ $("garageRace").addEventListener("click",menuRace);
+ $("storeImport").addEventListener("click",()=>showHub("library"));
+ $("settingsSound").addEventListener("click",()=>{
+  state.clicksEnabled=!state.clicksEnabled;
+  if(state.clicksEnabled)initDialAudio();
+  save();updateUI();
+ });
+ $("settingsGrid").addEventListener("click",()=>{
+  state.gridEnabled=!state.gridEnabled;save();updateUI();
+ });
  $("menuRecipe").addEventListener("click",exportRecipe);
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
  $("workSaveCircuit").addEventListener("click",saveCircuit);
@@ -2495,7 +2526,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.12.0",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.12.1",state,showHub,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

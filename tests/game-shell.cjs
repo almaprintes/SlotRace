@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.12.0");
+ assert.equal(game.version,"DEV 0.12.1");
  assert.match(html,/avenir_gripline_threequarter\.webp/);
  assert.match(html,/helix_spark_threequarter\.webp/);
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
@@ -64,6 +64,34 @@ const path=require("node:path");
  assert.equal(elements.get("buildScreen").hidden,false);
  game.showMenu();
  assert.equal(st.mode,"menu");
+ // Los seis accesos del menú abren pantallas funcionales independientes.
+ for(const [button,screen] of [
+  ["menuLibrary","libraryScreen"],["menuGarage","garageScreen"],
+  ["menuStore","storeScreen"],["menuSettings","settingsScreen"]]){
+  elements.get(button).listeners.click[0]();
+  assert.equal(elements.get(screen).hidden,false,button+" abre su pantalla");
+  assert.equal(elements.get("menuScreen").hidden,true);
+  game.showMenu();
+ }
+ assert.match(html,/avenir_gripline_threequarter\.webp/);
+ assert.match(html,/helix_spark_threequarter\.webp/);
+ elements.get("menuSettings").listeners.click[0]();
+ const soundBefore=st.clicksEnabled,gridBefore=st.gridEnabled;
+ elements.get("settingsSound").listeners.click[0]();
+ elements.get("settingsGrid").listeners.click[0]();
+ assert.equal(st.clicksEnabled,!soundBefore,"Sonido configurable desde Ajustes");
+ assert.equal(st.gridEnabled,!gridBefore,"Cuadrícula configurable desde Ajustes");
+ elements.get("settingsSound").listeners.click[0]();
+ elements.get("settingsGrid").listeners.click[0]();
+ assert.equal(st.clicksEnabled,soundBefore);
+ assert.equal(st.gridEnabled,gridBefore);
+ elements.get("settingsHome").listeners.click[0]();
+ assert.equal(st.mode,"menu");
+ elements.get("menuLibrary").listeners.click[0]();
+ assert.equal(elements.get("menuExport").hidden,false);
+ elements.get("libraryBuild").listeners.click[0]();
+ assert.equal(st.mode,"build");
+ game.showMenu();
 
  // La dirección se elige AL CREAR, no cambia el circuito guardado
  // hasta que el jugador pulsa expresamente "Crear circuito".
@@ -248,5 +276,5 @@ const path=require("node:path");
  assert.equal(afterRace.circuitName,"Ocho de pruebas");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
- console.log("SlotRace DEV 0.12.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.12.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

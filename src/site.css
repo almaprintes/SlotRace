@@ -734,3 +734,99 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){
  .home-card:active:not(:disabled),.home-new:active{transform:none}
 }
+
+
+/* DEV 0.12.1 · Portada comercial: navegación real entre pantallas.
+   Encadre revisado con los coches originales 3/4 sin cortes. */
+.home-hero-heading{position:relative;z-index:6;pointer-events:none}
+.home-hero{overflow:hidden}
+.hero-cars{inset:0;overflow:hidden;border-radius:inherit}
+.hero-car{max-width:48%;margin:0;box-sizing:border-box}
+.hero-car img{height:auto;max-width:100%;display:block}
+.hero-gripline{left:5%;bottom:22px;width:46%;transform:rotate(-2deg)}
+.hero-spark{right:5%;bottom:35px;width:45%;transform:rotate(2deg)}
+.hero-gripline figcaption{left:3%;bottom:1px}
+.hero-spark figcaption{right:2%;bottom:0}
+.hero-car figcaption{max-width:96%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-actions{display:grid;grid-template-columns:1fr;gap:9px}
+.home-actions .home-card{width:100%;min-width:0}
+.home-actions .home-card:focus-visible{outline:3px solid #da1238;outline-offset:2px}
+.home-actions .home-card:disabled{opacity:.66}
+.hub-screen{background:linear-gradient(165deg,#f7f8fb,#eef1f5);min-height:0}
+.hub-scroll{width:100%;max-width:780px;flex:1;min-height:0;overflow-y:auto;
+ overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+ margin:0 auto;padding:clamp(16px,3vw,26px) clamp(13px,3vw,25px) calc(40px + env(safe-area-inset-bottom,0px))}
+.hub-heading{padding:8px 3px 18px}
+.hub-kicker{display:inline-block;color:#c50c2e;letter-spacing:1.8px;font-size:10px;font-weight:950}
+.hub-heading h1{color:#152334;font-size:clamp(30px,7vw,44px);font-style:italic;letter-spacing:-1.4px;margin:8px 0 5px;line-height:1.07}
+.hub-heading p{margin:0;font-size:14px;line-height:1.45;color:#697887}
+.hub-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.hub-action{display:grid;grid-template-columns:35px minmax(0,1fr);align-content:center;align-items:center;gap:2px 8px;
+ min-height:78px;text-align:left;border:1px solid #dce3eb;border-radius:14px;
+ padding:12px;background:linear-gradient(#fff,#f8fafc);color:#162637;box-shadow:0 4px 9px #26344a0e}
+.hub-action>span{grid-row:span 2;color:#c30c2c;font-size:26px;text-align:center}
+.hub-action strong{font-size:13px;font-weight:950;line-height:1.1}
+.hub-action small{font-size:10px;color:#718090;line-height:1.25}
+.hub-back{display:block;text-align:center;border:1px solid #d4dde7;border-radius:13px;
+ background:#fff;box-shadow:0 3px 9px #13233b0f;color:#26384a;
+ font-weight:900;font-size:14px;min-height:48px;width:100%;padding:10px 14px;margin:18px 0 0}
+.hub-bottom-actions{display:flex;flex-direction:column;gap:9px}
+.hub-bottom-actions .hub-back{margin:0}
+.hub-primary{display:block;background:linear-gradient(120deg,#ec2246,#bd0023);border:1px solid #e83a56;
+ color:#fff;box-shadow:0 5px 12px #b9072d2c;border-radius:13px;padding:13px 15px;
+ min-height:52px;width:100%;font-size:16px;font-weight:1000}
+.hub-primary:disabled{opacity:.48;box-shadow:none}
+.hub-screen .circuit-inventory{margin-top:13px}
+.hub-screen .home-create:last-of-type{margin-top:13px}
+.garage-showcase{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 18px}
+.garage-car{border:1px solid #dce3eb;border-radius:17px;overflow:hidden;background:#fff;
+ box-shadow:0 7px 18px #17263a12}
+.garage-car-preview{height:clamp(145px,27vw,235px);display:flex;align-items:center;justify-content:center;
+ overflow:hidden;background:radial-gradient(ellipse at 50% 70%,#e0e8ef,#f6f8fb 74%)}
+.garage-car-preview img{display:block;width:94%;max-height:94%;object-fit:contain;filter:drop-shadow(0 7px 5px #202c3b33)}
+.garage-car-detail{padding:13px}
+.garage-car-detail h2{font-size:19px;letter-spacing:-.5px;color:#172736;margin:7px 0 6px}
+.garage-car-detail p{font-size:12px;color:#6c7b8b;line-height:1.45;margin:0}
+.car-status{display:inline-block;font-size:9px;font-weight:950;letter-spacing:.6px;
+ color:#0d7952;border-radius:50px;background:#e5f7ef;padding:5px 8px}
+.car-status.soon{color:#a36c12;background:#fff4dd}
+.hub-feature{margin:4px 0 15px;padding:22px 18px;border:1px solid #dbe1e9;border-radius:17px;background:#fff;
+ box-shadow:0 5px 14px #1e334510}
+.hub-feature-icon{display:block;font-size:35px;color:#b30b2a;margin:0 0 9px}
+.hub-feature h2{font-size:22px;font-weight:1000;color:#192837;margin:0 0 8px}
+.hub-feature p{font-size:14px;line-height:1.6;color:#657383;margin:8px 0 15px}
+.hub-feature .hub-disclosure{font-size:12px;line-height:1.55;background:#f3f5f8;border-radius:10px;padding:10px}
+.settings-list{background:#fff;border:1px solid #dfe4ec;border-radius:16px;overflow:hidden;box-shadow:0 5px 12px #13213a0c}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 14px;border-bottom:1px solid #e9edf2}
+.setting-row:last-child{border-bottom:0}
+.setting-row h2{color:#172635;font-size:15px;font-weight:950;margin:0 0 4px}
+.setting-row p{color:#657485;font-size:12px;line-height:1.4;margin:0}
+.setting-toggle{flex:none;font-size:12px;font-weight:900;color:#59697a;background:#eef1f5;
+ border:1px solid #d2d9e2;border-radius:20px;min-width:106px;min-height:39px;padding:8px 12px}
+.setting-toggle[aria-pressed="true"]{background:#e5f8f0;border-color:#9bd9c2;color:#087b52}
+.settings-help{margin-top:15px}
+.settings-help h2{font-size:16px}
+.settings-help p{margin-bottom:0}
+@media(max-width:660px){
+ .home-hero{min-height:310px}
+ .hero-gripline{width:45%;max-width:45%;left:5%;bottom:27px;transform:rotate(-2deg)}
+ .hero-spark{width:45%;max-width:45%;right:4%;bottom:43px;transform:rotate(2deg)}
+ .hero-car figcaption{padding:4px 6px;max-width:98%}
+ .hero-car figcaption strong{font-size:clamp(9px,2.75vw,12px)}
+ .hero-slot-track{bottom:-80px}
+ .garage-showcase{grid-template-columns:1fr}
+ .garage-car{display:grid;grid-template-columns:44% minmax(0,1fr);min-height:165px}
+ .garage-car-preview{height:auto;min-height:160px}
+ .garage-car-detail{padding:13px 10px;align-self:center}
+ .garage-car-detail h2{font-size:17px}
+ .garage-car-detail p{font-size:11px}
+ .hub-action{min-height:76px;padding:10px 8px;gap:2px 6px}
+ .hub-action strong{font-size:12px}
+ .hub-action small{font-size:10px}
+}
+@media(max-width:360px){
+ .hub-quick-actions{grid-template-columns:1fr}
+ .hero-gripline{left:4%;width:44%}
+ .hero-spark{right:3%;width:44%}
+ .home-hero h1{font-size:36px}
+}

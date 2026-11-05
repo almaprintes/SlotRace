@@ -1,3 +1,17 @@
+# SlotRace DEV 0.12.1 · Menú comercial con navegación a seis pantallas
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.12.1
+
+- La portada aplica el concepto **C / Clean Premium**, ahora con seis botones reales: **Jugar**, **Construir**, **Mis circuitos**, **Garaje**, **Tienda** y **Ajustes**. El inventario y la creación de circuitos se han movido a la pantalla «Mis circuitos».
+- La portada mejora el encuadre responsive de las dos imágenes originales en vista de tres cuartos del Avenir Gripline y Helix Spark, evitando recortes de carrocería y nombres en iPhone.
+- **Mis circuitos** mantiene los mismos datos locales, exportación PNG, importación/compartición de recetas, guardado, carga y creación de nuevas pistas.
+- **Garaje** presenta ambos coches con sus imágenes originales; la conducción sigue usando Avenir Gripline. **Helix Spark** queda anunciado como próximo coche jugable, sin activar una selección ficticia.
+- **Tienda** tiene una pantalla propia que enlaza con la importación actual de recetas; no simula compras ni requiere pagos.
+- **Ajustes** permite activar/desactivar realmente el sonido del dial y la retícula del taller; guarda preferencias en el mismo almacenamiento local.
+- Las seis páginas son navegables desde el encabezado y las pruebas automáticas verifican la navegación y los cambios de ajustes. No cambian las físicas, la caja, los tiempos ni la clave de guardado `slotrace-lab-10`.
+
+---
+
 # SlotRace · DEV 0.12.0 — Clean Premium / estilo C
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.12.0

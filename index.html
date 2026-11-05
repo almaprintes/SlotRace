@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.12.0: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.12.0 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.12.0">
+  <meta name="description" content="SlotRace DEV 0.12.1: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.12.1 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.12.1">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.12.0">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.12.1">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.12.0</div>
+    <div class="splash-version">DEV 0.12.1</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.12.0">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.12.1">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.12.0">DEV 0.12.0<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.12.1">DEV 0.12.1<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -79,12 +79,24 @@
           </figure>
         </div>
       </div>
-      <div class="home-actions">
+      <nav class="home-actions" aria-label="Secciones principales">
         <button id="menuRace" class="home-card is-accent" type="button"><span class="home-card-icon" aria-hidden="true">🏁</span><span><strong>Jugar</strong><small id="menuRaceDetail">Termina el circuito para desbloquear</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuContinue" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">⚒</span><span><strong>Construir</strong><small>Diseña y monta tu propio circuito</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuExport" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▤</span><span><strong>Exportar plano</strong><small>Tu diseño con su receta de piezas</small></span><span aria-hidden="true">›</span></button>
-      </div>
+        <button id="menuContinue" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">⚒</span><span><strong>Construir</strong><small>Entra al taller de montaje</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuLibrary" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▣</span><span><strong>Mis circuitos</strong><small>Tu colección, recetas y planos</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuGarage" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▰</span><span><strong>Garaje</strong><small>Conoce tu colección de coches</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuStore" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▧</span><span><strong>Tienda</strong><small>Recetas para compartir y catálogo futuro</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuSettings" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">⚙</span><span><strong>Ajustes</strong><small>Personaliza la experiencia</small></span><span aria-hidden="true">›</span></button>
+      </nav>
+    </div>
+  </section>
 
+  <section id="libraryScreen" class="screen hub-screen" hidden aria-label="Mis circuitos">
+    <div class="hub-scroll">
+      <div class="hub-heading"><span class="hub-kicker">MI COLECCIÓN</span><h1>Mis circuitos</h1><p>Guarda, recupera y comparte tus trazados.</p></div>
+      <div class="hub-quick-actions">
+        <button id="menuExport" class="hub-action" type="button"><span aria-hidden="true">▤</span><strong>Exportar plano PNG</strong><small>Incluye nombre y receta de piezas</small></button>
+        <button id="libraryBuild" class="hub-action" type="button"><span aria-hidden="true">⚒</span><strong>Ir al taller</strong><small>Continúa el circuito sobre la mesa</small></button>
+      </div>
       <div class="home-create circuit-inventory">
         <h2>Mis circuitos <small id="libraryCount">0 guardados</small></h2>
         <p>Tu colección de circuitos para montar, correr y compartir.</p>
@@ -104,6 +116,48 @@
         <button id="menuNew" class="home-new" type="button">＋ Crear circuito</button>
         <small>Tu montaje anterior se conserva en «Recuperar trazado».</small>
       </div>
+
+      <button id="libraryHome" class="hub-back" type="button">‹ Volver al menú principal</button>
+    </div>
+  </section>
+  <section id="garageScreen" class="screen hub-screen" hidden aria-label="Garaje">
+    <div class="hub-scroll">
+      <div class="hub-heading"><span class="hub-kicker">COLECCIÓN DE VEHÍCULOS</span><h1>Mi garaje</h1><p>Los primeros coches del universo Top Down RACE.</p></div>
+      <div class="garage-showcase">
+        <article class="garage-car garage-available">
+          <div class="garage-car-preview"><img src="./assets/cars/avenir_gripline_threequarter.webp" alt="Avenir Gripline en tres cuartos" loading="lazy"></div>
+          <div class="garage-car-detail"><span class="car-status">COCHE ACTUAL</span><h2>Avenir Gripline</h2><p>El coche disponible para competir en SlotRace.</p></div>
+        </article>
+        <article class="garage-car">
+          <div class="garage-car-preview"><img src="./assets/cars/helix_spark_threequarter.webp" alt="Helix Spark en tres cuartos" loading="lazy"></div>
+          <div class="garage-car-detail"><span class="car-status soon">PRÓXIMAMENTE JUGABLE</span><h2>Helix Spark</h2><p>Ya puedes verlo en el garaje. Su incorporación al pilotaje llegará en otra versión.</p></div>
+        </article>
+      </div>
+      <div class="hub-bottom-actions"><button id="garageRace" class="hub-primary" type="button">🏁 Correr con Gripline</button><button id="garageHome" class="hub-back" type="button">‹ Volver al menú</button></div>
+    </div>
+  </section>
+  <section id="storeScreen" class="screen hub-screen" hidden aria-label="Tienda">
+    <div class="hub-scroll">
+      <div class="hub-heading"><span class="hub-kicker">COMUNIDAD · CATALOGO</span><h1>Tienda</h1><p>El mercado de circuitos está en preparación.</p></div>
+      <div class="hub-feature">
+        <span class="hub-feature-icon" aria-hidden="true">▧</span>
+        <h2>Intercambia circuitos</h2>
+        <p>De momento puedes importar gratuitamente recetas JSON de otras personas. Cuando existan cuentas y monedas, aquí aparecerá el catálogo de circuitos y piezas.</p>
+        <p class="hub-disclosure">Todavía no hay compras, pagos ni catálogo público. No hemos activado una tienda simulada.</p>
+        <button id="storeImport" class="hub-primary" type="button">Abrir Mis circuitos para importar</button>
+      </div>
+      <button id="storeHome" class="hub-back" type="button">‹ Volver al menú</button>
+    </div>
+  </section>
+  <section id="settingsScreen" class="screen hub-screen" hidden aria-label="Ajustes">
+    <div class="hub-scroll">
+      <div class="hub-heading"><span class="hub-kicker">PERSONALIZA TU JUEGO</span><h1>Ajustes</h1><p>Las preferencias se guardan en este dispositivo.</p></div>
+      <div class="settings-list">
+        <div class="setting-row"><div><h2>Sonido del dial</h2><p>Activa o silencia los clics al acelerar.</p></div><button id="settingsSound" class="setting-toggle" type="button" aria-pressed="true">Activado</button></div>
+        <div class="setting-row"><div><h2>Cuadrícula del taller</h2><p>Muestra u oculta la retícula de 25 mm.</p></div><button id="settingsGrid" class="setting-toggle" type="button" aria-pressed="true">Activada</button></div>
+      </div>
+      <div class="hub-feature settings-help"><h2>Datos locales</h2><p>Los circuitos y los récords se guardan en este navegador. La sincronización de cuentas llegará más adelante.</p></div>
+      <button id="settingsHome" class="hub-back" type="button">‹ Volver al menú</button>
     </div>
   </section>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
@@ -242,6 +296,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.12.0"></script>
+<script type="module" src="./src/app.mjs?v=0.12.1"></script>
 </body>
 </html>
