@@ -57,9 +57,35 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="version" aria-label="Versión de desarrollo 0.9.8">DEV 0.9.8<br>LOCAL · PRUEBAS</div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.9.8">DEV 0.9.8<br>LOCAL · PRUEBAS</div></div>
   </header>
+  <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
+    <div class="home-scroll">
+      <div class="home-hero">
+        <span class="home-kicker">TOP DOWN RACE · SLOT</span>
+        <h1>Slot<span>Race</span></h1>
+        <p>Construye tu circuito. Elige tu sentido. Lucha contra el cronómetro.</p>
+        <div class="home-car"><img src="./assets/cars/avenir_gripline.webp" alt="Avenir Gripline, coche oficial de SlotRace"></div>
+      </div>
+      <div class="home-actions">
+        <button id="menuContinue" class="home-card" type="button"><span class="home-card-icon">⌁</span><span><strong>Entrar al taller</strong><small>Continuar el circuito que tienes sobre la mesa</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuRace" class="home-card is-accent" type="button"><span class="home-card-icon">🏁</span><span><strong>Correr</strong><small id="menuRaceDetail">Termina el circuito para desbloquear</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuExport" class="home-card" type="button"><span class="home-card-icon">▤</span><span><strong>Exportar plano</strong><small>PNG cenital con receta y orden de montaje</small></span><span aria-hidden="true">›</span></button>
+      </div>
+      <div class="home-create">
+        <h2>Crear un circuito nuevo</h2>
+        <p>Elige el sentido de conducción. También podrás cambiarlo más adelante desde el taller.</p>
+        <div class="direction-choice" role="group" aria-label="Sentido de conducción del nuevo circuito">
+          <button id="menuClockwise" class="direction-option" aria-pressed="true" type="button"><span>↻</span> Horario</button>
+          <button id="menuCounter" class="direction-option" aria-pressed="false" type="button"><span>↺</span> Antihorario</button>
+        </div>
+        <button id="menuNew" class="home-new" type="button">＋ Crear circuito</button>
+        <small>Tu montaje anterior se conserva en «Recuperar trazado».</small>
+      </div>
+    </div>
+  </section>
   <section id="buildScreen" class="screen" aria-label="Taller de construcción de circuitos">
+    <div class="build-topbar"><strong>CONSTRUCTOR DE CIRCUITOS</strong><button id="workDirection" class="mini direction-toggle" type="button" aria-label="Cambiar sentido de conducción">↻ Horario</button></div>
     <div class="worktop">
       <div id="tableSpace" class="tableframe">
         <canvas id="editCanvas" aria-label="Mesa de montaje: toca una pieza para seleccionarla; gírala con dos dedos en pasos exactos de 22,5 grados; pellizca sobre el fondo para zoom"></canvas>
@@ -77,7 +103,7 @@
     </div>
     <div class="controlbar">
       <div class="left"><span id="buildStatus" class="status">Preparando el circuito…</span></div>
-      <div class="right"><button class="mini" id="measureGap" type="button" title="Medir el hueco real entre conectores">▤ Medir hueco</button><button class="mini" id="autoClose" type="button" title="Buscar un cierre matemáticamente exacto">Cerrar exacto</button><button class="mini primary" id="play" type="button">🏁 Correr</button></div>
+      <div class="right"><button class="mini" id="measureGap" type="button" title="Medir el hueco real entre conectores">▤ Medir hueco</button><button class="mini" id="autoClose" type="button" title="Buscar un cierre matemáticamente exacto">Cerrar exacto</button><button class="mini" id="exportBlueprint" type="button" title="Exportar plano PNG con receta detallada">▤ Plano PNG</button><button class="mini primary" id="play" type="button">🏁 Correr</button></div>
     </div>
     <div class="tray case-open" id="pieceCase">
       <div class="tray-title">
@@ -138,7 +164,8 @@
       <div class="race-buttons">
         <button id="pause" class="mini primary" type="button">⏸ Pausar</button>
         <button id="lane" class="mini" type="button" disabled>⇄ Carril</button>
-        <button id="back" class="mini" type="button">✕ Mesa</button>
+        <button id="back" class="mini" type="button">⌁ Taller</button>
+        <button id="raceHome" class="mini" type="button">☰ Menú</button>
         <div class="race-footer">IZQ: <span id="bestLeft">—</span> · DER: <span id="bestRight">—</span><br>COMBINADA: <span id="combined">—</span></div>
       </div>
       <div class="gas-control">
