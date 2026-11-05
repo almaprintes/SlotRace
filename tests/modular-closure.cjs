@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict");
 (async()=>{
  const {PARTS,GEOMETRY,RADII,trace}=await import("../src/pt-precision.mjs");
- const {CATALOG,STARTER,FIGURE_EIGHT,buildTrack}=await import("../src/track.mjs");
+ const {CATALOG,STARTER,FIGURE_EIGHT,buildTrack,findLegalClosure}=await import("../src/track.mjs");
  const {measureGap,composeStraightDistance,gapExplanation,analyzeOpenEnds}=await import("../src/gap-analysis.mjs");
  const unit=GEOMETRY.lengthUnit;
  assert.equal(unit,12.5);
@@ -27,6 +27,27 @@ const assert=require("node:assert/strict");
  samePoint(trace(Array(4).fill("R1_225R")),trace(["R1_90R"]));
  assert.equal(buildTrack(STARTER).valid,true);
  assert.equal(buildTrack(FIGURE_EIGHT).valid,true);
+ // La simetría de dos lados permite resolver un hueco exacto con piezas
+ // distintas: una punta de 25 mm frente a una recta normal.
+ const ovalWithAdjustment=[
+   "S350","S025",...Array(4).fill("R2_45R"),
+   "S350","S025",...Array(4).fill("R2_45R")
+ ];
+ const rotated=[...ovalWithAdjustment.slice(2),...ovalWithAdjustment.slice(0,2)];
+ assert.equal(buildTrack(rotated).valid,true,"Óvalo modular simétrico");
+ const short=rotated.slice(0,-1);
+ const shortTrack=buildTrack(short);
+ assert.equal(shortTrack.closed,false);
+ const delta=measureGap(shortTrack.ends.end,shortTrack.parts[0].start,CATALOG);
+ assert.equal(delta.exact,true,"El hueco de 25 mm está alineado");
+ assert.equal(delta.combination.length,25);
+ const closed=findLegalClosure(short);
+ assert.equal(closed.ok,true,"La búsqueda de cierre modular encuentra solución");
+ assert.equal(closed.modular,true,"Uso de composición exacta y no ajuste de posiciones");
+ assert.equal(closed.added,1);
+ assert.equal(closed.types.at(-1),"S025");
+ assert.equal(buildTrack(closed.types).valid,true);
+
  // Si el hueco es recto y está sobre la rejilla, SIEMPRE hay composición
  // con S0125; devolver la que usa menos módulos.
  for(let units=1;units<=80;units++){
