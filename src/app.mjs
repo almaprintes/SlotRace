@@ -27,7 +27,7 @@ const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(
 const state={
   circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
-  library:initialLibrary,sessionLaps:[],sessionName:"",
+  library:initialLibrary,sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -1042,6 +1042,61 @@ function updateHud(){
  $("trigger").disabled=!state.run;
  updateTriggerDisplay();
 }
+
+const CASE_PAGE_SIZE=3;
+const CASE_TABS={straight:"caseStraights",curve:"caseCurves",special:"caseSpecial",bridge:"caseBridges"};
+const pieceCategory=id=>id==="START350"?"special":id.startsWith("R")?"curve":"straight";
+function chooseCaseCategory(category){
+ if(!CASE_TABS[category])return false;
+ state.caseCategory=category;state.casePage=0;
+ if(!state.caseOpen){state.caseOpen=true;save();}
+ updateUI();scheduleResize();return true;
+}
+function changeCasePage(direction){
+ const total=pocketIds.filter(id=>pieceCategory(id)===state.caseCategory).length;
+ const pages=Math.max(1,Math.ceil(total/CASE_PAGE_SIZE));
+ state.casePage=Math.min(pages-1,Math.max(0,state.casePage+direction));
+ updateUI();
+}
+function renderCasePages(){
+ for(const [name,id] of Object.entries(CASE_TABS)){
+  const tab=$(id);
+  tab.classList.toggle("is-current",name===state.caseCategory);
+  tab.setAttribute("aria-pressed",String(name===state.caseCategory));
+ }
+ const filtered=pocketIds.filter(id=>pieceCategory(id)===state.caseCategory);
+ const pages=Math.max(1,Math.ceil(filtered.length/CASE_PAGE_SIZE));
+ state.casePage=Math.max(0,Math.min(state.casePage,pages-1));
+ $("casePageInfo").textContent=state.casePage+1+" / "+pages;
+ $("casePrev").disabled=state.casePage<=0;
+ $("caseNext").disabled=state.casePage>=pages-1;
+ $("casePagination").hidden=state.caseCategory==="bridge";
+ $("bridgeKit").hidden=state.caseCategory!=="bridge";
+ $("pieces").hidden=state.caseCategory==="bridge";
+ const visible=new Set(filtered.slice(state.casePage*CASE_PAGE_SIZE,(state.casePage+1)*CASE_PAGE_SIZE));
+ for(const pocket of $("pieces").children)pocket.hidden=!visible.has(pocket.dataset.piece);
+}
+function removeLooseFromCase(id){
+ const chosen=pocketPartId(id);
+ const latest=state.loose.findLastIndex(p=>p.id===chosen);
+ const index=state.looseSelection>=0&&state.loose[state.looseSelection]?.id===chosen?
+  state.looseSelection:latest;
+ if(index<0){toast("No hay piezas sueltas de este tipo para devolver.");return false;}
+ pushHistory();detachLooseMember(index);
+ state.loose.splice(index,1);state.looseSelection=-1;state.selection=-1;
+ state.selectedGroup=null;state.selectionMode="group";
+ save();updateUI();toast("Pieza suelta devuelta a la caja.");return true;
+}
+function activateGroupMove(){
+ if(!state.selectedGroup){toast("Toca primero el tramo que quieres mover.");return false;}
+ state.selectionMode="group";updateUI();
+ toast("Tramo seleccionado: arrástralo sobre la mesa.");return true;
+}
+function setLabel(id,value){
+ const el=$(id),label=el.querySelector(".tool-label");
+ if(label)label.textContent=value;
+ else el.textContent=value;
+}
 function updateUI(){
  state.viewDirty=true;
  menu.hidden=state.mode!=="menu";
@@ -1063,7 +1118,7 @@ function updateUI(){
   "Termina el circuito en el taller para poder competir";
  for(const [id,direction] of [["menuClockwise",1],["menuCounter",-1]])
   $(id).setAttribute("aria-pressed",String(state.newCircuitDirection===direction));
- $("workDirection").textContent=state.driveDirection===1?"↻ Conducción: horario":"↺ Conducción: antihorario";
+ setLabel("workDirection",state.driveDirection===1?"Horario":"Antihorario");
 
  const t=state.track;
  const looseKit=state.loose.some(p=>p.raised);
@@ -1092,13 +1147,13 @@ function updateUI(){
  $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
- $("play").textContent="🏁 Correr";
+ setLabel("play","Correr");
  $("play").disabled=!t.valid;
  $("restore").hidden=!state.draft;
  $("pieceCase").classList.toggle("case-open",state.caseOpen);
  $("caseInterior").hidden=!state.caseOpen;
  $("caseClosed").hidden=state.caseOpen;
- $("caseToggle").textContent=state.caseOpen?"▴ Cerrar caja":"▾ Abrir caja";
+ setLabel("caseToggle",state.caseOpen?"Cerrar caja":"Abrir caja");
  $("caseToggle").setAttribute("aria-expanded",String(state.caseOpen));
  const selectedLength=state.selectedGroup==="main"?state.types.length:
   state.looseSelection>=0?looseMembers(state.looseSelection).length:0;
@@ -1119,7 +1174,8 @@ function updateUI(){
   state.selectionMode==="piece"&&state.selection>=0?state.types[state.selection]:null;
  $("flip").disabled=!selectedCurve||!selectedCurve.includes("_");
  $("joinPiece").disabled=state.looseSelection<0;
- $("joinPiece").textContent=state.types.length?"⠿ Encajar":"⠿ Iniciar";
+ setLabel("joinPiece",state.types.length?"Encajar":"Iniciar montaje");
+ $("moveGroup").disabled=!state.selectedGroup;
  $("autoClose").disabled=state.track.closed||(state.types.length<2&&state.loose.length<2);
  $("measureGap").disabled=state.types.length===0&&state.loose.length<2;
  $("undo").disabled=!state.history.length;
@@ -1147,14 +1203,18 @@ function updateUI(){
   el.setAttribute("aria-label",CATALOG[chosen].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+". Toca para sacar o arrastra a la mesa.");
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
+  const minus=el.querySelector(".pocket-minus"),plus=el.querySelector(".pocket-plus");
+  if(minus)minus.disabled=!state.loose.some(p=>p.id===chosen);
+  if(plus)plus.disabled=free===0;
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===chosen)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen));
  }
+ renderCasePages();
  $("tableCaption").textContent=state.pinch?.mode==="rotate"?
   "GIRANDO · SALTOS EXACTOS DE 22,5°":
  state.looseSelection>=0?"DOS DEDOS: GIRAR 22,5° · ARRASTRA PARA ACOPLAR":
  state.selection>=0?"DOS DEDOS: GIRAR 22,5° · TOCA DOS VECES: PIEZA":
  state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":
- "SOBRE PIEZA: DOS DEDOS GIRAN 22,5° · FONDO: ZOOM";
+ "Dos dedos: girar 22,5° · Pellizcar: zoom";
  updateHud();
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
@@ -1224,25 +1284,35 @@ function palette(){
  const list=$("pieces");
  for(const id of pocketIds){
   const spec=CATALOG[id];
-  const pocket=document.createElement("button");
-  pocket.type="button";pocket.className="foam-pocket";pocket.dataset.piece=id;
+  const pocket=document.createElement("div");
+  pocket.className="foam-pocket";pocket.dataset.piece=id;
+  pocket.setAttribute("role","group");
   pocket.dataset.kind=spec.group;
   pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
   pocket.innerHTML='<span class="qty">×0</span>'+
     '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
      '<span class="foam-drag-grip" data-drag-handle="true" aria-hidden="true">⠿</span>'+
-    '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>';
+    '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>'+
+    '<div class="pocket-qty-controls">'+
+     '<button type="button" class="pocket-minus" aria-label="Devolver una pieza suelta '+pocketNames[id]+'">−</button>'+
+     '<span class="pocket-stock" aria-label="Inventario ilimitado">∞</span>'+
+     '<button type="button" class="pocket-plus" aria-label="Sacar una pieza '+pocketNames[id]+'">+</button>'+
+    '</div>';
   const grip=pocket.querySelector(".foam-drag-grip");
+  const minus=pocket.querySelector(".pocket-minus");
+  const plus=pocket.querySelector(".pocket-plus");
+  if(minus)minus.addEventListener("click",e=>{e.stopPropagation();removeLooseFromCase(id);});
+  if(plus)plus.addEventListener("click",e=>{e.stopPropagation();inventoryAction(id);});
   let suppressNextClick=false,tapPointer=null;
   // El maletín se desplaza sobre el cuerpo del hueco y se arrastra desde
   // el asa: la captura táctil vive en el ASA, nunca en el botón desplazable.
   pocket.addEventListener("click",e=>{
-   if(e.target===grip||grip.contains?.(e.target))return;
+   if(e.target===grip||grip.contains?.(e.target)||e.target?.closest?.(".pocket-qty-controls"))return;
    if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
    suppressNextClick=false;inventoryAction(id);
   });
   pocket.addEventListener("pointerdown",e=>{
-   if(e.target===grip)return;
+   if(e.target===grip||e.target?.closest?.(".pocket-qty-controls"))return;
    tapPointer=e.pointerType==="mouse"?null:
     {pointerId:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
    suppressNextClick=false;
@@ -1252,7 +1322,7 @@ function palette(){
       Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9)tapPointer.moved=true;
   });
   pocket.addEventListener("pointerup",e=>{
-   if(tapPointer?.pointerId!==e.pointerId)return;
+   if(e.target?.closest?.(".pocket-qty-controls")||tapPointer?.pointerId!==e.pointerId)return;
    const moved=tapPointer.moved||
     Math.hypot(e.clientX-tapPointer.x,e.clientY-tapPointer.y)>9;
    tapPointer=null;suppressNextClick=true;
@@ -2406,6 +2476,11 @@ function canvasPointerEnd(e){
  }
 }
 function initEvents(){
+ for(const [category,id] of Object.entries(CASE_TABS))
+  $(id).addEventListener("click",()=>chooseCaseCategory(category));
+ $("casePrev").addEventListener("click",()=>changeCasePage(-1));
+ $("caseNext").addEventListener("click",()=>changeCasePage(1));
+ $("moveGroup").addEventListener("click",activateGroupMove);
  for(const [button,section] of [
   ["menuLibrary","library"],["menuGarage","garage"],["menuStore","store"],["menuSettings","settings"]
  ])$(button).addEventListener("click",()=>showHub(section));
@@ -2526,7 +2601,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.12.2",state,showHub,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.13.0",state,showHub,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

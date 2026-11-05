@@ -1,3 +1,16 @@
+# SlotRace DEV 0.13.0 · Constructor comercial rediseñado
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.0
+
+- Nueva pantalla de construcción inspirada en el mockup aprobado: título deportivo, campo de nombre, sentido y Guardar; mesa de mayor tamaño; cuatro acciones principales.
+- Caja de piezas en cuatro categorías reales: **Rectas (5)**, **Curvas (7)**, **Especiales (salida/meta)** y **Puentes (kit físico)**, con tres módulos visibles por página y navegación anterior/siguiente.
+- Tarjetas con vista de la pieza, referencia SR, cantidad infinita y controles **+** para añadir y **−** para devolver exclusivamente piezas *sueltas*. No desmonta partes unidas sin seleccionar «Eliminar pieza».
+- Herramientas principales **Iniciar/Encajar, Deshacer, Rehacer, Mover tramo, Girar 22,5°, Eliminar pieza**; las opciones avanzadas se conservan en un desplegable.
+- Disposición vertical desplazable en iPhone: la mesa y los botones mantienen dimensiones táctiles; no hay barras aplastadas ni funciones eliminadas.
+- Se conserva la clave de guardado `slotrace-lab-10`, circuitos, récords, física y geometría existentes.
+
+---
+
 # SlotRace DEV 0.12.2 · Portada de competición
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.12.2

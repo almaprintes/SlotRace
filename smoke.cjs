@@ -69,7 +69,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.12\.2/);
+assert.match(html,/DEV 0\.13\.0/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -78,6 +78,12 @@ for(const id of ["menuLibrary","menuGarage","menuStore","menuSettings","libraryS
  assert.match(html,new RegExp('id="'+id+'"'),"Pantalla comercial "+id);
 }
 assert.match(css,/\.hub-screen/);
+ for(const id of ["builderScroll","caseStraights","caseCurves","caseSpecial","caseBridges","casePrev","caseNext","casePageInfo","moveGroup"]){
+  assert.match(html,new RegExp('id="'+id+'"'),"Nueva interfaz de montaje "+id);
+ }
+ assert.match(css,/\.builder-scroll/);
+ assert.match(css,/\.case-category-tab/);
+ assert.match(css,/\.pocket-qty-controls/);
 assert.match(css,/\.home-hero-photo/);assert.match(css,/\.combined-best/);
 assert.match(html,/slotrace-duelo-curva\.avif/);
 assert.doesNotMatch(html,/class="hero-slot-track"/,"La portada no dibuja otra pista sobre la foto");
@@ -90,5 +96,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.12.2 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.13.0 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
