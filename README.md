@@ -1,8 +1,22 @@
-# SlotRace · DEV 0.9.2 — arrastre iPhone y uniones sin sombras
+# SlotRace · DEV 0.9.3 — conectores magnéticos reversibles
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
-**Enlace:** https://almaprintes.github.io/Sl### DEV 0.9.2 — arrastre táctil real y uniones magnéticas continuas
+**Enlace:** https://almaprintes.github.io/Sl### DEV 0.9.3 — conectores magnéticos por ambos extremos
+
+**Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.3
+
+- Se corrige el acoplamiento de la pieza **Salida/meta de 350 mm** detectado en las capturas del 5 de noviembre de 2026. Antes sólo se admitían los enlaces inicio→final y final→inicio; ahora también final→final e inicio→inicio, invirtiendo la pieza cuando hace falta.
+- Las piezas individuales pueden girar automáticamente hasta 180° al alinearse con un conector cercano. Cuando se invierte una curva, también se invierte su sentido R/L sin alterar sus radios ni su forma.
+- Los grupos de varias piezas mantienen el límite angular de seguridad para evitar que un pequeño gesto gire violentamente un circuito completo.
+- La lógica de dibujo continuo de las piezas acopladas, el scroll del maletín, el inventario infinito y el guardado `slotrace-lab-09` se mantienen.
+- Se han añadido **8 pruebas de enlace de extremos** a `tests/puzzle-table.cjs`, incluidas 2 reproducciones específicas de la pieza de salida/meta.
+
+**Pendiente de validación táctil real:** confirmar en iPhone Safari que el arrastre hacia los cuatro tipos de empalme resulta natural.
+
+---
+
+## DEV 0.9.2 — arrastre táctil real y uniones magnéticas continuas
 
 **Prueba móvil:** https://almaprintes.github.io/SlotRace/?v=0.9.2
 
