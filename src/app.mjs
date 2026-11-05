@@ -468,7 +468,7 @@ function measureOpenGap(){
   }
   if(balance?.ok&&!balance.unchanged&&!result?.combination){
    const edits=balance.changes.map(change=>
-    CATALOG[change.from].length+" → "+CATALOG[change.to].length+" mm").join(" + ");
+    CATALOG[change.from].length.toLocaleString("es-ES")+" → "+CATALOG[change.to].length.toLocaleString("es-ES")+" mm").join(" + ");
    message="CIERRE POR COMPENSACIÓN · Sustituir "+edits+
     ". Sin pieza de 12,5 mm ni deformaciones. Pulsa Cerrar exacto.";
   }
@@ -528,7 +528,7 @@ function closeExactly(){
     extendWorkBoard();state.selectedGroup="main";state.selectionMode="group";
     state.selection=0;state.looseSelection=-1;save();updateUI();
     toast("Cerrado compensando rectas: "+balanced.changes.map(c=>
-     CATALOG[c.from].length+" → "+CATALOG[c.to].length+" mm").join(" + ")+".");
+     CATALOG[c.from].length.toLocaleString("es-ES")+" → "+CATALOG[c.to].length.toLocaleString("es-ES")+" mm").join(" + ")+".");
     return;
    }
    const detail=gapAnalysis.gapExplanation(fit);
