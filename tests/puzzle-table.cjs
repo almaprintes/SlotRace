@@ -183,5 +183,25 @@ const path=require("node:path");
  checkBothEnds("inverso inicio-inicio",{id:"S175",x:504,y:504,h:0},"prepend",true,"S175");
  checkBothEnds("endereza 180 grados",{id:"S175",x:856,y:504,h:Math.PI},"append",false,"S175");
  checkBothEnds("curva reversible",{id:"R4_225R",x:504,y:504,h:0},"prepend",true,"R4_225L");
+ // Caso específico de la captura: salida/meta de 350 mm sobre un extremo
+ // de un tramo más corto. El usuario no debe girarla manualmente.
+ for(const [label,x,side] of [
+  ["Salida/meta por inicio",504,"prepend"],
+  ["Salida/meta por final",325,"append"]
+ ]){
+  game.changeTypes([],"Prueba salida/meta "+label,[],geo.START);
+  st.loose=[{id:"S175",x:500,y:500,h:0},{id:"START350",x,y:504,h:0}];
+  const proposal=game.puzzle.bestMagnet(1);
+  assert.ok(proposal,label+" tiene un conector candidato");
+  assert.equal(proposal.side,side,label+" escoge el extremo correcto");
+  assert.equal(proposal.reversed,true,label+" reorienta la pieza");
+  assert.equal(game.puzzle.snapLoose(1),true,label+" encaja con imán");
+  const parts=game.puzzle.loosePaintGroups()[0].parts;
+  assert.equal(parts.length,2,label+" queda unida");
+  const tip=geo.positionOnPiece(parts[0].start,parts[0].id,1);
+  assert.ok(Math.hypot(tip.x-parts[1].start.x,tip.y-parts[1].start.y)<1e-6,
+   label+" queda sin separación");
+ }
+
  console.log("SlotRace DEV 0.9.2 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
