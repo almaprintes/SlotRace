@@ -1,4 +1,5 @@
 import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,carTrackLevel,gapAnalysis} from "./track.mjs";
+import {buildRecipe,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -17,7 +18,7 @@ const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(
  {...old.origin}:{...START};
 const state={
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
-  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"build",selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
+  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
@@ -35,7 +36,8 @@ const boardValid=oldBoard&&["left","top","right","bottom","width","height"].ever
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
- gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection}));}
+ gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
+ driveDirection:state.driveDirection}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -50,11 +52,11 @@ function extendWorkBoard(){
 }
 function resetWorkBoard(){state.workBoard={...state.track.board};}
 
-const stage=$("buildScreen"),race=$("raceScreen");
+const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen");
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
 const format=n=>n.toFixed(3).replace(".",",");
-const recKey=()=>state.types.join("-");
+const recKey=()=>state.types.join("-")+(state.driveDirection===-1?"-reverse":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -552,6 +554,50 @@ function recoverDraft(){
  const d=state.draft;state.draft=null;
  changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[],d.origin||START);
 }
+// Una pieza de SlotRace se recorre en sentido horario o antihorario.
+// No invertimos las piezas físicas: invertimos trayectoria, ángulo y
+// signo de curva, y cambiamos la lateralidad de los dos carriles.
+const drivingLaneIndex=()=>state.driveDirection===-1?1-state.lane:state.lane;
+function drivingPose(distance=state.distance){
+ const lane=state.track.lanes[drivingLaneIndex()];
+ const p=positionAt(lane,state.driveDirection===-1?-distance:distance);
+ return !p||state.driveDirection===1?p:{...p,h:p.h+Math.PI,curve:-(p.curve||0)};
+}
+function openWorkshop(){
+ state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
+ updateUI();resize();
+}
+function showMenu(){
+ state.run=false;state.gas=0;state.buttonGas=false;
+ state.keyboardGas=false;state.triggerGesture=null;state.mode="menu";
+ state.newCircuitDirection=state.driveDirection;
+ updateUI();resize();
+}
+function setNewCircuitDirection(direction){
+ state.newCircuitDirection=direction===-1?-1:1;updateUI();
+}
+function changeDriveDirection(direction){
+ state.driveDirection=direction===-1?-1:1;
+ state.newCircuitDirection=state.driveDirection;
+ resetLap();state.distance=0;
+ save();updateUI();
+ toast("Sentido de conducción: "+(state.driveDirection===1?"horario.":"antihorario."));
+}
+function createNewCircuit(){
+ const hadPieces=state.types.length||state.loose.length;
+ if(hadPieces)state.draft=snapshot();
+ state.driveDirection=state.newCircuitDirection;
+ changeTypes([],"Nuevo circuito · elige las piezas en el maletín.",[],START);
+ resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};
+ save();openWorkshop();
+}
+function menuRace(){
+ if(!state.track.valid){
+  openWorkshop();toast("Cierra primero el circuito para poder competir.");
+  return false;
+ }
+ play();return true;
+}
 function play(){
  state.triggerGesture=null;
  if(!state.track.valid){
@@ -563,7 +609,7 @@ function play(){
  state.mode="race";state.latest=performance.now();updateUI();resize();
  toast("¡Pista lista! Suelta el gatillo antes de las curvas.");
 }
-function back(){state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;state.mode="build";updateUI();resize();}
+function back(){openWorkshop();}
 function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  $("trigger").classList.remove("pressed");state.latest=performance.now();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
@@ -612,7 +658,7 @@ function simulation(dt){
  state.speed=Math.max(0,Math.min(DRIVE.maxSpeed,
   state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
  ));
- const lane=state.track.lanes[state.lane],p=positionAt(lane,state.distance);
+ const lane=state.track.lanes[drivingLaneIndex()],p=drivingPose();
  const limit=curveLimit(p,state.lane);
  const ratio=Number.isFinite(limit)?state.speed/limit:0;
  const travel=state.speed*dt;
@@ -758,7 +804,7 @@ function updateHud(){
  $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
  $("bestRight").textContent=v[1]===null?"—":format(v[1])+" s";
  $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
- const pose=positionAt(state.track.lanes[state.lane],state.distance);
+ const pose=drivingPose();
  const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
  const underCrossing=isBelow&&pose&&Boolean(state.track.bridge)&&
    Math.hypot(pose.x-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).x,
@@ -775,7 +821,17 @@ function updateHud(){
 }
 function updateUI(){
  state.viewDirty=true;
+ menu.hidden=state.mode!=="menu";
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
+ $("goHome").hidden=state.mode==="menu";
+ $("menuRace").disabled=!state.track.valid;
+ $("menuRaceDetail").textContent=state.track.valid?
+  state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+(state.driveDirection===1?"Horario":"Antihorario"):
+  "Termina el circuito en el taller para poder competir";
+ for(const [id,direction] of [["menuClockwise",1],["menuCounter",-1]])
+  $(id).setAttribute("aria-pressed",String(state.newCircuitDirection===direction));
+ $("workDirection").textContent=state.driveDirection===1?"↻ Conducción: horario":"↺ Conducción: antihorario";
+
  const t=state.track;
  const looseKit=state.loose.some(p=>p.raised);
  const degrees=t.headingGap*180/Math.PI;
@@ -1578,7 +1634,7 @@ function renderScene(canvas,mode){
  ctx.save();transform(ctx,v);
  paintTable(ctx);paintGrid(ctx);
  const track=state.track,hasBridge=Boolean(track.bridge);
- const p=positionAt(track.lanes[state.lane],mode==="race"?state.distance:0);
+ const p=drivingPose(mode==="race"?state.distance:0);
  const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
  // Las patas van bajo la pista. No dibujar una placa sobre el asfalto.
  for(const index of state.bridgeParts){
@@ -1814,7 +1870,15 @@ function canvasPointerEnd(e){
  }
 }
 function initEvents(){
- $("play").addEventListener("click",play);
+ $("menuContinue").addEventListener("click",openWorkshop);
+ $("menuRace").addEventListener("click",menuRace);
+ $("menuNew").addEventListener("click",createNewCircuit);
+ $("menuClockwise").addEventListener("click",()=>setNewCircuitDirection(1));
+ $("menuCounter").addEventListener("click",()=>setNewCircuitDirection(-1));
+ $("goHome").addEventListener("click",showMenu);
+ $("raceHome").addEventListener("click",showMenu);
+ $("workDirection").addEventListener("click",()=>changeDriveDirection(-state.driveDirection));
+  $("play").addEventListener("click",play);
  $("back").addEventListener("click",back);
  $("pause").addEventListener("click",pause);
  $("lane").addEventListener("click",switchLane);
@@ -1870,7 +1934,7 @@ function initEvents(){
  trigger.addEventListener("pointermove",triggerPointerMove);
  for(const name of ["pointerup","pointercancel","lostpointercapture"])trigger.addEventListener(name,triggerPointerEnd);
  window.addEventListener("keydown",e=>{
-  if(e.code==="Escape"&&state.mode==="race"){back();return;}
+  if(e.code==="Escape"&&state.mode!=="menu"){showMenu();return;}
   if(state.mode==="race"&&(e.code==="Space"||e.code==="ArrowUp")&&e.target.tagName!=="INPUT"){e.preventDefault();state.keyboardGas=true;}
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
@@ -1890,13 +1954,13 @@ function loop(now){
  simulation(dt);
  if(state.mode==="build"){
   if(state.viewDirty){renderScene(editCanvas,"build");state.viewDirty=false;}
- }else renderScene(raceCanvas,"race");
+ }else if(state.mode==="race")renderScene(raceCanvas,"race");
  if(!state._hudTime||now-state._hudTime>100){state._hudTime=now;updateHud();}
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
 }
 palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.9.8",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.9.8",state,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
