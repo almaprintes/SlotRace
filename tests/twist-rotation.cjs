@@ -5,8 +5,9 @@ const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"")
+  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
   .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
   .replace("function strokePath(ctx,points,color,width){","function strokePath(ctx,points,color,width){if(color===\"#0c1518\"&&width===TRACK_WIDTH+19)window.__shadowLog.push(points.length);");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -35,12 +36,13 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=Object.keys(geo),values=keys.map(k=>geo[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.9.8");
+ game.openWorkshop();
+ assert.equal(game.version,"DEV 0.10.0");
  const step=Math.PI/8,deg=n=>n*Math.PI/180;
  const event=(x,y,pointerId)=>({clientX:x,clientY:y,pointerId,preventDefault(){}});
  const close=(a,b,tolerance=1e-8)=>assert.ok(Math.abs(a-b)<tolerance,
@@ -167,5 +169,5 @@ const path=require("node:path");
  close(savedDrag.origin.x,st.origin.x);
  close(savedDrag.origin.y,st.origin.y);
 
- console.log("SlotRace DEV 0.9.8: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
+ console.log("SlotRace DEV 0.10.0: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
