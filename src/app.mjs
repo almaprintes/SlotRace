@@ -6,6 +6,7 @@ const old=(()=>{try{return JSON.parse(storage(KEY)||"null");}catch(e){return nul
 const legacy=(()=>{try{return JSON.parse(storage("slotrace-lab-04")||"null");}catch(e){return null;}})();
 const oldValid=old?.types&&allowed(old.types);
 const initial=oldValid?old.types.slice():FIGURE_EIGHT.slice();
+const originalRaised=oldValid&&Array.isArray(old?.bridgeParts)?old.bridgeParts.filter(i=>Number.isInteger(i)&&i>=0&&i<initial.length):[];
 // El primer inicio de DEV 0.5 conserva la construcción anterior sin
 // sustituir el ocho de demostración. Nunca borramos la clave antigua.
 const legacyDraft=!oldValid&&legacy?.types&&allowed(legacy.types)?
@@ -16,7 +17,7 @@ const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(
  {...old.origin}:{...START};
 const state={
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
-  types:initial,loose:initialLoose,origin:initialOrigin,track:buildTrack(initial,initialOrigin),mode:"build",selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
+  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"build",selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
@@ -32,7 +33,7 @@ const state={
 const oldBoard=old?.workBoard;
 const boardValid=oldBoard&&["left","top","right","bottom","width","height"].every(k=>Number.isFinite(oldBoard[k]));
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
-function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
+function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection}));}
 const GRID_MM=25;
@@ -57,18 +58,23 @@ const recKey=()=>state.types.join("-");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
-function snapshot(){return{types:state.types.slice(),loose:state.loose.map(p=>({...p})),origin:{...state.origin}};}
+function snapshot(){return{types:state.types.slice(),loose:state.loose.map(p=>({...p})),bridgeParts:state.bridgeParts.slice(),origin:{...state.origin}};}
 function restoreSnapshot(shot){
  state.types=shot.types.slice();state.loose=(shot.loose||[]).map(p=>({...p}));
+ state.bridgeParts=(shot.bridgeParts||[]).filter(i=>Number.isInteger(i)&&i>=0&&i<state.types.length);
  state.origin=shot.origin?{...shot.origin}:{...START};
- state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
 }
 function pushHistory(){state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];}
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("La construcción contiene piezas desconocidas.");return false;}
  const wasClosed=state.track.closed;
- pushHistory();state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+ pushHistory();
+ const sameGeometry=next.length===state.types.length&&next.every((id,i)=>id===state.types[i]);
+ state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
+ if(!sameGeometry)state.bridgeParts=[];
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
  save();updateUI();
  if(!wasClosed&&state.track.closed){
@@ -192,10 +198,18 @@ function snapLoose(index,{force=false,history=true}={}){
  transformLoose(source.indices,magnet.from,magnet.to);
  const moved=source.indices.map(i=>({...state.loose[i]}));
  if(magnet.kind==="main"){
-  if(magnet.side==="append")state.types.push(...moved.map(p=>p.id));
-  else{state.types.unshift(...moved.map(p=>p.id));state.origin={x:moved[0].x,y:moved[0].y,h:moved[0].h};}
+  if(magnet.side==="append"){
+   const offset=state.types.length;
+   state.types.push(...moved.map(p=>p.id));
+   for(const [k,p] of moved.entries())if(p.raised)state.bridgeParts.push(offset+k);
+  }else{
+   state.bridgeParts=state.bridgeParts.map(i=>i+moved.length);
+   state.types.unshift(...moved.map(p=>p.id));
+   for(const [k,p] of moved.entries())if(p.raised)state.bridgeParts.push(k);
+   state.origin={x:moved[0].x,y:moved[0].y,h:moved[0].h};
+  }
   for(const i of [...source.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
-  state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
   state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
  }else{
   const target=looseGroup(magnet.index);
@@ -214,7 +228,11 @@ function snapLoose(index,{force=false,history=true}={}){
 function detachConnected(index,{history=true}={}){
  if(index<0||index>=state.types.length)return -1;
  if(history)pushHistory();
- const pieces=state.track.parts.slice(index).map(part=>({id:part.id,x:part.start.x,y:part.start.y,h:part.start.h}));
+ const pieces=state.track.parts.slice(index).map(part=>({
+  id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+  ...(state.bridgeParts.includes(part.index)?{raised:true}:{})
+ }));
+ state.bridgeParts=state.bridgeParts.filter(i=>i<index);
  const first=state.loose.length;
  state.types=state.types.slice(0,index);
  if(pieces.length>1){
@@ -222,7 +240,7 @@ function detachConnected(index,{history=true}={}){
   for(let k=1;k<pieces.length;k++){pieces[k].magnetGroup=key;pieces[k].magnetOrder=k-1;}
  }
  state.loose.push(...pieces);
- state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=first;state.selectionMode="piece";state.selectedGroup="single-"+first;
  state.run=false;save();updateUI();return first;
 }
@@ -244,8 +262,9 @@ function detachLooseMember(index){
 function promoteLooseGroup(index){
  const group=looseGroup(index);if(!group||state.types.length)return false;
  pushHistory();state.origin={...group.start};state.types=group.parts.map(p=>p.id);
+ state.bridgeParts=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
  for(const i of [...group.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
- state.track=buildTrack(state.types,state.origin);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
  save();updateUI();toast("¡Tramo fijado! Puedes seguir ampliándolo.");return true;
 }
@@ -254,6 +273,33 @@ function startSelectedPiece(){
  if(!state.types.length){promoteLooseGroup(state.looseSelection);return;}
  if(!snapLoose(state.looseSelection,{history:true}))
   toast("Acerca un conector a otro para unir los tramos.");
+}
+// Accesorio elevación: un kit incluye dos apoyos y rampas de 65 mm.
+// No altera la posición 2D ni crea un módulo de pista falso.
+function installBridgeKit(){
+ const looseIndex=state.looseSelection,mainIndex=state.selection;
+ const isLoose=looseIndex>=0;
+ const id=isLoose?state.loose[looseIndex]?.id:state.types[mainIndex];
+ const spec=CATALOG[id];
+ if(!spec){toast("Selecciona una recta y después toca Kit puente.");return false;}
+ if(!spec.length||spec.length<350){
+  toast("Para instalar rampas necesitas una recta de 350 o 584 mm.");return false;
+ }
+ pushHistory();
+ let enabled;
+ if(isLoose){
+  enabled=!state.loose[looseIndex].raised;
+  if(enabled)state.loose[looseIndex].raised=true;
+  else delete state.loose[looseIndex].raised;
+ }else{
+  enabled=!state.bridgeParts.includes(mainIndex);
+  if(enabled)state.bridgeParts=[mainIndex];
+  else state.bridgeParts=state.bridgeParts.filter(i=>i!==mainIndex);
+ }
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+ save();updateUI();
+ toast(enabled?"Kit instalado: dos apoyos y rampas de 65 mm.":"Kit retirado de la recta.");
+ return true;
 }
 function selectByTap(kind,index){
  const key=kind==="main"?"main":looseGroupKey(index);
@@ -355,7 +401,7 @@ function play(){
  state.triggerGesture=null;
  if(!state.track.valid){
   state.draft=snapshot();
-  state.types=STARTER.slice();state.loose=[];state.origin={...START};state.track=buildTrack(state.types,state.origin);resetWorkBoard();state.selection=-1;state.looseSelection=-1;
+  state.types=STARTER.slice();state.loose=[];state.bridgeParts=[];state.origin={...START};state.track=buildTrack(state.types,state.origin,state.bridgeParts);resetWorkBoard();state.selection=-1;state.looseSelection=-1;
   save();
  }
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
@@ -1320,7 +1366,7 @@ function canvasPointerMove(e){
    y:Math.max(b.top+90,Math.min(b.bottom-90,coordinate(p.startOrigin.y+to.y-p.originWorld.y))),
    h:p.startOrigin.h
   };
-  state.track=buildTrack(state.types,state.origin);
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
   state.viewDirty=true;return;
  }
  if(state.pointer.size===1&&p.looseIndex>=0){
