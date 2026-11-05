@@ -928,35 +928,40 @@ function paintSeam(ctx,p){
 }
 // Accesorio elevador PT: dos apoyos y dos rampas de 65 mm.
 // Una recta elevada mantiene las medidas de pista originales.
+// El kit va DEBAJO de la pista: no sustituye la pieza por una placa.
+// Se dibuja antes del asfalto, de modo que los dos carriles siguen siendo
+// exactamente los de la recta que ha elegido el constructor.
 function paintSupportKit(ctx,part){
  const spec=CATALOG[part.id];if(!spec?.length||spec.length<350)return;
- const mid=positionOnPiece(part.start,part.id,.5);
- ctx.save();ctx.translate(mid.x,mid.y);ctx.rotate(mid.h);
- ctx.shadowColor="#000b";ctx.shadowBlur=19;ctx.shadowOffsetY=15;
- for(const x of [-spec.length*.33,spec.length*.33]){
-  ctx.fillStyle="#354c52";roundRect(ctx,x-19,-102,38,204,7);ctx.fill();
+ for(const t of [.24,.76]){
+  const p=positionOnPiece(part.start,part.id,t);
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
+  ctx.shadowColor="#000a";ctx.shadowBlur=18;ctx.shadowOffsetY=11;
+  ctx.fillStyle="#384e55";ctx.fillRect(-17,-97,34,194);
   ctx.shadowBlur=0;ctx.shadowOffsetY=0;
-  ctx.fillStyle="#b3cacc";ctx.fillRect(x-7,-94,14,188);
-  ctx.strokeStyle="#8ba9ad";ctx.lineWidth=4;ctx.strokeRect(x-12,-97,24,194);
- }
- ctx.shadowColor="#0009";ctx.shadowBlur=12;ctx.shadowOffsetY=12;
- roundRect(ctx,-spec.length*.5,-82,spec.length,164,5);
- ctx.fillStyle="#263138";ctx.fill();
- ctx.shadowBlur=0;ctx.shadowOffsetY=0;
- ctx.fillStyle="#657780";ctx.fillRect(-spec.length*.5,-80,spec.length,5);
- ctx.fillRect(-spec.length*.5,75,spec.length,5);
- ctx.fillStyle="#354249";
- for(const x of [-spec.length*.47,spec.length*.37]){
-  ctx.save();ctx.translate(x,0);
-  for(let k=0;k<4;k++){ctx.globalAlpha=.2+.18*k;ctx.fillRect(k*7,-73,3,146);}
+  for(const side of [-1,1]){
+   const y=side*88;
+   ctx.fillStyle="#8ba3aa";ctx.fillRect(-19,y-13,38,26);
+   ctx.fillStyle="#c4d7d6";ctx.fillRect(-13,y-11,26,7);
+   ctx.fillStyle="#253a40";ctx.fillRect(-23,y+side*13,46,7);
+  }
   ctx.restore();
  }
- for(const off of [-LANE_OFFSET,LANE_OFFSET]){
-  ctx.fillStyle="#080d10";ctx.fillRect(-spec.length*.5,off-5,spec.length,10);
-  ctx.fillStyle="#91a6ad";ctx.fillRect(-spec.length*.5,off-9,spec.length,2);
-  ctx.fillRect(-spec.length*.5,off+7,spec.length,2);
+}
+// Discretas marcas de rampa a los lados de la vía. Nunca cubren ranuras
+// ni colocan una segunda superficie rectangular sobre el tramo.
+function paintBridgeRampProfile(ctx,part){
+ const spec=CATALOG[part.id];if(!spec?.length||spec.length<350)return;
+ ctx.save();
+ for(const span of [[.02,.23],[.77,.98]]){
+  const points=Array.from({length:6},(_,i)=>
+   positionOnPiece(part.start,part.id,span[0]+(span[1]-span[0])*i/5));
+  ctx.globalAlpha=.28;
+  for(const off of [-75,75])strokePath(ctx,translated(points,off),"#b6ccd1",3);
+  ctx.globalAlpha=.13;
+  for(const off of [-69,69])strokePath(ctx,translated(points,off),"#f2f7e7",2);
  }
- ctx.globalAlpha=1;ctx.restore();
+ ctx.restore();
 }
 function paintBridgePillars(ctx,track){
  if(!track.bridge)return;
@@ -1014,36 +1019,48 @@ function paintContinuousTrack(ctx,track,editing){
 // Overlay SOLO sobre la abertura real del cruce. En las anteriores
 // versiones toda la diagonal superior se repintaba encima del coche,
 // por lo que éste quedaba parcialmente oculto también cerca de curvas.
+// La capa superior tapa la inferior SOLO en la zona del cruce.
+// La superficie, las ranuras y los biseles usan los mismos materiales
+// que el resto de la pista, para eliminar la placa de color diferente.
 function paintBridgeCrossing(ctx,track){
  if(!track.bridge)return;
  const elevated=track.parts[track.bridge.overParts[0]];
- const middle=track.bridge.crossing||positionOnPiece(elevated.start,elevated.id,.5),angle=elevated.start.h;
- const halfLength=185,halfWidth=(TRACK_WIDTH+13)/2;
+ if(!elevated)return;
+ const lower=track.parts[track.bridge.underParts?.[0]];
+ const middle=track.bridge.crossing||positionOnPiece(elevated.start,elevated.id,.5);
+ const angle=elevated.start.h;
+ const underAngle=lower?.start?.h??angle+Math.PI/2;
+ const theta=Math.abs(Math.sin(angle-underAngle));
+ const halfLength=Math.min(210,Math.max(103,Math.ceil((TRACK_WIDTH/2+16)/Math.max(.55,theta))));
+ const halfWidth=(TRACK_WIDTH+17)/2;
  ctx.save();ctx.translate(middle.x,middle.y);ctx.rotate(angle);
- // Los soportes están fuera de la intersección, sin invadir las ranuras.
- for(const x of [-halfLength-33,halfLength+33]){
-  ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=12;
-  ctx.fillStyle="#566d75";roundRect(ctx,x-15,-101,30,202,7);ctx.fill();
-  ctx.shadowBlur=0;ctx.fillStyle="#becfcf";ctx.fillRect(x-4,-92,8,184);
-  ctx.restore();
+ // El puente del ejemplo tiene apoyos automáticos. Los kits manuales
+ // ya dibujaron sus apoyos bajo la recta antes de pintar la pista.
+ if(track.bridge.virtual){
+  for(const x of [-halfLength-32,halfLength+32]){
+   ctx.save();ctx.shadowColor="#0008";ctx.shadowBlur=11;
+   ctx.fillStyle="#52666e";roundRect(ctx,x-14,-101,28,202,7);ctx.fill();
+   ctx.shadowBlur=0;ctx.fillStyle="#bdcfd0";ctx.fillRect(x-4,-93,8,186);
+   ctx.restore();
+  }
  }
- ctx.beginPath();roundRect(ctx,-halfLength,-halfWidth,halfLength*2,halfWidth*2,13);ctx.clip();
+ ctx.beginPath();roundRect(ctx,-halfLength,-halfWidth,halfLength*2,halfWidth*2,9);ctx.clip();
  ctx.rotate(-angle);ctx.translate(-middle.x,-middle.y);
- const upper=track.bridge.overParts.flatMap((index,i)=>i?track.parts[index].points.slice(1):track.parts[index].points);
- ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=16;ctx.shadowOffsetY=10;
- strokePath(ctx,upper,"#10181c",TRACK_WIDTH+23);ctx.restore();
- strokePath(ctx,upper,"#728187",TRACK_WIDTH+13);
- strokePath(ctx,upper,"#1d282e",TRACK_WIDTH+4);
- strokePath(ctx,upper,"#36424a",TRACK_WIDTH-7);
- strokePath(ctx,upper,"#28343a",TRACK_WIDTH-35);
- for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
-  const line=translated(upper,laneOffset);
-  strokePath(ctx,line,"#0a1014",10);
-  strokePath(ctx,translated(upper,laneOffset-7.6),"#aabdc0",2.1);
-  strokePath(ctx,translated(upper,laneOffset+7.6),"#aabdc0",2.1);
-  strokePath(ctx,line,"#050c0e",5);
+ const upper=track.bridge.overParts.flatMap((index,i)=>
+  i?track.parts[index].points.slice(1):track.parts[index].points);
+ ctx.save();ctx.shadowColor="#0009";ctx.shadowBlur=14;ctx.shadowOffsetY=9;
+ strokePath(ctx,upper,PIECE_LOOK.shadow,TRACK_WIDTH+19);ctx.restore();
+ strokePath(ctx,upper,PIECE_LOOK.outer,TRACK_WIDTH+12);
+ strokePath(ctx,upper,PIECE_LOOK.rim,TRACK_WIDTH+5);
+ strokePath(ctx,upper,PIECE_LOOK.deck,TRACK_WIDTH-4);
+ strokePath(ctx,upper,PIECE_LOOK.inner,TRACK_WIDTH-31);
+ for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+  strokePath(ctx,translated(upper,off),PIECE_LOOK.groove,11);
+  strokePath(ctx,translated(upper,off-7.6),PIECE_LOOK.metalA,2.2);
+  strokePath(ctx,translated(upper,off+7.6),PIECE_LOOK.metalB,2.2);
+  strokePath(ctx,translated(upper,off),PIECE_LOOK.guide,5);
  }
- for(const edge of [-72,72])strokePath(ctx,translated(upper,edge),"#8a9a9e",2.6);
+ for(const off of [-72,72])strokePath(ctx,translated(upper,off),PIECE_LOOK.edge,2.5);
  ctx.restore();
 }
 function paintTrack(ctx,track,editing,layer="all"){
