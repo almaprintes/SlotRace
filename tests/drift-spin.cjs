@@ -4,8 +4,9 @@ const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
  const geom=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"");
+   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function el(id){
@@ -27,12 +28,13 @@ const path=require("node:path");
  const localData=new Map(),localStorage={getItem:k=>localData.get(k)||null,setItem:(k,v)=>localData.set(k,v)};
  const frames=[];let clock=0;
  const requestAnimationFrame=fn=>frames.push(fn);
- const keys=Object.keys(geom),values=keys.map(k=>geom[k]);
+ const keys=[...Object.keys(geom),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geom,k)?geom[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.9.8");
+ game.openWorkshop();
+ assert.equal(game.version,"DEV 0.10.0");
  game.openRace();
  const st=game.state,physics=game.physics;
  assert.equal(st.track.valid,true);
@@ -87,5 +89,5 @@ const path=require("node:path");
  assert.equal(st.distance,fixedDistance,"Car returns to same point");
  assert.equal(st.lap,lap,"Lap remains valid");
  assert.ok(st.seconds>3,"Chronometer continues throughout the penalty");
- console.log("SlotRace DEV 0.9.8: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
+ console.log("SlotRace DEV 0.10.0: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
