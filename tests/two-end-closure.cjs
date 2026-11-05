@@ -86,6 +86,7 @@ const path=require("node:path");
  // Cerrar exacto también debe funcionar sin pulsar Iniciar antes:
  // añade la recta proporcional que falta en la cadena completa.
  openPieces();
+ game.puzzle.selectByTap("loose",0); // Actualizar los controles tras el montaje simulado.
  assert.equal(elements.get("autoClose").disabled,false,
   "El botón Cerrar exacto no se bloquea por tener piezas sueltas");
  game.puzzle.closeExactly();
