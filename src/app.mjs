@@ -1738,10 +1738,24 @@ function paintBlueprintTrack(ctx,track){
 function paintBlueprintIdentifiers(ctx,track,groups,refs,scale){
  const pieces=[...track.parts,...groups.flatMap(group=>group.parts)];
  const markers=[];
+ const crossing=track.bridge?.crossing;
+ const underParts=new Set(track.bridge?.underParts||[]);
  for(const part of pieces){
   const code=refs.get(part.id);
   if(!code)continue;
-  const point=positionOnPiece(part.start,part.id,.5);
+  let sample=.5;
+  // La letra de un tramo INFERIOR no debe aparecer encima del tramo
+  // superior justo en el cruce. Desplazarla dentro de su propia pieza.
+  if(crossing&&track.parts[part.index]===part&&underParts.has(part.index)){
+   const mid=positionOnPiece(part.start,part.id,.5);
+   if(Math.hypot(mid.x-crossing.x,mid.y-crossing.y)<TRACK_WIDTH){
+    const a=positionOnPiece(part.start,part.id,.28);
+    const b=positionOnPiece(part.start,part.id,.72);
+    sample=Math.hypot(a.x-crossing.x,a.y-crossing.y)>
+     Math.hypot(b.x-crossing.x,b.y-crossing.y)?.28:.72;
+   }
+  }
+  const point=positionOnPiece(part.start,part.id,sample);
   ctx.save();ctx.translate(point.x,point.y);
   ctx.scale(1/scale,1/scale);
   ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);
