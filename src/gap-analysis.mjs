@@ -41,9 +41,9 @@ export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
  const matching=aligned?straight.find(x=>x.difference<=tolerance):undefined;
  const combination=aligned?composeStraightDistance(forward,catalog):null;
  const exact=aligned&&Math.abs(lateral)<1e-6&&Math.abs(heading)<1e-8&&Boolean(combination);
- const problem=distance<=tolerance?"touching":
-  Math.abs(heading)>HEADING_TOLERANCE_DEGREES*Math.PI/180?"angle":
+ const problem=Math.abs(heading)>HEADING_TOLERANCE_DEGREES*Math.PI/180?"angle":
   Math.abs(lateral)>tolerance?"lateral":
+  distance<=tolerance?"touching":
   forward<=0?"backward":combination?"composition":matching?"match":"length";
  return{from:{...from},to:{...to},distance,forward,lateral,heading,
   headingDegrees:Math.abs(heading)*180/Math.PI,aligned,problem,
