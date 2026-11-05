@@ -220,7 +220,7 @@ export function countPieces(types){
 // Comprobamos una o dos sustituciones EN CUALQUIER POSICIÓN antes de intentar
 // añadir piezas. Las que parecen cerrar se validan con todas las colisiones.
 function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
- const ids=Object.keys(CATALOG),used=countPieces(types);
+ const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy),used=countPieces(types);
  let tested=0,nearest={gap:Infinity,changes:[]};
  const base=buildTrack(types,origin);
  if(base.gap<nearest.gap)nearest={gap:base.gap,changes:[]};
@@ -288,13 +288,70 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
  return{ok:false,nearest,limited:tested>=maxStates,searched:tested};
 }
 
+// Ajuste por DIFERENCIAS de longitudes reales: 87,5 - 75 = 12,5 mm.
+// Nunca introduce una pieza de 12,5 mm: sustituye como máximo dos
+// rectas ya presentes y valida el cierre completo antes de aceptarlo.
+// Sólo sirve cuando los vectores de desplazamiento de las sustituciones
+// corrigen exactamente la separación. No fuerza ángulos ni conectores.
+export function findStraightRebalance(types,{
+ origin=START,raisedParts=[],maxChanges=2
+}={}){
+ if(!allowed(types)||types.length<4)return{ok:false,reason:"Tramo insuficiente"};
+ const base=buildTrack(types,origin,raisedParts);
+ if(base.valid)return{ok:true,types:[...types],unchanged:true,replaced:0,added:0};
+ if(base.headingGap>1e-8)
+  return{ok:false,reason:"Las rectas no pueden corregir una diferencia de ángulo"};
+ const dx=origin.x-base.ends.end.x,dy=origin.y-base.ends.end.y;
+ if(hypot(dx,dy)<1e-6)
+  return{ok:false,reason:"La separación no es longitudinal; revisa el cruce o el puente"};
+ const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&id!=="START350"&&CATALOG[id].length);
+ const options=[];
+ for(const part of base.parts){
+  const initial=CATALOG[part.id];
+  if(!initial?.length||part.id==="START350")continue;
+  for(const to of ids){
+   if(to===part.id)continue;
+   const delta=CATALOG[to].length-initial.length;
+   options.push({index:part.index,from:part.id,to,delta,
+    dx:Math.cos(part.start.h)*delta,dy:Math.sin(part.start.h)*delta});
+  }
+ }
+ const matches=(x,y)=>hypot(dx-x,dy-y)<1e-6;
+ const evaluate=changes=>{
+  const next=[...types];
+  for(const c of changes)next[c.index]=c.to;
+  const built=buildTrack(next,origin,raisedParts);
+  return built.valid?{
+   ok:true,types:next,replaced:changes.length,added:0,
+   changes:changes.map(({index,from,to,delta})=>({index,from,to,delta})),
+   unchanged:false,rebalanced:true
+  }:null;
+ };
+ if(maxChanges>=1)for(const a of options)
+  if(matches(a.dx,a.dy)){
+   const result=evaluate([a]);if(result)return result;
+  }
+ if(maxChanges>=2)for(let i=0;i<options.length;i++){
+  const a=options[i];
+  for(let j=i+1;j<options.length;j++){
+   const b=options[j];
+   if(a.index===b.index||!matches(a.dx+b.dx,a.dy+b.dy))continue;
+   const result=evaluate([a,b]);if(result)return result;
+  }
+ }
+ return{ok:false,reason:"No hay sustitución exacta de una o dos rectas que cierre el trazado"};
+}
 // Busca un cierre utilizando sólo módulos que existan realmente en el inventario.
 // Prioriza conservar la mayor parte posible del circuito; comprueba cruces antes
 // de proponer un resultado. No crea piezas de transición deformadas.
-export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,origin=START}={}){
+export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,origin=START,raisedParts=[]}={}){
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
-  const current=buildTrack(types,origin);
+  const current=buildTrack(types,origin,raisedParts);
   if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
+  // Antes de añadir módulos o explorar cambios arbitrarios, probar
+  // compensaciones matemáticas entre rectas de tamaño comercial.
+  const balanced=findStraightRebalance(types,{origin,raisedParts});
+  if(balanced.ok)return balanced;
   // Caso proporcional: los conectores se enfrentan, no tienen desfase
   // lateral ni angular, y el avance exacto se expresa en unidades de 12,5.
   // En ese caso la solución más corta sale por programación dinámica,
