@@ -152,5 +152,36 @@ const path=require("node:path");
  assert.equal(stored.types.length,0,"Las piezas se guardan como tramo libre");
  assert.equal(stored.loose.length,2,"El grupo de dos piezas se guarda completo");
  assert.ok(stored.workBoard,"Visible tabletop bounds persist");
+ // Conexión simétrica: probar las cuatro combinaciones de extremos de
+ // dos piezas individuales, incluidos los casos antes rechazados.
+ function checkBothEnds(label,moving,expectedSide,expectedReverse,expectedId){
+  game.changeTypes([],"Test de conectores: "+label,[
+   ],geo.START);
+  // Las piezas de laboratorio se colocan en posiciones geométricas precisas.
+  st.loose=[
+   {id:"S350",x:500,y:500,h:0},
+   {id:moving.id,x:moving.x,y:moving.y,h:moving.h}
+  ];
+  const found=game.puzzle.bestMagnet(1);
+  assert.ok(found,"El imán localiza el conector: "+label);
+  assert.equal(found.side,expectedSide,label+": extremo correcto");
+  assert.equal(found.reversed,expectedReverse,label+": inversión correcta");
+  assert.equal(game.puzzle.snapLoose(1,{force:false}),true,label+": acoplamiento efectivo");
+  const groups=game.puzzle.loosePaintGroups();
+  assert.equal(groups.length,1,label+": único grupo magnético");
+  assert.equal(groups[0].parts.length,2,label+": dos piezas alineadas");
+  const [first,second]=groups[0].parts;
+  const end=geo.positionOnPiece(first.start,first.id,1);
+  assert.ok(Math.hypot(end.x-second.start.x,end.y-second.start.y)<1e-6,label+": unión exacta");
+  assert.ok(Math.abs(Math.atan2(Math.sin(end.h-second.start.h),
+    Math.cos(end.h-second.start.h)))<1e-8,label+": orientación exacta");
+  assert.equal(st.loose[1].id,expectedId,label+": identificación del módulo");
+ }
+ checkBothEnds("normal final-inicio",{id:"S175",x:856,y:504,h:0},"append",false,"S175");
+ checkBothEnds("normal inicio-final",{id:"S175",x:315,y:504,h:0},"prepend",false,"S175");
+ checkBothEnds("inverso final-final",{id:"S175",x:681,y:504,h:0},"append",true,"S175");
+ checkBothEnds("inverso inicio-inicio",{id:"S175",x:504,y:504,h:0},"prepend",true,"S175");
+ checkBothEnds("endereza 180 grados",{id:"S175",x:856,y:504,h:Math.PI},"append",false,"S175");
+ checkBothEnds("curva reversible",{id:"R4_225R",x:504,y:504,h:0},"prepend",true,"R4_225L");
  console.log("SlotRace DEV 0.9.2 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
