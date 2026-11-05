@@ -38,7 +38,7 @@ const fs=require("node:fs"),path=require("node:path");
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
- const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!id.includes("_")||id.endsWith("R"));
+ const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
  game.openWorkshop();
  assert.equal(game.version,"DEV 0.10.1");
  assert.equal(st.caseOpen,true,"Caja de corcho abierta por defecto");
