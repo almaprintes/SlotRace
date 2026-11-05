@@ -44,7 +44,7 @@ const state={
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
-  lane:0,run:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
+  lane:0,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
@@ -316,7 +316,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -897,7 +897,7 @@ function play(){
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
- toast("¡Avenir Gripline en pista! Sentido "+(state.driveDirection===1?"horario.":"antihorario."));
+ toast("¡Avenir Gripline listo! Acelera para iniciar el cronómetro.");
  return true;
 }
 
@@ -988,14 +988,20 @@ function curveLimit(p,lane){
 }
 function simulation(dt){
  if(!state.run||!state.track.valid)return;
- state.seconds+=dt; // la penalización forma parte del tiempo de vuelta
+ const g=state.keyboardGas?1:state.gas;
+ // Salida sin semáforo: no cronometrar espera, ni pulsar el gatillo al 0%.
+ // El primer gas real abre la salida una sola vez por tanda/carril.
+ if(!state.raceStarted){
+  if(g<=0)return;
+  state.raceStarted=true;
+ }
+ state.seconds+=dt; // después de arrancar, también cuenta soltar gas o penalizaciones
  if(state.penalty>0){
   state.penalty=Math.max(0,state.penalty-dt);
   if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
   if(state.penalty===0){state.deslot=null;state.drift=0;}
   return;
  }
- const g=state.keyboardGas?1:state.gas;
  const targetSpeed=g*DRIVE.topSpeed;
  const response=g>0?2.25:2.9;
  state.speed=Math.max(0,Math.min(DRIVE.maxSpeed,
@@ -1154,6 +1160,7 @@ function updateHud(){
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    !state.run?"EN PAUSA":
+   !state.raceStarted?"ESPERANDO SALIDA · ACELERA PARA COMENZAR":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
    "Busca el límite sin pasarte en las curvas";
@@ -2747,7 +2754,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.3",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.13.4",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

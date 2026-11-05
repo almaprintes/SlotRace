@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.3");
+ assert.equal(game.version,"DEV 0.13.4");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -281,6 +281,21 @@ const path=require("node:path");
 
  // Los tiempos de TODAS las vueltas se ven al salir, pero no se persisten.
  game.openRace();
+ assert.equal(st.raceStarted,false,"Nuevo circuito cargado: salida en espera");
+ assert.equal(st.seconds,0);
+ game.physics.simulationStep(.3);
+ assert.equal(st.seconds,0,"El reloj no avanza sin gas");
+ st.keyboardGas=true;
+ game.physics.simulationStep(.02);
+ assert.equal(st.raceStarted,true,"Acelerar con teclado inicia la salida");
+ assert.ok(st.seconds>0&&st.seconds<=.021);
+ st.keyboardGas=false;
+ const elapsed=st.seconds;
+ game.physics.simulationStep(.04);
+ assert.ok(st.seconds>elapsed,"El cronómetro sigue aunque se suelte el acelerador");
+ game.openRace();
+ assert.equal(st.raceStarted,false,"Otra sesión vuelve a esperar la salida");
+ assert.equal(st.seconds,0);
  st.seconds=16.75;game.completeLap();
  st.seconds=15.20;game.completeLap();
  st.seconds=16.10;game.completeLap();
@@ -331,5 +346,5 @@ const path=require("node:path");
  assert.ok(withBackup.some(x=>x.name==="OchoA"));
  assert.ok(withBackup.some(x=>x.name==="Splash"));
 
- console.log("SlotRace DEV 0.13.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.13.4: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

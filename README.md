@@ -1,3 +1,15 @@
+# SlotRace DEV 0.13.4 · Cronómetro activado al acelerar
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.4
+
+- Antes de incorporar el semáforo de salida, al pulsar **Jugar** el coche y el reloj esperan a **0,000 s**. Aparece «ESPERANDO SALIDA · ACELERA PARA COMENZAR».
+- La **primera potencia real mayor que cero** en el dial táctil o la tecla de acelerar inicia el cronómetro exactamente desde ese primer fotograma de simulación. Solo tocar el dial al 0 % no inicia el reloj.
+- Una vez iniciada la vuelta, el cronómetro sigue avanzando al **soltar el acelerador** y durante las penalizaciones. Las pausas continúan deteniéndolo como antes.
+- Cada nueva sesión y cada cambio de carril en pausa rearman la salida. Las siguientes vueltas siguen cronometrándose sin volver a esperar gas.
+- No hay cambios de geometría, físicas, récords, inventario ni datos de OchoA/Splash; son cambios del estado transitorio de la carrera.
+
+---
+
 # SlotRace DEV 0.13.3 · Guardado seguro y rescate de circuitos
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.3
