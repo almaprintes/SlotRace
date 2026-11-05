@@ -187,5 +187,19 @@ const path=require("node:path");
  assert.match(navigator.shared.files[0].name,/\.png$/);
  assert.ok(navigator.shared.files[0].parts[0].size>0);
 
+// También se identifican módulos sueltos que todavía no se han unido
+// al trazado principal. No introducir un orden numerado.
+ st.loose.push({id:"S075",x:1650,y:650,h:0});
+ const partial=game.blueprintData();
+ const partialMeta=game.drawBlueprint(pngCtx,partial);
+ assert.equal(partialMeta.markers.length,st.track.parts.length+1,
+  "Incluye una marca para cada pieza suelta junto a las ya montadas");
+ assert.equal(partialMeta.markers.at(-1).id,"S075");
+ assert.equal(partialMeta.markers.at(-1).code,partialMeta.references.S075);
+ assert.ok(!renderTexts.includes("ORDEN DE MONTAJE"),
+  "El plano con piezas sueltas sigue sin incluir montaje numerado");
+ st.loose.pop();
+
+
  console.log("SlotRace DEV 0.10.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
