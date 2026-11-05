@@ -1,8 +1,22 @@
-# SlotRace · DEV 0.10.0 — menú principal, Avenir Gripline, exportación PNG y sentido de carrera
+# SlotRace · DEV 0.10.1 — plano ampliado con pista blanca y juntas negras
 
 Proyecto independiente de Top Down RACE. Prototipo web **jugable en móvil**, desplegado con **GitHub Actions + GitHub Pages** y sin backend.
 
 **Enlace:** https://almaprintes.github.io/SlotRace/
+
+## DEV 0.10.1 — plano blanco de alto contraste y receta compacta
+
+**Enlace para iPhone/PWA:** https://almaprintes.github.io/SlotRace/?v=0.10.1
+
+- **Pista blanca en el PNG** con contorno negro, líneas de los dos carriles en gris oscuro y las **juntas de todas las piezas en negro** para distinguir cada módulo. El taller y la carrera conservan su pista oscura.
+- **Vista cenital ampliada:** el área del circuito crece de **758 a 1185 píxeles de alto** en el PNG estándar de 1500 píxeles de ancho. Se reduce el margen vacío del circuito y se conservan los soportes del puente.
+- **Sin orden de montaje:** eliminado por completo el bloque de secuencia numerada. Se mantienen únicamente cabecera, plano, distancia/estado/puentes, receta agrupada por modelo y cantidades.
+- **Composición dinámica:** altura total del PNG adaptada a las filas reales de la receta, sin cortar la lista, con el circuito centrado. Sigue funcionando el menú de compartir de iOS y la descarga normal.
+- **Prueba automatizada:** `tests/game-shell.cjs` comprueba que existe el blanco puro (#ffffff), las juntas negras (#080c0f), el contorno negro y que ya no aparece «ORDEN DE MONTAJE». La exportación no modifica el guardado ni la orientación del coche.
+
+No se cambia ninguna dimensión física de SR-Precision, ni los circuitos guardados en `slotrace-lab-10`.
+
+---
 
 ## DEV 0.10.0 — experiencia de juego con taller y carreras separados
 
