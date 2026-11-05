@@ -703,9 +703,12 @@ function updateUI(){
   el.classList.toggle("empty",free===0);
   el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===chosen)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen));
  }
- $("tableCaption").textContent=state.looseSelection>=0?"PIEZA SUELTA · arrástrala al conector amarillo":
- state.selection>=0?"TRAMO SELECCIONADO · toca otra pieza para sustituirlo":
- state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":"ARRASTRA UNA PIEZA DESDE ⠿ · PELLIZCA PARA ZOOM";
+ $("tableCaption").textContent=state.pinch?.mode==="rotate"?
+  "GIRANDO · SALTOS EXACTOS DE 22,5°":
+ state.looseSelection>=0?"DOS DEDOS: GIRAR 22,5° · ARRASTRA PARA ACOPLAR":
+ state.selection>=0?"DOS DEDOS: GIRAR 22,5° · TOCA DOS VECES: PIEZA":
+ state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":
+ "SOBRE PIEZA: DOS DEDOS GIRAN 22,5° · FONDO: ZOOM";
  updateHud();
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
