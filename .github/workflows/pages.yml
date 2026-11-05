@@ -55,6 +55,9 @@ jobs:
       - name: Comprobar proporcionalidad modular y diagnosticar huecos
         run: node tests/modular-closure.cjs
 
+      - name: Comprobar cierre real por ambos extremos con hueco de 175 mm
+        run: node tests/two-end-closure.cjs
+
       - name: Preparar sitio estático
         run: |
           mkdir -p _site
