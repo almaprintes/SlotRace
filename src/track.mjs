@@ -329,7 +329,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
           const built=buildTrack(guess,origin);
           return built.valid?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
         }
-        if(hypot(pose.x-target.x,pose.y-target.y)>remaining*584+SNAP_MM)return null;
+        if(hypot(pose.x-target.x,pose.y-target.y)>remaining*600+SNAP_MM)return null;
         for(const id of ids){
           if((counts[id]||0)>=stockLimit(id))continue;
           counts[id]=(counts[id]||0)+1;proposed.push(id);
