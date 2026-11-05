@@ -136,6 +136,53 @@ function reversedPartId(id){
  if(id.endsWith("L"))return CATALOG[id.slice(0,-1)+"R"]?id.slice(0,-1)+"R":null;
  return null;
 }
+// Validación doble: unir un extremo sólo cierra un circuito si el
+// extremo contrario también coincide. No confundir piezas que se rozan
+// con un lazo matemáticamente conectado.
+function loopFromLooseGroup(index){
+ const group=looseGroup(index);
+ if(!group||group.indices.length<4)return null;
+ for(let k=1;k<group.parts.length;k++){
+  const prev=group.parts[k-1],cur=group.parts[k];
+  const end=positionOnPiece(prev,prev.id,1);
+  if(connectorDistance(end,cur)>1e-5||
+     Math.abs(angleDiff(end.h,cur.h))>1e-7)return null;
+ }
+ const raised=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
+ const track=buildTrack(group.parts.map(p=>p.id),group.start,raised);
+ return{group,track};
+}
+function closeLooseLoop(index,{history=true}={}){
+ if(state.types.length)return false;
+ const candidate=loopFromLooseGroup(index);
+ if(!candidate?.track.closed)return false;
+ if(history)pushHistory();
+ const {group,track}=candidate;
+ state.types=group.parts.map(p=>p.id);
+ state.bridgeParts=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
+ state.origin={...group.start};
+ for(const i of [...group.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+ extendWorkBoard();
+ state.selectedGroup="main";state.selectionMode="group";
+ state.selection=0;state.looseSelection=-1;state.dragLoose=-1;
+ save();updateUI();
+ toast(track.valid?
+  "¡Clac doble! Los dos extremos encajan: circuito cerrado.":
+  "Extremos unidos, pero falta resolver el cruce o la posición del puente.");
+ return true;
+}
+function wouldCloseOnJoin(moving,target,side,reversed){
+ if(target.kind!=="loose"||state.types.length)return false;
+ const t=looseGroup(target.index);
+ if(!t||moving.indices.length+t.indices.length<4)return false;
+ const movingIds=moving.parts.map(p=>p.id);
+ if(reversed&&movingIds.length===1)movingIds[0]=reversedPartId(movingIds[0]);
+ const joined=side==="append"?
+  [...t.parts.map(p=>p.id),...movingIds]:
+  [...movingIds,...t.parts.map(p=>p.id)];
+ return buildTrack(joined,START).closed;
+}
 function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
  const moving=looseGroup(index);if(!moving)return null;
  const excluded=new Set(moving.indices),targets=[];
@@ -170,9 +217,12 @@ function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
    if(gap>distance||Math.abs(rotation)>maxAngle)continue;
    // Favorecer conectores próximos y cambios mínimos de orientación,
    // pero nunca bloquear un empalme válido sólo por girar 180°.
-   const score=gap+Math.abs(rotation)*22;
+   const closesLoop=wouldCloseOnJoin(moving,target,candidate.side,candidate.reversed);
+   // Si la pieza encaja por ambos extremos, esa posición tiene prioridad
+   // frente a una unión aislada más cercana que dejaría el otro abierto.
+   const score=gap+Math.abs(rotation)*22-(closesLoop?400:0);
    if(!best||score<best.score)
-    best={...target,...candidate,gap,rotation,score};
+    best={...target,...candidate,gap,rotation,score,closesLoop};
   }
  }
  return best;
@@ -223,9 +273,14 @@ function snapLoose(index,{force=false,history=true}={}){
    state.loose[i].magnetGroup=groupId;state.loose[i].magnetOrder=order;
   }
   state.selectedGroup=groupId;state.selectionMode="group";state.looseSelection=combined[0];state.selection=-1;
+  // Tras la primera unión, comprobar también la conexión restante.
+  // Si se ha completado un circuito cerrado, convertir el grupo a pista
+  // jugable sin esperar a que el usuario pulse Iniciar.
+  if(closeLooseLoop(combined[0],{history:false}))return true;
  }
  state.dragLoose=-1;save();updateUI();
- toast("¡Clac! Piezas acopladas: ya puedes moverlas como un tramo.");
+ toast(state.track.valid?"¡Clac doble! Circuito cerrado. Puedes correr.":
+  "¡Clac! Un extremo conectado; revisa el otro para cerrar.");
  return true;
 }
 function detachConnected(index,{history=true}={}){
