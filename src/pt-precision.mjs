@@ -20,6 +20,12 @@ const curve = (radiusId,deg,reference,direction) =>
     radiusId,radius:RADII[radiusId],angle:direction*deg*Math.PI/180,
     degrees:deg,direction,reference});
 const parts = {
+  // Módulos de ajuste propios de SlotRace. Longitudes exactas derivadas
+  // de PT/57 (78 mm); NO se presentan como piezas SCX reales.
+  S00975:straight("Ajuste 9,75",78/8,"SR/A-1/8",{virtualMicroAdapter:true}),
+  S0195:straight("Ajuste 19,5",78/4,"SR/A-1/4",{virtualMicroAdapter:true}),
+  S039:straight("Ajuste 39",78/2,"SR/A-1/2",{virtualMicroAdapter:true}),
+  S0585:straight("Ajuste 58,5",78*3/4,"SR/A-3/4",{virtualMicroAdapter:true}),
   S078:straight("Recta corta 78",78,"PT/57"),
   S0875:straight("Cuarto exacto 87,5",GEOMETRY.straightUnit/2,"PT/58 (nominal 87 mm redondeados)",{virtualExactQuarter:true}),
   S175:straight("Media recta 175",175,"PT/59"),
