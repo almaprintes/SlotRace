@@ -28,14 +28,14 @@ const assert=require("node:assert/strict");
  assert.equal(buildTrack(STARTER).valid,true);
  assert.equal(buildTrack(FIGURE_EIGHT).valid,true);
  // La simetría de dos lados permite resolver un hueco exacto con piezas
- // distintas: una punta de 25 mm frente a una recta normal.
+ // distintas: 25 mm usando dos módulos de ajuste de 12,5 mm.
  const ovalWithAdjustment=[
-   "S350","S025",...Array(4).fill("R2_45R"),
-   "S350","S025",...Array(4).fill("R2_45R")
+   "S350","S0125","S0125",...Array(4).fill("R2_45R"),
+   "S350","S0125","S0125",...Array(4).fill("R2_45R")
  ];
- const rotated=[...ovalWithAdjustment.slice(2),...ovalWithAdjustment.slice(0,2)];
+ const rotated=[...ovalWithAdjustment.slice(3),...ovalWithAdjustment.slice(0,3)];
  assert.equal(buildTrack(rotated).valid,true,"Óvalo modular simétrico");
- const short=rotated.slice(0,-1);
+ const short=rotated.slice(0,-2);
  const shortTrack=buildTrack(short);
  assert.equal(shortTrack.closed,false);
  const delta=measureGap(shortTrack.ends.end,shortTrack.parts[0].start,CATALOG);
@@ -44,8 +44,8 @@ const assert=require("node:assert/strict");
  const closed=findLegalClosure(short);
  assert.equal(closed.ok,true,"La búsqueda de cierre modular encuentra solución");
  assert.equal(closed.modular,true,"Uso de composición exacta y no ajuste de posiciones");
- assert.equal(closed.added,1);
- assert.equal(closed.types.at(-1),"S025");
+ assert.equal(closed.added,2);
+ assert.deepEqual(closed.types.slice(-2),["S0125","S0125"]);
  assert.equal(buildTrack(closed.types).valid,true);
 
  // Si el hueco es recto y está sobre la rejilla, SIEMPRE hay composición
