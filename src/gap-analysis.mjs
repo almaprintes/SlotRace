@@ -4,6 +4,28 @@ export const GAP_TOLERANCE_MM=3;
 export const HEADING_TOLERANCE_DEGREES=1;
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 const round=n=>Math.round(n*10)/10;
+// Sólo los huecos cuya longitud sea múltiplo exacto de la unidad
+// pueden completarse mediante rectas sin modificar la geometría.
+// Las piezas deben seguir alineadas y la solución usa el mínimo número
+// posible de módulos, con preferencia por los largos.
+export function composeStraightDistance(distance,catalog,unit=12.5,{maxUnits=800}={}){
+ if(!Number.isFinite(distance)||!Number.isFinite(unit)||unit<=0||distance<=0)return null;
+ const units=Math.round(distance/unit);
+ if(units<1||units>maxUnits||Math.abs(distance-units*unit)>1e-6)return null;
+ const options=Object.entries(catalog)
+  .filter(([,p])=>Number.isFinite(p.length)&&p.length>0&&!p.startFinish)
+  .map(([id,p])=>({id,units:Math.round(p.length/unit),length:p.length}))
+  .filter(p=>p.units>=1&&Math.abs(p.length-p.units*unit)<1e-7)
+  .sort((a,b)=>b.units-a.units||a.id.localeCompare(b.id));
+ const best=Array(units+1).fill(null);best[0]=[];
+ for(let n=1;n<=units;n++)for(const option of options){
+  const rem=n-option.units;
+  if(rem<0||!best[rem])continue;
+  const candidate=[...best[rem],option.id];
+  if(!best[n]||candidate.length<best[n].length)best[n]=candidate;
+ }
+ return best[units]?{ids:best[units],length:units*unit,units,count:best[units].length}:null;
+}
 export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
  if(!from||!to||![from.x,from.y,from.h,to.x,to.y,to.h].every(Number.isFinite))
   throw new Error("Conectores no válidos para medir el hueco");
@@ -17,14 +39,15 @@ export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
   .sort((a,b)=>a.difference-b.difference||a.length-b.length);
  const aligned=Math.abs(lateral)<=tolerance&&Math.abs(heading)<=HEADING_TOLERANCE_DEGREES*Math.PI/180&&forward>0;
  const matching=aligned?straight.find(x=>x.difference<=tolerance):undefined;
- const exact=aligned&&matching&&matching.difference<1e-6&&Math.abs(lateral)<1e-6&&Math.abs(heading)<1e-8;
+ const combination=aligned?composeStraightDistance(forward,catalog):null;
+ const exact=aligned&&Math.abs(lateral)<1e-6&&Math.abs(heading)<1e-8&&Boolean(combination);
  const problem=distance<=tolerance?"touching":
   Math.abs(heading)>HEADING_TOLERANCE_DEGREES*Math.PI/180?"angle":
   Math.abs(lateral)>tolerance?"lateral":
-  forward<=0?"backward":matching?"match":"length";
+  forward<=0?"backward":combination?"composition":matching?"match":"length";
  return{from:{...from},to:{...to},distance,forward,lateral,heading,
   headingDegrees:Math.abs(heading)*180/Math.PI,aligned,problem,
-  matching:matching||null,nearest:straight[0]||null,exact:Boolean(exact),
+  matching:matching||null,combination,nearest:straight[0]||null,exact:Boolean(exact),
   measured:{distance:round(distance),forward:round(forward),
    lateral:round(lateral),angle:round(Math.abs(heading)*180/Math.PI)}};
 }
@@ -53,7 +76,16 @@ export function gapExplanation(result){
  if(result.problem==="angle")return "HUECO "+m.distance+" mm · Diferencia de orientación "+m.angle+"°. Una recta no servirá: cambia una curva o gira el tramo.";
  if(result.problem==="lateral")return "HUECO "+m.distance+" mm · Desfase lateral "+m.lateral+" mm. Una recta más corta no corrige el lateral: cambia una curva anterior.";
  if(result.problem==="backward")return "Los extremos se superponen en sentido longitudinal. Revisa la orientación de los tramos.";
- if(result.matching)return "HUECO "+m.distance+" mm · Compatible con "+result.matching.name+" ("+result.matching.length+" mm)"+(result.exact?" · encaje matemático exacto.":" · dentro de la tolerancia de 3 mm, sin deformar la pieza.");
- if(result.problem==="length")return "HUECO "+m.forward+" mm · No existe recta exacta en el catálogo. Más próxima: "+(n?.length??"—")+" mm; cambia un tramo anterior para cerrar.";
+ if(result.combination){
+  const ids=result.combination.ids;
+  return "HUECO "+m.forward+" mm · Solución modular exacta: "+ids.length+
+    " pieza(s) ("+ids.map(id=>result.partNames?.[id]||id).join(" + ")+
+    "). Sólo válido con extremos exactamente alineados.";
+ }
+ if(result.matching)return "HUECO "+m.distance+" mm · La recta "+result.matching.length+
+  " mm está a "+Math.round(result.matching.difference*10)/10+
+  " mm, pero no cierra matemáticamente exacto. Reajusta el trazado.";
+ if(result.problem==="length")return "HUECO "+m.forward+
+  " mm · Ninguna combinación de rectas cierra exactamente. La longitud debe ser múltiplo de 12,5 mm y los extremos estar alineados.";
  return "Este hueco no puede cerrarse exactamente con una sola recta.";
 }
