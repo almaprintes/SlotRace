@@ -6,8 +6,9 @@ const fs=require("node:fs");
 const path=require("node:path");
 (async()=>{
  const geom=await import("../src/track.mjs");
+ const blueprint=await import("../src/blueprint.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/,"");
+   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function makeEl(id){
@@ -55,7 +56,7 @@ const path=require("node:path");
  };
  let now=0;const callbacks=[];
  const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=Object.keys(geom);const values=keys.map(k=>geom[k]);
+ const keys=[...Object.keys(geom),...Object.keys(blueprint)];const values=keys.map(k=>Object.hasOwn(geom,k)?geom[k]:blueprint[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},requestAnimationFrame,class{observe(){}}
  );
@@ -64,7 +65,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.9.8");
+ assert.equal(window.slotraceLab.version,"DEV 0.10.0");
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
  assert.equal(state.run,true);
@@ -121,5 +122,5 @@ const path=require("node:path");
  assert.equal(trigger.disabled,true);
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.9.8: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.10.0: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
