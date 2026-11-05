@@ -601,13 +601,13 @@ function menuRace(){
 function play(){
  state.triggerGesture=null;
  if(!state.track.valid){
-  state.draft=snapshot();
-  state.types=STARTER.slice();state.loose=[];state.bridgeParts=[];state.origin={...START};state.track=buildTrack(state.types,state.origin,state.bridgeParts);resetWorkBoard();state.selection=-1;state.looseSelection=-1;
-  save();
+  toast("El circuito todavía no está cerrado. Termina el montaje en el taller.");
+  return false;
  }
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
- toast("¡Pista lista! Suelta el gatillo antes de las curvas.");
+ toast("¡Avenir Gripline en pista! Sentido "+(state.driveDirection===1?"horario.":"antihorario."));
+ return true;
 }
 function back(){openWorkshop();}
 function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
@@ -859,7 +859,8 @@ function updateUI(){
  $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
- $("play").textContent=t.valid?"🏁 Correr":"🏁 Probar óvalo";
+ $("play").textContent="🏁 Correr";
+ $("play").disabled=!t.valid;
  $("restore").hidden=!state.draft;
  $("pieceCase").classList.toggle("case-open",state.caseOpen);
  $("caseInterior").hidden=!state.caseOpen;
