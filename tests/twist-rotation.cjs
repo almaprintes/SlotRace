@@ -147,5 +147,25 @@ const path=require("node:path");
  game.puzzle.canvasPointerEnd(event(162,22,102));
  game.puzzle.canvasPointerEnd(event(22,22,101));
  assert.equal(st.loose.length,0,"Zoom sin creación accidental de piezas");
- console.log("SlotRace DEV 0.9.6: giro dos dedos 22,5°, tramo, pieza, deshacer y zoom libre — OK");
+
+ // Añadir un segundo dedo mientras arrastramos una pista no debe perder
+ // el movimiento original ni interceptar su evento de guardado.
+ game.changeTypes(["S350"],"Movimiento previo al segundo dedo",[],{x:650,y:500,h:0});
+ st.camera={panX:0,panY:0,zoom:1};
+ const dragPoint=screenOf({x:775,y:500});
+ const originBefore={...st.origin};
+ game.puzzle.canvasPointerDown(event(dragPoint.x,dragPoint.y,201));
+ game.puzzle.canvasPointerMove(event(dragPoint.x+35,dragPoint.y+4,201));
+ assert.equal(st.pointer.get(201).dragged,true,"El primer dedo ya está arrastrando");
+ game.puzzle.canvasPointerDown(event(dragPoint.x+90,dragPoint.y+5,202));
+ assert.equal(st.pinch.mode,"camera","Segundo dedo sobre un arrastre no inicia rotación");
+ assert.equal(st.pointer.get(201).consumed,undefined,"No cancelar el arrastre activo");
+ game.puzzle.canvasPointerEnd(event(dragPoint.x+90,dragPoint.y+5,202));
+ game.puzzle.canvasPointerEnd(event(dragPoint.x+35,dragPoint.y+4,201));
+ assert.notDeepEqual(st.origin,originBefore,"Se conserva la traslación original");
+ const savedDrag=JSON.parse(saved.get("slotrace-lab-09"));
+ close(savedDrag.origin.x,st.origin.x);
+ close(savedDrag.origin.y,st.origin.y);
+
+ console.log("SlotRace DEV 0.9.6: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
