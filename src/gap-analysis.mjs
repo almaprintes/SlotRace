@@ -13,7 +13,7 @@ export function composeStraightDistance(distance,catalog,unit=12.5,{maxUnits=800
  const units=Math.round(distance/unit);
  if(units<1||units>maxUnits||Math.abs(distance-units*unit)>1e-6)return null;
  const options=Object.entries(catalog)
-  .filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&id!=="START350")
+  .filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&id!=="START350"&&!p.legacy)
   .map(([id,p])=>({id,units:Math.round(p.length/unit),length:p.length}))
   .filter(p=>p.units>=1&&Math.abs(p.length-p.units*unit)<1e-7)
   .sort((a,b)=>b.units-a.units||a.id.localeCompare(b.id));
@@ -33,7 +33,7 @@ export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
  const forward=dx*ca+dy*sa,lateral=-dx*sa+dy*ca;
  const distance=Math.hypot(dx,dy);
  const heading=wrap(to.h-from.h);
- const straight=Object.entries(catalog).filter(([id,p])=>Number.isFinite(p.length)&&p.length>0)
+ const straight=Object.entries(catalog).filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&!p.legacy)
   .map(([id,p])=>({id,length:p.length,name:p.name,virtual:!!p.virtualMicroAdapter,
    difference:Math.abs(p.length-forward)}))
   .sort((a,b)=>a.difference-b.difference||a.length-b.length);
@@ -86,6 +86,6 @@ export function gapExplanation(result){
   " mm está a "+Math.round(result.matching.difference*10)/10+
   " mm, pero no cierra matemáticamente exacto. Reajusta el trazado.";
  if(result.problem==="length")return "HUECO "+m.forward+
-  " mm · Ninguna combinación de rectas cierra exactamente. La longitud debe ser múltiplo de 12,5 mm y los extremos estar alineados.";
+  " mm · No existe una combinación positiva de las cinco rectas. Puedes intentar compensar el hueco sustituyendo rectas del trazado (75 ↔ 87,5 mm) con Cerrar exacto.";
  return "Este hueco no puede cerrarse exactamente con una sola recta.";
 }
