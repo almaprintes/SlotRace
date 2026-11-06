@@ -8,6 +8,10 @@ const fs=require("node:fs"),path=require("node:path");
  const track=geo.buildTrack(recipe.types,recipe.origin,recipe.bridgeParts);
  assert.ok(track.valid&&track.closed,"La receta exacta Doble ovalo está homologada");
  assert.equal(track.parts.length,16);
+ // Las dos fronteras suelo/rampa del Doble ovalo deben renderizarse como
+ // conectores continuos, no como cuatro tapas rectas que se superponen.
+ const seamsExpected=[[2,3],[8,9]];
+
  assert.ok(track.bridge.crossings.length>20,
   "Incluye una curva a dos alturas coincidente que produce cruces repetidos");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -77,6 +81,24 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(elements.get("settingsXRay").attrs["aria-pressed"],"true");
  const stored=JSON.parse(data.get("slotrace-lab-10"));
  assert.equal(stored.xRayEnabled,true,"La preferencia se guarda");
+ const transitions=game.rendering.elevationJoins(track);
+ assert.deepEqual(transitions.map(j=>[j.from,j.to]),seamsExpected,
+  "Solo las dos fronteras suelo-rampa se sueldan; no se tocan los cruces");
+ assert.strictEqual(game.rendering.elevationJoins(track),transitions,
+  "La geometría de las juntas se conserva en caché");
+ for(const join of transitions){
+  const before=track.parts[join.from],after=track.parts[join.to];
+  assert.ok(Math.hypot(join.x-before.end.x,join.y-before.end.y)<.01);
+  assert.ok(Math.hypot(after.start.x-join.x,after.start.y-join.y)<.01);
+  assert.equal(join.points.length,before.points.length+after.points.length-1,
+   "El asfalto se pinta como una sola ruta sin dos extremos en la frontera");
+ }
+ const clipsBefore=clips.length;
+ game.rendering.paintElevationJoins(ctx,track);
+ assert.equal(clips.length-clipsBefore,2,
+  "Una soldadura de render localizada por frontera sin recortar las curvas");
+ assert.match(source,/paintElevationJoins\(ctx,track\)/,
+  "La pasada de soldadura se aplica también durante la carrera");
  const polygons=game.rendering.xRayDeckPolygons(track);
  assert.ok(polygons.length===1&&polygons[0].length>25);
  assert.strictEqual(game.rendering.xRayDeckPolygons(track),polygons,"Máscara cacheada");
@@ -131,5 +153,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.26: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.27: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});
