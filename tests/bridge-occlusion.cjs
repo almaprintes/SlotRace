@@ -117,16 +117,16 @@ const path=require("node:path");
  const upperWithLoose=render(dForPiece(7),64);
  assert.deepEqual(upperWithLoose,["base","deck","car"],
   "No aparecen piezas sueltas sobre la vía superior durante la carrera");
+ assert.equal(window.__seamLog.length,0,
+  "En carrera no hay cortes transversales de costuras entre piezas");
+ assert.equal(window.__rampDraws.length,0,
+  "En carrera no se superponen marcas adicionales sobre los raíles");
  // El editor sí debe mostrar las piezas sueltas para su construcción.
  game.state.mode="build";
  window.__drawLog.length=0;
  game.rendering.renderScene(elements.get("editCanvas"),"build");
  assert.ok(window.__drawLog.includes("loose"),"Las piezas sueltas siguen visibles en Construir");
  game.state.mode="race";game.state.loose=[];
- assert.equal(window.__seamLog.length,0,
-  "En carrera no hay cortes transversales de costuras entre piezas");
- assert.equal(window.__rampDraws.length,0,
-  "En carrera no se superponen marcas adicionales sobre los raíles");
  assert.match(source,/ctx\.globalCompositeOperation="source-over"/,
   "La capa opaca no utiliza transparencias ni composiciones especiales");
  assert.doesNotMatch(
