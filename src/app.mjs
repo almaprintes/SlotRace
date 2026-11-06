@@ -3747,7 +3747,21 @@ function canvasPointerEnd(e){
   if(p.looseIndex>=0&&!snapLoose(p.looseIndex,{history:false})){
    save();updateUI();
   }
-  if(p.moveMain){extendWorkBoard();save();updateUI();}
+  if(p.moveMain){
+   // El grupo principal también es un imán: al moverlo, enganchar un grupo
+   // suelto próximo, aunque sea de varias piezas y llegue al revés.
+   const groupsSeen=new Set(),matches=[];
+   if(!state.track.closed)for(let i=0;i<state.loose.length;i++){
+    const group=looseGroup(i);
+    if(!group||groupsSeen.has(group.key))continue;
+    groupsSeen.add(group.key);
+    const match=bestMagnet(i);
+    if(match?.kind==="main")matches.push({i,score:match.score});
+   }
+   matches.sort((a,b)=>a.score-b.score);
+   if(matches.length)snapLoose(matches[0].i,{history:false});
+   extendWorkBoard();save();updateUI();
+  }
   state.dragLoose=-1;
   return;
  }
