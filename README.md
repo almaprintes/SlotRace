@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.26 · Rayos X pulidos y pruebas completas
+
+**Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.26
+
+- **Ajustes → Rayos X:** opción que se guarda en el dispositivo, apagada por defecto. Sirve tanto en «Construir» como en «Jugar».
+- **Túneles y circuitos multinivel:** dos carriles discontinuos turquesa con un halo oscuro discreto, recortados al contorno real de la pista superior. No altera la apariencia normal de los tramos visibles.
+- **Coche inferior:** exclusivamente un contorno discontinuo de su carrocería, con borde contrastado y sin sprite o relleno visible cuando queda bajo la cubierta.
+- **Coche superior:** siempre se dibuja después de las guías Rayos X, para que los carriles inferiores no atraviesen su carrocería.
+- **Rendimiento iPhone:** las guías de carril y el contorno de la cubierta se almacenan por geometría, en vez de recalcular todos los desplazamientos cada fotograma.
+- **Caso real «Doble ovalo»:** se conserva la receta de 16 piezas en `tests/fixtures/doble-ovalo.json`. La regresión verifica cinco puntos de la curva totalmente superpuesta, guías discontinuas, silueta, configuración persistente y prioridad de las capas.
+- **CI:** se ha corregido también la aserción obsoleta del constructor que hacía fallar las pruebas de la versión anterior. El estado real de GitHub Actions debe consultarse por separado.
+
+---
+
 # SlotRace DEV 0.14.25 · Rayos X para puentes, túneles y pistas ocultas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.25
