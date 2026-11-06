@@ -1619,8 +1619,7 @@ function updateUI(){
   ["navGarage","garage"],["navStore","store"]]){
   const element=$(id),active=state.mode===mode;
   element.classList.toggle("is-active",active);
-  if(active)element.setAttribute("aria-current","page");
-  else element.removeAttribute("aria-current");
+  element.setAttribute("aria-current",active?"page":"false");
  }
  $("mastSettings").classList.toggle("is-active",state.mode==="settings");
  $("mastSettings").setAttribute("aria-label",state.mode==="settings"?"Ajustes abiertos":"Abrir Ajustes");
