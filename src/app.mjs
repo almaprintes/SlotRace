@@ -98,7 +98,7 @@ const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(
 const state={
   circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
-  library:initialLibrary,sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
+  library:initialLibrary,libraryTab:"circuits",sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   cameraMode:old?.cameraMode==="follow"?"follow":"general",
@@ -333,6 +333,121 @@ function confirmCircuitDeletion(){
  cancelCircuitDeletion();
  save();updateUI();
  toast("«"+item.name+"» eliminado de Mis circuitos.");
+ return true;
+}
+// Las variantes de físicas, coche, sentido y geometría son récords
+// independientes. Nunca tomar mínimos de dos versiones distintas.
+function savedCircuitRecords(item){
+ const prefix="library-"+item.id+"-";
+ const currentShape=item.snapshot.types.join("-");
+ const variants=[];
+ for(const [key,values] of Object.entries(state.records)){
+  if(!key.startsWith(prefix)||!Array.isArray(values)||values.length!==2)continue;
+  const times=values.map(value=>typeof value==="number"&&
+   Number.isFinite(value)&&value>0?value:null);
+  if(times.every(value=>value===null))continue;
+  let signature=key.slice(prefix.length);
+  const car=signature.endsWith("-helix-spark")?"spark":"gripline";
+  if(car==="spark")signature=signature.slice(0,-"-helix-spark".length);
+  const match=signature.match(/-rear-physics-v(\d+)$/);
+  const physics=match?Number(match[1]):0;
+  if(match)signature=signature.slice(0,-match[0].length);
+  const reverse=signature.endsWith("-reverse");
+  if(reverse)signature=signature.slice(0,-"-reverse".length);
+  const currentGeometry=signature===currentShape;
+  variants.push({key,car,reverse,physics,currentGeometry,times,
+   combined:times.every(value=>value!==null)?times[0]+times[1]:null});
+ }
+ variants.sort((a,b)=>Number(b.currentGeometry)-Number(a.currentGeometry)||
+  Number(b.physics===2)-Number(a.physics===2)||
+  b.physics-a.physics||a.car.localeCompare(b.car)||
+  Number(a.reverse)-Number(b.reverse));
+ return variants;
+}
+function libraryText(tag,className,value){
+ const node=document.createElement(tag);
+ if(className)node.className=className;
+ node.textContent=value;
+ return node;
+}
+function renderLibraryRecords(){
+ const list=$("libraryRecordsList");
+ list.innerHTML="";
+ let populated=0,variantTotal=0;
+ for(const item of state.library){
+  const entries=savedCircuitRecords(item);
+  if(entries.length){populated++;variantTotal+=entries.length;}
+  const card=document.createElement("article");
+  card.className="library-record-card";
+  const heading=document.createElement("div");
+  heading.className="library-record-card-head";
+  const info=document.createElement("div");
+  info.className="library-record-card-title";
+  info.appendChild(libraryText("h3","",item.name));
+  info.appendChild(libraryText("small","",entries.length?
+   entries.length+" registro"+(entries.length===1?"":"s"):"Sin tiempos registrados"));
+  const open=document.createElement("button");
+  open.type="button";open.className="mini";
+  open.textContent="Abrir";open.setAttribute("aria-label","Abrir circuito "+item.name);
+  open.addEventListener("click",()=>loadSavedCircuit(item.id));
+  heading.appendChild(info);heading.appendChild(open);card.appendChild(heading);
+  if(!entries.length){
+   card.appendChild(libraryText("p","library-record-empty",
+    "Todavía no has registrado vueltas en este circuito."));
+  }
+  for(const entry of entries){
+   const panel=document.createElement("div");
+   panel.className="library-record-variant"+
+    (entry.physics===2&&entry.currentGeometry?" is-current":"");
+   const name=entry.car==="spark"?"Helix Spark":"Avenir Gripline";
+   const direction=entry.reverse?"Antihorario":"Horario";
+   const generation=entry.physics===2?"Físicas actuales (v2)":
+    entry.physics?"Físicas v"+entry.physics+" · histórico":"Físicas originales · histórico";
+   panel.appendChild(libraryText("div","library-record-variant-title",
+    name+" · "+direction));
+   panel.appendChild(libraryText("small","library-record-variant-meta",
+    generation+(entry.currentGeometry?"":" · Trazado anterior")));
+   const times=document.createElement("div");
+   times.className="library-record-times";
+   for(const [index,label] of ["Izquierda","Derecha"].entries()){
+    const tile=document.createElement("div");
+    tile.className="library-record-time "+(index===0?"lane-left":"lane-right");
+    tile.appendChild(libraryText("small","",label));
+    tile.appendChild(libraryText("strong","",
+     entry.times[index]===null?"—":format(entry.times[index])+" s"));
+    times.appendChild(tile);
+   }
+   const combined=document.createElement("div");
+   combined.className="library-record-time is-combined";
+   combined.appendChild(libraryText("small","","Combinado"));
+   combined.appendChild(libraryText("strong","",
+    entry.combined===null?"—":format(entry.combined)+" s"));
+   times.appendChild(combined);panel.appendChild(times);card.appendChild(panel);
+  }
+  list.appendChild(card);
+ }
+ if(!state.library.length){
+  list.appendChild(libraryText("p","library-record-empty",
+   "Guarda un circuito y completa una vuelta para empezar tu colección de récords."));
+ }
+ $("libraryRecordsCount").textContent=populated+" de "+state.library.length+
+  " con tiempos · "+variantTotal+" registros";
+}
+function updateLibraryTabs(){
+ const showing=state.libraryTab==="records";
+ $("libraryCircuitsPanel").hidden=showing;
+ $("libraryRecordsPanel").hidden=!showing;
+ for(const [id,active] of [["libraryTabCircuits",!showing],["libraryTabRecords",showing]]){
+  const button=$(id);button.classList.toggle("is-active",active);
+  button.setAttribute("aria-selected",String(active));
+  button.tabIndex=active?0:-1;
+ }
+ if(showing)renderLibraryRecords();
+}
+function setLibraryTab(tab){
+ if(tab!=="circuits"&&tab!=="records")return false;
+ state.libraryTab=tab;
+ updateLibraryTabs();
  return true;
 }
 function renderLibrary(){
@@ -1816,12 +1931,10 @@ function updateUI(){
  for(const id of ["circuitName","workCircuitName"])
   if(document.activeElement!==$(id))$(id).value=state.circuitName;
  renderLibrary();
- const orphan=recoverableDraft(),revisions=readCircuitRevisions();
+ updateLibraryTabs();
+ const orphan=recoverableDraft();
  $("libraryDraftRecovery").hidden=!orphan;
  $("libraryRecoverDraft").textContent=orphan?"Recuperar «"+orphan.name+"»":"Recuperar borrador anterior";
- $("libraryVersionRecovery").hidden=!revisions.length;
- $("libraryRestoreVersion").textContent=revisions.length?
-  "Recuperar versión de «"+revisions[0].name+"»":"Recuperar versión anterior";
  $("goHome").hidden=state.mode==="menu";
  $("menuRace").disabled=!state.track.valid;
  $("menuRaceDetail").textContent=state.track.valid?
@@ -3289,6 +3402,8 @@ function initEvents(){
  for(const id of ["libraryHome","garageHome","storeHome","settingsHome"])
   $(id).addEventListener("click",showMenu);
  $("libraryBuild").addEventListener("click",openWorkshop);
+ $("libraryTabCircuits").addEventListener("click",()=>setLibraryTab("circuits"));
+ $("libraryTabRecords").addEventListener("click",()=>setLibraryTab("records"));
  $("garageRace").addEventListener("click",menuRace);
  $("garageChooseGripline").addEventListener("click",()=>selectCar("gripline"));
  $("garageChooseSpark").addEventListener("click",()=>selectCar("spark"));
@@ -3345,7 +3460,6 @@ function initEvents(){
   if(e.key==="Escape"&&pendingDeleteCircuitId){e.preventDefault();cancelCircuitDeletion();}
  });
  $("libraryRecoverDraft").addEventListener("click",recoverDraftToLibrary);
- $("libraryRestoreVersion").addEventListener("click",restoreLastCircuitRevision);
  $("workSaveCircuit").addEventListener("click",saveCircuit);
  $("importCircuitFile").addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(file)await importRecipe(file);
@@ -3449,7 +3563,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.7",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.8",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

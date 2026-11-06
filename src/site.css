@@ -1911,3 +1911,52 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .camera-mode-choices{gap:7px}
  .camera-choice{font-size:12px;padding:10px 7px}
 }
+
+
+/* DEV 0.14.8 · Mis circuitos / Mis récords: una sola sección, mismo sistema visual. */
+.library-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 0 14px;
+ padding:5px;background:#e5eaf0;border:1px solid #d9e1ea;border-radius:16px}
+.library-tab{min-height:48px;padding:10px;border:1px solid transparent;border-radius:12px;
+ color:#526375;background:transparent;font:950 14px system-ui,-apple-system,sans-serif;
+ cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.library-tab.is-active{color:#be0c32;border-color:#f0d6dc;background:#fff;
+ box-shadow:0 3px 9px #182a3812}
+.library-tab:focus-visible{outline:3px solid #e72b4d;outline-offset:2px}
+#libraryCircuitsPanel[hidden],#libraryRecordsPanel[hidden]{display:none!important}
+.library-records-panel{display:flex;flex-direction:column;gap:11px;min-width:0}
+.library-records-heading{background:#fff;border:1px solid #dce4ed;border-radius:16px;padding:16px}
+.library-records-heading h2{margin:0 0 8px;color:#172638;font-size:clamp(20px,5vw,25px);line-height:1.15;
+ display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:7px}
+.library-records-heading h2 small{font-size:11px;font-weight:850;color:#6d7c8e}
+.library-records-heading p,.library-records-note{font-size:12px;color:#67778a;line-height:1.5;margin:0}
+.library-records-list{display:flex;flex-direction:column;gap:11px;min-width:0}
+.library-record-card{background:#fff;border:1px solid #dce4ed;border-radius:16px;
+ padding:13px;box-shadow:0 3px 10px #172e410a;min-width:0}
+.library-record-card-head{display:flex;justify-content:space-between;align-items:center;gap:9px;
+ margin-bottom:10px}
+.library-record-card-head .mini{min-height:44px;min-width:72px;border:1px solid #cad5df;
+ background:#f8fafc;color:#223448;font-weight:950;border-radius:10px}
+.library-record-card-title{display:flex;flex-direction:column;min-width:0;gap:3px}
+.library-record-card-title h3{margin:0;font-size:16px;color:#172638;line-height:1.25;
+ overflow-wrap:anywhere}
+.library-record-card-title small{font-size:11px;color:#8290a0}
+.library-record-variant{background:#f6f8fb;border:1px solid #e1e7ee;border-radius:12px;
+ padding:11px;margin-top:8px}
+.library-record-variant.is-current{background:#f1f9f7;border-color:#c5e6da}
+.library-record-variant-title{font-size:13px;font-weight:950;color:#1c3042;line-height:1.35}
+.library-record-variant-meta{display:block;font-size:10px;font-weight:750;color:#697988;
+ line-height:1.4;margin:3px 0 9px}
+.library-record-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.library-record-time{display:flex;flex-direction:column;gap:5px;text-align:center;
+ min-width:0;border-radius:9px;padding:9px 3px;background:#fff;border:1px solid #dce4ed}
+.library-record-time.lane-left{background:#eaf8ff;border-color:#c1e3f5}
+.library-record-time.lane-right{background:#fff0f5;border-color:#f5cad5}
+.library-record-time.is-combined{background:#f1f4f7;border-color:#dce2e9}
+.library-record-time small{font-size:10px;font-weight:850;color:#647487;line-height:1.2}
+.library-record-time strong{font-size:clamp(12px,3.4vw,17px);font-weight:1000;
+ font-variant-numeric:tabular-nums;white-space:nowrap;color:#1d3448}
+.library-record-time.lane-left strong{color:#14668b}
+.library-record-time.lane-right strong{color:#b81642}
+.library-record-empty{color:#748394;font-size:12px;margin:8px 0 3px;line-height:1.5}
+.library-records-note{padding:4px 5px 8px}
+@media(prefers-reduced-motion:reduce){.library-tab{transition:none}}

@@ -142,5 +142,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.7 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.14.8 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

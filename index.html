@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.7: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.7 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.7">
+  <meta name="description" content="SlotRace DEV 0.14.8: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.8 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.8">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.7">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.8">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.7</div>
+    <div class="splash-version">DEV 0.14.8</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.7">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.8">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.7">DEV 0.14.7<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.8">DEV 0.14.8<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -85,6 +85,11 @@
   <section id="libraryScreen" class="screen hub-screen" hidden aria-label="Mis circuitos">
     <div class="hub-scroll">
       <div class="hub-heading"><span class="hub-kicker">MI COLECCIÓN</span><h1>Mis circuitos</h1><p>Guarda, recupera y comparte tus trazados.</p></div>
+      <div class="library-tabs" role="tablist" aria-label="Mis circuitos y mis récords">
+        <button id="libraryTabCircuits" class="library-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="libraryCircuitsPanel">Mis circuitos</button>
+        <button id="libraryTabRecords" class="library-tab" type="button" role="tab" aria-selected="false" aria-controls="libraryRecordsPanel">Mis récords</button>
+      </div>
+      <div id="libraryCircuitsPanel" role="tabpanel" aria-labelledby="libraryTabCircuits">
       <div class="hub-quick-actions">
         <button id="menuExport" class="hub-action" type="button"><span aria-hidden="true">▤</span><strong>Exportar plano</strong><small>PNG con nombre y receta de piezas</small></button>
         <button id="libraryBuild" class="hub-action" type="button"><span aria-hidden="true">⚒</span><strong>Ir al taller</strong><small>Continúa el circuito sobre la mesa</small></button>
@@ -101,11 +106,6 @@
           <p>Hay un circuito anterior que todavía puede recuperarse como creación independiente.</p>
           <button id="libraryRecoverDraft" class="mini" type="button">Recuperar circuito anterior</button>
         </div>
-        <div id="libraryVersionRecovery" class="library-recovery" hidden>
-          <strong>Historial de versiones</strong>
-          <p>Recupera una versión anterior sin borrar el circuito actual.</p>
-          <button id="libraryRestoreVersion" class="mini" type="button">Recuperar versión anterior</button>
-        </div>
         <small>Los circuitos pertenecen por ahora a este navegador, sin sincronización ni compras.</small>
       </div>
       <div class="home-create">
@@ -118,6 +118,15 @@
         <button id="menuNew" class="home-new" type="button">＋ Crear circuito</button>
         <small>Tu montaje anterior se conserva en «Recuperar trazado».</small>
       </div>
+      </div>
+      <section id="libraryRecordsPanel" class="library-records-panel" role="tabpanel" aria-labelledby="libraryTabRecords" hidden>
+        <div class="library-records-heading">
+          <h2>Mis récords <small id="libraryRecordsCount">0 circuitos con tiempos</small></h2>
+          <p>Mejores vueltas guardadas por carril, coche y sentido. Los tiempos de físicas antiguas aparecen identificados como históricos.</p>
+        </div>
+        <div id="libraryRecordsList" class="library-records-list" aria-label="Récords personales por circuito"></div>
+        <p class="library-records-note">Los récords son locales de este navegador. El mejor combinado solo suma tiempos de la misma versión, coche y sentido de carrera.</p>
+      </section>
 
       <button id="libraryHome" class="hub-back" type="button">‹ Volver al menú</button>
     </div>
@@ -403,6 +412,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.7"></script>
+<script type="module" src="./src/app.mjs?v=0.14.8"></script>
 </body>
 </html>

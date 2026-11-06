@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.7");
+ assert.equal(game.version,"DEV 0.14.8");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -391,6 +391,50 @@ const path=require("node:path");
  elements.get("resultsHome").listeners.click[0]();
  assert.equal(st.mode,"menu");
 
+ // Mis circuitos incluye dos pestañas; la segunda agrupa récords locales
+ // sin sumar coches, sentidos o versiones de física diferentes.
+ assert.match(html,/id="libraryTabRecords"/);
+ assert.match(html,/id="libraryRecordsList"/);
+ assert.doesNotMatch(html,/id="libraryVersionRecovery"/,
+  "El historial de versiones recuperadas ya no ocupa espacio visual");
+ assert.doesNotMatch(html,/id="libraryRestoreVersion"/);
+ const currentRecordKey="library-"+library[0].id+"-"+st.types.join("-");
+ st.records[currentRecordKey+"-rear-physics-v1-helix-spark"]=[22.5,21.3];
+ st.records[currentRecordKey+"-reverse-rear-physics-v2"]=[19.2,20.4];
+ const savedVariants=game.savedCircuitRecords(library[0]);
+ assert.equal(savedVariants.length,3,"Se muestran física actual, anterior y sentido inverso");
+ assert.deepEqual(savedVariants[0].times,[15.2,8.266],
+  "Primero los tiempos actuales de Gripline y sentido horario");
+ assert.equal(savedVariants[0].combined,23.466,
+  "El combinado usa los dos carriles de la misma variante");
+ assert.ok(savedVariants.some(v=>v.physics===1&&v.car==="spark"),
+  "Los tiempos históricos del Spark siguen accesibles");
+ assert.ok(savedVariants.some(v=>v.reverse&&v.physics===2),
+  "La marcha antihoraria no se mezcla con la horaria");
+ game.showHub("library");
+ assert.equal(elements.get("libraryRecordsPanel").hidden,true);
+ elements.get("libraryTabRecords").listeners.click[0]();
+ assert.equal(st.libraryTab,"records");
+ assert.equal(elements.get("libraryRecordsPanel").hidden,false);
+ assert.equal(elements.get("libraryCircuitsPanel").hidden,true);
+ assert.equal(elements.get("libraryTabRecords").attrs["aria-selected"],"true");
+ const recordCards=elements.get("libraryRecordsList").children;
+ assert.equal(recordCards.length,2,"También muestra circuitos aún sin tiempos");
+ assert.match(elements.get("libraryRecordsCount").textContent,/1 de 2 con tiempos/);
+ const recordCard=recordCards.find(card=>card.children[0].children[0].children[0].textContent==="Ocho de pruebas");
+ assert.ok(recordCard,"La ficha de récords conserva el nombre del circuito");
+ assert.equal(recordCard.children.length,4,"Tres variantes diferenciadas");
+ assert.equal(recordCard.children[1].children[2].children[2].children[1].textContent,
+  "23,466 s","Combinado correctamente formateado");
+ assert.match(recordCard.children[3].children[1].textContent,/histórico/);
+ recordCard.children[0].children[1].listeners.click[0]();
+ assert.equal(st.mode,"build","El botón Abrir recupera directamente el circuito");
+ assert.equal(st.activeCircuitId,library[0].id);
+ game.showHub("library");
+ elements.get("libraryTabCircuits").listeners.click[0]();
+ assert.equal(elements.get("libraryRecordsPanel").hidden,true);
+ assert.equal(elements.get("libraryCircuitsPanel").hidden,false);
+
  // Rescate sin sobrescribir Splash si OchoA todavía existe en el borrador.
  const splashId=both[0].id;
  st.draft={types:["S350","R1_90R"],loose:[],bridgeParts:[],origin:{...geo.START},
@@ -604,5 +648,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.7: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.8: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

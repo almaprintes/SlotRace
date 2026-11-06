@@ -1,3 +1,15 @@
+# SlotRace DEV 0.14.8 · Mis récords dentro de Mis circuitos
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.8
+
+- **Mis circuitos** incorpora dos pestañas con el estilo común: «Mis circuitos» y «Mis récords». La segunda enseña los mejores tiempos locales de cada circuito.
+- **Detalle de récords:** tiempos independientes de carriles izquierdo y derecho, mejor combinado (solo si ambas vueltas pertenecen al mismo coche, sentido, geometría y física), vehículo, sentido de conducción y versión de físicas. El combinado no suma vueltas de variantes distintas.
+- **Históricos:** se conservan y muestran los récords obtenidos con físicas anteriores, identificados, sin mezclarlos con los récords actuales `rear-physics-v2`. Los circuitos sin vueltas también se muestran y tienen botón «Abrir».
+- **Recuperación visible simplificada:** se elimina la tarjeta «Historial de versiones» y su botón de la sección Mis circuitos, porque OchoA ya se recuperó. Las copias internas siguen guardadas para proteger el trabajo ante un error. La recuperación de borrador sin guardar sigue disponible.
+- **Sin servidor:** los datos permanecen guardados en el navegador de la PWA; esta entrega no añade nube ni sincronización.
+
+---
+
 # SlotRace DEV 0.14.7 · Derrape visible y curvas continuas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.7
