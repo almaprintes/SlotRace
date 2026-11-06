@@ -48,7 +48,7 @@ const fs=require("node:fs"),path=require("node:path");
   return ra.radius-rb.radius||deg(a)-deg(b);
  });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.17");
+ assert.equal(game.version,"DEV 0.14.18");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -80,7 +80,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
  const pockets=elements.get("pieces").children;
- assert.equal(pockets.length,16,"Trece módulos y tres combinaciones de 90 grados");
+ assert.equal(pockets.length,16,"Dieciséis tipos de piezas, incluidas curvas unitarias");
  assert.ok(!pockets.some(p=>p.dataset.piece==="S0125"),"La pieza heredada de 12,5 mm no aparece en la caja");
  assert.deepEqual(pockets.map(p=>p.dataset.piece),allTypes);
  assert.deepEqual(pockets.filter(p=>p.dataset.piece.startsWith("R")).map(p=>p.dataset.piece),
@@ -270,40 +270,38 @@ const fs=require("node:fs"),path=require("node:path");
  tap("S175");
  assert.equal(st.types.length,count,"Una pista cerrada no se deforma por tocar otra pieza");
  assert.equal(st.loose.length,1,"Con el circuito cerrado la pieza se deposita suelta");
- // Curvas R2/R3/R4 de 90°: son montajes de 2/4 módulos del catálogo.
+ // Curvas R2/R3/R4 de 90° deben ser PIEZAS UNITARIAS.
  game.createNewCircuit();
- for(const [id,count,part] of [
-  ["R2_90R",2,"R2_45R"],["R3_90R",4,"R3_225R"],["R4_90R",4,"R4_225R"]
+ for(const [id,radius] of [
+  ["R2_90R",300],["R3_90R",450],["R4_90R",600]
  ]){
-  assert.ok(byId(id),"Atajo visible: "+id);
-  assert.match(byId(id).innerHTML,/COMBO/);
+  assert.ok(byId(id),"Pieza visible en el estante: "+id);
+  assert.doesNotMatch(byId(id).innerHTML,/COMBO|PIEZAS/);
+  const seams=byId(id).innerHTML.match(/mini-slot-seam/g)||[];
+  assert.equal(seams.length,2,"Sólo dos costuras externas: "+id);
   assert.equal(game.inventoryAction(id),true);
-  assert.deepEqual(st.types,Array(count).fill(part),"Expansión física del atajo");
-  assert.equal(st.track.parts.length,count);
-  const final=st.track.ends.end,radius=geo.CATALOG[part].radius;
-  assert.ok(Math.abs(final.x-st.origin.x-radius)<1e-6);
-  assert.ok(Math.abs(final.y-st.origin.y-radius)<1e-6);
-  assert.ok(Math.abs(final.h-st.origin.h-Math.PI/2)<1e-9);
-  assert.deepEqual(JSON.parse(data.get("slotrace-lab-10")).types,st.types);
-  assert.equal(game.removeLooseFromCase(id),true,"Deshacer atómico");
+  assert.deepEqual(st.types,[id],"Una tarjeta equivale a una pieza real");
+  assert.equal(st.track.parts.length,1);
+  const end=st.track.ends.end;
+  assert.ok(Math.abs(end.x-st.origin.x-radius)<1e-6);
+  assert.ok(Math.abs(end.y-st.origin.y-radius)<1e-6);
+  assert.ok(Math.abs(end.h-st.origin.h-Math.PI/2)<1e-9);
+  assert.deepEqual(JSON.parse(data.get("slotrace-lab-10")).types,[id]);
+  assert.equal(game.removeLooseFromCase(id),true,"− retira una sola pieza");
   assert.equal(st.types.length,0);
  }
  elements.get("curveDirection").listeners.click[0]();
- assert.equal(game.curve90Parts("R4_90R").every(id=>id==="R4_225L"),true);
+ assert.deepEqual(game.curve90Parts("R4_90R"),["R4_90L"]);
  assert.equal(game.inventoryAction("R4_90R"),true);
- assert.deepEqual(st.types,Array(4).fill("R4_225L"));
+ assert.deepEqual(st.types,["R4_90L"]);
  assert.equal(game.removeLooseFromCase("R4_90R"),true);
  elements.get("curveDirection").listeners.click[0]();
  game.changeTypes(game.STARTER.slice(),"Óvalo cerrado",[]);
  assert.equal(st.track.closed,true);
- assert.equal(game.inventoryAction("R3_90R"),true,"Atajo tras cerrar circuito");
- assert.equal(st.loose.length,4,"Grupo de cuatro piezas sueltas");
- assert.equal(new Set(st.loose.map(p=>p.magnetGroup)).size,1);
- for(let i=1;i<st.loose.length;i++){
-  const prev=geo.positionOnPiece(st.loose[i-1],st.loose[i-1].id,1);
-  assert.ok(Math.hypot(st.loose[i].x-prev.x,st.loose[i].y-prev.y)<1e-8);
- }
+ assert.equal(game.inventoryAction("R3_90R"),true);
+ assert.equal(st.loose.length,1,"Curva independiente suelta, no 4 fragmentos");
+ assert.equal(st.loose[0].id,"R3_90R");
  assert.equal(game.removeLooseFromCase("R3_90R"),true);
- assert.equal(st.loose.length,0,"Retirada completa");
- console.log("SlotRace DEV 0.14.17: estante y curvas R2/R3/R4 de 90 grados — OK");
+ assert.equal(st.loose.length,0);
+ console.log("SlotRace DEV 0.14.18: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
