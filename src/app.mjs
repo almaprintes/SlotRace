@@ -1956,8 +1956,10 @@ function updateUI(){
   "MESA VACÍA · COLOCA PIEZAS"):
  t.closed?"CONECTADO · CRUCE SIN PUENTE":
  "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
- const notice=t.bridge?(t.valid?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
-  "Kit instalado. Falta unir extremos y cerrar el circuito para correr."):
+ const notice=t.elevation?.errors?.length?t.elevation.errors[0]:
+ t.bridge&&!t.bridge.valid?"El cruce no tiene suficiente altura libre.":
+ t.bridge?(t.valid?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
+  "Elevación marcada. Falta cerrar el circuito o completar las rampas."):
  t.intersection?"Cruce al mismo nivel: necesita puente":
  !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
  t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":
@@ -2014,8 +2016,8 @@ function updateUI(){
  if(kitOn&&state.looseSelection>=0){
   const members=looseMembers(state.looseSelection);
   $("selected").textContent=members.length>1?
-   "KIT FIJADO A LA RECTA · TRAMO MAGNÉTICO DE "+members.length+" PIEZAS":
-   "KIT FIJADO A LA RECTA · PIEZA AÚN SUELTA";
+   "ELEVACIÓN MARCADA · TRAMO MAGNÉTICO DE "+members.length+" PIEZAS":
+   "ELEVACIÓN MARCADA · PIEZA AÚN SUELTA";
  }
  $("caseCount").textContent=UNLIMITED_DEVELOPMENT_STOCK?
   "∞ piezas disponibles · "+used+" en la mesa":
@@ -2745,7 +2747,8 @@ function blueprintData(){
  const recipe=buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection);
  // Los kits son accesorios de montaje, no modifican la geometría
  // longitudinal de las rectas. Aun así deben aparecer en la receta.
- const kitCount=Math.max(recipe.bridgeCount,Number(Boolean(state.track.bridge)));
+ const kitCount=(state.track.elevation?.runs?.length||0)+
+  state.loose.filter(p=>p.raised).length;
  if(kitCount){
   recipe.bridgeCount=kitCount;
   recipe.items.push({id:"BRIDGE_KIT",name:"Kit puente 65 mm · soportes y rampas",
@@ -2790,9 +2793,11 @@ function paintBlueprintSeam(ctx,p){
  }
  ctx.restore();
 }
-function paintBlueprintSupports(ctx,part){
- if(!part||!(CATALOG[part.id]?.length>=350))return;
- for(const t of [.24,.76]){
+function paintBlueprintSupports(ctx,part,track=null){
+ if(!part||!CATALOG[part.id])return;
+ const samples=CATALOG[part.id].length?[.21,.5,.79]:[.12,.36,.64,.88];
+ for(const t of samples){
+  if(track&&elevationAt(track,part.index,t)<12)continue;
   const p=positionOnPiece(part.start,part.id,t);
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
   ctx.fillStyle=BLUEPRINT_TRACK.supports;
@@ -2829,10 +2834,10 @@ function paintBlueprintTrack(ctx,track){
  const groups=loosePaintGroups();
  // Los soportes se dibujan primero para no tapar nunca los carriles.
  const raised=new Set([
-  ...state.bridgeParts,
+  ...(track.elevation?.raisedParts||[]),
   ...(track.bridge?.overParts||[])
  ]);
- for(const index of raised)paintBlueprintSupports(ctx,track.parts[index]);
+ for(const index of raised)paintBlueprintSupports(ctx,track.parts[index],track);
  for(const group of groups)for(const part of group.parts)
   if(part.raised)paintBlueprintSupports(ctx,part);
  if(track.parts.length){
@@ -3167,13 +3172,13 @@ function renderScene(canvas,mode){
  const p=drivingPose(mode==="race"?state.distance:0);
  const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
  // Las patas van bajo la pista. No dibujar una placa sobre el asfalto.
- for(const index of state.bridgeParts){
-  const part=track.parts[index];if(part)paintSupportKit(ctx,part);
+ for(const index of track.elevation?.raisedParts||[]){
+  const part=track.parts[index];if(part)paintSupportKit(ctx,part,track);
  }
  // Dibujo continuo: los carriles de los módulos acoplados nunca se cortan.
  paintContinuousTrack(ctx,track,mode==="build");
- for(const index of state.bridgeParts){
-  const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part);
+ for(const index of track.elevation?.raisedParts||[]){
+  const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
  }
  if(hasBridge){
   // El coche inferior sólo pasa tras la MÁSCARA PEQUEÑA del cruce;
