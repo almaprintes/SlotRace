@@ -1,3 +1,15 @@
+# SlotRace DEV 0.14.22 · Oclusión válida para circuitos nuevos con puentes
+
+**Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.22
+
+- **Fallo de capas corregido para todo el motor:** en carrera se pintaban las piezas sueltas del taller DESPUÉS del puente y sus raíles podían aparecer en medio de la cubierta. Ahora el render de carrera **ignora cualquier pieza suelta**: sólo representa el circuito conectado y sus elevaciones.
+- **Constructor intacto:** todas las piezas sueltas continúan visibles y seleccionables mientras se construye. No se borran ni modifican piezas o recetas guardadas.
+- **Puentes genéricos:** se comprueba que el segmento superior de **cada cruce verificado** pertenezca al tramo elevado repintado. No hay excepciones por nombre de circuito o índice de pieza.
+- **Pruebas:** simulación de dos pistas distintas (ocho automático y montaje manual con puente) con una pieza suelta situada exactamente sobre su cruce; en carrera ésta no genera líneas fantasma, mientras en «Construir» sí se pinta. También se comprueba el orden de coche inferior/cubierta/coche superior.
+- **Sin cambios de físicas:** permanecen los mismos radios, ángulos, altura de 65 mm y guardados.
+
+---
+
 # SlotRace DEV 0.14.21 · Eliminar marcas de unión y carriles cruzados en carrera
 
 **Prueba iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.21
