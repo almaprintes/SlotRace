@@ -34,7 +34,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.5");
+ assert.equal(game.version,"DEV 0.14.6");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
@@ -82,6 +82,39 @@ const path=require("node:path");
   st.track=track;st.types=types.slice();st.driveDirection=1;
   return track;
  }
+ // Cuatro módulos R1_45R forman UNA curva de 180º: los empalmes
+ // no deben reiniciar su fase ni concentrar el máximo esfuerzo al entrar.
+ const trackPhase=makeOval(r1Oval),phaseLane=trackPhase.lanes[1];
+ const phaseFirst=phaseLane.nodes.findIndex(p=>p.pieceIndex===2);
+ const phaseLast=phaseLane.nodes.findLastIndex(p=>p.pieceIndex===5);
+ const phaseStart=phaseLane.lengths[phaseFirst-1],phaseEnd=phaseLane.lengths[phaseLast];
+ const phaseDistance=f=>phaseStart+(phaseEnd-phaseStart)*f;
+ const atPhase=f=>{
+  const d=phaseDistance(f);
+  return physics.curvePhase(geom.positionAt(phaseLane,d),phaseLane,d).progress;
+ };
+ for(const f of [.05,.25,.50,.75,.95])
+  assert.ok(Math.abs(atPhase(f)-f)<.02,
+   "La fase recorre progresivamente el arco completo: "+f);
+ const join=phaseLane.nodes.findLastIndex(p=>p.pieceIndex===2);
+ const seam=phaseLane.lengths[join];
+ const leftPhase=physics.curvePhase(geom.positionAt(phaseLane,seam-1),phaseLane,seam-1).progress;
+ const rightPhase=physics.curvePhase(geom.positionAt(phaseLane,seam+1),phaseLane,seam+1).progress;
+ assert.ok(rightPhase>leftPhase&&rightPhase-leftPhase<.025,
+  "El esfuerzo sigue creciendo sin reiniciarse en la junta de las piezas");
+ assert.ok(physics.curveStressEnvelope(.1)<physics.curveStressEnvelope(.5));
+ assert.ok(physics.curveStressEnvelope(.5)<physics.curveStressEnvelope(.72));
+ assert.ok(Math.abs(physics.curveStressEnvelope(.72)-1)<1e-10,
+  "La carga máxima se alcanza después de media curva");
+ // Prueba en sentido contrario: la progresión también se invierte.
+ st.driveDirection=-1;
+ const native=.2*(phaseEnd-phaseStart)+phaseStart;
+ const revDistance=phaseLane.total-native;
+ const reversePose=geom.positionAt(phaseLane,native);
+ assert.ok(Math.abs(physics.curvePhase({...reversePose,curve:-reversePose.curve},
+  phaseLane,revDistance).progress-.8)<.02,
+  "En conducción inversa, la zona de máximo esfuerzo sigue hacia la salida");
+ st.driveDirection=1;
  // Prueba sobre una curva de 180° completa, con velocidad estabilizada.
  function runCurve(types,laneId,gas,dt){
   const track=makeOval(types),lane=track.lanes[laneId];
@@ -93,14 +126,19 @@ const path=require("node:path");
    speed:max*gas,distance:beginMm,penalty:0,deslot:null,
    drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,
    cornerDistance:0,cornerDirection:0,gripDebt:0,lap:1,seconds:0});
-  let loops=0,maxSlip=0;
+  let loops=0,maxSlip=0,maxStress=-Infinity,peakPhase=0;
   while(st.penalty===0&&st.distance<endMm&&loops++<800){
+   const d=st.distance;
+   const phase=physics.curvePhase(geom.positionAt(lane,d),lane,d).progress;
    physics.simulationStep(dt);
    maxSlip=Math.max(maxSlip,Math.abs(st.rearSlip));
+   if(st.rearStress>maxStress){maxStress=st.rearStress;peakPhase=phase;}
   }
   assert.ok(loops<800,"La simulación completa o desencarrila antes del tiempo límite");
+  const phase=physics.curvePhase(geom.positionAt(lane,st.distance),lane,st.distance).progress;
   return{crashed:st.penalty>0,distance:st.distance-beginMm,
-   completed:st.distance>=endMm,slip:maxSlip,sec:st.seconds};
+   completed:st.distance>=endMm,slip:maxSlip,sec:st.seconds,
+   phase,peakPhase,maxStress};
  }
  const r1Inner90=runCurve(r1Oval,1,.90,1/60);
  assert.equal(r1Inner90.crashed,false,"R1 interior a 90% debe completarse");
@@ -109,6 +147,10 @@ const path=require("node:path");
  const r1Inner100=runCurve(r1Oval,1,1,1/60);
  assert.equal(r1Inner100.crashed,true,"R1 interior a fondo termina saliendo");
  assert.ok(r1Inner100.distance>70,"La trasera necesita tiempo para deslizarse");
+ assert.ok(r1Inner100.phase>=.50,
+  "No puede descarrilar antes de la mitad del arco continuo");
+ assert.ok(r1Inner100.peakPhase>=.50,
+  "El máximo esfuerzo debe darse en la segunda mitad de la curva");
  const r1Outer100=runCurve(r1Oval,0,1,1/60);
  assert.equal(r1Outer100.crashed,false,"R1 exterior permite mayor velocidad");
  const r2Inner100=runCurve(r2Oval,1,1,1/60);

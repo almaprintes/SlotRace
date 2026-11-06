@@ -109,7 +109,7 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
-  drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
+  drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
@@ -510,7 +510,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -1107,7 +1107,7 @@ function play(){
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionCar=state.selectedCar;
- state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
+ state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
  resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
@@ -1225,13 +1225,66 @@ function curveLimit(p,lane){
  return Number.isFinite(radius)?
   Math.sqrt(carDynamics().gripG*DRIVE.gravity*1000*radius):Infinity;
 }
+const CURVE_SPAN_CACHE=new WeakMap();
+// Detectar el arco completo de piezas curvas consecutivas del mismo sentido.
+// Una unión entre dos módulos curvos NO reinicia la progresión del esfuerzo.
+function curvePhase(p,lane,distance=state.distance){
+ if(!p?.curve||!lane?.total)return{progress:0,lengthMm:0};
+ if(!Number.isInteger(p.pieceIndex)||p.pieceIndex<0)
+  return{progress:1,lengthMm:0}; // Uso directo en pruebas de fuerza.
+ let spans=CURVE_SPAN_CACHE.get(lane);
+ if(!spans){
+  const types=state.track.types,n=types.length;
+  const turns=types.map(id=>Math.sign(CATALOG[id]?.angle||0));
+  const starts=Array(n).fill(Infinity),ends=Array(n).fill(-Infinity);
+  for(let j=1;j<lane.nodes.length;j++){
+   const id=lane.nodes[j].pieceIndex;
+   if(id>=0&&id<n){
+    starts[id]=Math.min(starts[id],lane.lengths[j-1]);
+    ends[id]=Math.max(ends[id],lane.lengths[j]);
+   }
+  }
+  spans=turns.map((turn,i)=>{
+   if(!turn)return null;
+   let first=i,last=i,count=0;
+   while(count++<n-1&&turns[(first+n-1)%n]===turn)
+    first=(first+n-1)%n;
+   count=0;
+   while(count++<n-1&&turns[(last+1)%n]===turn)
+    last=(last+1)%n;
+   const start=starts[first],end=ends[last],total=lane.total;
+   const lengthMm=(end-start+total)%total||total;
+   return{start,end,lengthMm};
+  });
+  CURVE_SPAN_CACHE.set(lane,spans);
+ }
+ const span=spans[p.pieceIndex];
+ if(!span)return{progress:0,lengthMm:0};
+ const total=lane.total;
+ const nativeDistance=((state.driveDirection===-1?-distance:distance)%total+total)%total;
+ const traveled=state.driveDirection===-1?
+  (span.end-nativeDistance+total)%total:
+  (nativeDistance-span.start+total)%total;
+ return{progress:Math.max(0,Math.min(1,traveled/span.lengthMm)),lengthMm:span.lengthMm};
+}
+// Los neumáticos no desarrollan todo el esfuerzo lateral en la primera
+// junta: la carga efectiva crece y alcanza su máximo pasada media curva.
+function curveStressEnvelope(progress){
+ const t=Math.max(0,Math.min(1,(progress-.08)/.62));
+ return .08+.92*t*t*(3-2*t);
+}
 function advanceRearDynamics(p,lane,dt){
  const car=carDynamics(),forces=cornerForces(p,lane);
  const count=Math.max(1,Math.ceil(Math.max(0,dt)/(1/120)));
  const step=Math.max(0,dt)/count,turn=p?.curve||0;
+ const phase=curvePhase(p,state.track.lanes[drivingLaneIndex()]);
+ const envelope=turn?curveStressEnvelope(phase.progress):0;
  const excess=Math.max(0,forces.lateralAcceleration-forces.gripAcceleration);
  const elastic=DRIVE.lateralElasticity*Math.min(forces.lateralAcceleration,forces.gripAcceleration);
- const outwardForce=turn*car.rearMassKg*(excess+elastic);
+ const effectiveExcess=excess*envelope;
+ const outwardForce=turn*car.rearMassKg*
+  (effectiveExcess+elastic*(.25+.75*envelope));
+ state.rearStress=effectiveExcess;
  for(let i=0;i<count;i++){
   const spring=car.springNPerM*state.rearSlip/1000;
   const damper=car.damperNsPerM*state.rearSlipVelocity/1000;
@@ -1243,7 +1296,9 @@ function advanceRearDynamics(p,lane,dt){
  state.drift=Math.min(1,Math.abs(state.rearSlip)/limitMm);
  state.driftDirection=Math.abs(state.rearSlip)>.1?Math.sign(state.rearSlip):0;
  state.gripDebt=state.drift;
- return{...forces,slipMm:state.rearSlip,slipVelocityMmS:state.rearSlipVelocity,
+ return{...forces,phase:phase.progress,stressEnvelope:envelope,
+  effectiveExcess,slipMm:state.rearSlip,
+  slipVelocityMmS:state.rearSlipVelocity,
   yawRad:Math.atan2(state.rearSlip,car.wheelbaseMM),
   limitMm,deslot:Math.abs(state.rearSlip)>=limitMm};
 }
@@ -1278,9 +1333,10 @@ function simulation(dt){
  }else{state.cornerDistance=0;state.cornerDirection=0;}
  // La masa trasera acumula inercia lateral y puede recuperar tracción.
  const rear=advanceRearDynamics(p,state.lane,dt);
- if(p?.curve&&state.cornerDistance>=DRIVE.minCurveDistance&&rear.deslot){
+ if(p?.curve&&rear.phase>=.50&&
+  state.cornerDistance>=DRIVE.minCurveDistance&&rear.deslot){
   state.speed=0;state.penalty=3;
-  state.drift=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;
+  state.drift=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
   state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
   toast("¡Desencarrilado! La trasera perdió el agarre · +3 s.");return;
  }
@@ -3382,7 +3438,7 @@ protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimation
 window.slotraceLab={version:"DEV 0.14.6",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
- physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
+ physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
