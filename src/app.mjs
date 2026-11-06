@@ -2835,32 +2835,58 @@ function elevatedDeckRuns(track){
  elevatedDeckCache.set(track,deck);
  return deck;
 }
+// Mismo asfalto y carriles en toda capa: sin costuras ni doble sombra.
+function paintOpaqueRibbon(ctx,points,offsets=null){
+ ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
+ ctx.shadowColor="transparent";ctx.shadowBlur=0;
+ ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+ ctx.lineCap="butt";ctx.lineJoin="round";
+ strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+14);
+ strokePath(ctx,points,PIECE_LOOK.rim,TRACK_WIDTH+5);
+ strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
+ strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
+ const shifted=off=>offsets?.[off]||translated(points,off);
+ for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+  strokePath(ctx,shifted(off),PIECE_LOOK.groove,11);
+  strokePath(ctx,shifted(off-7.6),PIECE_LOOK.metalA,2.2);
+  strokePath(ctx,shifted(off+7.6),PIECE_LOOK.metalB,2.2);
+  strokePath(ctx,shifted(off),PIECE_LOOK.guide,5);
+ }
+ for(const edge of [-72,72])strokePath(ctx,shifted(edge),PIECE_LOOK.edge,2.5);
+ ctx.restore();
+}
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
- for(const {points,offsets} of elevatedDeckRuns(track)){
-  // La misma textura que el trazado base. Dibujar por segunda vez una
-  // sombra con offset en el extremo de una rampa producía la "costura"
-  // rectangular de la captura: a partir de aquí no hay sombra extra.
+ for(const {points,offsets} of elevatedDeckRuns(track))
+  paintOpaqueRibbon(ctx,points,offsets);
+}
+// Reglas de oclusión por INTERSECCIÓN. Una pasada de cada tramo elevado
+// no garantiza que todos los cruces del Doble Ocho queden tapados.
+// El clip limita el repintado al cruce real y utiliza la geometría
+// continua del arco superior, no un rectángulo dibujado como pista.
+function paintVerifiedCrossings(ctx,track){
+ const crossings=track.bridge?.crossings||[];
+ if(!crossings.length)return;
+ const runs=elevatedDeckRuns(track);
+ for(const cross of crossings){
+  const upper=track.parts[cross.upper];
+  if(!upper)continue;
+  const run=runs.find(item=>item.indices.includes(cross.upper));
+  if(!run)continue;
+  const p=positionOnPiece(upper.start,upper.id,cross.upperT??.5);
+  const under=track.parts[cross.lower];
+  const q=under?positionOnPiece(under.start,under.id,cross.lowerT??.5):null;
+  const sinCross=q?Math.abs(Math.sin(p.h-q.h)):1;
+  const halfLength=Math.min(TRACK_WIDTH*3,
+   Math.max(TRACK_WIDTH,TRACK_WIDTH/(2*Math.max(.28,sinCross))+TRACK_WIDTH*.40));
   ctx.save();
-  ctx.globalAlpha=1;
-  ctx.globalCompositeOperation="source-over";
-  ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
-  // Subcapa 100% opaca, ANTES de bordes y carriles. El centro de la
-  // pista inferior deja de transparentarse bajo el cruce.
-  strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+14);
-  strokePath(ctx,points,PIECE_LOOK.rim,TRACK_WIDTH+5);
-  strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
-  strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
-  for(const offset of [-LANE_OFFSET,LANE_OFFSET]){
-   strokePath(ctx,offsets[offset],PIECE_LOOK.groove,11);
-   strokePath(ctx,offsets[offset-7.6],PIECE_LOOK.metalA,2.2);
-   strokePath(ctx,offsets[offset+7.6],PIECE_LOOK.metalB,2.2);
-   strokePath(ctx,offsets[offset],PIECE_LOOK.guide,5);
-  }
-  for(const edge of [-72,72])
-   strokePath(ctx,offsets[edge],PIECE_LOOK.edge,2.5);
+  ctx.translate(cross.x,cross.y);ctx.rotate(p.h);
+  ctx.beginPath();
+  ctx.rect(-halfLength,-TRACK_WIDTH/2-10,halfLength*2,TRACK_WIDTH+20);
+  ctx.clip();
+  ctx.rotate(-p.h);ctx.translate(-cross.x,-cross.y);
+  paintOpaqueRibbon(ctx,run.points,run.offsets);
   ctx.restore();
-  // Sin juntas, relieves o bordes falsos al cambiar recta por curva.
  }
 }
 function paintBridgeCrossing(ctx,track){
@@ -3706,6 +3732,7 @@ function renderScene(canvas,mode){
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
   paintElevatedDeck(ctx,track);
+  paintVerifiedCrossings(ctx,track);
   // Las guías de inclinación sólo son necesarias en Construir.
   // En carrera cruzaban la calzada como marcas y raíles duplicados.
   if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
@@ -4181,12 +4208,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.22",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.23",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,paintElevatedDeck,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
