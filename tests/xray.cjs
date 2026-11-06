@@ -134,24 +134,34 @@ const fs=require("node:fs"),path=require("node:path");
   "No marcar como ocultos carriles a la vista");
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,null),true);
  assert.ok(clips.length>0,"La guía se recorta por el contorno real de la cubierta");
- assert.ok(strokes.some(x=>x.dash.join(",")==="19,15"&&x.color==="#06323e"),
+ assert.ok(strokes.some(x=>x.dash.join(",")==="23,17"&&x.color==="#06323e"),
   "Los discontinuos tienen un halo oscuro que mejora su lectura");
- assert.ok(strokes.some(x=>x.dash.join(",")==="19,15"&&x.color==="#8cece8"),
+ assert.ok(strokes.some(x=>x.dash.join(",")==="23,17"&&x.color==="#8cece8"),
   "Raíles ocultos representados con discontinuos turquesa");
- assert.ok(!strokes.some(x=>x.color==="#b3fffa"),
+ assert.ok(!strokes.some(x=>x.color==="#a8fff2"),
   "Sin coche no se pinta silueta");
  strokes.length=0;
  const under=geo.positionOnPiece(track.parts[13].start,track.parts[13].id,.5);
  game.rendering.paintXRayOverlay(ctx,track,under);
- assert.ok(strokes.some(x=>x.dash.join(",")==="9,6"&&x.color==="#07313b"),
+ assert.ok(strokes.some(x=>x.dash.join(",")==="10,5"&&x.color==="#052b34"),
   "La silueta incorpora contraste sin mostrar el sprite del coche");
- assert.ok(strokes.some(x=>x.dash.join(",")==="9,6"&&x.color==="#b3fffa"),
+ assert.ok(strokes.some(x=>x.dash.join(",")==="10,5"&&x.color==="#a8fff2"),
   "Silueta discontinua de coche oculto, sin sprite");
+ const silhouetteSource=source.slice(
+  source.indexOf("function traceXRayCarBody("),
+  source.indexOf("// Guardar las guías de los carriles"));
+ assert.match(silhouetteSource,/quadraticCurveTo/,
+  "La carrocería debe tener curvas reales, no un rectángulo de colisión");
+ assert.doesNotMatch(silhouetteSource,/roundRect\(ctx,-CAR_LENGTH_MM/,
+  "No se permite regresar al contorno rectangular anterior");
+ assert.match(source,/ctx\.lineCap="round";ctx\.lineJoin="round";ctx\.stroke\(\)/,
+  "Los discontinuos deben acabar redondeados");
+
  toggle();
  assert.equal(game.state.xRayEnabled,false,"Desactivar restaura el modo normal");
  assert.equal(JSON.parse(data.get("slotrace-lab-10")).xRayEnabled,false);
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.27: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.28: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});
