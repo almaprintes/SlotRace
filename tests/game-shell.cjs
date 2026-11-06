@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.0");
+ assert.equal(game.version,"DEV 0.14.1");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -59,6 +59,21 @@ const path=require("node:path");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
+ assert.equal(elements.get("mainNavigation").hidden,false,
+  "El menú muestra navegación persistente");
+ for(const [id,mode] of [
+  ["navBuild","build"],["navLibrary","library"],["navGarage","garage"],
+  ["navStore","store"],["navMenu","menu"]]){
+  elements.get(id).listeners.click[0]();
+  assert.equal(st.mode,mode,"La barra común navega a "+mode);
+  assert.equal(elements.get("mainNavigation").hidden,false);
+ }
+ elements.get("mastSettings").listeners.click[0]();
+ assert.equal(st.mode,"settings","Ajustes ocupa el mismo lugar en la cabecera");
+ assert.equal(elements.get("settingsScreen").hidden,false);
+ elements.get("navMenu").listeners.click[0]();
+ assert.equal(st.mode,"menu");
+
  assert.equal(elements.get("menuRace").disabled,false,
   "Un circuito válido guardado puede competir desde el menú");
  assert.equal(st.driveDirection,1,"Sentido horario predeterminado");
@@ -172,6 +187,8 @@ const path=require("node:path");
  assert.equal(elements.get("menuRace").disabled,false);
  elements.get("menuRace").listeners.click[0]();
  assert.equal(st.mode,"race","Menú Correr abre carrera sin taller");
+ assert.equal(elements.get("mainNavigation").hidden,true,
+  "El mando no pierde espacio por la barra general durante la carrera");
  assert.equal(elements.get("raceScreen").hidden,false);
  elements.get("raceHome").listeners.click[0]();
  assert.equal(st.mode,"menu","Salir de carrera vuelve al menú principal");
@@ -456,5 +473,5 @@ const path=require("node:path");
  assert.equal(st.library.length,storeCount,"No duplica el plano de tienda");
  assert.equal(game.shopInstallPlan("plan-urban"),false,"No instala planos en preparación");
 
- console.log("SlotRace DEV 0.14.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

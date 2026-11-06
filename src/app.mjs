@@ -1293,7 +1293,7 @@ function updateTriggerDisplay(){
  $("triggerValue").textContent=percent+"%";
  $("trigger").setAttribute("data-power",String(percent));
  $("trigger").classList.toggle("pressed",Boolean(state.triggerGesture));
- $("clickSound").textContent=state.clicksEnabled?"🔊 CLIC":"🔇 MUDO";
+ $("clickSound").textContent=state.clicksEnabled?"🔊 Clics activados":"🔇 Clics desactivados";
  $("clickSound").setAttribute("aria-pressed",String(state.clicksEnabled));
 }
 function setProgressGas(value){
@@ -1611,9 +1611,22 @@ function updateUI(){
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  results.hidden=state.mode!=="results";
  for(const [name,screen] of Object.entries(hubScreens))screen.hidden=state.mode!==name;
+ // Barra global única: misma ubicación y mismos accesos en todas las secciones.
+ const showMainNavigation=!["race","results"].includes(state.mode);
+ $("mainNavigation").hidden=!showMainNavigation;
+ for(const [id,mode] of [
+  ["navMenu","menu"],["navBuild","build"],["navLibrary","library"],
+  ["navGarage","garage"],["navStore","store"]]){
+  const element=$(id),active=state.mode===mode;
+  element.classList.toggle("is-active",active);
+  if(active)element.setAttribute("aria-current","page");
+  else element.removeAttribute("aria-current");
+ }
+ $("mastSettings").classList.toggle("is-active",state.mode==="settings");
+ $("mastSettings").setAttribute("aria-label",state.mode==="settings"?"Ajustes abiertos":"Abrir Ajustes");
  if(state.mode==="store")renderShop();
  $("garageRace").disabled=!state.track.valid;
- $("settingsSound").textContent=state.clicksEnabled?"Activado":"Silenciado";
+ $("settingsSound").textContent=state.clicksEnabled?"Activado":"Desactivado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
  $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
@@ -1662,7 +1675,7 @@ function updateUI(){
  $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
- setLabel("play","Correr");
+ setLabel("play","Jugar");
  $("play").disabled=!t.valid;
  $("restore").hidden=!state.draft;
  $("pieceCase").classList.toggle("case-open",state.caseOpen);
@@ -3006,6 +3019,12 @@ function initEvents(){
  for(const [button,section] of [
   ["menuLibrary","library"],["menuGarage","garage"],["menuStore","store"],["menuSettings","settings"]
  ])$(button).addEventListener("click",()=>showHub(section));
+ // Todos los destinos comparten el mismo orden y posición.
+ for(const [button,action] of [
+  ["navMenu",showMenu],["navBuild",openWorkshop],
+  ["navLibrary",()=>showHub("library")],["navGarage",()=>showHub("garage")],
+  ["navStore",()=>showHub("store")],["mastSettings",()=>showHub("settings")]
+ ])$(button).addEventListener("click",action);
  for(const id of ["libraryHome","garageHome","storeHome","settingsHome"])
   $(id).addEventListener("click",showMenu);
  $("libraryBuild").addEventListener("click",openWorkshop);
@@ -3164,7 +3183,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.0",state,showHub,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.1",state,showHub,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

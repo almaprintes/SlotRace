@@ -1619,3 +1619,213 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){.shop-box-visual{transform:none}}
 
 .shop-dialog-label{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+
+/* ================================================================
+   DEV 0.14.1 · SISTEMA DE DISEÑO DE LA APP
+   UNA navegación compartida, mismas reglas de botones y etiquetas.
+   Pantalla de carrera: HUD exclusivo, sin barra inferior que tape mandos.
+   ================================================================ */
+:root{
+ --ui-primary:#d00932;--ui-primary-dark:#ae0026;--ui-ink:#182635;
+ --ui-paper:#f4f6fa;--ui-surface:#ffffff;--ui-line:#d9e1e9;
+ --ui-muted:#667687;--ui-radius:13px;--ui-space:8px;
+ --ui-shadow:0 4px 12px #17273b14;
+}
+.app{background:var(--ui-paper)}
+/* Las cinco secciones tienen el mismo punto de acceso y el mismo orden. */
+.main-navigation{
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch;
+ gap:3px;flex:none;min-height:55px;width:100%;
+ padding:5px max(8px,env(safe-area-inset-left,0px))
+ calc(5px + env(safe-area-inset-bottom,0px));
+ background:#fff;border-top:1px solid #dbe1e8;
+ box-shadow:0 -5px 20px #172b3e10;
+ z-index:5;
+}
+.main-navigation[hidden]{display:none!important}
+.main-navigation button{
+ min-width:0;min-height:48px;border:0;background:transparent;
+ color:#596b7c;border-radius:10px;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:2px;
+ padding:4px 1px;font-size:10px;font-weight:850;line-height:1.1;
+ -webkit-tap-highlight-color:transparent;
+}
+.main-navigation button span{font-size:20px;font-weight:950;line-height:1}
+.main-navigation button strong{font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.main-navigation button.is-active,.main-navigation button[aria-current="page"]{
+ color:#bf0a30;background:#fff0f3;
+ box-shadow:inset 0 0 0 1px #f4cdd5;
+}
+.main-navigation button:active{background:#e9edf3}
+.main-navigation button.is-active:active{background:#ffe3e9}
+.mast{gap:7px;padding:calc(env(safe-area-inset-top,0px) + 6px) 10px 7px}
+.mast-actions{gap:5px;flex:none}
+.mast-home,.mast-settings{
+ border:1px solid var(--ui-line)!important;background:#fff!important;
+ color:#273747!important;border-radius:11px!important;
+ box-shadow:var(--ui-shadow);min-height:37px;
+ display:flex;align-items:center;justify-content:center;
+ font-weight:900;white-space:nowrap;
+}
+.mast-home{padding:7px 9px!important}
+.mast-settings{height:37px;width:37px;padding:4px!important;font-size:21px}
+.mast-settings.is-active{border-color:#ef9daf!important;background:#fff1f4!important;color:#bc082b!important}
+.mast .version{flex:none;min-width:0}
+.brand{gap:8px}
+.brand strong{white-space:nowrap}
+@media(max-width:440px){
+ .mast{padding-left:8px;padding-right:8px;gap:5px}
+ .brand{gap:6px}
+ .brand-icon{width:36px;height:36px;font-size:18px}
+ .brand strong{font-size:16px}
+ .brand small{display:none}
+ .mast-home{font-size:11px;padding:6px 7px!important;min-height:35px}
+ .mast-settings{width:34px;height:35px;font-size:19px}
+ .mast .version{font-size:8px;padding:4px 5px}
+ .mast-actions{gap:4px}
+}
+@media(max-width:365px){
+ .brand strong{font-size:14px}
+ .brand-icon{width:32px;height:32px}
+ .mast .version{font-size:7px}
+ .mast-home{font-size:10px;padding:5px!important}
+ .mast-settings{width:30px}
+}
+/* Inicio sin desplazamiento vertical, también al abrirse como PWA en iOS.
+   Los cuatro accesos secundarios se presentan en dos columnas. */
+.home-screen{overflow:hidden}
+.home-screen .home-scroll{
+ display:flex;flex-direction:column;
+ flex:1 1 auto;height:100%;max-height:100%;min-height:0;
+ overflow:hidden!important;overscroll-behavior:none!important;
+ gap:8px;max-width:760px;width:100%;
+ margin:0 auto!important;padding:9px 11px 8px!important;
+}
+.home-screen .home-hero{
+ display:flex;flex-direction:column;
+ flex:1 1 0;min-height:0!important;max-height:none;
+ padding:0!important;margin:0!important;
+ border-radius:16px;overflow:hidden;
+}
+.home-screen .home-hero-heading{
+ flex:none;padding:9px 14px 7px!important;
+ min-height:0!important;
+}
+.home-screen .home-kicker{font-size:8px;letter-spacing:1.1px}
+.home-screen .home-hero h1{
+ font-size:clamp(30px,7.3vw,42px)!important;
+ margin:3px 0!important;line-height:1!important;
+ letter-spacing:-2.2px!important;
+}
+.home-screen .home-hero h1 i{font-size:clamp(11px,2.8vw,15px);padding:3px 6px}
+.home-screen .home-hero p{font-size:10px!important;margin:2px 0!important;line-height:1.2!important}
+.home-screen .home-hero-photo{
+ display:block;width:100%;height:0!important;min-height:0!important;max-height:none!important;
+ flex:1 1 0!important;aspect-ratio:auto!important;
+ object-fit:cover;object-position:center 52%;
+ background:#243341;
+}
+.home-screen .home-actions{
+ flex:none;display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ grid-template-rows:repeat(4,auto);
+ gap:7px!important;margin:0!important;
+}
+.home-screen .home-card{
+ border-radius:12px;min-width:0;width:100%;
+ min-height:51px!important;height:53px;
+ display:flex;align-items:center;justify-content:flex-start;
+ gap:8px!important;padding:7px 10px!important;
+ box-shadow:0 2px 8px #1b2a3816;
+}
+.home-screen .home-card.is-main-action{grid-column:1/-1;height:54px;min-height:54px!important}
+.home-screen .home-card.is-accent{height:58px;min-height:58px!important}
+.home-screen .home-card-icon{
+ width:34px;height:34px;border-radius:9px;
+ flex:none;font-size:19px;line-height:1;
+}
+.home-screen .home-card>span:nth-child(2){gap:2px;min-width:0}
+.home-screen .home-card strong{
+ font-size:14px;line-height:1.1;letter-spacing:-.2px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.home-screen .home-card.is-accent strong{font-size:19px}
+.home-screen .home-card small{
+ font-size:10px;line-height:1.2;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.home-screen .home-card:not(.is-main-action) small{display:none}
+.home-screen .home-card:not(.is-main-action)>span:last-child{display:none}
+.home-screen .home-card.is-main-action>span:last-child{font-size:20px}
+@media(min-width:690px){
+ .home-screen .home-scroll{max-width:780px}
+ .home-screen .home-actions{grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-rows:repeat(2,auto)}
+ .home-screen .home-card.is-main-action{grid-column:span 2}
+ .home-screen .home-card{height:70px;min-height:70px!important}
+ .home-screen .home-card.is-main-action{height:75px;min-height:75px!important}
+ .home-screen .home-card.is-accent{height:75px;min-height:75px!important}
+ .home-screen .home-card:not(.is-main-action)>span:last-child{display:none}
+}
+@media(max-height:720px){
+ .home-screen .home-scroll{gap:5px;padding:6px 9px 5px!important}
+ .home-screen .home-hero-heading{padding:6px 10px 5px!important}
+ .home-screen .home-hero h1{font-size:29px!important}
+ .home-screen .home-kicker{font-size:7px}
+ .home-screen .home-card{height:46px;min-height:46px!important;padding:5px 7px!important}
+ .home-screen .home-card.is-main-action{height:49px;min-height:49px!important}
+ .home-screen .home-card.is-accent{height:50px;min-height:50px!important}
+ .home-screen .home-card-icon{height:30px;width:30px}
+ .home-screen .home-actions{gap:5px!important}
+ .main-navigation{min-height:49px;padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom,0px))}
+ .main-navigation button{min-height:44px}
+}
+@media(max-height:580px){
+ .home-screen .home-hero-heading{padding:3px 9px!important}
+ .home-screen .home-hero h1{font-size:25px!important}
+ .home-screen .home-hero p{display:none}
+ .home-screen .home-card{height:42px;min-height:42px!important}
+ .home-screen .home-card.is-main-action,.home-screen .home-card.is-accent{height:44px;min-height:44px!important}
+ .home-screen .home-card small{display:none}
+}
+/* Jerarquía visual consistente: rojo=acción principal, blanco=secundaria. */
+.hub-screen,.builder-screen,.results-screen{background:linear-gradient(165deg,#f7f8fb,#eef1f5)}
+.hub-heading,.builder-heading{color:var(--ui-ink)}
+.hub-heading h1,.shop-header h1,.results-hero h1{font-style:italic;font-weight:1000;letter-spacing:-1px}
+.hub-action,.hub-back,.shop-import,.setting-toggle,.mini,
+.shop-collection>button,.shop-card-action button,.shop-modal-actions button{
+ border-radius:var(--ui-radius);
+}
+.hub-action,.hub-back,.shop-import,.shop-collection>button,
+.results-screen .results-actions .mini:not(.primary),
+.builder-screen .controlbar .right button:not(.primary){
+ border:1px solid var(--ui-line)!important;
+ background:linear-gradient(180deg,#fff,#f7f9fb)!important;
+ color:var(--ui-ink)!important;box-shadow:var(--ui-shadow);
+}
+.hub-primary,.home-new,.mini.primary,.shop-modal-primary,
+.results-screen .results-actions .primary,
+.shop-card-action button,.shop-tab.is-active,.case-category-tab.is-current,
+.case-category-tab[aria-pressed="true"]{
+ border-color:#e72b4d;
+ background:linear-gradient(130deg,#ed2448,#bd0029);
+ color:#fff;
+}
+.hub-screen .hub-back{display:none!important} /* La navegación global ya ocupa ese lugar. */
+.shop-screen .shop-bottom-nav{display:none!important} /* No duplicar barras en Tienda. */
+.hub-screen .hub-quick-actions .hub-action,.hub-screen .hub-primary{
+ min-height:48px;
+}
+.shop-tab{min-height:48px}
+.shop-modal-primary,.shop-modal-secondary,.circuit-delete-buttons button{min-height:44px}
+.builder-screen .controlbar .right button{min-height:57px!important}
+.builder-screen .case-category-tab{min-height:49px}
+.builder-screen .tool-button,.builder-screen .mini{font-weight:900}
+.results-screen .results-actions{gap:8px}
+.results-screen .results-actions button{min-height:48px}
+.dial-arrows span{font-size:clamp(9px,2.5vw,12px);letter-spacing:-.3px}
+/* La vista de carrera conserva toda la superficie de control; el resto de las
+   pantallas comparten la barra principal. */
+@media(prefers-reduced-motion:reduce){
+ .home-screen .home-card,.main-navigation button{transition:none!important}
+}

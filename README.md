@@ -1,3 +1,22 @@
+# SlotRace DEV 0.14.1 · Auditoría y sistema visual unificado
+
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.1
+
+## Normas de interfaz (obligatorias en futuras versiones)
+
+1. **Navegación persistente:** cinco destinos siempre en este orden: **Menú, Construir, Circuitos, Garaje, Tienda**. Una barra global única aparece en la portada y las pantallas de gestión, incluido el constructor. **Ajustes** ocupa siempre el engranaje de la cabecera. Evitar accesos repetidos y barras exclusivas de una sección.
+2. **Excepción de conducción:** en carrera y resultados se oculta la barra global para conservar espacio para mandos y resultados. La cabecera mantiene el acceso a Menú y Ajustes; los botones de la carrera corresponden solo a acciones de la sesión.
+3. **Portada sin scroll vertical:** imagen flexible en función de la altura real del dispositivo, **Jugar** y **Construir** a todo el ancho, otros cuatro accesos en dos columnas. Las tarjetas y la foto se redimensionan, no desaparece ninguna sección.
+4. **Lenguaje castellano uniforme:** **Jugar** para iniciar carreras, **Construir** para entrar en el taller, **Exportar plano** para generar PNG, **Acelerador** para el gatillo/rueda, **Clics activados / Clics desactivados** para el sonido. **Menú** es el nombre de inicio y **Mis circuitos** es el nombre completo de la colección.
+5. **Botones:** rojo SlotRace para la acción principal de cada pantalla, blanco/gris y borde fino para las secundarias, tonos oscuros solo sobre la mesa y la caja de montaje. Esquinas redondeadas consistentes, tamaño táctil de unos 44 px o superior y estado activo reconocible sin depender solo del icono.
+6. **Jerarquía:** cabecera y navegación fijas; contenido desplazable en biblioteca, tienda, garaje, ajustes y constructor. **Solo la portada** se adapta estrictamente a una pantalla sin desplazamiento. No superponer herramientas sobre el circuito o las tarjetas.
+7. **No cambiar geometría ni datos:** esta versión es una auditoría de interfaz. Conserva `slotrace-lab-10`, las claves de biblioteca, récords y adquisiciones.
+
+## Comprobaciones incorporadas
+Pruebas automáticas de presencia de la navegación, rutas entre secciones, acceso a Ajustes, ausencia de barra principal durante carreras y reglas de portada compacta. Las pruebas anteriores de geometría, guardado y controles se mantienen.
+
+---
+
 # SlotRace DEV 0.14.0 · Tienda comercial de pruebas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.0
