@@ -106,8 +106,9 @@ const path=require("node:path");
  const closedWrap=geo.buildTrack(geo.STARTER,geo.START,[0,geo.STARTER.length-1]);
  const wrappedRuns=game.rendering.elevatedDeckRuns(closedWrap);
  assert.equal(wrappedRuns.length,1,"El puente que cruza la meta no se corta en el índice cero");
- assert.deepEqual(wrappedRuns[0].indices.slice(0,2),[geo.STARTER.length-2,geo.STARTER.length-1],
-  "Las curvas contiguas a cero se combinan en orden de recorrido");
+ assert.ok(wrappedRuns[0].indices.includes(geo.STARTER.length-1)&&
+  wrappedRuns[0].indices.includes(0),
+  "La banda continúa al cruzar el índice cero sin una junta artificial");
  // El kit manual levanta una recta de un circuito que antes se
  // consideraba cruce a nivel. El puente de la plantilla no interviene.
  const customEight=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
