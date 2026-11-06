@@ -169,8 +169,8 @@ const path=require("node:path");
   "Ventanas reutilizadas mientras no cambie la geometría");
  clips.length=0;
  game.rendering.paintGroundWithBridgeCutouts(instrumentedCtx,multiBridge,false);
- assert.deepEqual(clips,["clip"],
-  "Una única máscara evenodd abre todas las ventanas simultáneamente");
+ assert.deepEqual(clips,["clip","clip"],
+  "Cada ventana se excluye por separado, incluso si dos puentes se solapan");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
