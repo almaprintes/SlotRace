@@ -2864,6 +2864,46 @@ function paintElevatedDeck(ctx,track){
 // no garantiza que todos los cruces del Doble Ocho queden tapados.
 // El clip limita el repintado al cruce real y utiliza la geometría
 // continua del arco superior, no un rectángulo dibujado como pista.
+// Antes de trazar los carriles inferiores, reservar las zonas tapadas
+// por cada puente. No se trata de repintar un defecto: esas líneas
+// inferiores jamás llegan al lienzo en el área de una intersección.
+const crossCutoutCache=new WeakMap();
+function crossingCutouts(track){
+ const cached=crossCutoutCache.get(track);if(cached)return cached;
+ const masks=(track.bridge?.crossings||[]).flatMap(cross=>{
+  const upper=track.parts[cross.upper];if(!upper)return[];
+  const p=positionOnPiece(upper.start,upper.id,cross.upperT??.5);
+  const lower=track.parts[cross.lower];
+  const q=lower?positionOnPiece(lower.start,lower.id,cross.lowerT??.5):null;
+  const angle=q?Math.abs(Math.sin(p.h-q.h)):1;
+  return[{x:cross.x,y:cross.y,h:p.h,upper:cross.upper,
+   halfLength:Math.min(TRACK_WIDTH*3,Math.max(TRACK_WIDTH,
+    TRACK_WIDTH/(2*Math.max(.28,angle))+TRACK_WIDTH*.40)),
+   halfWidth:TRACK_WIDTH/2-5}];
+ });
+ crossCutoutCache.set(track,masks);return masks;
+}
+function paintGroundWithBridgeCutouts(ctx,track,editing){
+ const cutouts=crossingCutouts(track);
+ if(!cutouts.length){paintContinuousTrack(ctx,track,editing);return;}
+ ctx.save();ctx.beginPath();
+ const b=track.board;
+ ctx.rect(b.left-1200,b.top-1200,b.width+2400,b.height+2400);
+ for(const m of cutouts){
+  const c=Math.cos(m.h),sn=Math.sin(m.h);
+  const corners=[[-m.halfLength,-m.halfWidth],[m.halfLength,-m.halfWidth],
+   [m.halfLength,m.halfWidth],[-m.halfLength,m.halfWidth]];
+  for(const [i,[dx,dy]] of corners.entries()){
+   const x=m.x+dx*c-dy*sn,y=m.y+dx*sn+dy*c;
+   if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+ }
+ // Evenodd quita TODAS las ventanas de cruce del trazado base.
+ ctx.clip("evenodd");
+ paintContinuousTrack(ctx,track,editing);
+ ctx.restore();
+}
 function paintVerifiedCrossings(ctx,track){
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length)return;
@@ -3726,7 +3766,7 @@ function renderScene(canvas,mode){
   const part=track.parts[index];if(part)paintSupportKit(ctx,part,track);
  }
  // Dibujo continuo: los carriles de los módulos acoplados nunca se cortan.
- paintContinuousTrack(ctx,track,mode==="build");
+ paintGroundWithBridgeCutouts(ctx,track,mode==="build");
  if(hasBridge){
   // Orden de capas: pista base → coche inferior → puente completo
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
@@ -4213,7 +4253,7 @@ window.slotraceLab={version:"DEV 0.14.23",state,curve90Presets:CURVE_90_PRESETS,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,crossingCutouts,paintElevatedDeck,paintVerifiedCrossings,paintGroundWithBridgeCutouts,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
