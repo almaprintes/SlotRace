@@ -80,6 +80,18 @@ const fs=require("node:fs"),path=require("node:path");
  const polygons=game.rendering.xRayDeckPolygons(track);
  assert.ok(polygons.length===1&&polygons[0].length>25);
  assert.strictEqual(game.rendering.xRayDeckPolygons(track),polygons,"Máscara cacheada");
+ const guides=game.rendering.xRayGroundGuides(track);
+ assert.ok(guides.length>0,"Hay tramos inferiores que visualizar");
+ assert.ok(guides.every(run=>run.rails.length===2),
+  "Los dos carriles inferiores tienen una guía discontinua");
+ assert.strictEqual(game.rendering.xRayGroundGuides(track),guides,
+  "Los offsets de túneles largos se calculan una vez por trazado");
+ const renderSource=source.slice(source.indexOf("function renderScene("),
+  source.indexOf("function screenToWorld("));
+ assert.ok(renderSource.indexOf("if(state.xRayEnabled)paintXRayOverlay(")<
+  renderSource.indexOf("if(track.valid&&carAbove)paintCar("),
+  "El coche superior queda encima de las guías Rayos X y no se atraviesa");
+
  const inside=(p,poly)=>{
   let c=false;
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){
@@ -100,6 +112,8 @@ const fs=require("node:fs"),path=require("node:path");
   "No marcar como ocultos carriles a la vista");
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,null),true);
  assert.ok(clips.length>0,"La guía se recorta por el contorno real de la cubierta");
+ assert.ok(strokes.some(x=>x.dash.join(",")==="19,15"&&x.color==="#06323e"),
+  "Los discontinuos tienen un halo oscuro que mejora su lectura");
  assert.ok(strokes.some(x=>x.dash.join(",")==="19,15"&&x.color==="#8cece8"),
   "Raíles ocultos representados con discontinuos turquesa");
  assert.ok(!strokes.some(x=>x.color==="#b3fffa"),
@@ -107,6 +121,8 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  const under=geo.positionOnPiece(track.parts[13].start,track.parts[13].id,.5);
  game.rendering.paintXRayOverlay(ctx,track,under);
+ assert.ok(strokes.some(x=>x.dash.join(",")==="9,6"&&x.color==="#07313b"),
+  "La silueta incorpora contraste sin mostrar el sprite del coche");
  assert.ok(strokes.some(x=>x.dash.join(",")==="9,6"&&x.color==="#b3fffa"),
   "Silueta discontinua de coche oculto, sin sprite");
  toggle();
