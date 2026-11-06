@@ -1321,9 +1321,15 @@ function measureOpenGap(){
 }
 function closeExactly(){
  if(state.track.closed){
-  toast(state.track.intersection&&!state.track.bridge?
-   "Los extremos coinciden, pero falta el kit del puente.":"Este circuito ya está cerrado.");
-  return;
+  if(!state.track.valid){
+   const issue=state.track.elevation?.errors?.[0]||
+    (state.track.intersection?"Cruce sin separación vertical suficiente. En Puentes, eleva el tramo superior completo.":
+     "Conectores cerrados, pero el montaje todavía no es válido.");
+   $("gapInfo").textContent=issue;$("gapInfo").hidden=false;
+   if(state.track.bridge||state.track.intersection)chooseCaseCategory("bridge");
+   toast(issue);return false;
+  }
+  toast("¡Circuito cerrado y verificado! Ya puedes jugar.");return true;
  }
  // Si el montaje aún vive como grupo magnético suelto, primero comprobar
  // sus DOS conectores. Antes este botón se deshabilitaba siempre.
@@ -1395,7 +1401,7 @@ function closeExactly(){
      state.loose,state.origin,{preserveBridge:Boolean(result.rebalanced)});
    }else toast(result.reason||"No hay cierre exacto con esas piezas.");
   }catch(e){toast("No fue posible calcular el cierre. Tu pista sigue intacta.");}
-  finally{$("autoClose").textContent="Cerrar exacto";updateUI();}
+  finally{updateUI();}
  });
 }
 function removeSelected(){
@@ -2273,27 +2279,24 @@ function updateUI(){
  const t=state.track;
  const looseKit=state.loose.some(p=>p.raised);
  const degrees=t.headingGap*180/Math.PI;
- const status=t.bridge&&t.valid?"CIRCUITO CON PUENTE · "+(t.length/1000).toFixed(2)+" m":
- t.valid?"CERRADO EXACTO · "+(t.length/1000).toFixed(2)+" m":
- t.bridge?"PUENTE COLOCADO · CIRCUITO AÚN ABIERTO":
- !t.types.length?(state.loose.length?
-  (looseKit?"KIT PUENTE EN MESA · ":"")+state.loose.length+" PIEZAS SUELTAS":
-  "MESA VACÍA · COLOCA PIEZAS"):
- t.closed?"CONECTADO · CRUCE SIN PUENTE":
- "ABIERTO · "+Math.round(t.gap)+" mm · "+Math.round(degrees)+"°";
- const notice=t.elevation?.errors?.length?t.elevation.errors[0]:
- t.bridge&&!t.bridge.valid?"El cruce no tiene suficiente altura libre.":
- t.bridge?(t.valid?"PUENTE ELEVADO 65 MM · CRUCE PROTEGIDO":
-  "Elevación marcada. Falta cerrar el circuito o completar las rampas."):
- t.intersection?"Cruce al mismo nivel: necesita puente":
- !t.onTable?"El circuito rebasa la mesa":t.closed?"Conectores alineados matemáticamente":
- t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°":
- looseKit?"Kit unido a la recta; el tramo sigue suelto hasta acoplarlo.":
- state.loose.length+" piezas sueltas · toca una y pulsa Iniciar";
- $("stateChip").textContent=t.bridge&&t.valid?"✓ PUENTE ELEVADO":
- t.bridge||looseKit?"◉ PUENTE EN MONTAJE":
- t.valid?"✓ CERRADO PERFECTO":t.closed?"⚠ CERRADO CON CRUCE":"○ EXTREMOS ABIERTOS";
- $("stateDetails").textContent=t.valid?t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":notice;
+ const connectorInfo=t.types.length?" · "+Math.round(t.gap)+" mm / "+Math.round(degrees)+"°":"";
+ const status=t.valid?
+  (t.bridge?"CIRCUITO CON PUENTE":"CIRCUITO CERRADO")+" · "+(t.length/1000).toFixed(2)+" m":
+  t.closed?"EXTREMOS CERRADOS · REVISAR PUENTE":
+  t.types.length?(t.bridge?"PUENTE EN MONTAJE · EXTREMOS ABIERTOS":"EXTREMOS ABIERTOS")+connectorInfo:
+  state.loose.length?state.loose.length+" PIEZAS SUELTAS":"MESA VACÍA · COLOCA PIEZAS";
+ const issue=t.elevation?.errors?.[0]||
+  (t.intersection&&t.bridge&&!t.bridge.valid?"El cruce no tiene suficiente altura libre.":
+   t.intersection&&!t.bridge?"Cruce al mismo nivel: necesita puente.":null);
+ const help=issue||
+  (t.valid?"Conectores y altura verificados.":
+   t.types.length?"Desfase: "+Math.round(t.gap)+" mm y "+Math.round(degrees)+"°.":
+   state.loose.length+" piezas sin acoplar.");
+ $("stateChip").textContent=t.valid?(t.bridge?"✓ PUENTE VÁLIDO":"✓ CERRADO EXACTO"):
+  issue?"⚠ REVISAR PUENTE":t.closed?"⚠ REVISAR CRUCE":"○ EXTREMOS ABIERTOS";
+ $("stateDetails").textContent=t.valid?
+  t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":
+  help+(t.types.length&&!t.closed?" · Hueco "+Math.round(t.gap)+" mm / "+Math.round(degrees)+"°":"");
  $("buildStatus").textContent=status;
  $("gridToggle").textContent=state.gridEnabled?"▦ 25 mm":"▦";
  $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
