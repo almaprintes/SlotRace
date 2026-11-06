@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.27 · Uniones invisibles entre suelo y rampas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.27
+
+- **Frontera suelo ↔ rampa:** una soldadura visual repinta el conector exacto con una sola trayectoria continua. Se evita el efecto de dos líneas transversales al pasar de piezas de suelo a piezas elevadas.
+- **Sin alterar las pistas:** ni los radios, ni las piezas, ni los enlaces magnéticos, ni las alturas, ni los tiempos de carrera cambian. Las dos plantas siguen teniendo la misma oclusión que en la DEV anterior.
+- **Sin máscaras destructivas:** el retoque está limitado a la zona del conector, no se abren agujeros en las curvas inferiores y no se repinta toda la pista del nivel inferior por encima de un puente.
+- **Doble ovalo real:** regresión sobre `tests/fixtures/doble-ovalo.json`, comprobando exactamente dos fronteras suelo/rampa (piezas 3→4 y 9→10), continuidad de puntos y un empalme de asfalto, bordes y carriles por unión.
+- **Generalización:** se detecta cualquier cambio entre un perfil elevado y uno a ras de suelo, también cuando cruza la primera pieza de un circuito cerrado. No depende del nombre del circuito.
+- **Rayos X:** sigue funcionando con líneas discontinuas y silueta cuando la pista pasa debajo.
+
+---
+
 # SlotRace DEV 0.14.26 · Rayos X pulidos y pruebas completas
 
 **Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.26
