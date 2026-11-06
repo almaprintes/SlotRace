@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.20 · Puente sólido y coche oculto correctamente
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.20
+
+- **Oclusión reparada:** en la carrera se pinta la vía de suelo, después el coche inferior, después una **banda elevada totalmente opaca** y, finalmente, el coche que circula por arriba. Se retira del render principal el antiguo recorte corto alrededor del cruce, que permitía ver la carrocería desde abajo.
+- **Piezas limpias:** el puente se dibuja como un recorrido continuo a través de su zona elevada y sus rampas, sin dibujar juntas internas encima del asfalto. Las uniones de la vía normal son más discretas.
+- **Soporte para circuitos cerrados:** el contorno visual puede atravesar la línea de meta sin abrir una falsa junta en el índice cero; los cruces múltiples repintan sus tramos elevados correspondientes.
+- **Inclinaciones:** los marcadores de subida/bajada se dibujan sobre la plataforma final, sin tapar el coche que corre arriba.
+- **Rendimiento:** se guarda en caché por trazado la banda completa y sus desplazamientos de carril, en lugar de recalcularlos cada fotograma.
+- **Pruebas:** comprobación del orden de capas para el coche inferior y superior, continuidad de nodos, curvas elevadas con rampas, índice cero y reutilización de geometría. No se cambian las físicas, la altura de los puentes, la receta o los circuitos guardados.
+
+---
+
 # SlotRace DEV 0.14.19 · Puentes por tramos, cierre a la vista y selección de cruces
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.19
