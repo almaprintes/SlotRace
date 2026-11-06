@@ -271,7 +271,7 @@ const path=require("node:path");
  assert.ok(Math.abs(looseCrossing[0].crossing.y-800)<.01);
  window.__drawLog.length=0;
  game.puzzle.paintLoose(ctx);
- assert.deepEqual(window.__drawLog,["bridge"],"La vía superior se repinta sólo sobre el cruce suelto");
+ assert.deepEqual(window.__drawLog,["loose","bridge"],"El taller dibuja piezas sueltas y repinta después la vía elevada");
  game.state.loose[1].raised=false;
  assert.equal(game.puzzle.looseOverpasses().length,0,"Sin kit no puede aparentar un puente");
  // Los cruces del circuito principal también deben verse con la pista
@@ -280,5 +280,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.25 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.26 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
