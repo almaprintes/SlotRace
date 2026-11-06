@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.28 · Rayos X con silueta de deportivo y carriles holográficos
+
+**Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.28
+
+- **Silueta, no rectángulo:** el coche oculto se representa mediante un contorno vectorial cenital con morro perfilado, pasos de rueda, hombros traseros y alerón, más una tenue iluminación turquesa. La posición y el giro mantienen el movimiento visual del coche. No muestra el sprite real ni cambia las físicas.
+- **Carriles Rayos X mejorados:** discontinuos más finos y redondeados, halo de contraste suave y guía central tenue. Solo aparecen dentro del contorno real de la cubierta elevada, incluso en curvas coincidentes y túneles largos.
+- **Orden de capas conservado:** la vía inferior está debajo de la cubierta opaca; Rayos X se dibuja después de la cubierta y antes del coche superior.
+- **Rendimiento:** reutiliza los caminos de las guías por geometría, sin recrear sombras dinámicas costosas.
+- **Regresión:** `tests/xray.cjs` comprueba el Doble ovalo real, la preferencia persistente, continuidad de los carriles, trazos suaves y que no vuelva el rectángulo de colisión.
+- **Sin modificaciones de pistas:** ningún circuito, rampa, conector o récord se altera.
+
+---
+
 # SlotRace DEV 0.14.27 · Uniones invisibles entre suelo y rampas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.27
