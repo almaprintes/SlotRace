@@ -949,11 +949,12 @@ function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
  // Los dos extremos son equivalentes físicamente en una pieza sola.
  // Antes sólo probábamos inicio→final y final→inicio. Quedaban sin opción
  // de acoplamiento las combinaciones inicio→inicio y final→final.
- const canReverse=moving.indices.length===1&&Boolean(reversedPartId(moving.parts[0].id));
+ const canReverse=moving.parts.every(part=>Boolean(reversedPartId(part.id)));
  const hReverseStart=moving.end.h+Math.PI,hReverseEnd=moving.start.h+Math.PI;
  const reversedStart={...moving.end,h:hReverseStart};
  const reversedEnd={...moving.start,h:hReverseEnd};
- const maxAngle=moving.indices.length===1?SINGLE_SNAP_ROTATION_RAD:SNAP_ROTATION_RAD;
+ // Los grupos rígidos pueden girar hasta 180° al conectar los extremos.
+ const maxAngle=SINGLE_SNAP_ROTATION_RAD;
  let best=null;
  for(const target of targets){
   const candidates=[
@@ -980,12 +981,18 @@ function bestMagnet(index,{distance=SNAP_DISTANCE_MM}={}){
  }
  return best;
 }
-function reverseLooseSingle(index){
- const piece=state.loose[index],reversedId=reversedPartId(piece.id);
- if(!reversedId)return false;
- const end=positionOnPiece(piece,piece.id,1);
- piece.x=end.x;piece.y=end.y;piece.h=end.h+Math.PI;
- piece.id=reversedId;
+function reverseLooseGroup(group){
+ const originals=group.parts.map(p=>({...p}));
+ if(!originals.every(p=>reversedPartId(p.id)))return false;
+ const reversed=originals.slice().reverse();
+ for(const [order,index] of group.indices.entries()){
+  const source=reversed[order],piece=state.loose[index];
+  const end=positionOnPiece(source,source.id,1);
+  piece.id=reversedPartId(source.id);
+  piece.x=end.x;piece.y=end.y;piece.h=end.h+Math.PI;
+  if(source.raised)piece.raised=true;else delete piece.raised;
+  if(group.indices.length>1){piece.magnetGroup=group.key;piece.magnetOrder=order;}
+ }
  return true;
 }
 function transformLoose(indices,from,to){
@@ -1001,7 +1008,7 @@ function snapLoose(index,{force=false,history=true}={}){
  if(!magnet)return false;
  if(history)pushHistory();
  else clearGapDiagnostic();
- if(magnet.reversed)reverseLooseSingle(source.indices[0]);
+ if(magnet.reversed&&!reverseLooseGroup(source))return false;
  transformLoose(source.indices,magnet.from,magnet.to);
  const moved=source.indices.map(i=>({...state.loose[i]}));
  if(magnet.kind==="main"){
@@ -1047,13 +1054,17 @@ function detachConnected(index,{history=true}={}){
  state.bridgeParts=state.bridgeParts.filter(i=>i<index);
  const first=state.loose.length;
  state.types=state.types.slice(0,index);
+ let detachedKey=null;
  if(pieces.length>1){
-  const key=newMagnetGroup();
-  for(let k=1;k<pieces.length;k++){pieces[k].magnetGroup=key;pieces[k].magnetOrder=k-1;}
+  detachedKey=newMagnetGroup();
+  for(let k=0;k<pieces.length;k++){
+   pieces[k].magnetGroup=detachedKey;pieces[k].magnetOrder=k;
+  }
  }
  state.loose.push(...pieces);
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
- state.selection=-1;state.looseSelection=first;state.selectionMode="piece";state.selectedGroup="single-"+first;
+ state.selection=-1;state.looseSelection=first;state.selectionMode=detachedKey?"group":"piece";
+ state.selectedGroup=detachedKey||"single-"+first;
  state.run=false;save();updateUI();return first;
 }
 function detachLooseMember(index){
@@ -1132,72 +1143,33 @@ function scatterLoose(id){
  const y=b.top+195+(Math.floor(n/cols)%4)*270;
  return addLoose(id,x,y,0);
 }
-// Atajos de 90°: combinaciones exactas de módulos existentes, no piezas falsas.
-const CURVE_90_PRESETS=Object.freeze({
- R2_90R:Object.freeze(["R2_45R","R2_45R"]),
- R3_90R:Object.freeze(Array(4).fill("R3_225R")),
- R4_90R:Object.freeze(Array(4).fill("R4_225R"))
-});
+// Piezas independientes de 90°: radio constante, una superficie y dos conectores.
+// Los antiguos trazados compuestos siguen siendo válidos sin migraciones.
+const CURVE_90_PRESETS=Object.freeze({});
 const pocketPartId=id=>id.includes("_")&&id.endsWith("R")?id.slice(0,-1)+state.caseCurveDirection:id;
-const shelfParts=id=>(CURVE_90_PRESETS[id]||[id]).map(pocketPartId);
+const shelfParts=id=>[pocketPartId(id)];
 const presetLabel=id=>id.slice(0,2)+" · 90°";
-function matchingPresetLoose(id){
- const ids=shelfParts(id);
- if(!CURVE_90_PRESETS[id])return[];
- for(let k=state.loose.length-1;k>=0;k--){
-  const group=looseGroup(k);
-  if(group&&group.parts.length===ids.length&&
-     group.parts.every((part,i)=>part.id===ids[i]))return group.indices;
- }
- return[];
-}
-function placeCurvePresetLoose(id,x,y,h=0){
- const ids=shelfParts(id);
- if(!CURVE_90_PRESETS[id]||
-    !allowed([...state.types,...state.loose.map(p=>p.id),...ids]))return false;
- const b=state.workBoard,n=state.loose.length;
- const cols=Math.max(2,Math.floor((b.width-300)/400));
- const point=gridXY(
-  Math.max(b.left+145,Math.min(b.right-225,x??b.left+180+(n%cols)*400)),
-  Math.max(b.top+155,Math.min(b.bottom-220,y??b.top+195+(Math.floor(n/cols)%4)*270))
- );
- pushHistory();
- const key=newMagnetGroup();
- let pose={x:point.x,y:point.y,h};
- for(const [i,pieceId] of ids.entries()){
-  state.loose.push({id:pieceId,x:pose.x,y:pose.y,h:pose.h,magnetGroup:key,magnetOrder:i});
-  pose=positionOnPiece(pose,pieceId,1);
- }
- state.selection=-1;state.looseSelection=state.loose.length-1;
- state.selectionMode="group";state.selectedGroup=key;lastCaseAppend=null;
- save();updateUI();
- toast("Curva "+presetLabel(id)+" colocada: "+ids.length+" piezas unidas.");
- return true;
-}
 // Tocar la caja monta por orden en el conector libre final.
  // El arrastre desde el asa sigue creando una pieza libre en el tapete.
 let lastCaseAppend=null;
 function inventoryAction(id){
- const pieces=shelfParts(id);
- if(!pieces.every(part=>CATALOG[part]))return false;
+ const chosen=pocketPartId(id);
+ if(!CATALOG[chosen])return false;
  if(state.track.closed){
-  if(CURVE_90_PRESETS[id])return placeCurvePresetLoose(id);
-  const placed=scatterLoose(pieces[0]);
-  if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala si quieres iniciar otro tramo.");
+  const placed=scatterLoose(chosen);
+  if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala para conectarla a otro tramo.");
   return placed;
  }
- const next=[...state.types,...pieces];
+ const next=[...state.types,chosen];
  if(!allowed([...next,...state.loose.map(p=>p.id)])){
   toast("No puedes utilizar más piezas de ese tipo.");return false;
  }
  const didClose=buildTrack(next,state.origin,state.bridgeParts).closed;
  if(!changeTypes(next,"",state.loose,state.origin,{preserveBridge:true}))return false;
  state.selectedGroup="main";state.selection=state.types.length-1;state.selectionMode="piece";
- lastCaseAppend={id:pieces.at(-1),pocketId:id,parts:pieces,count:state.types.length,history:state.history.length};
+ lastCaseAppend={id:chosen,pocketId:id,count:state.types.length,history:state.history.length};
  updateUI();revealLatestBuilderPiece();
- if(!didClose)toast(CURVE_90_PRESETS[id]?
-  "✓ Curva "+presetLabel(id)+" montada con "+pieces.length+" piezas y juntas reales.":
-  "✓ Pieza "+state.types.length+" encajada al final del circuito.");
+ if(!didClose)toast("✓ Pieza "+chosen+" encajada con dos conectores.");
  return true;
 }
 function toggleCaseCurveDirection(){
@@ -1924,31 +1896,19 @@ function renderCasePages(){
  for(const pocket of $("pieces").children)pocket.hidden=!visible.has(pocket.dataset.piece);
 }
 function removeLooseFromCase(id){
- const chosen=pocketPartId(id),parts=shelfParts(id);
- if(lastCaseAppend?.pocketId===id&&
-    lastCaseAppend.count===state.types.length&&
-    lastCaseAppend.history===state.history.length&&
-    parts.every((piece,i)=>state.types[state.types.length-parts.length+i]===piece)){
-  lastCaseAppend=null;undo();
-  toast("Último montaje devuelto a la caja.");return true;
- }
- if(CURVE_90_PRESETS[id]){
-  const indices=matchingPresetLoose(id);
-  if(!indices.length){toast("No hay un tramo suelto de este radio para devolver.");return false;}
-  pushHistory();
-  for(const i of [...indices].sort((a,b)=>b-a))state.loose.splice(i,1);
-  state.looseSelection=-1;state.selection=-1;
-  state.selectedGroup=null;state.selectionMode="group";
-  save();updateUI();toast("Curva completa devuelta al estante.");return true;
+ const chosen=pocketPartId(id);
+ if(lastCaseAppend?.pocketId===id&&lastCaseAppend.count===state.types.length&&
+    lastCaseAppend.history===state.history.length&&state.types.at(-1)===chosen){
+  lastCaseAppend=null;undo();toast("Última pieza devuelta al estante.");return true;
  }
  const latest=state.loose.findLastIndex(p=>p.id===chosen);
  const index=state.looseSelection>=0&&state.loose[state.looseSelection]?.id===chosen?
   state.looseSelection:latest;
- if(index<0){toast("No hay piezas sueltas de este tipo para devolver.");return false;}
+ if(index<0){toast("No hay piezas sueltas de ese tipo para devolver.");return false;}
  pushHistory();detachLooseMember(index);
  state.loose.splice(index,1);state.looseSelection=-1;state.selection=-1;
  state.selectedGroup=null;state.selectionMode="group";
- save();updateUI();toast("Pieza suelta devuelta a la caja.");return true;
+ save();updateUI();toast("Pieza suelta devuelta al estante.");return true;
 }
 function activateGroupMove(){
  if(!state.selectedGroup){toast("Toca primero el tramo que quieres mover.");return false;}
@@ -2447,16 +2407,13 @@ function foamSlotSVG(id){
    line(LANE_OFFSET,"mini-slot-guide",5,PIECE_LOOK.guide)+
    line(-72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
    line(72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
-   seam(pts[0])+(preset?preset.slice(1).map((_,i)=>
-    seam(pts[Math.round((i+1)*n/preset.length)])).join(""):"")+seam(pts[pts.length-1])+
+   seam(pts[0])+seam(pts[pts.length-1])+
   '</g></svg>';
 }
 function palette(){
  const list=$("pieces");
  for(const id of pocketIds){
-  const spec=CATALOG[id]||{
-   group:"curva",name:"Curva "+presetLabel(id),code:"COMBO · "+CURVE_90_PRESETS[id].length+" PIEZAS"
-  };
+  const spec=CATALOG[id];
   const pocket=document.createElement("div");
   pocket.className="foam-pocket";pocket.dataset.piece=id;
   pocket.setAttribute("role","button");
@@ -4005,7 +3962,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.17",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.18",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
