@@ -85,8 +85,10 @@ const path=require("node:path");
  assert.match(source,/paintElevatedDeck\(ctx,track\);/,
   "El puente se repinta entero detrás o delante del coche según su altura");
  assert.doesNotMatch(source.slice(source.indexOf("function paintSupportKit("),source.indexOf("function paintBridgeRampProfile(")),/fillRect\(-spec\.length\*\.5/,"El soporte no dibuja una placa separada sobre la pista");
- assert.match(source,/paintGroundWithBridgeCutouts\(ctx,track,mode==="build"\)/,
-  "La capa inferior se recorta con todas las máscaras antes de dibujar carriles");
+ assert.match(source,/paintGroundTrack\(ctx,track,mode==="build"\)/,
+  "Suelo y plataforma elevada se dibujan como rutas independientes");
+ assert.doesNotMatch(source,/function paintGroundWithBridgeCutouts\(/,
+  "Nunca perforar la pista completa con rectángulos: dañaba curvas inferiores");
  window.__seamLog.length=0;window.__rampDraws.length=0;
  const groundOrder=render(dForPiece(0),16);
  assert.deepEqual(groundOrder,["base","car","deck"],
@@ -99,18 +101,8 @@ const path=require("node:path");
   "Cada fotograma revisa todos los cruces y repinta la parte superior");
  const crossingPainter=source.slice(source.indexOf("function paintVerifiedCrossings("),
   source.indexOf("function paintBridgeCrossing("));
- const cutting=source.slice(source.indexOf("function paintGroundWithBridgeCutouts("),
-  source.indexOf("function paintVerifiedCrossings("));
- assert.match(cutting,/ctx\.clip\("evenodd"\)/,
-  "Cada ventana excluye de verdad los raíles inferiores de la primera pasada");
- assert.match(cutting,/paintContinuousTrack\(ctx,track,editing\)/,
-  "La máscara se aplica antes de pintar la pista inferior");
- assert.match(crossingPainter,/for\(const cross of crossings\)/,
-  "No hay un único cruce fijo ni excepciones por nombre de circuito");
- assert.match(crossingPainter,/ctx\.rect\(-halfLength/,
-  "Cada cruce recibe un área local de oclusión independiente");
  assert.match(crossingPainter,/paintOpaqueRibbon\(ctx,run\.points,run\.offsets\)/,
-  "El repintado local usa la vía superior y su geometría original");
+  "Cada cruce mantiene una cubierta opaca sin agujerear la vía inferior");
  // Regresión universal: piezas sin acoplar no deben contaminar la pista
  // de ningún circuito en carrera (antes pintaban raíles SOBRE el puente).
  game.state.loose=[{id:"S350",x:figure.bridge.crossings[0].x-175,
@@ -163,14 +155,29 @@ const path=require("node:path");
  game.rendering.paintVerifiedCrossings(instrumentedCtx,multiBridge);
  assert.equal(clips.length,2,
   "Dos cruces independientes reciben sendas máscaras opacas");
- const cuts=game.rendering.crossingCutouts(multiBridge);
- assert.equal(cuts.length,2,"Cada cruce recibe ventana propia en la pista inferior");
- assert.strictEqual(game.rendering.crossingCutouts(multiBridge),cuts,
-  "Ventanas reutilizadas mientras no cambie la geometría");
- clips.length=0;
- game.rendering.paintGroundWithBridgeCutouts(instrumentedCtx,multiBridge,false);
- assert.deepEqual(clips,["clip","clip"],
-  "Cada ventana se excluye por separado, incluso si dos puentes se solapan");
+ const elevated=game.rendering.elevatedDeckRuns(figure);
+ const ground=game.rendering.groundDeckRuns(figure);
+ const raisedIndices=elevated.flatMap(run=>run.indices);
+ const groundIndices=ground.flatMap(run=>run.indices);
+ assert.deepEqual([...raisedIndices,...groundIndices].sort((a,b)=>a-b),
+  figure.parts.map(part=>part.index),
+  "Ninguna pieza desaparece del Doble Ocho, tampoco las curvas inferiores");
+ assert.deepEqual(new Set(raisedIndices).size,raisedIndices.length,
+  "Cada pieza elevada se pinta una sola vez");
+ assert.deepEqual(new Set(groundIndices).size,groundIndices.length,
+  "Cada pieza inferior se pinta una sola vez");
+ for(const crossing of figure.bridge.crossings){
+  assert.ok(raisedIndices.includes(crossing.upper),
+   "El cruce superior pertenece al nivel elevado");
+  assert.ok(groundIndices.includes(crossing.lower),
+   "La pista inferior no queda recortada ni destruida");
+ }
+ const lowerCustom=geo.buildTrack([...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)],
+  geo.START,[0]);
+ const combined=[...game.rendering.groundDeckRuns(lowerCustom).flatMap(run=>run.indices),
+  ...game.rendering.elevatedDeckRuns(lowerCustom).flatMap(run=>run.indices)].sort((a,b)=>a-b);
+ assert.deepEqual(combined,lowerCustom.parts.map(part=>part.index),
+  "El diseño construido por el jugador conserva todos sus tramos, a ambos niveles");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
@@ -258,5 +265,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.23 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.24 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
