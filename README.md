@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.23 · Puentes del Doble Ocho: oclusión por cada intersección
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.23
+
+- **No es un parche para OchoA:** el problema descrito afecta al «Doble Ocho» y a cualquier circuito con cruces a dos alturas. El motor ahora calcula la ventana de oclusión para **cada intersección real**, a partir de la geometría y de qué tramo está arriba.
+- **Primera pasada:** se recorta el trazado inferior dentro de cada ventana mediante clips `evenodd`; sus raíles no pueden atravesar la cubierta porque directamente no se dibujan en esas zonas.
+- **Segunda pasada:** se pinta toda la banda elevada opaca y se repinta el asfalto/carriles superiores dentro de la ventana de cada cruce.
+- **Cruces próximos:** cada clip se aplica por separado, evitando que dos ventanas solapadas hagan reaparecer líneas inferiores por paridad.
+- **Circuitos arbitrarios:** no hay nombres de circuito, índices de pieza o radios específicos codificados en las máscaras. Las ventanas se cachean por geometría para reducir cálculos en el iPhone.
+- **Pruebas:** configuración ocho automático y ocho construido manualmente; simulación de dos intersecciones juntas, comprobando dos exclusiones y dos cubiertas superiores. La imagen del Doble Ocho guardado localmente en el iPhone no es accesible desde GitHub y requiere comprobación visual en Safari.
+- **Compatibilidad:** no cambian pistas, perfiles de altura, físicas, recetas ni progresos guardados.
+
+---
+
 # SlotRace DEV 0.14.22 · Oclusión válida para circuitos nuevos con puentes
 
 **Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.22
