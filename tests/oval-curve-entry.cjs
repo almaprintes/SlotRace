@@ -34,11 +34,11 @@ const path=require("node:path");
  );
  const game=window.slotraceLab;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.8");
+ assert.equal(game.version,"DEV 0.14.9");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
- assert.equal(game.version,"DEV 0.14.8");
+ assert.equal(game.version,"DEV 0.14.9");
  assert.equal(st.track.valid,true);
  assert.equal(st.track.bridge,null);
  const max=physics.DRIVE.topSpeed;
@@ -201,8 +201,31 @@ const path=require("node:path");
   rendered.x+nose*Math.cos(rendered.h)-(paintPose.x+nose*Math.cos(paintPose.h)),
   rendered.y+nose*Math.sin(rendered.h)-(paintPose.y+nose*Math.sin(paintPose.h)))<1e-8,
   "La guía delantera permanece en su sitio durante el derrape");
- assert.ok(Math.abs(rendered.h-paintPose.h)>.20,
-  "La trasera enseña más ángulo sin alterar su límite físico");
+ assert.ok(Math.abs(rendered.h-paintPose.h)>.40,
+  "La trasera enseña más de 23° de derrape al acumular 12 mm físicos");
+ const tailOffset=98*.60;
+ const tailBaseline={x:paintPose.x-tailOffset*Math.cos(paintPose.h),
+  y:paintPose.y-tailOffset*Math.sin(paintPose.h)};
+ const tailRendered={x:rendered.x-tailOffset*Math.cos(rendered.h),
+  y:rendered.y-tailOffset*Math.sin(rendered.h)};
+ const tailTravel=Math.hypot(tailRendered.x-tailBaseline.x,
+  tailRendered.y-tailBaseline.y);
+ assert.ok(tailTravel>39,
+  "La cola se desplaza visiblemente más de 39 mm con la guía inmóvil");
+ // El efecto funciona en ambos sentidos y vuelve suavemente al centro.
+ st.rearSlip=-12;
+ const opposite=physics.visualCarPose(paintPose);
+ assert.ok(Math.abs((opposite.h-paintPose.h)+(rendered.h-paintPose.h))<1e-8,
+  "La amplitud del derrape es simétrica para izquierda y derecha");
+ st.rearSlip=0;
+ const centered=physics.visualCarPose(paintPose);
+ assert.ok(Math.hypot(centered.x-paintPose.x,centered.y-paintPose.y)<1e-8);
+ assert.ok(Math.abs(centered.h-paintPose.h)<1e-8);
+ st.rearSlip=6;
+ const half=physics.visualCarPose(paintPose);
+ assert.ok(half.h>paintPose.h&&half.h<rendered.h,
+  "El derrape progresa sin saltos ni reinicios de postura");
+ 
  st.rearSlip=0;st.rearSlipVelocity=0;
  const fast=runCurve(r1Oval,1,1,1/120);
  assert.equal(fast.crashed,true,"Mismo deslot a 120 Hz");
@@ -224,5 +247,5 @@ const path=require("node:path");
  const angle=physics.advanceRearDynamics(pose(r1),1,1/60);
  assert.ok(Math.abs(angle.yawRad)<physics.VEHICLE_DYNAMICS.gripline.guideYawLimit,
   "El ángulo de guía se mantiene dentro de los márgenes al reducir gas");
- console.log("SlotRace DEV 0.14.8: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
+ console.log("SlotRace DEV 0.14.9: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

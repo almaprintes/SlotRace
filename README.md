@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.9 · Más desplazamiento de la trasera en los derrapes
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.9
+
+- **Derrape más espectacular:** la visualización del giro alrededor de la guía delantera aumenta su amplitud de 1,16× a 2,4× respecto al ángulo físico de la trasera. Por ejemplo, con 12 mm de desplazamiento lateral calculado la cola pasa a recorrer más de 39 mm en pantalla en coordenadas del circuito.
+- **Guía delantera fija:** el morro sigue anclado a la ranura, y la posición del centro se recalcula según el giro. El desplazamiento sigue siendo simétrico y continuo al encadenar curvas o recuperar el coche.
+- **Mismas físicas:** no se cambia ni el agarre, ni la masa, ni la velocidad ni el límite de descarrilamiento. Los récords conservan la clave física v2 y no se fragmentan por una modificación puramente gráfica.
+- **Pruebas:** verifican que la guía no se separa, que la cola se mueve más y que el movimiento es suave en ambas direcciones.
+
+---
+
 # SlotRace DEV 0.14.8 · Mis récords dentro de Mis circuitos
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.8
