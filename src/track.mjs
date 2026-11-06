@@ -9,6 +9,20 @@ export const TRACK_WIDTH=GEOMETRY.trackWidth;
 export const LANE_OFFSET=GEOMETRY.laneOffset;
 export const VIRTUAL_R2_RADIUS=RADII.R2;
 export const VIRTUAL_R1_RADIUS=RADII.R1;
+// Guía orientativa de familias Scalextric Classic (1966/1972), no piezas intercambiables.
+// Los radios indicados son exclusivamente las medidas SR-Precision del juego.
+// Fuentes: https://www.phantomdrum.co.uk/scalexracer/pdf/scalextric-07-1966.pdf
+//          https://slot32.de/media/files/pdf/scalex/scal-cat/scal-13-1972.pdf
+export const CURVE_FAMILIES=Object.freeze({
+ R1:Object.freeze({radius:RADII.R1,label:"Cerrada",classicCode:"G · PT/52",
+  classicAngle:45,classicApproxMm:140}),
+ R2:Object.freeze({radius:RADII.R2,label:"Estándar",classicCode:"F · PT/51",
+  classicAngle:45,classicApproxMm:295}),
+ R3:Object.freeze({radius:RADII.R3,label:"Abierta",classicCode:"H · PT/53",
+  classicAngle:22.5,classicApproxMm:450}),
+ R4:Object.freeze({radius:RADII.R4,label:"Muy abierta",classicCode:"M · PT/84",
+  classicAngle:22.5,classicApproxMm:null})
+});
 export const CATALOG=Object.freeze(Object.fromEntries(
  Object.entries(PARTS).map(([id,s])=>[id,Object.freeze({
   name:s.name,code:s.reference,
