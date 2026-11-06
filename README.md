@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.18 · Curvas de 90° de una pieza y acoplamiento magnético reparado
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.18
+
+- **Una curva de 90°, una pieza:** R2, R3 y R4 tienen ahora versiones físicas *virtuales* de 90° reales en el catálogo SR-Precision, para ambos sentidos. Un único arco con dos conectores y solo las costuras externas, sin cuatro piezas escondidas dentro de la tarjeta.
+- **Compatibilidad:** los circuitos guardados con 2×R2 de 45° o 4×R3/R4 de 22,5° permanecen intactos. El nuevo módulo de 90° tiene un ID propio y no modifica los guardados, las físicas ni los récords de circuitos anteriores.
+- **Imanes de tramos completos:** se corrigió la pieza inicial desagrupada al desprender un tramo. Todos sus módulos mantienen el mismo grupo y el mismo orden. Los grupos pueden invertirse y girar hasta 180° para encajar por los extremos, incluidos final-final e inicio-inicio.
+- **Acoplamiento en ambas direcciones:** al soltar un grupo suelto junto al trazado se acopla; ahora también se prueba el acoplamiento al arrastrar el tramo principal cerca de los conectores sueltos.
+- **Pruebas:** nueva prueba de unión de dos curvas R3 de 22,5° con inversión de 135°, separación y posterior reconexión de un tramo con R3 de 90°, conexión grupo-grupo y conservación de la geometría de las recetas anteriores.
+- **Familia SR virtual:** radios 150/300/450/600 mm; no se afirma compatibilidad con Scalextric Classic o Sport.
+
+---
+
 # SlotRace DEV 0.14.17 · Catálogo de radios revisado frente a Classic
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.17
