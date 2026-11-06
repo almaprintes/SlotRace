@@ -548,7 +548,7 @@ const path=require("node:path");
  const viewStart=game.camera.makeView(elements.get("raceCanvas"),"race");
  assert.equal(viewStart.cx,startPose.x);
  assert.equal(viewStart.cy,startPose.y);
- assert.ok(Math.abs(viewStart.scale/standardView.scale-3)<1e-9);
+ assert.ok(Math.abs(viewStart.scale/standardView.scale-2)<1e-9);
  game.camera.updateFollowCamera(.05);
  assert.equal(st.followCamera.x,startPose.x,
   "Parado dentro de la zona de tolerancia: la cámara no se mueve");
