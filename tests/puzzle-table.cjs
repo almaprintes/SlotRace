@@ -247,5 +247,13 @@ const path=require("node:path");
  ];
  assert.equal(game.puzzle.snapLoose(2),true,"Una curva grande conecta a un grupo");
  assert.equal(game.puzzle.looseGroup(0).indices.length,3);
+ // Arrastrar el tramo PRINCIPAL hacia una pieza suelta también dispara el imán.
+ game.changeTypes(["S350"],"Arrastre del tramo principal",[],{x:500,y:500,h:0});
+ st.loose=[{id:"R3_90R",x:858,y:504,h:0}];
+ st.pointer.set(441,{moveMain:true,dragged:true,looseIndex:-1,consumed:false});
+ game.puzzle.canvasPointerEnd({pointerId:441,clientX:100,clientY:100});
+ assert.deepEqual(st.types,["S350","R3_90R"],
+  "El tramo principal arrastrado se acopla a una curva suelta cercana");
+ assert.equal(st.loose.length,0);
  console.log("SlotRace DEV 0.14.18 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
