@@ -1,5 +1,7 @@
-name: SlotRace · publicar en GitHub Pages
+name: SlotRace · pruebas automáticas
 
+# GitHub Pages ya dispone de su propia compilación y despliegue desde main.
+# Este flujo se limita a verificar el juego, evitando dos despliegues simultáneos.
 on:
   push:
     branches: [main]
@@ -7,20 +9,15 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: slotrace-github-pages
+  group: slotrace-pruebas
   cancel-in-progress: true
 
 jobs:
-  verificar-y-publicar:
+  verificar:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Descargar SlotRace
         uses: actions/checkout@v4
@@ -61,30 +58,15 @@ jobs:
       - name: Comprobar menú completo, conducción reversible y PNG con receta
         run: node tests/game-shell.cjs
 
-      - name: Preparar sitio estático
+      - name: Verificar archivos que sirve GitHub Pages
         run: |
-          mkdir -p _site
-          cp index.html _site/index.html
-          cp -R src _site/src
-          cp -R assets _site/assets
-          touch _site/.nojekyll
-          test -f _site/src/app.mjs
-          test -f _site/src/track.mjs
-          test -f _site/src/blueprint.mjs
-          test -f _site/src/site.css
-          test -s _site/assets/cars/avenir_gripline.webp
-          test -s _site/assets/cars/avenir_gripline_threequarter.webp
-          test -s _site/assets/cars/helix_spark_threequarter.webp
-          test -s _site/assets/ui/slotrace-duelo-curva.avif
-
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Subir artefacto de Pages
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: _site
-
-      - name: Publicar SlotRace
-        id: deployment
-        uses: actions/deploy-pages@v4
+          test -s index.html
+          test -s src/app.mjs
+          test -s src/track.mjs
+          test -s src/blueprint.mjs
+          test -s src/site.css
+          test -s assets/cars/avenir_gripline.webp
+          test -s assets/cars/avenir_gripline_threequarter.webp
+          test -s assets/cars/helix_spark.webp
+          test -s assets/cars/helix_spark_threequarter.webp
+          test -s assets/ui/slotrace-duelo-curva.avif
