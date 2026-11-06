@@ -206,7 +206,8 @@ const path=require("node:path");
  assert.equal(sum,rec.pieces,"No faltar piezas en el PNG");
  assert.equal(rec.sequence.length,geo.STARTER.length);
  assert.equal(rec.sequence[0].position,1);
- assert.match(source,/GRIPLINE_LENGTH_MM=98/,"Gripline original más pequeño");
+ assert.match(source,/CAR_LENGTH_MM=98/,"Los dos coches mantienen escala compacta");
+  assert.match(source,/assets\/cars\/helix_spark\.webp/,"El sprite cenital de Spark está incorporado");
  assert.match(source,/assets\/cars\/avenir_gripline\.webp/,"Usar piel original TDR");
  assert.doesNotMatch(source,/roundRect\(ctx,-70,-27,140,54/,
   "El coche procedural antiguo ha sido sustituido");
