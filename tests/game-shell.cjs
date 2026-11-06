@@ -16,7 +16,7 @@ const path=require("node:path");
   return{id,children:[],listeners:{},dataset:{},style:{},textContent:"",innerHTML:"",disabled:false,hidden:false,
    width:390,height:600,clientWidth:390,value:"0",
    classList:{add(){},remove(){},toggle(){},contains(){return false}},
-   setAttribute(){},setPointerCapture(){},appendChild(n){this.children.push(n);},
+   attrs:{},setAttribute(n,v){this.attrs[n]=String(v)},setPointerCapture(){},appendChild(n){this.children.push(n);},
    addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},
    getBoundingClientRect(){return{left:0,top:0,width:390,height:600,right:390,bottom:600}},
    querySelectorAll(){return this.children},
