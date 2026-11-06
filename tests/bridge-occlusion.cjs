@@ -28,6 +28,7 @@ const path=require("node:path");
    .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
    .replace('function paintCar(ctx,at,lane,paused=false){','function paintCar(ctx,at,lane,paused=false){window.__drawLog.push("car");')
    .replace('function paintContinuousTrack(ctx,track,editing){','function paintContinuousTrack(ctx,track,editing){window.__drawLog.push("base");')
+   .replace('function paintElevatedDeck(ctx,track){','function paintElevatedDeck(ctx,track){window.__drawLog.push("deck");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -74,16 +75,39 @@ const path=require("node:path");
   assert.ok(window.__drawLog.length,"El escenario debe dibujarse");
   return window.__drawLog.slice();
  };
- // La máscara del puente sólo cubre el tramo central, no la diagonal entera.
- assert.match(source,/const halfLength=Math\.min\(210/,"La máscara se ajusta al cruce y no tapa toda la recta");
+ // El trazado de arriba se repinta completo y opaco, no dentro de un
+ // rectángulo que deje asomar la carrocería.
+ assert.match(source,/paintElevatedDeck\(ctx,track\);/,
+  "El puente se repinta entero detrás o delante del coche según su altura");
  assert.doesNotMatch(source.slice(source.indexOf("function paintSupportKit("),source.indexOf("function paintBridgeRampProfile(")),/fillRect\(-spec\.length\*\.5/,"El soporte no dibuja una placa separada sobre la pista");
  assert.match(source,/paintContinuousTrack\(ctx,track,mode==="build"\)/,"Una única capa continua para todas las piezas");
  const groundOrder=render(dForPiece(0),16);
- assert.deepEqual(groundOrder,["base","car","bridge"],
-   "El coche inferior se pinta antes del puente y queda oculto bajo él");
+ assert.deepEqual(groundOrder,["base","car","deck"],
+   "El coche inferior se pinta antes de la banda elevada opaca");
  const upperOrder=render(dForPiece(7),32);
- assert.deepEqual(upperOrder,["base","bridge","car"],
-   "El coche elevado se pinta después del puente y queda encima");
+ assert.deepEqual(upperOrder,["base","deck","car"],
+   "El coche elevado se pinta por encima de la plataforma");
+ const deck=game.rendering.elevatedDeckRuns(figure);
+ assert.equal(deck.length,1,"Un tramo alto debe tener UNA banda continua");
+ assert.ok(deck[0].indices.includes(7),"El tramo elevado contiene el cruce");
+ assert.equal(deck[0].points.length,
+  deck[0].indices.reduce((n,i)=>n+figure.parts[i].points.length,0)
+  -deck[0].indices.length+1,"El empalme no duplica nodos ni dibuja juntas internas");
+ assert.strictEqual(game.rendering.elevatedDeckRuns(figure),deck,
+  "Se reutiliza la geometría sin recalcularla cada fotograma");
+ const crossing=figure.bridge.crossings[0];
+ assert.ok(deck[0].indices.includes(crossing.upper),
+  "La banda opaca cubre la pieza superior del cruce");
+ const manualHigh=geo.buildTrack(["S350","R2_90R","R3_90R","R2_90R","S350"],geo.START,[2]);
+ const manualRuns=game.rendering.elevatedDeckRuns(manualHigh);
+ assert.equal(manualRuns.length,1);
+ assert.deepEqual(manualRuns[0].indices,[1,2,3],
+  "La curva elevada y sus rampas se dibujan sin costuras entre ellas");
+ const closedWrap=geo.buildTrack(geo.STARTER,geo.START,[0,geo.STARTER.length-1]);
+ const wrappedRuns=game.rendering.elevatedDeckRuns(closedWrap);
+ assert.equal(wrappedRuns.length,1,"El puente que cruza la meta no se corta en el índice cero");
+ assert.deepEqual(wrappedRuns[0].indices.slice(0,2),[geo.STARTER.length-2,geo.STARTER.length-1],
+  "Las curvas contiguas a cero se combinan en orden de recorrido");
  // El kit manual levanta una recta de un circuito que antes se
  // consideraba cruce a nivel. El puente de la plantilla no interviene.
  const customEight=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
@@ -142,5 +166,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.19 bridge occlusion: inferior bajo puente y superior encima, sin salto de trayectoria — OK");
+ console.log("SlotRace DEV 0.14.20 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
