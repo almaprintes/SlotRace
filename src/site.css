@@ -2317,7 +2317,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 }
 
 
-/* DEV 0.14.27 · Estante táctil navegable sin colocar piezas por error.
+/* DEV 0.14.28 · Estante táctil navegable sin colocar piezas por error.
    La dirección pan-x debe aplicarse también a cada tarjeta: el viejo
    touch-action:pan-y interceptaba el desplazamiento horizontal en iPhone. */
 .builder-workbench #caseInterior .pieces.foam-insert{
@@ -2379,7 +2379,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 }
 
 
-/* DEV 0.14.27: cierre a la vista y montaje accesible de tramos elevados. */
+/* DEV 0.14.28: cierre a la vista y montaje accesible de tramos elevados. */
 .builder-workbench .controlbar .right #autoClose{
  background:#164c50!important;color:#eafff7!important;
  border:1px solid #8bdcc6!important;font-weight:950!important;
