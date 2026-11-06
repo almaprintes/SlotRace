@@ -79,6 +79,9 @@ const path=require("node:path");
  close(st.loose[1].h,0);
  game.redo();
  close(st.loose[0].h,-step);
+ // Deshacer/rehacer conserva piezas y limpia la selección: se vuelve a
+ // tocar la pieza antes de girar en sentido contrario.
+ game.puzzle.selectByTap("loose",0);
  elements.get("rotate").listeners.click[0]();
  close(st.loose[0].h,0); // Giro horario corrige el antihorario.
  assert.equal(st.loose.length,2,"Las piezas no desaparecen al girar");
