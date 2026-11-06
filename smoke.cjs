@@ -95,9 +95,11 @@ for(const id of ["circuitDeleteDialog","deleteCircuitName","deleteCircuitConfirm
 assert.match(css,/\.library-swipe/);
 assert.match(css,/\.library-delete/);
 assert.match(css,/\.circuit-delete-overlay\[hidden\]/);
-for(const id of ["libraryDraftRecovery","libraryRecoverDraft","libraryVersionRecovery","libraryRestoreVersion"]){
- assert.match(html,new RegExp('id="'+id+'"'),"Recuperación de circuitos "+id);
+for(const id of ["libraryDraftRecovery","libraryRecoverDraft","libraryTabCircuits","libraryTabRecords","libraryRecordsPanel","libraryRecordsList"]){
+ assert.match(html,new RegExp('id="'+id+'"'),"Secciones y rescate de Mis circuitos "+id);
 }
+assert.doesNotMatch(html,/id="libraryVersionRecovery"/,"Historial recuperado ya no se muestra");
+assert.doesNotMatch(html,/id="libraryRestoreVersion"/,"No aparece recuperar versión");
 for(const id of ["shopProducts","shopFeatured","shopCollectionSummary","shopTabBoxes","shopTabPacks",
  "shopTabCircuits","shopTabCars","shopProductModal","shopModalTitle","shopModalPrimary","shopOwnedList"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Tienda comercial "+id);
