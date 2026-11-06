@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis} from "./track.mjs";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis} from "./track.mjs";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
@@ -2339,7 +2339,11 @@ function updateUI(){
    "Curva "+presetLabel(id)+" · conjunto de "+parts.length+" piezas":CATALOG[chosen].name;
   el.setAttribute("aria-label",shelfName+" · "+(unlimited?"disponible sin límite":free+" disponibles")+
    (state.track.closed?". Toca para colocar suelta.":". Toca para encajar en orden.")+
-   " Arrastra desde el asa para colocarla libremente.");
+   " Arrastra desde el asa para colocarla libremente."+
+   (CURVE_FAMILIES[id.slice(0,2)]?
+    " Radio virtual SR "+CURVE_FAMILIES[id.slice(0,2)].radius+" mm, "+CURVE_FAMILIES[id.slice(0,2)].label+
+    ". Familia histórica orientativa "+CURVE_FAMILIES[id.slice(0,2)].classicCode+
+    "; no son dimensiones comerciales certificadas.":""));
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
   const minus=el.querySelector(".pocket-minus"),plus=el.querySelector(".pocket-plus");
@@ -2356,6 +2360,8 @@ function updateUI(){
  renderCasePages();
  $("caseMountGuide").textContent=state.track.closed?
   "CERRADO · TOCA PARA DEJAR PIEZA SUELTA":
+  state.caseCategory==="curve"?
+  "TOCA PARA ENCAJAR · R1 CERRADA → R4 MUY ABIERTA":
   "TOCA PARA ENCAJAR · ARRASTRA EL ASA PARA COLOCAR SUELTA";
  $("tableCaption").textContent=state.dragging?"SUELTA LA PIEZA SOBRE LA MESA":
  state.selectionMode==="group"&&state.selectedGroup?"TRAMO · ARRASTRA PARA MOVER TODO":
@@ -2373,10 +2379,20 @@ const pocketNames={
  R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°",
  R2_90R:"R2 · 90°",R3_90R:"R3 · 90°",R4_90R:"R4 · 90°"
 };
+// Agrupar todos los ángulos del MISMO radio. El atajo de 90° ya no
+// se pierde al final del scroll táctil; va junto a sus módulos.
 const pocketIds=[
  ...Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))),
  ...Object.keys(CURVE_90_PRESETS)
-];
+].sort((a,b)=>{
+ const ra=CURVE_FAMILIES[a.slice(0,2)],rb=CURVE_FAMILIES[b.slice(0,2)];
+ if(!ra&&!rb)return 0;
+ if(!ra)return -1;if(!rb)return 1;
+ const byRadius=ra.radius-rb.radius;
+ if(byRadius)return byRadius;
+ const degrees=id=>id.includes("_225")?22.5:id.includes("_45")?45:90;
+ return degrees(a)-degrees(b);
+});
 // Fuente de color común entre la pista de la mesa y las miniaturas de la caja.
 const PIECE_LOOK=Object.freeze({
  shadow:"#0c1518",outer:"#65747a",rim:"#1e282d",deck:"#343e44",
@@ -2446,11 +2462,17 @@ function palette(){
   pocket.setAttribute("role","button");
   pocket.tabIndex=0;
   pocket.dataset.kind=spec.group;
-  pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
+  const family=CURVE_FAMILIES[id.slice(0,2)];
+  const familyHint=family?family.radius+" mm · "+family.label.toUpperCase():spec.code;
+  pocket.setAttribute("aria-label",spec.name+" · "+familyHint);
+  if(family)pocket.setAttribute("title",
+   "Radio SR virtual "+family.radius+" mm · "+family.label+
+   " · referencia histórica orientativa "+family.classicCode+
+   " (no reproduce medidas comerciales)");
   pocket.innerHTML='<span class="qty">×0</span>'+
     '<span class="foam-well">'+foamSlotSVG(id)+'</span>'+
      '<span class="foam-drag-grip" data-drag-handle="true" aria-hidden="true">⠿</span>'+
-    '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+spec.code+'</small></span>'+
+    '<span class="pocket-caption"><strong>'+pocketNames[id]+'</strong><small>'+familyHint+'</small></span>'+
     '<div class="pocket-qty-controls">'+
      '<button type="button" class="pocket-minus" aria-label="Devolver una pieza suelta '+pocketNames[id]+'">−</button>'+
      '<span class="pocket-stock" aria-label="Inventario ilimitado">∞</span>'+
@@ -3983,7 +4005,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.16",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,
+window.slotraceLab={version:"DEV 0.14.17",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
