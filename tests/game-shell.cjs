@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.4");
+ assert.equal(game.version,"DEV 0.14.5");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -565,6 +565,32 @@ const path=require("node:path");
  assert.equal(afterCameraView.scale,viewStart.scale,
   "El zoom permanece fijo aunque se mueva la cámara");
  assert.equal(afterCameraView.angle,viewStart.angle);
+ // Adelantar el encuadre, sin cambiar altura y con aire por delante.
+ st.followCamera.x=startPose.x;st.followCamera.y=startPose.y;
+ st.followCamera.lookX=0;st.followCamera.lookY=0;
+ st.speed=54;
+ for(let i=0;i<30;i++)game.camera.updateFollowCamera(.05);
+ const leadView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ const lx=startPose.x-leadView.cx,ly=startPose.y-leadView.cy;
+ const c=Math.cos(leadView.angle),s=Math.sin(leadView.angle);
+ const carX=(c*lx-s*ly)*leadView.scale,carY=(s*lx+c*ly)*leadView.scale;
+ const headingX=c*Math.cos(startPose.h)-s*Math.sin(startPose.h);
+ const headingY=s*Math.cos(startPose.h)+c*Math.sin(startPose.h);
+ assert.ok(carX*headingX/leadView.w+carY*headingY/leadView.h<-.045,
+  "Debe quedar más pista visible por delante que detrás del coche");
+ // Tras un desplazamiento brusco, el vehículo no puede tocar los bordes.
+ st.followCamera.x-=10000;st.followCamera.y-=10000;
+ game.camera.updateFollowCamera(.016);
+ const safeView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ const dX=startPose.x-safeView.cx,dY=startPose.y-safeView.cy;
+ const screenX=(c*dX-s*dY)*safeView.scale;
+ const screenY=(s*dX+c*dY)*safeView.scale;
+ assert.ok(Math.abs(screenX)<=safeView.w*.25+1e-6,
+  "Al menos 25 % de margen horizontal respecto a los bordes");
+ assert.ok(Math.abs(screenY)<=safeView.h*.25+1e-6,
+  "Al menos 25 % de margen vertical respecto a los bordes");
+ assert.equal(safeView.scale,viewStart.scale,
+  "La zona segura no cambia el zoom ni la altura de cámara");
  elements.get("pause").listeners.click[0]();
  assert.equal(st.run,false);
  const pausedPosition={...st.followCamera};
@@ -578,5 +604,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.4: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.5: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

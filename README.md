@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.5 · Cámara con espacio de anticipación
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.5
+
+- **Seguimiento 2×:** conserva altura, rotación y zoom fijos. La vista se adelanta progresivamente en el sentido físico de la marcha para dejar ver la pista que viene.
+- **Encuadre seguro:** el coche permanece en la zona central, separado al menos un 25 % de los bordes en ambos ejes. La garantía funciona también con curvas, frenadas y cambios de carril.
+- **Movimiento cómodo:** anticipación direccional suavizada (sin reaccionar al trompo/derrape visual), zona de descanso compacta y corrección amortiguada independiente de los FPS. En pausa no se mueve.
+- **Compatibilidad:** no se cambian físicas, circuitos, piezas, coches, tiempos ni preferencias anteriores. Prueba nueva de anticipación y márgenes de seguridad.
+
+---
+
 # SlotRace DEV 0.14.4 · Seguimiento con zoom fijo 2×
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.4

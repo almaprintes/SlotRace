@@ -102,7 +102,7 @@ const state={
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   cameraMode:old?.cameraMode==="follow"?"follow":"general",
-  followCamera:{x:0,y:0,ready:false},
+  followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false},
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -1730,7 +1730,7 @@ function updateUI(){
   button.setAttribute("aria-pressed",String(active));
  }
  $("settingsCameraDescription").textContent=state.cameraMode==="follow"?
-  "Zoom fijo de 2×. Sigue el coche suavemente, sin girar ni cambiar la altura.":
+  "Zoom fijo de 2×. Deja más pista por delante y sigue el coche suavemente, sin girar ni cambiar la altura.":
   "Se muestra todo el circuito sin mover la cámara.";
  $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
  for(const id of ["circuitName","workCircuitName"])
@@ -2848,9 +2848,12 @@ function scheduleResize(){
 // Cámara de carrera con altura constante. El factor 2 no cambia al
 // acelerar, frenar, derrapar, cruzar puentes ni durante la transición.
 const FOLLOW_ZOOM=2;
-const FOLLOW_X_DEADZONE=.26;  // Tolerancia lateral amplia: evita barridos.
-const FOLLOW_Y_DEADZONE=.17;
-const FOLLOW_RESPONSE=5.5;  // Seguimiento amortiguado (independiente de FPS).
+const FOLLOW_X_DEADZONE=.075; // Zona de descanso pequeña: no persigue cada vibración.
+const FOLLOW_Y_DEADZONE=.075;
+const FOLLOW_LOOKAHEAD=.20;    // Anticipación: reserva pantalla delante del coche.
+const FOLLOW_LOOK_RESPONSE=3.2; // Cambia de dirección con calma, sin latigazos.
+const FOLLOW_SAFE_EDGE=.25;    // El coche nunca entra en el 25 % exterior.
+const FOLLOW_RESPONSE=7.0;     // Seguimiento amortiguado e independiente de FPS.
 function setCameraMode(mode){
  if(mode!=="general"&&mode!=="follow")return false;
  if(mode===state.cameraMode)return true;
@@ -2868,6 +2871,7 @@ function resetFollowCamera(){
   state.followCamera.ready=false;return;
  }
  state.followCamera.x=p.x;state.followCamera.y=p.y;
+ state.followCamera.lookX=0;state.followCamera.lookY=0;
  state.followCamera.ready=true;
 }
 function updateFollowCamera(dt){
@@ -2875,19 +2879,37 @@ function updateFollowCamera(dt){
  const p=drivingPose(),f=state.followCamera;
  if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
  if(!f.ready){resetFollowCamera();return;}
- // La cámara nunca usa la animación del trompo o del derrape, para que
- // el coche no provoque sacudidas artificiales del encuadre.
+ // Usamos el sentido físico del carril, nunca el giro visual del trompo.
+ // Anticipamos la marcha y movemos el encuadre con suavidad, sin rotarlo.
  const v=makeView(raceCanvas,"race");
  const cos=Math.cos(v.angle),sin=Math.sin(v.angle);
+ const step=Math.max(0,Math.min(dt,.05));
+ const directionX=cos*Math.cos(p.h)-sin*Math.sin(p.h);
+ const directionY=sin*Math.cos(p.h)+cos*Math.sin(p.h);
+ const motion=Math.max(0,Math.min(1,state.speed/36));
+ const targetLookX=directionX*v.w*FOLLOW_LOOKAHEAD*motion;
+ const targetLookY=directionY*v.h*FOLLOW_LOOKAHEAD*motion;
+ const lookAlpha=1-Math.exp(-FOLLOW_LOOK_RESPONSE*step);
+ f.lookX+=(targetLookX-f.lookX)*lookAlpha;
+ f.lookY+=(targetLookY-f.lookY)*lookAlpha;
  const dx=p.x-f.x,dy=p.y-f.y;
  const sx=(cos*dx-sin*dy)*v.scale,sy=(sin*dx+cos*dy)*v.scale;
- // Zona muerta en coordenadas de pantalla, válida también en vertical.
- const ex=Math.sign(sx)*Math.max(0,Math.abs(sx)-v.w*FOLLOW_X_DEADZONE);
- const ey=Math.sign(sy)*Math.max(0,Math.abs(sy)-v.h*FOLLOW_Y_DEADZONE);
- if(!ex&&!ey)return;
- const alpha=1-Math.exp(-FOLLOW_RESPONSE*Math.max(0,Math.min(dt,.05)));
+ // El centro apunta por delante del coche. La tolerancia evita el nerviosismo.
+ const wantedX=sx+f.lookX,wantedY=sy+f.lookY;
+ const ex=Math.sign(wantedX)*Math.max(0,Math.abs(wantedX)-v.w*FOLLOW_X_DEADZONE);
+ const ey=Math.sign(wantedY)*Math.max(0,Math.abs(wantedY)-v.h*FOLLOW_Y_DEADZONE);
+ const alpha=1-Math.exp(-FOLLOW_RESPONSE*step);
  f.x+=(cos*ex+sin*ey)/v.scale*alpha;
  f.y+=(-sin*ex+cos*ey)/v.scale*alpha;
+ // Guardia de encuadre: jamás dejar el coche pegado al borde, ni al
+ // acelerar repentinamente ni al girar en una chicane.
+ const deltaX=p.x-f.x,deltaY=p.y-f.y;
+ const finalX=(cos*deltaX-sin*deltaY)*v.scale;
+ const finalY=(sin*deltaX+cos*deltaY)*v.scale;
+ const guardX=Math.sign(finalX)*Math.max(0,Math.abs(finalX)-v.w*(.5-FOLLOW_SAFE_EDGE));
+ const guardY=Math.sign(finalY)*Math.max(0,Math.abs(finalY)-v.h*(.5-FOLLOW_SAFE_EDGE));
+ f.x+=(cos*guardX+sin*guardY)/v.scale;
+ f.y+=(-sin*guardX+cos*guardY)/v.scale;
 }
 
 function makeView(canvas,mode){
@@ -3342,7 +3364,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.4",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.5",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
