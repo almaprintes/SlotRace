@@ -2886,10 +2886,14 @@ function crossingCutouts(track){
 function paintGroundWithBridgeCutouts(ctx,track,editing){
  const cutouts=crossingCutouts(track);
  if(!cutouts.length){paintContinuousTrack(ctx,track,editing);return;}
- ctx.save();ctx.beginPath();
+ ctx.save();
  const b=track.board;
- ctx.rect(b.left-1200,b.top-1200,b.width+2400,b.height+2400);
+ // Aplicar un clip complementario POR CRUCE (intersección de máscaras).
+ // Si dos puentes están próximos y sus ventanas se solapan, una única
+ // ruta evenodd haría reaparecer la vía inferior en el solape.
  for(const m of cutouts){
+  ctx.beginPath();
+  ctx.rect(b.left-1200,b.top-1200,b.width+2400,b.height+2400);
   const c=Math.cos(m.h),sn=Math.sin(m.h);
   const corners=[[-m.halfLength,-m.halfWidth],[m.halfLength,-m.halfWidth],
    [m.halfLength,m.halfWidth],[-m.halfLength,m.halfWidth]];
@@ -2898,9 +2902,8 @@ function paintGroundWithBridgeCutouts(ctx,track,editing){
    if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   }
   ctx.closePath();
+  ctx.clip("evenodd");
  }
- // Evenodd quita TODAS las ventanas de cruce del trazado base.
- ctx.clip("evenodd");
  paintContinuousTrack(ctx,track,editing);
  ctx.restore();
 }
