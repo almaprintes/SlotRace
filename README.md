@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.2 · Planos reales y Helix Spark jugable
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.2
+
+- **Tienda / Circuitos:** los planos oficiales Óvalo SR-Precision y Ocho con puente ya no usan siluetas de demostración. Se generan como SVG **desde `buildTrack(types,START)`**, usando puntos de la pista, los dos carriles, las uniones entre piezas, la salida/meta y el segmento elevado del ocho. El plano sin receta homologada, Sprint urbano, sigue marcado **En diseño** y no se puede adquirir como circuito terminado.
+- **Cajas:** las ilustraciones provisionales muestran también la geometría auténtica del circuito incluido, mientras se preparan las artes de caja definitivas.
+- **Helix Spark jugable:** nueva piel cenital original `assets/cars/helix_spark.webp`, tomada del repositorio de Top Down RACE. Los coches comparten las mismas físicas y el mismo control en esta fase, con representación cenital correcta.
+- **Garaje:** seleccionar Gripline o Spark, identificar visualmente el coche activo y empezar a jugar con él. La selección sobrevive al reinicio del navegador. Elegir un coche no cambia el trazado ni el inventario de circuitos.
+- **Registros:** las claves anteriores de Gripline se conservan exactamente; Spark añade el sufijo `-helix-spark`, de modo que no pisa los récords existentes. El informe de carrera identifica el vehículo utilizado.
+- **Pruebas:** comprobación de SVG generado desde el motor geométrico, puente, botones de selección, persistencia del coche, carreras con ambos modelos, tiempos separados y continuidad de todas las pruebas anteriores.
+
+---
+
 # SlotRace DEV 0.14.2 · Planos con geometría real y Helix Spark jugable
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.2
