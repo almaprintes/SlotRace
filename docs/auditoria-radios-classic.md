@@ -1,6 +1,6 @@
 # Auditoría de radios: SR-Precision frente a Scalextric Classic
 
-Revisión: 6 de noviembre de 2026 · SlotRace DEV 0.14.17
+Revisión: 6 de noviembre de 2026 · SlotRace DEV 0.14.18
 
 ## Alcance
 
@@ -33,9 +33,9 @@ El motor conserva un paso de **150 mm entre radios consecutivos**, igual al anch
 
 1. **Inventario por radio y luego por ángulo:** las combinaciones de 90° están al lado de las piezas de su mismo radio, no al final del estante.
 2. **Curvas R1–R4 con diámetro visual comprensible:** la etiqueta muestra su radio virtual y si es cerrada, estándar, abierta o muy abierta.
-3. **Montaje de 90° como combinación real:** R1 tiene módulo de 90°; R2 = 2 × 45°; R3/R4 = 4 × 22,5°. No se graba ningún ID ficticio `R2_90R`, `R3_90R` o `R4_90R`.
+3. **Curvas de 90° como módulos unitarios desde DEV 0.14.18:** R1, R2, R3 y R4 disponen cada uno de piezas únicas derecha/izquierda (`R*_90R/L`), con dos juntas externas y un arco continuo. Los viejos diseños que utilicen 2 × 45° o 4 × 22,5° conservan esas piezas individuales en sus recetas originales.
 4. **Sin modificación silenciosa:** se conservan radios, longitudes, física, guardados, récords y enlaces de receta.
-5. **Pruebas:** medir cierre de cuartos de círculo por radio, comprobar el incremento concéntrico de 150 mm, verificar etiquetas y orden de inventario. Una futura geometría física comercial deberá emplear un identificador de familia diferente y migración explícita.
+5. **Pruebas:** verificar cada curva unitaria R1–R4 de 90°, comprobar el incremento concéntrico de 150 mm, verificar etiquetas y orden de inventario, y validar los imanes al separar, unir e invertir grupos completos. Una futura geometría física comercial deberá emplear un identificador de familia diferente y migración explícita.
 
 ## Pendiente de medidas físicas certificadas
 
