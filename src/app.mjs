@@ -2975,6 +2975,49 @@ function paintXRayOverlay(ctx,track,hiddenCar=null){
  ctx.restore();
  return true;
 }
+// Unión visual continua de suelo ↔ rampa. Sus dos pasadas opacas tienen
+// terminaciones rectas; la antialiasing produce una línea transversal en
+// cada límite. La zona del conector se redibuja con UN MISMO trazado,
+// sin tapa ni junta, pero sin modificar las piezas ni su geometría.
+const elevationJoinCache=new WeakMap();
+function elevationJoins(track){
+ const cached=elevationJoinCache.get(track);if(cached)return cached;
+ const profiles=track.elevation?.profiles||[];
+ const parts=track.parts||[],count=parts.length,joins=[];
+ if(track.bridge&&count>1){
+  const limit=track.closed?count:count-1;
+  for(let i=0;i<limit;i++){
+   const next=(i+1)%count;
+   if(Boolean(profiles[i])===Boolean(profiles[next]))continue;
+   const before=parts[i],after=parts[next];
+   // Solo soldar conectores realmente acoplados, nunca tramos próximos
+   // en la mesa ni pistas que se cruzan a diferentes alturas.
+   if(Math.hypot(before.end.x-after.start.x,before.end.y-after.start.y)>.1)continue;
+   const pos=before.end;
+   joins.push({from:i,to:next,x:pos.x,y:pos.y,h:pos.h,
+    points:[...before.points,...after.points.slice(1)]});
+  }
+ }
+ elevationJoinCache.set(track,joins);
+ return joins;
+}
+function paintElevationJoins(ctx,track){
+ const joins=elevationJoins(track);
+ for(const join of joins){
+  ctx.save();
+  ctx.translate(join.x,join.y);ctx.rotate(join.h);
+  // El recorte SOLO afecta al punto de conexión. El trazado repintado
+  // lleva continuidad en asfalto, bordes y ambos carriles antes/después.
+  // Los extremos de esta pequeña ventana se superponen a una textura
+  // idéntica: no se añade un borde o una línea transversal nueva.
+  ctx.beginPath();
+  ctx.rect(-64,-(TRACK_WIDTH+26)/2,128,TRACK_WIDTH+26);
+  ctx.clip();
+  ctx.rotate(-join.h);ctx.translate(-join.x,-join.y);
+  paintOpaqueRibbon(ctx,join.points);
+  ctx.restore();
+ }
+}
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
  for(const {points,offsets} of elevatedDeckRuns(track))
@@ -3859,6 +3902,7 @@ function renderScene(canvas,mode){
   // El repintado localizado por recortes añadía nuevos artefactos al
   // coincidir con bordes y curvas; queda fuera de la pasada de carrera.
   paintElevatedDeck(ctx,track);
+  paintElevationJoins(ctx,track);
   // Las guías de inclinación sólo son necesarias en Construir.
   // En carrera cruzaban la calzada como marcas y raíles duplicados.
   if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
@@ -4347,12 +4391,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.26",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.27",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,paintElevationJoins,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
