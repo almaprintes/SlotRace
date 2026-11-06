@@ -1,3 +1,15 @@
+# SlotRace DEV 0.14.17 · Catálogo de radios revisado frente a Classic
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.17
+
+- **Curvas ordenadas por radio y ángulo:** las piezas R1, R2, R3 y R4 se agrupan de menor a mayor radio. Los atajos de 90° están ahora al lado de las piezas de su propia familia, para encontrarlos con menos desplazamiento en iPhone.
+- **Elección más sencilla:** las tarjetas muestran **150, 300, 450 y 600 mm** (radios virtuales SR-Precision) y descripciones «Cerrada», «Estándar», «Abierta» y «Muy abierta». Se muestran referencias históricas orientativas en los detalles accesibles de cada pieza.
+- **Auditoría histórica con fuentes:** los tipos de Scalextric Classic G/PT/52, F/PT/51, H/PT/53 y M/PT/84 se han contrastado con catálogos de 1966/1972. No se confunden con los modernos radios Sport 214/370/526/682 mm ni se afirma equivalencia física certificada.
+- **Geometría preservada:** separación modular de 150 mm entre radios, conectores intactos, y pruebas de giros de 90° sin huecos. Los circuitos existentes, recetas, físicas y récords no se convierten ni invalidan.
+- **Informe completo:** [Auditoría de radios Classic](./docs/auditoria-radios-classic.md).
+
+---
+
 # SlotRace DEV 0.14.16 · Curvas abiertas de 90° en un toque
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.16
