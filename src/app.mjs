@@ -3778,8 +3778,10 @@ function renderScene(canvas,mode){
   // Orden de capas: pista base → coche inferior → puente completo
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
+  // La cubierta elevada se dibuja una sola vez, completa y opaca.
+  // El repintado localizado por recortes añadía nuevos artefactos al
+  // coincidir con bordes y curvas; queda fuera de la pasada de carrera.
   paintElevatedDeck(ctx,track);
-  paintVerifiedCrossings(ctx,track);
   // Las guías de inclinación sólo son necesarias en Construir.
   // En carrera cruzaban la calzada como marcas y raíles duplicados.
   if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
