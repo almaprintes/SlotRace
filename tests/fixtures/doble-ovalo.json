@@ -1,0 +1,37 @@
+{
+  "format": "slotrace-recipe",
+  "version": 1,
+  "geometry": "SR-PRECISION",
+  "name": "Doble ovalo",
+  "direction": -1,
+  "types": [
+    "R2_90R",
+    "R2_90R",
+    "S600",
+    "S350",
+    "R2_90R",
+    "R2_90R",
+    "R2_90R",
+    "S600",
+    "S350",
+    "R2_90R",
+    "R2_90R",
+    "S350",
+    "S600",
+    "R2_90R",
+    "S350",
+    "S600"
+  ],
+  "origin": {
+    "x": 175,
+    "y": 1400,
+    "h": 9.424777960769381
+  },
+  "bridgeParts": [
+    4,
+    5,
+    6,
+    7
+  ],
+  "loose": []
+}
