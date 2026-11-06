@@ -1,3 +1,19 @@
+# SlotRace DEV 0.14.15 · Imagen visible y estante que se desliza sin colocar piezas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.15
+
+### Dos correcciones de usabilidad a partir de pruebas en iPhone
+
+- **«Imagen» directamente en el taller**, junto al botón Jugar, sin entrar en «Más». Desde ahí se carga una foto o plano para colocarla bajo la pista, ajustar opacidad, escalar hasta 2000 %, moverla y bloquearla. «Ayudar a cerrar» pasa al menú «Más» para mantener la pantalla limpia.
+- **Deslizamiento de piezas arreglado:** las tarjetas táctiles tenían `touch-action:pan-y`, lo que impedía deslizar horizontalmente sobre ellas en Safari. Se aplica `pan-x` a las tarjetas y a sus elementos interiores en retrato, y se conserva `pan-y` en la columna vertical para pantallas anchas. Se elimina el anclaje de desplazamiento `scroll-snap` que frenaba el recorrido.
+- **Flechas ‹ y › en el estante** como alternativa al gesto, compatibles con desplazamiento horizontal en iPhone y vertical en pantalla ancha.
+- **Sin piezas colocadas por accidente:** los desplazamientos de más de 9 px y sus clics sintéticos posteriores no activan el montaje. Un toque corto sí añade la pieza; el asa sigue sirviendo exclusivamente para sacarla y colocarla libremente.
+- **Compatibilidad:** preserva la mesa actual, las elevaciones, los planos, las imágenes y los récords. No cambia el motor de física ni las recetas.
+
+Pruebas automáticas específicas para desplazamiento con flechas, deslizamiento sin añadir piezas, gestos táctiles y acceso directo al panel Imagen.
+
+---
+
 # SlotRace DEV 0.14.14 · Plantilla de referencia fotográfica
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.14

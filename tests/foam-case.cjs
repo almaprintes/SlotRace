@@ -40,12 +40,20 @@ const fs=require("node:fs"),path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.14");
+ assert.equal(game.version,"DEV 0.14.15");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
  assert.equal(elements.get("casePageInfo").textContent,"1 / 1","Todas las rectas a un lado, sin paginación");
  assert.equal(st.casePage,0);
+ assert.equal(elements.get("pieceShelfArrows").hidden,false,
+  "Flechas visibles en el estante de rectas");
+ const shelf=elements.get("pieces");
+ shelf.scrollLeft=0;
+ elements.get("pieceShelfForward").listeners.click[0]();
+ assert.ok(shelf.scrollLeft>=120,"Avanzar con flecha mueve el estante");
+ elements.get("pieceShelfBack").listeners.click[0]();
+ assert.equal(shelf.scrollLeft,0,"Volver con flecha recupera el principio");
  assert.equal(elements.get("casePrev").disabled,true);
  assert.equal(elements.get("caseNext").disabled,true);
  assert.equal(elements.get("casePagination").hidden,true);
@@ -55,6 +63,8 @@ const fs=require("node:fs"),path=require("node:path");
  elements.get("caseBridges").listeners.click[0]();
  assert.equal(elements.get("bridgeKit").hidden,false,"Elevar sigue disponible en herramientas avanzadas");
  assert.equal(elements.get("bridgeDock").hidden,false,"El kit aparece directamente en el estante");
+ assert.equal(elements.get("pieceShelfArrows").hidden,true,
+  "Sin flechas cuando Puentes no tiene tarjetas");
  assert.equal(elements.get("pieces").hidden,true,"Puentes no inventa piezas de catálogo");
  elements.get("caseSpecial").listeners.click[0]();
  assert.equal(st.caseCategory,"special");
@@ -69,7 +79,10 @@ const fs=require("node:fs"),path=require("node:path");
  assert.match(css,/foam-cutout/,"La espuma conserva el hueco de cada módulo");
  assert.match(css,/overflow-y:scroll/,"La caja tiene desplazamiento vertical nativo");
  assert.match(css,/-webkit-overflow-scrolling:touch/,"Safari conserva la inercia del scroll");
- assert.match(css,/cursor:pointer;touch-action:pan-y/,"Deslizar sobre la pieza desplaza la caja");
+ assert.match(css,/\.builder-workbench #pieceCase \.foam-pocket,[\s\S]*?touch-action:pan-x!important/,
+  "Las tarjetas deben permitir desplazamiento horizontal nativo");
+ assert.match(css,/scroll-snap-type:none!important/,
+  "Sin frenazos del scroll al pasar por cada tarjeta");
  assert.match(css,/foam-drag-grip[^}]*touch-action:none/s,"El asa permite sacar piezas sin bloquear el scroll");
  assert.match(html,/TOCA PARA ENCAJAR/,"Instrucción breve y clara en el estante");
  assert.match(html,/id="rotateCCW"/,"Dos botones directos de giro");
@@ -150,6 +163,15 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(captured,false,"El scroll no secuestra el puntero con setPointerCapture");
  assert.equal(st.dragging,null,"El scroll no inicia un arrastre de pista");
  assert.equal(st.loose.length,2,"Desplazar el maletín no extrae piezas");
+ // Al deslizar HORIZONTALMENTE y soltar, ni pointerup ni el click
+ // sintético posterior pueden añadir piezas por accidente.
+ const horizontalScroll=byId("R1_45R");
+ horizontalScroll.listeners.pointerdown[0](event(275,720,92));
+ horizontalScroll.listeners.pointermove[0](event(210,721,92));
+ horizontalScroll.listeners.pointerup[0](event(210,721,92));
+ horizontalScroll.listeners.click[0]({detail:0});
+ assert.equal(st.loose.length,2,
+  "Deslizar sobre la miniatura no coloca una pieza, ni siquiera con click de Safari");
  assert.equal(st.dragging,null,"El arrastre desde el asa se cierra correctamente");
  const board=st.workBoard;
  const scale=Math.min((390-16)/board.height,(600-16)/board.width);
@@ -230,5 +252,5 @@ const fs=require("node:fs"),path=require("node:path");
  tap("S175");
  assert.equal(st.types.length,count,"Una pista cerrada no se deforma por tocar otra pieza");
  assert.equal(st.loose.length,1,"Con el circuito cerrado la pieza se deposita suelta");
- console.log("SlotRace DEV 0.14.14: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ console.log("SlotRace DEV 0.14.15: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
