@@ -4016,6 +4016,11 @@ function canvasPointerMove(e){
    if(p.dragMode==="piece"){
     const looseIndex=detachConnected(p.trackIndex,{history:true});
     if(looseIndex>=0){
+     // Desacoplar el módulo que sigue bajo el dedo del resto del grupo.
+     // Sin esto, el conector final del tramo original lo vuelve a enganchar.
+     if(looseMembers(looseIndex).length>1)detachLooseMember(looseIndex);
+     state.selectionMode="piece";state.selectedGroup="single-"+looseIndex;
+     state.looseSelection=looseIndex;state.selection=-1;
      p.looseIndex=looseIndex;p.trackIndex=-1;p.pieceStart={...state.loose[looseIndex]};
      p.dragged=true;p.dragMode="piece";
     }
