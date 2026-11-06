@@ -2803,6 +2803,55 @@ function paintContinuousTrack(ctx,track,editing){
 }
 // Repintamos localmente cada cruce superior usando la tangente de su
 // pieza, incluso si es una curva. Los coches inferiores quedan tapados.
+// Puente compacto: los tramos elevados se repintan DESPUÉS del coche de
+// abajo. Una sola banda por tramo (también alrededor de la meta) evita
+// costuras internas, huecos en curvas y máscaras demasiado cortas.
+function elevatedDeckRuns(track){
+ const profiles=track.elevation?.profiles||[];
+ const active=track.parts.map((part,i)=>Boolean(profiles[i]));
+ const runs=[];let run=[];
+ for(let i=0;i<active.length;i++){
+  if(active[i])run.push(i);
+  else if(run.length){runs.push(run);run=[];}
+ }
+ if(run.length)runs.push(run);
+ // Un circuito cerrado puede cruzar su índice cero dentro del puente:
+ // juntar última y primera sección sin dibujar una junta ficticia.
+ if(track.closed&&runs.length>1&&active[0]&&active.at(-1)){
+  runs[0]=[...runs.at(-1),...runs[0]];
+  runs.pop();
+ }
+ return runs.map(indices=>({
+  indices,
+  points:indices.flatMap((index,i)=>
+   track.parts[index].points.slice(i?1:0))
+ })).filter(run=>run.points.length>1);
+}
+function paintElevatedDeck(ctx,track){
+ if(!track.bridge||!track.elevation?.raisedParts?.length)return;
+ for(const {points} of elevatedDeckRuns(track)){
+  // El sombreado da profundidad, pero la propia pista es OPACA:
+  // oculta completamente al coche y las juntas inferiores.
+  ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=27;
+  ctx.shadowOffsetY=16;
+  strokePath(ctx,points,PIECE_LOOK.shadow,TRACK_WIDTH+23);
+  ctx.restore();
+  strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+12);
+  strokePath(ctx,points,PIECE_LOOK.rim,TRACK_WIDTH+5);
+  strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
+  strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
+  for(const offset of [-LANE_OFFSET,LANE_OFFSET]){
+   strokePath(ctx,translated(points,offset),PIECE_LOOK.groove,11);
+   strokePath(ctx,translated(points,offset-7.6),PIECE_LOOK.metalA,2.2);
+   strokePath(ctx,translated(points,offset+7.6),PIECE_LOOK.metalB,2.2);
+   strokePath(ctx,translated(points,offset),PIECE_LOOK.guide,5);
+  }
+  for(const edge of [-72,72])
+   strokePath(ctx,translated(points,edge),PIECE_LOOK.edge,2.5);
+  // No pintar paintSeam aquí: los módulos de un tramo elevado
+  // forman una banda visual única, con carriles y bordes continuos.
+ }
+}
 function paintBridgeCrossing(ctx,track){
  if(!track.bridge)return;
  const crossings=track.bridge.crossings?.length?track.bridge.crossings:
@@ -3631,7 +3680,10 @@ function renderScene(canvas,mode){
  paintGrid(ctx);
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=drivingPose(mode==="race"?state.distance:0);
- const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
+ // Un coche que circula por la propia rampa siempre queda sobre SU
+ // superficie, incluso cerca del extremo de menor altura. Sólo el coche
+ // de una vía inferior independiente puede quedar bajo el puente.
+ const carAbove=hasBridge&&Boolean(track.elevation?.profiles?.[p?.pieceIndex]);
  // Las patas van bajo la pista. No dibujar una placa sobre el asfalto.
  for(const index of track.elevation?.raisedParts||[]){
   const part=track.parts[index];if(part)paintSupportKit(ctx,part,track);
@@ -3642,10 +3694,10 @@ function renderScene(canvas,mode){
   const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
  }
  if(hasBridge){
-  // El coche inferior sólo pasa tras la MÁSCARA PEQUEÑA del cruce;
-  // el resto de la diagonal no puede ocultarlo.
+  // Orden de capas: pista base → coche inferior → puente completo
+  // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
-  paintBridgeCrossing(ctx,track);
+  paintElevatedDeck(ctx,track);
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  paintLoose(ctx);
@@ -4111,11 +4163,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.19",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.20",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+rendering:{elevatedDeckRuns,paintElevatedDeck,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
