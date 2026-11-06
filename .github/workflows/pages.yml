@@ -34,6 +34,9 @@ jobs:
       - name: Comprobar derrape, trompo y penalización
         run: node tests/drift-spin.cjs
 
+      - name: Comprobar curvas elevadas, transiciones y cruces
+        run: node tests/elevated-curves.cjs
+
       - name: Comprobar entrada realista en curvas del óvalo
         run: node tests/oval-curve-entry.cjs
 
