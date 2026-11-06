@@ -1845,6 +1845,24 @@ function changeCasePage(direction){
  state.casePage=Math.min(pages-1,Math.max(0,state.casePage+direction));
  updateUI();
 }
+function scrollPieceShelf(direction){
+ if(direction!==1&&direction!==-1)return false;
+ const shelf=$("pieces");
+ if(!shelf||shelf.hidden)return false;
+ // Las flechas complementan el scroll nativo con inercia.
+ // En iPhone, horizontal; en pantallas anchas, vertical.
+ const horizontal=window.innerWidth<700;
+ const extent=horizontal?(shelf.clientWidth||320):(shelf.clientHeight||350);
+ const amount=Math.max(120,Math.round(extent*.72))*direction;
+ if(typeof shelf.scrollBy==="function"){
+  shelf.scrollBy(horizontal?{left:amount,behavior:"smooth"}:{top:amount,behavior:"smooth"});
+ }else if(horizontal){
+  shelf.scrollLeft=(shelf.scrollLeft||0)+amount;
+ }else{
+  shelf.scrollTop=(shelf.scrollTop||0)+amount;
+ }
+ return true;
+}
 function renderCasePages(){
  for(const [name,id] of Object.entries(CASE_TABS)){
   const tab=$(id);
@@ -1861,6 +1879,7 @@ function renderCasePages(){
  $("bridgeKit").hidden=false;
  $("bridgeDock").hidden=state.caseCategory!=="bridge";
  $("pieces").hidden=state.caseCategory==="bridge";
+ $("pieceShelfArrows").hidden=state.caseCategory==="bridge";
  const visible=new Set(filtered);
  for(const pocket of $("pieces").children)pocket.hidden=!visible.has(pocket.dataset.piece);
 }
@@ -2383,8 +2402,10 @@ function palette(){
   // el asa: la captura táctil vive en el ASA, nunca en el botón desplazable.
   pocket.addEventListener("click",e=>{
    if(e.target===grip||grip.contains?.(e.target)||e.target?.closest?.(".pocket-qty-controls"))return;
-   if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
-   suppressNextClick=false;inventoryAction(id);
+   // Safari puede generar click tras cancelar un scroll. Ese click nunca
+   // debe colocar una pieza, aunque detail venga a cero.
+   if(suppressNextClick){suppressNextClick=false;return;}
+   inventoryAction(id);
   });
   pocket.addEventListener("keydown",e=>{
    if(e.key==="Enter"||e.key===" "){
@@ -3693,6 +3714,8 @@ function initEvents(){
   $(id).addEventListener("click",()=>chooseCaseCategory(category));
  $("casePrev").addEventListener("click",()=>changeCasePage(-1));
  $("caseNext").addEventListener("click",()=>changeCasePage(1));
+ $("pieceShelfBack").addEventListener("click",()=>scrollPieceShelf(-1));
+ $("pieceShelfForward").addEventListener("click",()=>scrollPieceShelf(1));
  $("moveGroup").addEventListener("click",activateGroupMove);
  for(const [button,section] of [
   ["menuLibrary","library"],["menuGarage","garage"],["menuStore","store"],["menuSettings","settings"]
@@ -3891,11 +3914,11 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.14",state,
+window.slotraceLab={version:"DEV 0.14.15",state,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+ showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

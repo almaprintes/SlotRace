@@ -2315,3 +2315,65 @@ button:disabled{opacity:.35;cursor:not-allowed}
   max-height:calc(100% - 12px);
  }
 }
+
+
+/* DEV 0.14.15 · Estante táctil navegable sin colocar piezas por error.
+   La dirección pan-x debe aplicarse también a cada tarjeta: el viejo
+   touch-action:pan-y interceptaba el desplazamiento horizontal en iPhone. */
+.builder-workbench #caseInterior .pieces.foam-insert{
+ touch-action:pan-x!important;
+ scroll-snap-type:none!important;
+ overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;
+}
+.builder-workbench #pieceCase .foam-pocket,
+.builder-workbench #pieceCase .foam-pocket .foam-well,
+.builder-workbench #pieceCase .foam-pocket .foam-well svg,
+.builder-workbench #pieceCase .foam-pocket .pocket-caption,
+.builder-workbench #pieceCase .foam-pocket .pocket-caption strong{
+ touch-action:pan-x!important;
+ -webkit-user-select:none!important;user-select:none!important;
+}
+.builder-workbench #pieceCase .foam-pocket .foam-drag-grip{
+ touch-action:none!important; /* asa dedicada: sacar pieza y arrastrar */
+}
+.builder-workbench #pieceCase .piece-shelf-arrows{
+ display:flex;align-items:center;justify-content:space-between;
+ position:absolute;left:2px;right:2px;bottom:11px;height:67px;
+ pointer-events:none;z-index:14;
+}
+.builder-workbench #pieceCase .piece-shelf-arrows[hidden]{display:none!important}
+.builder-workbench #pieceCase .piece-shelf-arrows button{
+ pointer-events:auto;display:grid;place-items:center;
+ width:30px;height:53px;min-height:44px;border-radius:10px;
+ border:1px solid #74dfc7;background:#133f44ed;color:#e7fffa;
+ font-size:28px;font-weight:900;padding:0;
+ box-shadow:0 2px 8px #0005;
+}
+.builder-workbench .controlbar .right .builder-image-button{
+ background:#eefdf8!important;color:#065b47!important;
+ border-color:#60c9ad!important;font-weight:950!important;
+}
+.builder-workbench .controlbar .right .builder-image-button[aria-expanded="true"]{
+ background:#50e8bc!important;color:#07372c!important;
+}
+@media(min-width:700px){
+ .builder-workbench #caseInterior .pieces.foam-insert{
+  touch-action:pan-y!important;
+  overscroll-behavior-x:auto;overscroll-behavior-y:contain;
+ }
+ .builder-workbench #pieceCase .foam-pocket,
+ .builder-workbench #pieceCase .foam-pocket .foam-well,
+ .builder-workbench #pieceCase .foam-pocket .foam-well svg,
+ .builder-workbench #pieceCase .foam-pocket .pocket-caption,
+ .builder-workbench #pieceCase .foam-pocket .pocket-caption strong{
+  touch-action:pan-y!important;
+ }
+ .builder-workbench #pieceCase .piece-shelf-arrows{
+  left:4px;right:4px;top:104px;bottom:4px;height:auto;
+  flex-direction:column;
+ }
+ .builder-workbench #pieceCase .piece-shelf-arrows button{
+  width:80%;height:34px;min-height:34px;transform:rotate(90deg);
+ }
+}

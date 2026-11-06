@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.14: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.14 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.14">
+  <meta name="description" content="SlotRace DEV 0.14.15: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.15 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.15">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.14">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.15">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.14</div>
+    <div class="splash-version">DEV 0.14.15</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.14">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.15">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.14">DEV 0.14.14<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.15">DEV 0.14.15<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -246,7 +246,7 @@
           <div class="controlbar">
             <span id="buildStatus" class="status" aria-live="polite">Preparando mesa…</span>
             <div class="right">
-              <button class="mini" id="autoClose" type="button" title="Cerrar automáticamente el circuito">✦ <span>Ayudar a cerrar</span></button>
+              <button id="templateToggle" class="mini builder-image-button" type="button" aria-controls="templatePanel" aria-expanded="false" aria-label="Cargar o ajustar imagen de fondo">▧ <span>Imagen</span></button>
               <button class="mini primary" id="play" type="button" aria-label="Jugar en el circuito">🏁 <span class="tool-label">Jugar</span></button>
             </div>
           </div>
@@ -268,7 +268,7 @@
                 <button id="curveDirection" class="mini" type="button" aria-label="Cambiar lado de las curvas disponibles" aria-pressed="false">↷ Curva derecha</button>
                 <button id="measureGap" class="mini" type="button">Medir hueco</button>
                 <button id="exportBlueprint" class="mini" type="button">Exportar plano</button>
-                <button id="templateToggle" class="mini" type="button" aria-controls="templatePanel" aria-expanded="false">▧ Plantilla de referencia</button>
+                <button class="mini" id="autoClose" type="button" title="Ayudar a cerrar el circuito">✦ Ayudar a cerrar</button>
                 <button id="bridgeKit" class="bridge-kit mini" type="button" aria-label="Elevar o bajar 65 milímetros la pieza seleccionada">
                   <span class="bridge-kit-copy"><strong>Elevar pieza</strong><small>Rectas y curvas · rampas automáticas</small></span>
                   <span class="bridge-kit-cta">+ COLOCAR</span>
@@ -324,10 +324,14 @@
               <button id="caseSpecial" class="case-category-tab" type="button" aria-pressed="false">Salida</button>
               <button id="caseBridges" class="case-category-tab" type="button" aria-pressed="false">Puentes</button>
             </nav>
-            <p id="caseMountGuide" class="case-mount-guide" role="status">TOCA PARA ENCAJAR · ARRASTRA PARA SOLTAR</p>
+            <p id="caseMountGuide" class="case-mount-guide" role="status">DESLIZA PARA VER MÁS · TOCA PARA ENCAJAR · ASA PARA ARRASTRAR</p>
             <div id="caseInterior" class="case-shell">
               <div id="pieces" class="pieces foam-insert" role="region" tabindex="0" aria-label="Piezas disponibles; toca para encajar en el circuito o arrastra desde el asa para colocarlas libremente."></div>
               <button id="bridgeDock" class="bridge-dock-button" type="button" hidden>⬆ Elevar pieza seleccionada · 65 mm</button>
+              <div class="piece-shelf-arrows" id="pieceShelfArrows" role="group" aria-label="Desplazar el estante de piezas">
+                <button id="pieceShelfBack" type="button" aria-label="Ver piezas anteriores" title="Desplazar piezas anteriores">‹</button>
+                <button id="pieceShelfForward" type="button" aria-label="Ver más piezas" title="Desplazar piezas siguientes">›</button>
+              </div>
               <div class="case-pagination" id="casePagination" hidden>
                 <button id="casePrev" type="button" aria-label="Piezas anteriores">‹</button><span id="casePageInfo">1 / 1</span>
                 <button id="caseNext" type="button" aria-label="Más piezas">›</button>
@@ -431,6 +435,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.14"></script>
+<script type="module" src="./src/app.mjs?v=0.14.15"></script>
 </body>
 </html>
