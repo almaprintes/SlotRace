@@ -38,9 +38,17 @@ const fs=require("node:fs"),path=require("node:path");
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
- const game=window.slotraceLab,st=game.state,allTypes=[...Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))),...Object.keys(game.curve90Presets)];
+ const game=window.slotraceLab,st=game.state,allTypes=[
+  ...Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))),
+  ...Object.keys(game.curve90Presets)
+ ].sort((a,b)=>{
+  const ra=game.curveFamilies[a.slice(0,2)],rb=game.curveFamilies[b.slice(0,2)];
+  if(!ra&&!rb)return 0;if(!ra)return -1;if(!rb)return 1;
+  const deg=id=>id.includes("_225")?22.5:id.includes("_45")?45:90;
+  return ra.radius-rb.radius||deg(a)-deg(b);
+ });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.16");
+ assert.equal(game.version,"DEV 0.14.17");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -75,6 +83,16 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(pockets.length,16,"Trece módulos y tres combinaciones de 90 grados");
  assert.ok(!pockets.some(p=>p.dataset.piece==="S0125"),"La pieza heredada de 12,5 mm no aparece en la caja");
  assert.deepEqual(pockets.map(p=>p.dataset.piece),allTypes);
+ assert.deepEqual(pockets.filter(p=>p.dataset.piece.startsWith("R")).map(p=>p.dataset.piece),
+  ["R1_225R","R1_45R","R1_90R","R2_225R","R2_45R","R2_90R",
+   "R3_225R","R3_90R","R4_225R","R4_90R"],"Cada 90° aparece junto a su radio");
+ for(const id of ["R1_45R","R2_90R","R3_225R","R4_90R"]){
+  const pocket=pockets.find(p=>p.dataset.piece===id),family=game.curveFamilies[id.slice(0,2)];
+  assert.ok(pocket.innerHTML.includes(family.radius+" mm"),"Radio visible en "+id);
+  assert.ok(pocket.innerHTML.includes(family.label.toUpperCase()),"Amplitud explicada en "+id);
+  assert.ok(pocket.attrs.title.includes(family.classicCode),"Referencia histórica orientativa");
+ }
+
  assert.match(css,/foam-insert/,"Se conservan miniaturas y moldes de piezas");
  assert.match(css,/foam-cutout/,"La espuma conserva el hueco de cada módulo");
  assert.match(css,/overflow-y:scroll/,"La caja tiene desplazamiento vertical nativo");
@@ -287,5 +305,5 @@ const fs=require("node:fs"),path=require("node:path");
  }
  assert.equal(game.removeLooseFromCase("R3_90R"),true);
  assert.equal(st.loose.length,0,"Retirada completa");
- console.log("SlotRace DEV 0.14.16: estante y curvas R2/R3/R4 de 90 grados — OK");
+ console.log("SlotRace DEV 0.14.17: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
