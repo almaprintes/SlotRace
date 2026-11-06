@@ -2928,34 +2928,49 @@ function paintXRaySilhouette(ctx,at){
  if(!at)return;
  const visual=visualCarPose(at);
  ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h);
- ctx.shadowBlur=0;ctx.lineWidth=4;ctx.strokeStyle="#b3fffa";
+ ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
  ctx.setLineDash([9,6]);
+ // Halo discreto: evita que el contorno se pierda sobre asfalto claro.
  roundRect(ctx,-CAR_LENGTH_MM/2,-CAR_WIDTH_MM/2,CAR_LENGTH_MM,CAR_WIDTH_MM,10);
- ctx.stroke();
- // Sin sprite, ventanas ni rellenos: SOLO el contorno del coche oculto.
+ ctx.globalAlpha=.48;ctx.lineWidth=8;ctx.strokeStyle="#07313b";ctx.stroke();
+ ctx.globalAlpha=1;ctx.lineWidth=3.5;ctx.strokeStyle="#b3fffa";ctx.stroke();
+ // Solo la silueta; jamás sprites, luces, ventanas ni una carrocería rellena.
  ctx.restore();
+}
+// Guardar las guías de los carriles por trazado: en túneles largos
+// evita recalcular los offsets a 60 FPS en Safari.
+const xRayGroundCache=new WeakMap();
+function xRayGroundGuides(track){
+ const cached=xRayGroundCache.get(track);if(cached)return cached;
+ const guides=groundDeckRuns(track).map(run=>({
+  center:run.points,
+  rails:[translated(run.points,-LANE_OFFSET),translated(run.points,LANE_OFFSET)]
+ }));
+ xRayGroundCache.set(track,guides);
+ return guides;
 }
 function paintXRayOverlay(ctx,track,hiddenCar=null){
  if(!state.xRayEnabled||!track.bridge)return false;
- const ground=groundDeckRuns(track);
- if(!ground.length)return false;
+ const guides=xRayGroundGuides(track);
+ if(!guides.length)return false;
  ctx.save();
  if(!clipXRayDeck(ctx,track)){ctx.restore();return false;}
  ctx.globalCompositeOperation="source-over";
  ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
- ctx.globalAlpha=.88;ctx.lineWidth=3;
  ctx.setLineDash([19,15]);
- // Solo los carriles de la pista inferior dentro del contorno de arriba.
- // Como están recortados por la plataforma elevada, funcionan igualmente
- // para tramos paralelos, curvas coincidentes y túneles largos.
- for(const run of ground){
-  for(const offset of [-LANE_OFFSET,LANE_OFFSET]){
-   strokePath(ctx,translated(run.points,offset),"#8cece8",3);
+ // El doble trazo aporta contraste sin dibujar una pista fantasma sólida.
+ // El clip de la cubierta limita los guiones al recorrido realmente oculto.
+ for(const guide of guides){
+  for(const rail of guide.rails){
+   ctx.globalAlpha=.38;
+   strokePath(ctx,rail,"#06323e",7);
+   ctx.globalAlpha=.92;
+   strokePath(ctx,rail,"#8cece8",3);
   }
-  strokePath(ctx,run.points,"#3eafc1",2);
+  ctx.globalAlpha=.55;
+  strokePath(ctx,guide.center,"#3eafc1",2);
  }
- ctx.setLineDash([]);
- ctx.globalAlpha=1;
+ ctx.setLineDash([]);ctx.globalAlpha=1;
  if(hiddenCar)paintXRaySilhouette(ctx,hiddenCar);
  ctx.restore();
  return true;
@@ -3849,9 +3864,11 @@ function renderScene(canvas,mode){
   if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
    const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
   }
-  if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
   if(state.xRayEnabled)paintXRayOverlay(ctx,track,
    mode==="race"&&track.valid&&!carAbove?p:null);
+  // El coche de ARRIBA se pinta al final para que nunca lo crucen
+  // las guías discontinuas del nivel inferior.
+  if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  // Las piezas aún sueltas son contenido del TALLER, no de la carrera.
  // Dibujarlas después de la cubierta permitía que sus carriles atravesasen
@@ -4325,12 +4342,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.25",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.26",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,xRayDeckPolygons,clipXRayDeck,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
