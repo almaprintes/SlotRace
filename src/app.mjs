@@ -3711,12 +3711,14 @@ function canvasPointerDown(e){
   if(state.pointer.size===2)startTwoFingerGesture();
   return;
  }
- // Ambos dedos pueden comenzar sobre cualquier tramo: si el primero
- // cae en el tapete y el segundo en la pieza, también admite giro.
+ // Si dos tramos se cruzan se prioriza el superior; toques repetidos
+ // en el mismo punto alternan con el inferior sin alterar la geometría.
  const loose=nearestLoose(point.x,point.y);
  const looseIndex=loose.distance<TRACK_WIDTH*.55?loose.index:-1;
- const hit=looseIndex<0?nearestPiece(state.track,point.x,point.y):{index:-1,distance:Infinity};
- const trackIndex=hit.distance<TRACK_WIDTH*.55?hit.index:-1;
+ const hitList=looseIndex<0?selectMainAtCrossing(point.x,point.y):[];
+ const nearest=hitList[0]||{index:-1,distance:Infinity};
+ const chosen=hitList.find(hit=>hit.index===state.selection)||nearest;
+ const trackIndex=chosen.distance<TRACK_WIDTH*.55?chosen.index:-1;
  const key=trackIndex>=0?"main":looseIndex>=0?looseGroupKey(looseIndex):null;
  // Primer toque selecciona el tramo; el siguiente toque selecciona la
  // pieza concreta. Un arrastre respeta el modo de selección vigente.
@@ -3724,7 +3726,7 @@ function canvasPointerDown(e){
  const dragMode=key&&key===state.selectedGroup&&state.selectionMode==="piece"&&samePiece?"piece":"group";
  state.pointer.set(e.pointerId,{
   x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,
-  originWorld:point,looseIndex,trackIndex,dragMode,dragged:false,
+  originWorld:point,looseIndex,trackIndex,trackCandidates:hitList.map(hit=>hit.index),dragMode,dragged:false,
   pieceStart:looseIndex>=0?{...state.loose[looseIndex]}:null
  });
  if(state.pointer.size===2)startTwoFingerGesture();
@@ -3851,9 +3853,20 @@ function canvasPointerEnd(e){
   return;
  }
  if(state.pointer.size===0&&Math.hypot(p.x-p.originX,p.y-p.originY)<10){
-  if(p.looseIndex>=0)selectByTap("loose",p.looseIndex);
-  else if(p.trackIndex>=0)selectByTap("main",p.trackIndex);
-  else{state.selectedGroup=null;state.selection=-1;state.looseSelection=-1;updateUI();}
+  if(p.looseIndex>=0){
+   state.lastTapHit=null;selectByTap("loose",p.looseIndex);
+  }else if(p.trackIndex>=0){
+   const candidates=p.trackCandidates||[p.trackIndex],prior=state.lastTapHit;
+   const samePoint=prior&&Math.hypot(prior.x-p.originWorld.x,prior.y-p.originWorld.y)<TRACK_WIDTH*.33;
+   const sameSet=samePoint&&prior.candidates?.join(",")===candidates.join(",");
+   const previousPosition=sameSet?candidates.indexOf(prior.index):-1;
+   const next=previousPosition>=0?candidates[(previousPosition+1)%candidates.length]:p.trackIndex;
+   selectByTap("main",next);
+   state.lastTapHit={x:p.originWorld.x,y:p.originWorld.y,candidates,index:next};
+  }else{
+   state.lastTapHit=null;state.selectedGroup=null;
+   state.selection=-1;state.looseSelection=-1;updateUI();
+  }
  }
 }
 function initEvents(){
