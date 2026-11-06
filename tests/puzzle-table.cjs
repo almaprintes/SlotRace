@@ -64,6 +64,10 @@ const path=require("node:path");
  const pos=toScreen(target);
  function event(x,y,pointerId=5){return{pointerId,clientX:x,clientY:y,preventDefault(){}};}
  game.puzzle.canvasPointerDown(event(pos.clientX,pos.clientY));
+ assert.equal(st.pointer.get(5)?.trackIndex,2,
+  "El dedo inicia sobre la pieza seleccionada (verificar transformaciones de cámara)");
+ assert.equal(st.pointer.get(5)?.dragMode,"piece",
+  "El gesto está en modo pieza antes de separar el grupo");
  game.puzzle.canvasPointerMove(event(pos.clientX+44,pos.clientY+25));
  game.puzzle.canvasPointerEnd(event(pos.clientX+44,pos.clientY+25));
  assert.equal(st.types.length,2,"The track is split at the moved piece");
