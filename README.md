@@ -1,3 +1,21 @@
+# SlotRace DEV 0.14.13 · Constructor centrado en la mesa
+
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.13
+
+## Taller sin recorrer la pantalla de arriba abajo
+- La mesa ocupa el espacio disponible y el estante de piezas queda fijo **abajo en retrato** o **a la derecha en pantallas anchas**. La página del constructor no tiene scroll vertical general.
+- Se conserva la caja troquelada y sus miniaturas en el diseño, pero no obliga a desplazarse por ella ni a pasar de página. Cada categoría muestra todas sus piezas en una misma tira desplazable.
+- **Tocar una tarjeta** acopla automáticamente la pieza al conector final (si el circuito está abierto), y la cámara de construcción mantiene visible el extremo al que se ha añadido. **Arrastrar desde su asa** coloca una pieza suelta para montajes independientes.
+- **Seleccionar:** un toque escoge la pieza concreta. Para mover o girar toda la cadena se pulsa el botón «Tramo», sin doble toque escondido.
+- **Girar:** dos botones persistentes ↶ Antihorario y ↷ Horario, cada pulsación avanza exactamente 22,5°. Las piezas conectadas se separan al girarlas individualmente, con deshacer disponible.
+- **Pellizcar con dos dedos** sólo hace zoom, también cuando uno de los dedos cae sobre la pista. Evitamos que se gire accidentalmente un tramo al ampliar.
+- En primer plano quedan Girar, Deshacer, Encajar, Quitar y Tramo, además de Jugar y Ayudar a cerrar. Ejemplos, medición de huecos, planos y elevación se concentran en «⋯ Más».
+- Los puentes tienen acceso desde la categoría «Puentes» del propio estante y desde las herramientas avanzadas.
+- Guardado, geometrías SR-Precision, conectores magnéticos, exportaciones, trazados, récords, juego y físicas de los coches permanecen intactos.
+
+La caja física puede reutilizarse en el futuro como vista de colección; en el taller prima escoger piezas con un toque. La ampliación de la pantalla no modifica el catálogo ni los costes de uso.
+
+---
 # SlotRace DEV 0.14.12 · Contraderrape de latigazo al enderezar
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.12

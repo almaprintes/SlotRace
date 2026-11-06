@@ -138,5 +138,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).types.length,balancing.length);
  game.undo();
  assert.equal(st.loose.length,balancing.length,"El deshacer restaura el tramo original");
- console.log("DEV 0.14.12: cierre doble 175 mm, compensación 12,5 sin pieza nueva y deshacer OK");
+ console.log("DEV 0.14.13: cierre doble 175 mm, compensación 12,5 sin pieza nueva y deshacer OK");
 })().catch(e=>{console.error(e);process.exitCode=1;});
