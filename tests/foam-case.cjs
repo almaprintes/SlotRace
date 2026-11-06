@@ -38,9 +38,9 @@ const fs=require("node:fs"),path=require("node:path");
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>10},fn=>callbacks.push(fn),class{observe(){}}
  );
- const game=window.slotraceLab,st=game.state,allTypes=Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
+ const game=window.slotraceLab,st=game.state,allTypes=[...Object.keys(geo.CATALOG).filter(id=>!geo.CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))),...Object.keys(game.curve90Presets)];
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.15");
+ assert.equal(game.version,"DEV 0.14.16");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -72,7 +72,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(elements.get("caseInterior").hidden,false);
  assert.equal(elements.get("caseClosed").hidden,true);
  const pockets=elements.get("pieces").children;
- assert.equal(pockets.length,13,"Estante con trece piezas y cinco longitudes de recta");
+ assert.equal(pockets.length,16,"Trece módulos y tres combinaciones de 90 grados");
  assert.ok(!pockets.some(p=>p.dataset.piece==="S0125"),"La pieza heredada de 12,5 mm no aparece en la caja");
  assert.deepEqual(pockets.map(p=>p.dataset.piece),allTypes);
  assert.match(css,/foam-insert/,"Se conservan miniaturas y moldes de piezas");
@@ -252,5 +252,40 @@ const fs=require("node:fs"),path=require("node:path");
  tap("S175");
  assert.equal(st.types.length,count,"Una pista cerrada no se deforma por tocar otra pieza");
  assert.equal(st.loose.length,1,"Con el circuito cerrado la pieza se deposita suelta");
- console.log("SlotRace DEV 0.14.15: maletín único, trece recortes, inventario exacto, toque/arrastre, abrir/cerrar y sin extracciones duplicadas — OK");
+ // Curvas R2/R3/R4 de 90°: son montajes de 2/4 módulos del catálogo.
+ game.createNewCircuit();
+ for(const [id,count,part] of [
+  ["R2_90R",2,"R2_45R"],["R3_90R",4,"R3_225R"],["R4_90R",4,"R4_225R"]
+ ]){
+  assert.ok(byId(id),"Atajo visible: "+id);
+  assert.match(byId(id).innerHTML,/COMBO/);
+  assert.equal(game.inventoryAction(id),true);
+  assert.deepEqual(st.types,Array(count).fill(part),"Expansión física del atajo");
+  assert.equal(st.track.parts.length,count);
+  const final=st.track.ends.end,radius=geo.CATALOG[part].radius;
+  assert.ok(Math.abs(final.x-st.origin.x-radius)<1e-6);
+  assert.ok(Math.abs(final.y-st.origin.y-radius)<1e-6);
+  assert.ok(Math.abs(final.h-st.origin.h-Math.PI/2)<1e-9);
+  assert.deepEqual(JSON.parse(data.get("slotrace-lab-10")).types,st.types);
+  assert.equal(game.removeLooseFromCase(id),true,"Deshacer atómico");
+  assert.equal(st.types.length,0);
+ }
+ elements.get("curveDirection").listeners.click[0]();
+ assert.equal(game.curve90Parts("R4_90R").every(id=>id==="R4_225L"),true);
+ assert.equal(game.inventoryAction("R4_90R"),true);
+ assert.deepEqual(st.types,Array(4).fill("R4_225L"));
+ assert.equal(game.removeLooseFromCase("R4_90R"),true);
+ elements.get("curveDirection").listeners.click[0]();
+ game.changeTypes(game.STARTER.slice(),"Óvalo cerrado",[]);
+ assert.equal(st.track.closed,true);
+ assert.equal(game.inventoryAction("R3_90R"),true,"Atajo tras cerrar circuito");
+ assert.equal(st.loose.length,4,"Grupo de cuatro piezas sueltas");
+ assert.equal(new Set(st.loose.map(p=>p.magnetGroup)).size,1);
+ for(let i=1;i<st.loose.length;i++){
+  const prev=geo.positionOnPiece(st.loose[i-1],st.loose[i-1].id,1);
+  assert.ok(Math.hypot(st.loose[i].x-prev.x,st.loose[i].y-prev.y)<1e-8);
+ }
+ assert.equal(game.removeLooseFromCase("R3_90R"),true);
+ assert.equal(st.loose.length,0,"Retirada completa");
+ console.log("SlotRace DEV 0.14.16: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
