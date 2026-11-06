@@ -129,7 +129,7 @@ const state={
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
-  camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,gapDiagnostic:null,
+  camera:{panX:0,panY:0,zoom:1},pointer:new Map(),pinch:null,gapDiagnostic:null,bridgeRangeStart:null,lastTapHit:null,
   dragging:null,latest:performance.now()
 };
 const oldBoard=old?.workBoard;
@@ -827,6 +827,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  // colocadas sobre las piezas anteriores, ni mover su índice guardado.
  const stablePrefix=next.slice(0,Math.min(next.length,state.types.length))
   .every((id,i)=>id===state.types[i]);
+ state.bridgeRangeStart=null;state.lastTapHit=null;
  state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
  if(!sameGeometry&&!preserveBridge)
   state.bridgeParts=stablePrefix?state.bridgeParts.filter(i=>i<next.length):[];
@@ -1124,6 +1125,64 @@ function installBridgeKit(){
  toast(!enabled?"Elevación retirada de esta pieza.":
   issue||"Elevación de 65 mm. Las rectas contiguas forman las rampas.");
  return true;
+}
+// Evita buscar con el dedo la pieza exacta bajo un cruce.
+function selectBridgeRelative(direction){
+ const n=state.types.length;
+ if(!n){toast("Coloca primero piezas.");return false;}
+ const index=state.selection>=0?state.selection:direction>0?-1:0;
+ selectByTap("main",(index+direction+n)%n);
+ state.lastTapHit=null;return true;
+}
+function bridgeRangeIndices(start,end){
+ const n=state.types.length;if(!n||start<0||end<0||start>=n||end>=n)return[];
+ if(state.track.closed){
+  const out=[];let i=start;
+  for(let j=0;j<n;j++){out.push(i);if(i===end)return out;i=(i+1)%n;}
+  return[];
+ }
+ return Array.from({length:Math.abs(end-start)+1},(_,i)=>Math.min(start,end)+i);
+}
+function markBridgeRangeStart(){
+ if(state.selection<0||state.selection>=state.types.length){
+  toast("Selecciona la primera pieza con Anterior / Siguiente.");return false;
+ }
+ state.bridgeRangeStart=state.selection;updateUI();
+ toast("Inicio: pieza "+(state.selection+1)+". Ahora selecciona el final.");return true;
+}
+function applyBridgeRange(lower=false){
+ const end=state.selection;
+ if(end<0||end>=state.types.length){
+  toast("Selecciona primero una pieza con Anterior / Siguiente.");return false;
+ }
+ let indices=[];
+ if(state.bridgeRangeStart!=null){
+  indices=bridgeRangeIndices(state.bridgeRangeStart,end);
+ }else if(lower){
+  indices=state.track.elevation?.runs?.find(run=>run.includes(end))||[];
+ }else{
+  toast("Marca Inicio y después elige Final y elevar.");return false;
+ }
+ if(!indices.length){toast("No existe un tramo elevado para bajar en esa pieza.");return false;}
+ const nextSet=new Set(state.bridgeParts);
+ for(const i of indices){if(lower)nextSet.delete(i);else nextSet.add(i);}
+ const next=[...nextSet].sort((a,b)=>a-b);
+ const built=buildTrack(state.types,state.origin,next);
+ pushHistory();state.bridgeParts=next;state.track=built;state.bridgeRangeStart=null;
+ save();updateUI();
+ const issue=built.elevation?.errors?.[0]||
+  (built.closed&&!built.valid?"Revisa la separación de los cruces.":null);
+ toast((lower?"Bajadas ":"Elevadas ")+indices.length+" piezas. "+
+  (issue||"Rampas de transición calculadas."));
+ return true;
+}
+function selectMainAtCrossing(x,y){
+ const hits=state.track.parts.map(part=>{
+  const hit=nearestPiece({parts:[part]},x,y);
+  return{index:part.index,distance:hit.distance,height:elevationAt(state.track,part.index,.5)};
+ }).filter(hit=>hit.distance<TRACK_WIDTH*.42);
+ hits.sort((a,b)=>b.height-a.height||a.distance-b.distance);
+ return hits;
 }
 function selectByTap(kind,index){
  // Un toque = una pieza específica. Para mover todas las piezas juntas
@@ -1890,6 +1949,7 @@ function renderCasePages(){
  // en el mismo estante en lugar de obligar a abrir la caja grande.
  $("bridgeKit").hidden=false;
  $("bridgeDock").hidden=state.caseCategory!=="bridge";
+ $("bridgePanel").hidden=state.caseCategory!=="bridge";
  $("pieces").hidden=state.caseCategory==="bridge";
  $("pieceShelfArrows").hidden=state.caseCategory==="bridge";
  const visible=new Set(filtered);
@@ -2269,7 +2329,10 @@ function updateUI(){
  $("joinPiece").disabled=state.looseSelection<0;
  setLabel("joinPiece",state.types.length?"Encajar":"Iniciar montaje");
  $("moveGroup").disabled=!state.selectedGroup;
- $("autoClose").disabled=state.track.closed||(state.types.length<2&&state.loose.length<2);
+ $("autoClose").disabled=state.track.valid||
+  (state.types.length<2&&state.loose.length<2);
+ $("autoClose").textContent=state.track.valid?"✓ Cerrado":
+  state.track.closed?"⚠ Revisar":"✦ Cerrar";
  $("measureGap").disabled=state.types.length===0&&state.loose.length<2;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
@@ -2277,6 +2340,24 @@ function updateUI(){
  const total=Object.values(CATALOG).reduce((sum,spec)=>sum+spec.stock,0);
  const kitOn=state.looseSelection>=0?Boolean(state.loose[state.looseSelection]?.raised):
   state.selection>=0&&state.bridgeParts.includes(state.selection);
+ if(state.bridgeRangeStart!=null&&state.bridgeRangeStart>=state.types.length)
+  state.bridgeRangeStart=null;
+ const bridgeSelected=state.selection>=0&&state.selection<state.types.length;
+ $("bridgePieceLabel").textContent=bridgeSelected?
+  "Pieza "+(state.selection+1)+"/"+state.types.length:
+  state.types.length?"Elige pieza":"Sin pista";
+ $("bridgePrev").disabled=!state.types.length;
+ $("bridgeNext").disabled=!state.types.length;
+ $("bridgeRangeStart").disabled=!bridgeSelected;
+ $("bridgeRangeEnd").disabled=!bridgeSelected||state.bridgeRangeStart==null;
+ $("bridgeRangeClear").disabled=!bridgeSelected||!state.bridgeParts.length;
+ $("bridgeRangeHint").textContent=state.bridgeRangeStart!=null?
+  "Inicio "+(state.bridgeRangeStart+1)+" marcado · elige Final y elevar.":
+  "◀ ▶ eligen una pieza sin tocar los cruces. Marca inicio y final.";
+ $("bridgeDock").textContent=bridgeSelected?
+  (kitOn?"↓ Bajar esta pieza":"↑ Elevar solo esta pieza · 65 mm"):
+  "↑ Selecciona una pieza";
+ $("bridgeDock").disabled=!bridgeSelected;
  $("bridgeKit").setAttribute("aria-pressed",String(Boolean(kitOn)));
  $("bridgeKit").querySelector(".bridge-kit-cta").textContent=kitOn?"− RETIRAR":"⠿ COLOCAR";
  if(kitOn&&state.looseSelection>=0){
@@ -2322,6 +2403,7 @@ function updateUI(){
   "CERRADO · TOCA PARA DEJAR PIEZA SUELTA":
   state.caseCategory==="curve"?
   "TOCA PARA ENCAJAR · R1 CERRADA → R4 MUY ABIERTA":
+  state.caseCategory==="bridge"?"◀ ▶ ELEGIR PIEZA · INICIO Y FINAL DEL TRAMO":
   "TOCA PARA ENCAJAR · ARRASTRA EL ASA PARA COLOCAR SUELTA";
  $("tableCaption").textContent=state.dragging?"SUELTA LA PIEZA SOBRE LA MESA":
  state.selectionMode==="group"&&state.selectedGroup?"TRAMO · ARRASTRA PARA MOVER TODO":
@@ -3910,6 +3992,11 @@ function initEvents(){
  $("curveDirection").addEventListener("click",toggleCaseCurveDirection);
  $("bridgeKit").addEventListener("click",installBridgeKit);
  $("bridgeDock").addEventListener("click",installBridgeKit);
+ $("bridgePrev").addEventListener("click",()=>selectBridgeRelative(-1));
+ $("bridgeNext").addEventListener("click",()=>selectBridgeRelative(1));
+ $("bridgeRangeStart").addEventListener("click",markBridgeRangeStart);
+ $("bridgeRangeEnd").addEventListener("click",()=>applyBridgeRange(false));
+ $("bridgeRangeClear").addEventListener("click",()=>applyBridgeRange(true));
  $("measureGap").addEventListener("click",measureOpenGap);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
@@ -3976,12 +4063,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.18",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.19",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
