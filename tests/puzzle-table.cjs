@@ -255,5 +255,25 @@ const path=require("node:path");
  assert.deepEqual(st.types,["S350","R3_90R"],
   "El tramo principal arrastrado se acopla a una curva suelta cercana");
  assert.equal(st.loose.length,0);
+ // En un cruce, dos toques en el mismo punto alternan la pieza elegida.
+ const crossingTypes=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
+ game.changeTypes(crossingTypes,"Cruce de prueba",[],geo.START);
+ const crossing=st.track.crossings[0];
+ assert.ok(crossing,"Hay cruce geométrico que permite probar la selección");
+ const candidates=game.puzzle.selectMainAtCrossing(crossing.x,crossing.y).map(p=>p.index);
+ assert.ok(candidates.includes(crossing.a)&&candidates.includes(crossing.b),
+  "Ambas capas son seleccionables");
+ function tapCrossing(pointerId){
+  st.pointer.set(pointerId,{
+   x:195,y:300,originX:195,originY:300,
+   originWorld:{x:crossing.x,y:crossing.y},
+   trackIndex:candidates[0],trackCandidates:candidates,
+   looseIndex:-1,dragged:false,consumed:false
+  });
+  game.puzzle.canvasPointerEnd({pointerId,clientX:195,clientY:300});
+ }
+ tapCrossing(201);assert.equal(st.selection,candidates[0]);
+ tapCrossing(202);assert.equal(st.selection,candidates[1],
+  "Segundo toque en el mismo cruce elige otra capa");
  console.log("SlotRace DEV 0.14.19 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
