@@ -28,6 +28,7 @@ const path=require("node:path");
    .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
    .replace('function paintCar(ctx,at,lane,paused=false){','function paintCar(ctx,at,lane,paused=false){window.__drawLog.push("car");')
    .replace('function paintContinuousTrack(ctx,track,editing){','function paintContinuousTrack(ctx,track,editing){window.__drawLog.push("base");')
+   .replace('function paintSeam(ctx,p){','function paintSeam(ctx,p){window.__seamLog.push(p);')
    .replace('function paintElevatedDeck(ctx,track){','function paintElevatedDeck(ctx,track){window.__drawLog.push("deck");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -48,7 +49,7 @@ const path=require("node:path");
    set(target,key,value){target[key]=value;return true;}});
  for(const id of ["editCanvas","raceCanvas"])elements.get(id).getContext=()=>ctx;
  const document={getElementById:id=>elements.get(id),createElement:()=>node("palette"),addEventListener(){},hidden:false};
- const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],
+ const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],__seamLog:[],
    matchMedia:()=>({matches:true}),setTimeout:fn=>fn(),addEventListener(){}};
  let now=0;const frames=[];
  const storage=new Map();
@@ -95,6 +96,10 @@ const path=require("node:path");
   -deck[0].indices.length+1,"El empalme no duplica nodos ni dibuja juntas internas");
  assert.strictEqual(game.rendering.elevatedDeckRuns(figure),deck,
   "Se reutiliza la geometría sin recalcularla cada fotograma");
+ const seamsBefore=window.__seamLog.length;
+ game.rendering.paintElevatedDeck(ctx,figure);
+ assert.equal(window.__seamLog.length,seamsBefore,
+  "No se pintan juntas de piezas ni costuras internas en la cubierta del puente");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
