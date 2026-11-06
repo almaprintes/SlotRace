@@ -369,7 +369,7 @@ const path=require("node:path");
  st.seconds=16.10;game.completeLap();
  st.lane=1;st.seconds=8.266;game.completeLap();
  assert.deepEqual(st.sessionLaps.map(l=>l.seconds),[16.75,15.20,16.10,8.266]);
- assert.equal(st.records["library-"+library[0].id+"-"+st.types.join("-")][0],15.20);
+ assert.equal(st.records["library-"+library[0].id+"-"+st.types.join("-")+"-rear-physics-v1"][0],15.20);
  assert.equal(game.endSession("menu"),true);
  assert.equal(st.mode,"results");
  assert.equal(elements.get("resultsScreen").hidden,false);
