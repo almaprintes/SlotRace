@@ -1,6 +1,23 @@
-# SlotRace DEV 0.13.6 · Deslizar para borrar circuitos (estilo iOS)
+# SlotRace DEV 0.14.0 · Tienda comercial de pruebas
 
-**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.6
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.0
+
+La pantalla de tienda ha pasado de ser una introducción informativa a un **catálogo funcional** inspirado en el diseño aprobado, con identidad propia SlotRace y sin utilizar marcas ni fotografías de cajas comerciales ajenas.
+
+- **4 categorías navegables:** Cajas, Packs, Circuitos y Coches, con navegación inferior Inicio/Tienda/Mi colección/Construir.
+- **2 grandes cajas:** Caja básica SR-Precision (ya poseída, coche Avenir Gripline, 12 piezas, Óvalo SR); Open Rally Box (Helix Spark, 14 piezas, Ocho con puente). Las cajas se dibujan con **packaging provisional CSS**, sustituible por las ilustraciones definitivas más adelante; los vehículos son archivos originales del repositorio.
+- **3 packs:** curvas R2, puente 65 mm, rectas largas. **3 circuitos:** Óvalo y Ocho con recetas reales validables y Sprint urbano marcado «en diseño» sin compra ni plano inventado. **2 coches:** Avenir Gripline y Helix Spark, este último coleccionable pero aún no pilotable.
+- Cada ficha muestra el contenido, la lista de piezas con cantidades y referencias SR, los planos incluidos y el estado de disponibilidad.
+- **Adquisiciones gratuitas de desarrollo** guardadas localmente bajo `slotrace-shop-owned-v1`. Las cajas desbloquean el derecho a sus planos y coches virtuales en la tienda; **no modifican las cantidades de piezas del constructor**, que siguen ilimitadas para pruebas, ni implican cargos reales.
+- Los planos adquiridos tienen un botón **Guardar plano y montar**. Solo entonces se crea una entrada **nueva** en `slotrace-circuit-library-v1`, con un ID y `shopPlanId` propios, sin sobrescribir circuitos OchoA, Splash u otros. Las aperturas posteriores reutilizan esa entrada para evitar duplicados.
+- La tienda no realiza pagos, no muestra precios monetarios ficticios y no activa un Helix Spark jugable que todavía no existe. La colección es local hasta desarrollar cuentas.
+- Pruebas automáticas comprueban pestañas, catálogo, propiedad inicial, adquisición de Open Rally, desbloqueo del Ocho, montaje, no duplicación y preservación de circuitos anteriores.
+
+---
+
+# SlotRace DEV 0.14.0 · Deslizar para borrar circuitos (estilo iOS)
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.0
 
 - En **Mis circuitos**, se puede deslizar una tarjeta hacia la **izquierda** para descubrir una **papelera roja** detrás. Deslizar a la derecha la cierra. Solo se muestra la acción de una tarjeta cada vez.
 - Pulsar «Eliminar» abre una **confirmación** con el nombre exacto del circuito. **Cancelar** no modifica los datos; la confirmación borra únicamente el circuito por **ID**, sin confundir una copia recuperada de OchoA con OchoA ni con Splash.

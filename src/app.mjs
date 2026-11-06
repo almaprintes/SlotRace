@@ -5,6 +5,66 @@ const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localS
 const KEY="slotrace-lab-10";
 const LIBRARY_KEY="slotrace-circuit-library-v1";
 const LIBRARY_REVISIONS_KEY="slotrace-circuit-versions-v1";
+const SHOP_OWNED_KEY="slotrace-shop-owned-v1";
+const SHOP_DEFAULT_OWNED=Object.freeze(["box-basic","car-gripline"]);
+const SHOP_PRODUCTS=Object.freeze([
+ {id:"box-basic",kind:"boxes",name:"Caja básica SR-Precision",short:"SR-PRECISION",
+  kicker:"SET DE INICIACIÓN",tag:"TU CAJA",car:"gripline",
+  subtitle:"La primera caja de tu colección",detail:"Un set inicial con el Avenir Gripline y el trazado ovalado SR-Precision.",
+  pieces:{S350:4,R2_45R:8},plans:["plan-oval"],cars:["car-gripline"],
+  highlights:["Avenir Gripline","12 piezas","Plano Óvalo SR"],art:"red"},
+ {id:"box-rally",kind:"boxes",name:"Open Rally Box",short:"OPEN RALLY",
+  kicker:"EDICIÓN ESPECIAL",tag:"NOVEDAD",car:"spark",
+  subtitle:"Curvas, cruce y un nuevo coche",detail:"Caja temática con Helix Spark, un trazado en ocho y un kit de puente virtual.",
+  pieces:{S600:2,R2_45R:6,R2_45L:6},plans:["plan-eight"],cars:["car-spark"],
+  highlights:["Helix Spark","14 piezas","Ocho con puente"],art:"scarlet"},
+ {id:"pack-curves",kind:"packs",name:"Pack de curvas",short:"CURVAS R2",
+  kicker:"AMPLIACIÓN DE PISTAS",tag:"PACK",car:null,
+  subtitle:"Más posibilidades de trazado",detail:"Ocho curvas R2 de 45° para nuevas configuraciones.",
+  pieces:{R2_45R:4,R2_45L:4},highlights:["8 curvas R2","Derecha e izquierda"],art:"curve"},
+ {id:"pack-bridge",kind:"packs",name:"Pack puente 65 mm",short:"KIT PUENTE",
+  kicker:"AMPLIACIÓN TÉCNICA",tag:"PACK",car:null,
+  subtitle:"Cruces a distinto nivel",detail:"Kit visual de elevación de 65 mm con soportes y rampas. Se monta desde la pestaña Puentes.",
+  bridge:true,pieces:{},highlights:["65 mm","Soportes + rampas"],art:"bridge"},
+ {id:"pack-speed",kind:"packs",name:"Pack de rectas",short:"VELOCIDAD",
+  kicker:"AMPLIACIÓN DE PISTAS",tag:"PACK",car:null,
+  subtitle:"Rectas largas para acelerar",detail:"Cuatro rectas de 350 mm y dos rectas de puente de 600 mm.",
+  pieces:{S350:4,S600:2},highlights:["6 rectas","350 y 600 mm"],art:"straight"},
+ {id:"plan-oval",kind:"circuits",name:"Óvalo SR-Precision",short:"ÓVALO SR",
+  kicker:"PLANO OFICIAL",tag:"RECETA REAL",car:null,
+  subtitle:"El circuito para empezar",detail:"Trazado ovalado de doce piezas, validado con el motor geométrico del juego.",
+  types:STARTER,highlights:["12 piezas","2 carriles","Cierre validado"],art:"oval"},
+ {id:"plan-eight",kind:"circuits",name:"Ocho con puente",short:"OCHO SR",
+  kicker:"PLANO OFICIAL",tag:"RECETA REAL",car:null,
+  subtitle:"Un cruce elevado con dos lóbulos",detail:"Un ocho de catorce piezas con puente automático, validado por la geometría de SlotRace.",
+  types:FIGURE_EIGHT,highlights:["14 piezas","Puente 65 mm","Cierre validado"],art:"eight"},
+ {id:"plan-urban",kind:"circuits",name:"Sprint urbano",short:"SPRINT URBANO",
+  kicker:"PRÓXIMAMENTE",tag:"EN DISEÑO",car:null,
+  subtitle:"Nuevo plano temático en preparación",detail:"Todavía no hay una receta geométrica homologada para este trazado. Se añadirá cuando esté validada.",
+  soon:true,highlights:["Plano en diseño","Receta pendiente"],art:"urban"},
+ {id:"car-gripline",kind:"cars",name:"Avenir Gripline",short:"GRIPLINE",
+  kicker:"COCHE DE INICIO",tag:"JUGABLE",car:"gripline",
+  subtitle:"Tu coche de competición",detail:"Vehículo inicial de SlotRace, disponible en la pista desde el principio.",
+  highlights:["Disponible para correr","Coche incluido en tu caja"],art:"car"},
+ {id:"car-spark",kind:"cars",name:"Helix Spark",short:"HELIX SPARK",
+  kicker:"COCHE DE COLECCIÓN",tag:"PRÓXIMO JUGABLE",car:"spark",
+  subtitle:"Segundo coche de SlotRace",detail:"Puedes añadirlo a tu colección de pruebas. La selección y conducción de este modelo todavía no están implementadas.",
+  highlights:["Coleccionable en DEV","Conducción pendiente"],art:"car"}
+]);
+const SHOP_CATEGORIES=Object.freeze({
+ boxes:{title:"Cajas completas",button:"shopTabBoxes"},
+ packs:{title:"Packs de piezas",button:"shopTabPacks"},
+ circuits:{title:"Planos de circuitos",button:"shopTabCircuits"},
+ cars:{title:"Coches de colección",button:"shopTabCars"}
+});
+const shopProduct=id=>SHOP_PRODUCTS.find(p=>p.id===id)||null;
+function readShopOwned(){
+ try{
+  const saved=JSON.parse(storage(SHOP_OWNED_KEY)||"[]");
+  return Array.from(new Set([...SHOP_DEFAULT_OWNED,...(Array.isArray(saved)?saved:[])]))
+   .filter(id=>Boolean(shopProduct(id)));
+ }catch(e){return SHOP_DEFAULT_OWNED.slice();}
+}
 const normalCircuitName=name=>String(name||"").trim().replace(/\s+/g," ").toLocaleLowerCase();
 const newCircuitId=()=> "sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
 function readCircuitRevisions(){
@@ -39,6 +99,7 @@ const state={
   circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
   library:initialLibrary,sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
+  shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -1373,12 +1434,184 @@ function setLabel(id,value){
  if(label)label.textContent=value;
  else el.textContent=value;
 }
+
+/* Tienda DEV. Los derechos de adquisición se guardan separados de los
+   circuitos y récords; el constructor mantiene stock ilimitado. */
+const shopCarImage=car=>car==="spark"?
+ "./assets/cars/helix_spark_threequarter.webp":"./assets/cars/avenir_gripline_threequarter.webp";
+const shopOwned=id=>{
+ if(state.shopOwned.includes(id))return true;
+ return SHOP_PRODUCTS.some(p=>p.kind==="boxes"&&state.shopOwned.includes(p.id)&&
+  ((p.plans||[]).includes(id)||(p.cars||[]).includes(id)));
+};
+function shopPiecesText(product){
+ return Object.entries(product.pieces||{}).map(([id,qty])=>
+  qty+" × "+(CATALOG[id]?.name||id)+" ("+(CATALOG[id]?.code||id)+")");
+}
+function shopTrackSymbol(kind){
+ const eight=kind==="eight",curve=kind==="curve",bridge=kind==="bridge";
+ return '<svg viewBox="0 0 250 110" class="shop-mini-track" aria-hidden="true">'+
+  '<path d="'+(eight?'M26 52 C42 1 91 2 120 51 C147 109 203 105 224 52 C203 -4 149 0 120 51 C92 106 43 105 26 52':
+   curve?'M13 97 C13 30 67 12 133 12 H232':
+   bridge?'M12 90 L65 90 Q88 90 95 64 L151 27 Q166 16 180 23 L235 57':
+   kind==="straight"?'M12 55 H238':kind==="urban"?'M12 90 C110 100 24 4 140 18 S241 64 200 96':
+   'M25 58 V40 Q25 12 55 12 H193 Q225 12 225 40 V70 Q225 98 193 98 H55 Q25 98 25 70 Z')+
+  '" fill="none" stroke="#1b2931" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '<path d="'+(eight?'M26 52 C42 1 91 2 120 51 C147 109 203 105 224 52 C203 -4 149 0 120 51 C92 106 43 105 26 52':
+   curve?'M13 97 C13 30 67 12 133 12 H232':
+   bridge?'M12 90 L65 90 Q88 90 95 64 L151 27 Q166 16 180 23 L235 57':
+   kind==="straight"?'M12 55 H238':kind==="urban"?'M12 90 C110 100 24 4 140 18 S241 64 200 96':
+   'M25 58 V40 Q25 12 55 12 H193 Q225 12 225 40 V70 Q225 98 193 98 H55 Q25 98 25 70 Z')+
+  '" fill="none" stroke="#667582" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '<path d="M18 56h36" stroke="#e42043" stroke-width="6" stroke-linecap="round"/>'+
+  '</svg>';
+}
+function shopArtwork(product){
+ const car=product.car?'<img loading="lazy" src="'+shopCarImage(product.car)+
+  '" alt="'+product.name+'" class="shop-car-image">':"";
+ if(product.kind==="boxes")return '<div class="shop-box-visual shop-art-'+product.art+'">'+
+  '<div class="shop-box-spine"></div><div class="shop-box-top"></div>'+
+  '<div class="shop-box-face"><span class="shop-box-logo">Slot<span>Race</span> LAB ▨</span>'+
+  '<span class="shop-box-name">'+product.short+'</span>'+
+  '<span class="shop-box-sub">COLECCIÓN DE CIRCUITOS</span>'+car+
+  '<div class="shop-box-track">'+shopTrackSymbol(product.id==="box-rally"?"eight":"oval")+'</div>'+
+  '<span class="shop-box-foot">PISTAS · COCHES · PLANOS</span></div></div>';
+ if(product.kind==="cars")return '<div class="shop-car-visual">'+car+'</div>';
+ return '<div class="shop-simple-art shop-simple-'+product.art+'">'+shopTrackSymbol(product.art)+
+  '<span>SR-PRECISION</span></div>';
+}
+function shopCardMarkup(product,compact=false){
+ const owned=shopOwned(product.id),soon=Boolean(product.soon);
+ const badge=soon?"PRÓXIMAMENTE":owned?"EN TU COLECCIÓN":product.tag;
+ const button=soon?"Ver avance":owned?"Ver contenido":compact?"Ver ficha":"Añadir gratis";
+ return '<article class="shop-card '+(product.kind==="boxes"?"shop-card-box ":"shop-card-small ")+
+  (compact?"is-compact ":"")+'" data-kind="'+product.kind+'">'+
+  '<div class="shop-card-art">'+shopArtwork(product)+'</div>'+
+  '<div class="shop-card-text"><span class="shop-card-eyebrow">'+product.kicker+'</span>'+
+  '<h3>'+product.name+'</h3><p>'+product.subtitle+'</p>'+
+  '<div class="shop-highlights">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
+  '</div><div class="shop-card-action"><span class="shop-card-price">'+
+  (owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":"GRATIS · DEV")+'</span>'+
+  '<button type="button" data-shop-product="'+product.id+'" aria-label="Ver '+product.name+'">'+
+  button+' <span aria-hidden="true">›</span></button></div></article>';
+}
+function shopSelectCategory(kind){
+ if(!SHOP_CATEGORIES[kind])return false;
+ state.shopCategory=kind;renderShop();
+ $("shopScroll").scrollTo?.({top:0,behavior:"smooth"});
+ return true;
+}
+function renderShop(){
+ if(state.mode!=="store")return;
+ const category=state.shopCategory;
+ for(const [key,meta] of Object.entries(SHOP_CATEGORIES)){
+  const tab=$(meta.button),active=key===category;
+  tab.setAttribute("aria-pressed",String(active));
+  tab.classList.toggle("is-active",active);
+ }
+ const products=SHOP_PRODUCTS.filter(p=>p.kind===category);
+ $("shopCategoryTitle").textContent=SHOP_CATEGORIES[category].title;
+ $("shopCategoryCount").textContent=products.length+" productos";
+ $("shopProducts").className="shop-products "+(category==="boxes"?"shop-products-boxes":"shop-products-grid");
+ $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
+ $("shopFeaturedSection").hidden=category!=="boxes";
+ if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-urban"]
+  .map(id=>shopCardMarkup(shopProduct(id),true)).join("");
+ const owned=SHOP_PRODUCTS.filter(p=>shopOwned(p.id));
+ $("shopCollectionSummary").textContent=owned.length+" productos disponibles · "+
+  "La caja básica y sus contenidos están incluidos desde el inicio.";
+ $("shopOwnedList").hidden=!state.shopCollectionExpanded;
+ $("shopShowCollection").textContent=state.shopCollectionExpanded?
+  "Ocultar colección ‹":"Ver colección ›";
+ if(state.shopCollectionExpanded)$("shopOwnedList").innerHTML=owned.map(p=>
+  '<button type="button" data-shop-product="'+p.id+'"><strong>'+p.name+
+  '</strong><span>Ver ›</span></button>').join("");
+}
+function shopOpenProduct(id){
+ const product=shopProduct(id);if(!product)return false;
+ state.shopSelectedId=id;
+ const owned=shopOwned(id),soon=Boolean(product.soon);
+ $("shopModalTitle").textContent=product.name;
+ const includes=(product.plans||[]).map(planId=>{
+  const plan=shopProduct(planId);
+  return '<button type="button" data-shop-plan="'+planId+'">'+
+   '▤ '+plan.name+' <span>Ver plano ›</span></button>';
+ }).join("");
+ const pieces=shopPiecesText(product);
+ const groups=pieces.length?'<h3>Piezas incluidas</h3><ul>'+pieces.map(x=>'<li>'+x+'</li>').join("")+'</ul>':"";
+ $("shopModalContent").innerHTML=
+  '<div class="shop-modal-art">'+shopArtwork(product)+'</div>'+
+  '<span class="shop-eyebrow">'+product.kicker+'</span>'+
+  '<h2>'+product.name+'</h2><p>'+product.detail+'</p>'+
+  '<div class="shop-modal-tags">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
+  groups+(product.bridge?'<p class="shop-bridge-note">Incluye kit puente 65 mm.</p>':"")+
+  (includes?'<h3>Planos incluidos</h3><div class="shop-modal-plans">'+includes+'</div>':"")+
+  (product.types?'<p class="shop-bridge-note">Receta comprobada: '+product.types.length+
+   ' piezas. Puedes guardarla y montarla desde Mis circuitos.</p>':"")+
+  '<p class="shop-modal-honesty">Modo pruebas: sin cargos ni compras reales. Las piezas físicas continúan en modo ilimitado.</p>';
+ $("shopModalPrimary").disabled=soon;
+ $("shopModalPrimary").textContent=soon?"Próximamente":!owned?
+  "Añadir gratis a mi colección":product.kind==="circuits"?
+  "Guardar plano y montar":product.kind==="boxes"?
+  "Ver planos de la caja":product.kind==="cars"&&product.id==="car-gripline"?
+  "Ir a jugar":"Ver mi colección";
+ $("shopProductModal").hidden=false;
+ $("shopModalClose").focus?.();
+ return true;
+}
+function shopCloseProduct(){
+ $("shopProductModal").hidden=true;
+ state.shopSelectedId=null;
+ return true;
+}
+function shopAcquire(id){
+ const product=shopProduct(id);
+ if(!product||product.soon)return false;
+ if(shopOwned(id)){renderShop();return true;}
+ const next=[...state.shopOwned,id];
+ try{localStorage.setItem(SHOP_OWNED_KEY,JSON.stringify(next));}
+ catch(e){toast("No se ha podido guardar esta adquisición local.");return false;}
+ state.shopOwned=next;
+ renderShop();shopOpenProduct(id);
+ toast(product.name+" añadido a tu colección de pruebas.");
+ return true;
+}
+function shopInstallPlan(id){
+ const product=shopProduct(id);
+ if(!product||product.kind!=="circuits"||!product.types||!shopOwned(id)){
+  toast("Primero adquiere el plano o una caja que lo incluya.");return false;
+ }
+ const existing=state.library.find(c=>c.shopPlanId===id);
+ if(existing){shopCloseProduct();return loadSavedCircuit(existing.id);}
+ const geometry=buildTrack(product.types,START);
+ if(!geometry.valid){toast("Este plano no ha superado la validación geométrica.");return false;}
+ if(state.library.length>=120){toast("Inventario de circuitos completo.");return false;}
+ const now=new Date().toISOString();
+ const item={id:newCircuitId(),shopPlanId:id,name:product.name,direction:1,
+  snapshot:{types:product.types.slice(),loose:[],bridgeParts:[],origin:{...START}},
+  createdAt:now,updatedAt:now};
+ const next=[item,...state.library];
+ if(!safelyWriteLibrary(next))return false;
+ state.library=next;
+ shopCloseProduct();return loadSavedCircuit(item.id);
+}
+function shopPrimaryAction(){
+ const id=state.shopSelectedId,product=shopProduct(id);
+ if(!product||product.soon)return false;
+ if(!shopOwned(id))return shopAcquire(id);
+ if(product.kind==="circuits")return shopInstallPlan(id);
+ if(product.kind==="boxes"){shopCloseProduct();return shopSelectCategory("circuits");}
+ if(id==="car-gripline"){shopCloseProduct();return menuRace();}
+ shopCloseProduct();state.shopCollectionExpanded=true;renderShop();return true;
+}
+
 function updateUI(){
  state.viewDirty=true;
  menu.hidden=state.mode!=="menu";
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  results.hidden=state.mode!=="results";
  for(const [name,screen] of Object.entries(hubScreens))screen.hidden=state.mode!==name;
+ if(state.mode==="store")renderShop();
  $("garageRace").disabled=!state.track.valid;
  $("settingsSound").textContent=state.clicksEnabled?"Activado":"Silenciado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
@@ -2778,6 +3011,37 @@ function initEvents(){
  $("libraryBuild").addEventListener("click",openWorkshop);
  $("garageRace").addEventListener("click",menuRace);
  $("storeImport").addEventListener("click",()=>showHub("library"));
+ for(const [category,meta] of Object.entries(SHOP_CATEGORIES))
+  $(meta.button).addEventListener("click",()=>shopSelectCategory(category));
+ const openFromList=e=>{
+  const btn=e.target.closest?.("[data-shop-product]");
+  if(btn)shopOpenProduct(btn.dataset.shopProduct);
+ };
+ $("shopProducts").addEventListener("click",openFromList);
+ $("shopFeatured").addEventListener("click",openFromList);
+ $("shopOwnedList").addEventListener("click",openFromList);
+ $("shopModalContent").addEventListener("click",e=>{
+  const b=e.target.closest?.("[data-shop-plan]");
+  if(b)shopOpenProduct(b.dataset.shopPlan);
+ });
+ $("shopShowCollection").addEventListener("click",()=>{
+  state.shopCollectionExpanded=!state.shopCollectionExpanded;renderShop();
+ });
+ $("shopNavHome").addEventListener("click",showMenu);
+ $("shopNavBuild").addEventListener("click",openWorkshop);
+ $("shopNavCollection").addEventListener("click",()=>{
+  state.shopCollectionExpanded=true;renderShop();
+  $("shopCollectionSection").scrollIntoView?.({behavior:"smooth",block:"start"});
+ });
+ $("shopModalClose").addEventListener("click",shopCloseProduct);
+ $("shopModalSecondary").addEventListener("click",shopCloseProduct);
+ $("shopModalPrimary").addEventListener("click",shopPrimaryAction);
+ $("shopProductModal").addEventListener("click",e=>{
+  if(e.target===$("shopProductModal"))shopCloseProduct();
+ });
+ window.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!$("shopProductModal").hidden){e.preventDefault();shopCloseProduct();}
+ });
  $("settingsSound").addEventListener("click",()=>{
   state.clicksEnabled=!state.clicksEnabled;
   if(state.clicksEnabled)initDialAudio();
@@ -2900,7 +3164,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.6",state,showHub,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.0",state,showHub,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

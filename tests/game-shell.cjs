@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.6");
+ assert.equal(game.version,"DEV 0.14.0");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -86,6 +86,38 @@ const path=require("node:path");
  }
  assert.match(html,/avenir_gripline_threequarter\.webp/);
  assert.match(html,/helix_spark_threequarter\.webp/);
+ // Tienda: cuatro categorías, cajas grandes y adquisiciones LOCALES sin pagos.
+ assert.equal(game.shopProducts.length,10,"Catálogo inicial con diez referencias");
+ elements.get("menuStore").listeners.click[0]();
+ assert.equal(st.mode,"store");
+ assert.match(elements.get("shopProducts").innerHTML,/Caja básica SR-Precision/);
+ assert.match(elements.get("shopProducts").innerHTML,/Open Rally Box/);
+ assert.equal(game.shopOwned("box-basic"),true,"La caja básica es propiedad inicial");
+ assert.equal(game.shopOwned("car-gripline"),true,"Avenir Gripline incluido");
+ assert.equal(game.shopOwned("plan-oval"),true,"Plano ovalado incluido en caja básica");
+ assert.equal(game.shopSelectCategory("packs"),true);
+ assert.match(elements.get("shopProducts").innerHTML,/Pack puente 65 mm/);
+ assert.equal(game.shopSelectCategory("circuits"),true);
+ assert.match(elements.get("shopProducts").innerHTML,/Sprint urbano/);
+ assert.equal(game.shopAcquire("plan-urban"),false,"Un plano sin receta no es adquirible");
+ assert.equal(game.shopSelectCategory("boxes"),true);
+ assert.equal(game.shopOpenProduct("box-rally"),true);
+ assert.equal(elements.get("shopProductModal").hidden,false);
+ assert.match(elements.get("shopModalContent").innerHTML,/14 piezas|14 piezas|Ocho con puente/);
+ assert.equal(game.shopAcquire("box-rally"),true,"Caja temática adquirida gratis");
+ assert.equal(game.shopOwned("box-rally"),true);
+ assert.equal(game.shopOwned("plan-eight"),true,"La caja desbloquea su receta");
+ assert.equal(game.shopOwned("car-spark"),true,"Helix Spark coleccionable");
+ const ownedAfter=JSON.parse(saved.get("slotrace-shop-owned-v1"));
+ assert.ok(ownedAfter.includes("box-rally"),"Compra de pruebas se guarda separada");
+ assert.equal(JSON.parse(saved.get("slotrace-circuit-library-v1")||"[]").length,0,
+  "Adquirir una caja no sobrescribe ni genera circuitos en el inventario");
+ game.shopCloseProduct();
+ assert.equal(elements.get("shopProductModal").hidden,true);
+ assert.equal(game.shopSelectCategory("cars"),true);
+ assert.match(elements.get("shopProducts").innerHTML,/Helix Spark/);
+ assert.equal(game.shopSelectCategory("invalid"),false);
+ game.showMenu();
  elements.get("menuSettings").listeners.click[0]();
  const soundBefore=st.clicksEnabled,gridBefore=st.gridEnabled;
  elements.get("settingsSound").listeners.click[0]();
@@ -406,6 +438,23 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-circuit-library-v1")).some(c=>c.id===duplicateId),false);
  assert.equal(st.library.some(c=>c.name==="OchoA"),true);
  assert.equal(st.library.some(c=>c.name==="Splash"),true);
+ // Guardar desde tienda un plano validado no puede sustituir las creaciones.
+ const previousTracks=st.library.map(x=>({id:x.id,name:x.name,snapshot:JSON.stringify(x.snapshot)}));
+ assert.equal(game.shopInstallPlan("plan-eight"),true,"Montar receta desbloqueada del ocho");
+ assert.equal(st.mode,"build");
+ assert.equal(st.track.valid,true);
+ assert.equal(st.types.length,14);
+ assert.equal(st.circuitName,"Ocho con puente");
+ assert.equal(st.library.length,previousTracks.length+1);
+ for(const track of previousTracks){
+  const same=st.library.find(c=>c.id===track.id);
+  assert.ok(same,"Circuito anterior conservado: "+track.name);
+  assert.equal(JSON.stringify(same.snapshot),track.snapshot);
+ }
+ const storeCount=st.library.length;
+ assert.equal(game.shopInstallPlan("plan-eight"),true,"Segunda apertura reutiliza la misma receta");
+ assert.equal(st.library.length,storeCount,"No duplica el plano de tienda");
+ assert.equal(game.shopInstallPlan("plan-urban"),false,"No instala planos en preparación");
 
- console.log("SlotRace DEV 0.13.6: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

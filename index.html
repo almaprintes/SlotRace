@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.13.6: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.13.6 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.13.6">
+  <meta name="description" content="SlotRace DEV 0.14.0: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.0 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.0">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.13.6">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.0">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.13.6</div>
+    <div class="splash-version">DEV 0.14.0</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.13.6">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.0">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.13.6">DEV 0.13.6<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><div class="version" aria-label="Versión de desarrollo 0.14.0">DEV 0.14.0<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -138,17 +138,51 @@
       <div class="hub-bottom-actions"><button id="garageRace" class="hub-primary" type="button">🏁 Correr con Gripline</button><button id="garageHome" class="hub-back" type="button">‹ Volver al menú</button></div>
     </div>
   </section>
-  <section id="storeScreen" class="screen hub-screen" hidden aria-label="Tienda">
-    <div class="hub-scroll">
-      <div class="hub-heading"><span class="hub-kicker">COMUNIDAD · CATALOGO</span><h1>Tienda</h1><p>El mercado de circuitos está en preparación.</p></div>
-      <div class="hub-feature">
-        <span class="hub-feature-icon" aria-hidden="true">▧</span>
-        <h2>Intercambia circuitos</h2>
-        <p>De momento puedes importar gratuitamente recetas JSON de otras personas. Cuando existan cuentas y monedas, aquí aparecerá el catálogo de circuitos y piezas.</p>
-        <p class="hub-disclosure">Todavía no hay compras, pagos ni catálogo público. No hemos activado una tienda simulada.</p>
-        <button id="storeImport" class="hub-primary" type="button">Abrir Mis circuitos para importar</button>
+  <section id="storeScreen" class="screen hub-screen shop-screen" hidden aria-label="Tienda SlotRace">
+    <div class="hub-scroll shop-scroll" id="shopScroll">
+      <div class="shop-header">
+        <div class="shop-header-top"><span class="shop-eyebrow">COMUNIDAD · CATÁLOGO</span><span class="shop-dev-mark">MODO PRUEBAS</span></div>
+        <h1><span class="shop-slashes" aria-hidden="true">///</span> Tienda</h1>
+        <p>Cajas, piezas y planos para ampliar tu universo SlotRace.</p>
+        <span class="shop-checker" aria-hidden="true"></span>
       </div>
+      <nav class="shop-tabs" role="group" aria-label="Categorías de tienda">
+        <button id="shopTabBoxes" type="button" class="shop-tab is-active" data-shop-tab="boxes" aria-pressed="true"><span aria-hidden="true">▣</span> Cajas</button>
+        <button id="shopTabPacks" type="button" class="shop-tab" data-shop-tab="packs" aria-pressed="false"><span aria-hidden="true">▱</span> Packs</button>
+        <button id="shopTabCircuits" type="button" class="shop-tab" data-shop-tab="circuits" aria-pressed="false"><span aria-hidden="true">⌁</span> Circuitos</button>
+        <button id="shopTabCars" type="button" class="shop-tab" data-shop-tab="cars" aria-pressed="false"><span aria-hidden="true">▰</span> Coches</button>
+      </nav>
+      <div class="shop-section-head"><h2 id="shopCategoryTitle">Cajas completas</h2><span id="shopCategoryCount">2 productos</span></div>
+      <div id="shopProducts" class="shop-products" aria-live="polite"></div>
+      <section class="shop-featured" id="shopFeaturedSection" aria-labelledby="shopFeaturedTitle">
+        <div class="shop-section-head"><h2 id="shopFeaturedTitle">Para ampliar tu colección</h2><span>DESCUBRE MÁS</span></div>
+        <div id="shopFeatured" class="shop-featured-grid"></div>
+      </section>
+      <section class="shop-collection" id="shopCollectionSection">
+        <div><span class="shop-eyebrow">MI COLECCIÓN</span><h2>Lo que ya tienes</h2><p id="shopCollectionSummary">Tu caja básica está lista.</p></div>
+        <button id="shopShowCollection" type="button">Ver colección <span aria-hidden="true">›</span></button>
+        <div id="shopOwnedList" class="shop-owned-list" hidden></div>
+      </section>
+      <div class="shop-disclaimer"><strong>CATÁLOGO DEV · SIN PAGOS</strong><span>Las adquisiciones de esta versión son gratuitas y se guardan en este navegador. Las cantidades de piezas del constructor siguen siendo ilimitadas para pruebas.</span></div>
+      <button id="storeImport" class="shop-import" type="button">Importar una receta de otra persona <span aria-hidden="true">›</span></button>
       <button id="storeHome" class="hub-back" type="button">‹ Volver al menú</button>
+    </div>
+    <nav class="shop-bottom-nav" aria-label="Accesos de la tienda">
+      <button id="shopNavHome" type="button"><span aria-hidden="true">⌂</span> Inicio</button>
+      <button type="button" class="is-active" aria-current="page" disabled><span aria-hidden="true">▣</span> Tienda</button>
+      <button id="shopNavCollection" type="button"><span aria-hidden="true">▦</span> Mi colección</button>
+      <button id="shopNavBuild" type="button"><span aria-hidden="true">⌁</span> Construir</button>
+    </nav>
+    <div id="shopProductModal" class="shop-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="shopModalTitle" hidden>
+      <div class="shop-modal-card">
+        <button id="shopModalClose" class="shop-modal-close" aria-label="Cerrar ficha de producto" type="button">×</button>
+        <h2 id="shopModalTitle" class="shop-dialog-label">Detalle del producto</h2>
+        <div id="shopModalContent"></div>
+        <div class="shop-modal-actions">
+          <button id="shopModalSecondary" class="shop-modal-secondary" type="button">Volver</button>
+          <button id="shopModalPrimary" class="shop-modal-primary" type="button">Añadir a mi colección</button>
+        </div>
+      </div>
     </div>
   </section>
   <section id="settingsScreen" class="screen hub-screen" hidden aria-label="Ajustes">
@@ -348,6 +382,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.13.6"></script>
+<script type="module" src="./src/app.mjs?v=0.14.0"></script>
 </body>
 </html>
