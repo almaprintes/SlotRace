@@ -42,7 +42,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.18");
+ assert.equal(game.version,"DEV 0.14.19");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -255,5 +255,5 @@ const path=require("node:path");
  assert.deepEqual(st.types,["S350","R3_90R"],
   "El tramo principal arrastrado se acopla a una curva suelta cercana");
  assert.equal(st.loose.length,0);
- console.log("SlotRace DEV 0.14.18 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.14.19 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
