@@ -96,9 +96,13 @@ const path=require("node:path");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","deck","car"],
    "El coche elevado se pinta por encima de la plataforma");
- assert.deepEqual(window.__crossLog,[figure.bridge.crossings.length,
-  figure.bridge.crossings.length],
-  "Cada fotograma revisa todos los cruces y repinta la parte superior");
+ assert.match(source,/paintGroundTrack\(ctx,track,mode==="build"\)/,
+  "El renderer usa capas completas, nunca recorta curvas inferiores");
+ assert.doesNotMatch(
+  source.slice(source.indexOf("function renderScene("),
+   source.indexOf("function screenToWorld(")),
+  /paintVerifiedCrossings\(ctx,track\)/,
+  "El Doble Ocho no recibe recortes rectangulares superpuestos");
  const crossingPainter=source.slice(source.indexOf("function paintVerifiedCrossings("),
   source.indexOf("function paintBridgeCrossing("));
  assert.match(crossingPainter,/paintOpaqueRibbon\(ctx,run\.points,run\.offsets\)/,
@@ -276,5 +280,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.24 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.25 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
