@@ -220,12 +220,13 @@ const path=require("node:path");
  // Inversión real de un grupo de dos curvas: antes el límite de giro 90°
  // impedía conectar el final del grupo con el final del circuito.
  game.changeTypes(["S350"],"Inversión de grupo",[],{x:500,y:500,h:0});
- const a=geo.positionOnPiece({x:0,y:0,h:0},"R3_225R",1);
- const b=geo.positionOnPiece(a,"R3_225R",1);
- const p={x:850-b.x,y:500-b.y,h:0},q=geo.positionOnPiece(p,"R3_225R",1);
+ const reverseFirst=geo.positionOnPiece({x:0,y:0,h:0},"R3_225R",1);
+ const reverseEnd=geo.positionOnPiece(reverseFirst,"R3_225R",1);
+ const reverseStart={x:850-reverseEnd.x,y:500-reverseEnd.y,h:0};
+ const reverseNext=geo.positionOnPiece(reverseStart,"R3_225R",1);
  st.loose=[
-  {id:"R3_225R",...p,magnetGroup:"magnet-prueba",magnetOrder:0},
-  {id:"R3_225R",x:q.x,y:q.y,h:q.h,magnetGroup:"magnet-prueba",magnetOrder:1}
+  {id:"R3_225R",...reverseStart,magnetGroup:"magnet-prueba",magnetOrder:0},
+  {id:"R3_225R",x:reverseNext.x,y:reverseNext.y,h:reverseNext.h,magnetGroup:"magnet-prueba",magnetOrder:1}
  ];
  const proposal=game.puzzle.bestMagnet(0);
  assert.ok(proposal?.reversed&&proposal?.kind==="main");
