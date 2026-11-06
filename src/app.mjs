@@ -2690,13 +2690,12 @@ function paintTable(ctx){
 }
 function paintSeam(ctx,p){
  const h=p.h,x=p.x,y=p.y,nx=-Math.sin(h),ny=Math.cos(h);
- ctx.save();ctx.lineWidth=4;ctx.strokeStyle="#0c1217";
- ctx.beginPath();ctx.moveTo(x-nx*76,y-ny*76);ctx.lineTo(x+nx*76,y+ny*76);ctx.stroke();
- ctx.lineWidth=3;ctx.strokeStyle="#768287";
+ ctx.save();ctx.globalAlpha=.38;ctx.lineWidth=1.7;ctx.strokeStyle="#0c1217";
+ ctx.beginPath();ctx.moveTo(x-nx*75,y-ny*75);ctx.lineTo(x+nx*75,y+ny*75);ctx.stroke();
  for(const side of [-67,67]){
   const px=x+nx*side,py=y+ny*side;
-  ctx.fillStyle="#71808a";ctx.beginPath();ctx.arc(px,py,4.2,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#172029";ctx.beginPath();ctx.arc(px,py,1.8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#8c9ca0";ctx.beginPath();ctx.arc(px,py,2.7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#1c2930";ctx.beginPath();ctx.arc(px,py,1.15,0,Math.PI*2);ctx.fill();
  }
  ctx.restore();
 }
@@ -2806,7 +2805,9 @@ function paintContinuousTrack(ctx,track,editing){
 // Puente compacto: los tramos elevados se repintan DESPUÉS del coche de
 // abajo. Una sola banda por tramo (también alrededor de la meta) evita
 // costuras internas, huecos en curvas y máscaras demasiado cortas.
+const elevatedDeckCache=new WeakMap();
 function elevatedDeckRuns(track){
+ const cached=elevatedDeckCache.get(track);if(cached)return cached;
  const profiles=track.elevation?.profiles||[];
  const active=track.parts.map((part,i)=>Boolean(profiles[i]));
  const runs=[];let run=[];
@@ -2821,15 +2822,20 @@ function elevatedDeckRuns(track){
   runs[0]=[...runs.at(-1),...runs[0]];
   runs.pop();
  }
- return runs.map(indices=>({
-  indices,
-  points:indices.flatMap((index,i)=>
-   track.parts[index].points.slice(i?1:0))
- })).filter(run=>run.points.length>1);
+ const deck=runs.map(indices=>{
+  const points=indices.flatMap((index,i)=>track.parts[index].points.slice(i?1:0));
+  return{indices,points,
+   offsets:Object.fromEntries(
+    [-LANE_OFFSET,LANE_OFFSET,-LANE_OFFSET-7.6,-LANE_OFFSET+7.6,
+     LANE_OFFSET-7.6,LANE_OFFSET+7.6,-72,72].map(off=>[off,translated(points,off)]))
+  };
+ }).filter(run=>run.points.length>1);
+ elevatedDeckCache.set(track,deck);
+ return deck;
 }
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
- for(const {points} of elevatedDeckRuns(track)){
+ for(const {points,offsets} of elevatedDeckRuns(track)){
   // El sombreado da profundidad, pero la propia pista es OPACA:
   // oculta completamente al coche y las juntas inferiores.
   ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=27;
@@ -2841,13 +2847,13 @@ function paintElevatedDeck(ctx,track){
   strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
   strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
   for(const offset of [-LANE_OFFSET,LANE_OFFSET]){
-   strokePath(ctx,translated(points,offset),PIECE_LOOK.groove,11);
-   strokePath(ctx,translated(points,offset-7.6),PIECE_LOOK.metalA,2.2);
-   strokePath(ctx,translated(points,offset+7.6),PIECE_LOOK.metalB,2.2);
-   strokePath(ctx,translated(points,offset),PIECE_LOOK.guide,5);
+   strokePath(ctx,offsets[offset],PIECE_LOOK.groove,11);
+   strokePath(ctx,offsets[offset-7.6],PIECE_LOOK.metalA,2.2);
+   strokePath(ctx,offsets[offset+7.6],PIECE_LOOK.metalB,2.2);
+   strokePath(ctx,offsets[offset],PIECE_LOOK.guide,5);
   }
   for(const edge of [-72,72])
-   strokePath(ctx,translated(points,edge),PIECE_LOOK.edge,2.5);
+   strokePath(ctx,offsets[edge],PIECE_LOOK.edge,2.5);
   // No pintar paintSeam aquí: los módulos de un tramo elevado
   // forman una banda visual única, con carriles y bordes continuos.
  }
