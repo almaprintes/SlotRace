@@ -32,6 +32,7 @@ const path=require("node:path");
    .replace('function paintBridgeRampProfile(ctx,part,track=null){',
     'function paintBridgeRampProfile(ctx,part,track=null){window.__rampDraws.push(part.index);')
    .replace('function paintElevatedDeck(ctx,track){','function paintElevatedDeck(ctx,track){window.__drawLog.push("deck");')
+   .replace('function paintVerifiedCrossings(ctx,track){','function paintVerifiedCrossings(ctx,track){window.__crossLog.push(track.bridge?.crossings?.length||0);')
    .replace('function paintLoose(ctx){','function paintLoose(ctx){window.__drawLog.push("loose");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -52,7 +53,7 @@ const path=require("node:path");
    set(target,key,value){target[key]=value;return true;}});
  for(const id of ["editCanvas","raceCanvas"])elements.get(id).getContext=()=>ctx;
  const document={getElementById:id=>elements.get(id),createElement:()=>node("palette"),addEventListener(){},hidden:false};
- const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],__seamLog:[],__rampDraws:[],
+ const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],__seamLog:[],__rampDraws:[],__crossLog:[],
    matchMedia:()=>({matches:true}),setTimeout:fn=>fn(),addEventListener(){}};
  let now=0;const frames=[];
  const storage=new Map();
@@ -92,6 +93,17 @@ const path=require("node:path");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","deck","car"],
    "El coche elevado se pinta por encima de la plataforma");
+ assert.deepEqual(window.__crossLog,[figure.bridge.crossings.length,
+  figure.bridge.crossings.length],
+  "Cada fotograma revisa todos los cruces y repinta la parte superior");
+ const crossingPainter=source.slice(source.indexOf("function paintVerifiedCrossings("),
+  source.indexOf("function paintBridgeCrossing("));
+ assert.match(crossingPainter,/for\(const cross of crossings\)/,
+  "No hay un único cruce fijo ni excepciones por nombre de circuito");
+ assert.match(crossingPainter,/ctx\.rect\(-halfLength/,
+  "Cada cruce recibe un área local de oclusión independiente");
+ assert.match(crossingPainter,/paintOpaqueRibbon\(ctx,run\.points,run\.offsets\)/,
+  "El repintado local usa la vía superior y su geometría original");
  // Regresión universal: piezas sin acoplar no deben contaminar la pista
  // de ningún circuito en carrera (antes pintaban raíles SOBRE el puente).
  game.state.loose=[{id:"S350",x:figure.bridge.crossings[0].x-175,
@@ -131,6 +143,18 @@ const path=require("node:path");
  game.rendering.paintElevatedDeck(ctx,figure);
  assert.equal(window.__seamLog.length,seamsBefore,
   "No se pintan juntas de piezas ni costuras internas en la cubierta del puente");
+ // Simular dos intersecciones verificadas para garantizar que no se repinta
+ // exclusivamente la primera (el error de los circuitos Doble Ocho).
+ const multiBridge={...figure,bridge:{...figure.bridge,
+  crossings:[figure.bridge.crossings[0],{...figure.bridge.crossings[0]}]}};
+ const clips=[];
+ const instrumentedCtx=new Proxy(ctx,{get(target,key){
+  if(key==="clip")return()=>clips.push("clip");
+  return target[key];
+ }});
+ game.rendering.paintVerifiedCrossings(instrumentedCtx,multiBridge);
+ assert.equal(clips.length,2,
+  "Dos cruces independientes reciben sendas máscaras opacas");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
@@ -218,5 +242,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.22 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.23 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
