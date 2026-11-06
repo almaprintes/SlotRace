@@ -280,5 +280,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.26 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.27 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
