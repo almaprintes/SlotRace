@@ -33,6 +33,9 @@ jobs:
       - name: Comprobar paso inferior y superior del puente
         run: node tests/bridge-occlusion.cjs
 
+      - name: Comprobar Rayos X con la receta real Doble ovalo
+        run: node tests/xray.cjs
+
       - name: Comprobar derrape, trompo y penalización
         run: node tests/drift-spin.cjs
 
