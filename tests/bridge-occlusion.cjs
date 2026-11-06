@@ -27,7 +27,7 @@ const path=require("node:path");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
    .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
    .replace('function paintCar(ctx,at,lane,paused=false){','function paintCar(ctx,at,lane,paused=false){window.__drawLog.push("car");')
-   .replace('function paintContinuousTrack(ctx,track,editing){','function paintContinuousTrack(ctx,track,editing){window.__drawLog.push("base");')
+   .replace('function paintGroundTrack(ctx,track,editing){','function paintGroundTrack(ctx,track,editing){window.__drawLog.push("base");')
    .replace('function paintSeam(ctx,p){','function paintSeam(ctx,p){window.__seamLog.push(p);')
    .replace('function paintBridgeRampProfile(ctx,part,track=null){',
     'function paintBridgeRampProfile(ctx,part,track=null){window.__rampDraws.push(part.index);')
@@ -166,6 +166,17 @@ const path=require("node:path");
   "Cada pieza elevada se pinta una sola vez");
  assert.deepEqual(new Set(groundIndices).size,groundIndices.length,
   "Cada pieza inferior se pinta una sola vez");
+ // Las rutas inferiores y superiores deben reunirse exactamente en
+ // los conectores, sin cortar parte de una recta o curva a ras de suelo.
+ const allRuns=[...ground,...elevated];
+ for(const run of allRuns)for(let i=1;i<run.indices.length;i++){
+  const previous=figure.parts[run.indices[i-1]],next=figure.parts[run.indices[i]];
+  assert.ok(Math.hypot(previous.end.x-next.start.x,previous.end.y-next.start.y)<1e-7,
+   "No aparecen agujeros al dividir los niveles de un circuito");
+ }
+ const groundCurveIndices=figure.parts.filter(p=>p.id.startsWith("R")&&!figure.elevation.profiles[p.index]).map(p=>p.index);
+ assert.ok(groundCurveIndices.every(i=>groundIndices.includes(i)),
+  "Ninguna de las curvas inferiores desaparece en la nueva composición");
  for(const crossing of figure.bridge.crossings){
   assert.ok(raisedIndices.includes(crossing.upper),
    "El cruce superior pertenece al nivel elevado");
