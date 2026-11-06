@@ -109,7 +109,10 @@ function crossingCandidates(parts,closed){
 }
 // Perfil de altura continuo: cualquier curva puede ser una plataforma a 65 mm.
 // Las rectas contiguas absorben la pendiente sin tocar las dimensiones de pista.
-const MIN_TRANSITION_STRAIGHT_MM=350;
+const MIN_TRANSITION_LENGTH_MM=350;
+// Una curva amplia puede actuar como rampa si dispone de suficiente
+// longitud de arco. Se mantiene intacta la geometría de los conectores.
+const transitionLength=spec=>spec?.length||spec?.radius*Math.abs(spec?.angle||0)||0;
 const smoothHeight=t=>{const x=Math.max(0,Math.min(1,t));return x*x*(3-2*x);};
 function buildElevation(parts,raisedParts,closed){
  const n=parts.length,selected=[...new Set(raisedParts)].filter(i=>
@@ -137,17 +140,17 @@ function buildElevation(parts,raisedParts,closed){
   const ramp=(edge,neighbor,up)=>{
    const adjacent=neighbor>=0?CATALOG[parts[neighbor].id]:null;
    if(neighbor>=0&&!chosen.has(neighbor)&&!profiles[neighbor]&&
-      adjacent?.length>=MIN_TRANSITION_STRAIGHT_MM){
+      transitionLength(adjacent)>=MIN_TRANSITION_LENGTH_MM){
     profiles[neighbor]={mode:up?"up":"down"};return;
    }
    // Los kits clásicos sobre rectas siguen funcionando con rampas internas.
    const own=CATALOG[parts[edge].id];
-   if(own?.length>=MIN_TRANSITION_STRAIGHT_MM){
-    profiles[edge][up?"up":"down"]=Math.min(.4,Math.max(.18,140/own.length));
+   if(transitionLength(own)>=MIN_TRANSITION_LENGTH_MM){
+    profiles[edge][up?"up":"down"]=Math.min(.4,Math.max(.18,140/transitionLength(own)));
     return;
    }
-   errors.push("Falta una recta de 350 mm para "+
-    (up?"subir antes de la curva.":"bajar después de la curva."));
+   errors.push("Falta un tramo de rampa de al menos 350 mm (recto o curva amplia) para "+
+    (up?"subir antes de la zona elevada.":"bajar después de la zona elevada."));
   };
   ramp(first,before,true);ramp(last,after,false);
  }
