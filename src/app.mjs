@@ -1913,6 +1913,11 @@ const pieceCategory=id=>id==="START350"?"special":id.startsWith("R")?"curve":"st
 function chooseCaseCategory(category){
  if(!CASE_TABS[category])return false;
  state.caseCategory=category;state.casePage=0;
+ // La imagen es una referencia de fondo: en Puentes, bloquear su arrastre
+ // automáticamente para que no capture los toques de selección del trazado.
+ if(category==="bridge"&&state.reference&&!state.reference.locked){
+  state.reference.locked=true;save();
+ }
  if(!state.caseOpen){state.caseOpen=true;save();}
  updateUI();scheduleResize();return true;
 }
