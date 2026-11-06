@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.2");
+ assert.equal(game.version,"DEV 0.14.3");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -135,6 +135,24 @@ const path=require("node:path");
  game.showMenu();
  elements.get("menuSettings").listeners.click[0]();
  const soundBefore=st.clicksEnabled,gridBefore=st.gridEnabled;
+ assert.equal(st.cameraMode,"general","La vista clásica sigue siendo la predeterminada");
+ const standardView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ elements.get("settingsCameraFollow").listeners.click[0]();
+ assert.equal(st.cameraMode,"follow");
+ assert.equal(elements.get("settingsCameraFollow").attrs["aria-pressed"],"true");
+ assert.equal(elements.get("settingsCameraGeneral").attrs["aria-pressed"],"false");
+ assert.match(elements.get("settingsCameraDescription").textContent,/Zoom fijo de 3×/);
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"follow",
+  "La cámara seleccionada persiste en el dispositivo");
+ const followView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ assert.ok(Math.abs(followView.scale/standardView.scale-3)<1e-9,
+  "Seguimiento multiplica exactamente por 3 el zoom general");
+ assert.equal(followView.angle,standardView.angle,
+  "El seguimiento mantiene la orientación y no gira con el coche");
+ elements.get("settingsCameraGeneral").listeners.click[0]();
+ assert.equal(st.cameraMode,"general");
+ assert.equal(game.camera.makeView(elements.get("raceCanvas"),"race").scale,standardView.scale);
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general");
  elements.get("settingsSound").listeners.click[0]();
  elements.get("settingsGrid").listeners.click[0]();
  assert.equal(st.clicksEnabled,!soundBefore,"Sonido configurable desde Ajustes");
@@ -520,5 +538,45 @@ const path=require("node:path");
   sparkKeys.length,"Cambiar de coche no borra los récords de Spark");
  game.showMenu();
 
- console.log("SlotRace DEV 0.14.2: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // Seguimiento: altura fija sin zoom pulsante ni movimientos laterales inútiles.
+ game.showHub("settings");
+ elements.get("settingsCameraFollow").listeners.click[0]();
+ assert.equal(game.openRace(),true);
+ assert.equal(st.mode,"race");
+ assert.equal(st.followCamera.ready,true);
+ const startPose=game.drivingPose();
+ const viewStart=game.camera.makeView(elements.get("raceCanvas"),"race");
+ assert.equal(viewStart.cx,startPose.x);
+ assert.equal(viewStart.cy,startPose.y);
+ assert.ok(Math.abs(viewStart.scale/standardView.scale-3)<1e-9);
+ game.camera.updateFollowCamera(.05);
+ assert.equal(st.followCamera.x,startPose.x,
+  "Parado dentro de la zona de tolerancia: la cámara no se mueve");
+ assert.equal(st.followCamera.y,startPose.y);
+ const beforeCamera={...st.followCamera};
+ st.followCamera.x-=800;st.followCamera.y-=800;
+ const displaced={...st.followCamera};
+ game.camera.updateFollowCamera(.016);
+ assert.ok(st.followCamera.x>displaced.x&&st.followCamera.x<beforeCamera.x,
+  "El objetivo se sigue de forma progresiva y no con un salto");
+ assert.ok(st.followCamera.y>displaced.y&&st.followCamera.y<beforeCamera.y,
+  "Amortiguación en ambos ejes");
+ const afterCameraView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ assert.equal(afterCameraView.scale,viewStart.scale,
+  "El zoom permanece fijo aunque se mueva la cámara");
+ assert.equal(afterCameraView.angle,viewStart.angle);
+ elements.get("pause").listeners.click[0]();
+ assert.equal(st.run,false);
+ const pausedPosition={...st.followCamera};
+ game.camera.updateFollowCamera(.05);
+ assert.deepEqual(st.followCamera,pausedPosition,"En pausa no oscila la cámara");
+ game.showMenu();
+ game.showHub("settings");
+ elements.get("settingsCameraGeneral").listeners.click[0]();
+ assert.equal(st.cameraMode,"general");
+ assert.equal(game.camera.makeView(elements.get("raceCanvas"),"race").scale,standardView.scale);
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
+  "La vista general vuelve a estar seleccionada y guardada");
+
+ console.log("SlotRace DEV 0.14.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

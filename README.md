@@ -1,3 +1,21 @@
+# SlotRace DEV 0.14.3 · Dos cámaras de carrera configurables
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.3
+
+## Ajustes → Cámara durante la carrera
+
+- **Vista general (predeterminada):** encuadra el circuito completo con el zoom anterior, sin seguir al coche.
+- **Seguimiento 3×:** zoom fijo tres veces superior al encuadre general. Se mantiene a la **misma altura**, sin zoom dinámico, sin giro, sin inclinación ni cambios al pasar por puentes.
+- **Movimiento amortiguado:** sigue la posición física del coche con suavizado exponencial dependiente del tiempo (`1-exp(-5.5·dt)`), estable a distintas tasas de fotogramas.
+- **Zona muerta horizontal amplia (26 % de la pantalla a cada lado)** y vertical (17 %). El encuadre solo se desplaza si el coche sale de ella, por lo que no oscila en cada curva ni persigue el deslizamiento visual de los derrapes.
+- **Sin saltos:** al comenzar cada carrera se centra en el coche una sola vez, después acompaña gradualmente sin reencuadrar al pasar por meta, cambiar carril o trompear. En pausa se detiene.
+- **Preferencia persistente:** `cameraMode` guardado en `slotrace-lab-10`, junto a las opciones actuales. No se alteran circuitos, recetas, récords ni la cámara del constructor.
+- **Diseño:** botones Vista general / Seguimiento 3× en Ajustes, con estado activo explícito y resumen de cada opción.
+
+Pruebas automáticas para comparar exactamente el zoom 3×, estabilidad en reposo, zona de tolerancia, movimiento suave, pausa, persistencia y conservación de la vista general.
+
+---
+
 # SlotRace DEV 0.14.2 · Planos reales y Helix Spark jugable
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.2

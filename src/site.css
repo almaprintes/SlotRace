@@ -1893,3 +1893,21 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .garage-select{font-size:11px;min-height:40px}
  .race-car-name{font-size:9px;padding:5px 7px}
 }
+
+/* DEV 0.14.3 · Selección coherente de cámaras de carrera.
+   La cámara de seguimiento conserva siempre altura y zoom 3×. */
+.camera-setting-row{flex-direction:column;align-items:stretch;gap:12px}
+.camera-setting-description{width:100%}
+.camera-mode-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%}
+.camera-choice{min-width:0;min-height:48px;border:1px solid #cdd6e0;background:linear-gradient(#fff,#f4f6f9);
+ border-radius:12px;padding:11px 9px;font-size:13px;font-weight:950;color:#263746;
+ display:flex;align-items:center;justify-content:center;gap:7px;line-height:1.2;white-space:normal}
+.camera-choice>span{font-size:19px;line-height:1}
+.camera-choice[aria-pressed="true"],.camera-choice.is-active{
+ color:#fff;border-color:#e12248;background:linear-gradient(130deg,#ee2346,#ba002b);
+ box-shadow:0 4px 13px #b6003033
+}
+@media(max-width:390px){
+ .camera-mode-choices{gap:7px}
+ .camera-choice{font-size:12px;padding:10px 7px}
+}

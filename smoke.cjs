@@ -69,7 +69,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.2/);
+assert.match(html,/DEV 0\.14\.3/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -105,6 +105,15 @@ for(const id of ["shopProducts","shopFeatured","shopCollectionSummary","shopTabB
 assert.match(css,/\.shop-box-visual/);
 assert.match(css,/\.shop-products-boxes/);
 assert.match(css,/\.shop-real-blueprint/);
+for(const id of ["settingsCameraGeneral","settingsCameraFollow","settingsCameraDescription"]){
+ assert.match(html,new RegExp('id="'+id+'"'),"Selector de cámara "+id);
+}
+assert.match(css,/\.camera-mode-choices/);
+assert.match(css,/\.camera-choice\[aria-pressed="true"\]/);
+assert.match(app,/const FOLLOW_ZOOM=3/);
+assert.match(app,/function updateFollowCamera\(dt\)/);
+assert.match(app,/function resetFollowCamera\(\)/);
+assert.match(app,/cameraMode:state.cameraMode/);
 assert.match(css,/\.shop-blueprint-art/);
 assert.match(app,/function shopBlueprintSvg\(/);
 assert.match(app,/const layout=buildTrack\(types,START\)/);
@@ -148,5 +157,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.2 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.3 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

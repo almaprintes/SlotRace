@@ -101,6 +101,8 @@ const state={
   library:initialLibrary,sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
+  cameraMode:old?.cameraMode==="follow"?"follow":"general",
+  followCamera:{x:0,y:0,ready:false},
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -122,7 +124,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
- driveDirection:state.driveDirection,selectedCar:state.selectedCar}));}
+ driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -1107,6 +1109,7 @@ function play(){
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
+ resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
  return true;
 }
@@ -1721,6 +1724,14 @@ function updateUI(){
  $("settingsSound").textContent=state.clicksEnabled?"Activado":"Desactivado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
+ for(const [id,mode] of [["settingsCameraGeneral","general"],["settingsCameraFollow","follow"]]){
+  const button=$(id),active=state.cameraMode===mode;
+  button.classList.toggle("is-active",active);
+  button.setAttribute("aria-pressed",String(active));
+ }
+ $("settingsCameraDescription").textContent=state.cameraMode==="follow"?
+  "Zoom fijo de 3×. Sigue el coche suavemente, sin girar ni cambiar la altura.":
+  "Se muestra todo el circuito sin mover la cámara.";
  $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
  for(const id of ["circuitName","workCircuitName"])
   if(document.activeElement!==$(id))$(id).value=state.circuitName;
@@ -2834,6 +2845,51 @@ function scheduleResize(){
   resizeQueued=false;resize();
  }));
 }
+// Cámara de carrera con altura constante. El factor 3 no cambia al
+// acelerar, frenar, derrapar, cruzar puentes ni durante la transición.
+const FOLLOW_ZOOM=3;
+const FOLLOW_X_DEADZONE=.26;  // Tolerancia lateral amplia: evita barridos.
+const FOLLOW_Y_DEADZONE=.17;
+const FOLLOW_RESPONSE=5.5;  // Seguimiento amortiguado (independiente de FPS).
+function setCameraMode(mode){
+ if(mode!=="general"&&mode!=="follow")return false;
+ if(mode===state.cameraMode)return true;
+ state.cameraMode=mode;
+ state.followCamera.ready=false;
+ save();updateUI();
+ toast(mode==="follow"?
+  "Cámara de seguimiento activada · zoom fijo 3×.":
+  "Vista general activada · circuito completo.");
+ return true;
+}
+function resetFollowCamera(){
+ const p=drivingPose();
+ if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y)){
+  state.followCamera.ready=false;return;
+ }
+ state.followCamera.x=p.x;state.followCamera.y=p.y;
+ state.followCamera.ready=true;
+}
+function updateFollowCamera(dt){
+ if(state.mode!=="race"||state.cameraMode!=="follow"||!state.run)return;
+ const p=drivingPose(),f=state.followCamera;
+ if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
+ if(!f.ready){resetFollowCamera();return;}
+ // La cámara nunca usa la animación del trompo o del derrape, para que
+ // el coche no provoque sacudidas artificiales del encuadre.
+ const v=makeView(raceCanvas,"race");
+ const cos=Math.cos(v.angle),sin=Math.sin(v.angle);
+ const dx=p.x-f.x,dy=p.y-f.y;
+ const sx=(cos*dx-sin*dy)*v.scale,sy=(sin*dx+cos*dy)*v.scale;
+ // Zona muerta en coordenadas de pantalla, válida también en vertical.
+ const ex=Math.sign(sx)*Math.max(0,Math.abs(sx)-v.w*FOLLOW_X_DEADZONE);
+ const ey=Math.sign(sy)*Math.max(0,Math.abs(sy)-v.h*FOLLOW_Y_DEADZONE);
+ if(!ex&&!ey)return;
+ const alpha=1-Math.exp(-FOLLOW_RESPONSE*Math.max(0,Math.min(dt,.05)));
+ f.x+=(cos*ex+sin*ey)/v.scale*alpha;
+ f.y+=(-sin*ex+cos*ey)/v.scale*alpha;
+}
+
 function makeView(canvas,mode){
  const dpr=Math.min(2,window.devicePixelRatio||1);
  const w=canvas.width/dpr,h=canvas.height/dpr;
@@ -2849,10 +2905,13 @@ function makeView(canvas,mode){
  const bw=target.right-target.left,bh=target.bottom-target.top;
  const width=portrait?bh:bw,height=portrait?bw:bh;
  const base=Math.max(.01,Math.min((w-16)/width,(h-16)/height));
- const zoom=mode==="build"?state.camera.zoom:1;
+ const follow=mode==="race"&&state.cameraMode==="follow";
+ const zoom=mode==="build"?state.camera.zoom:follow?FOLLOW_ZOOM:1;
  const scale=base*zoom;
  const panX=mode==="build"?state.camera.panX:0,panY=mode==="build"?state.camera.panY:0;
- return{w,h,angle,scale,cx,cy,panX,panY,dpr};
+ const centerX=follow&&state.followCamera.ready?state.followCamera.x:cx;
+ const centerY=follow&&state.followCamera.ready?state.followCamera.y:cy;
+ return{w,h,angle,scale,cx:centerX,cy:centerY,panX,panY,dpr};
 }
 function transform(ctx,v){
  ctx.translate(v.w/2+v.panX,v.h/2+v.panY);ctx.rotate(v.angle);ctx.scale(v.scale,v.scale);ctx.translate(-v.cx,-v.cy);
@@ -3166,6 +3225,8 @@ function initEvents(){
  $("settingsGrid").addEventListener("click",()=>{
   state.gridEnabled=!state.gridEnabled;save();updateUI();
  });
+ $("settingsCameraGeneral").addEventListener("click",()=>setCameraMode("general"));
+ $("settingsCameraFollow").addEventListener("click",()=>setCameraMode("follow"));
  $("menuRecipe").addEventListener("click",exportRecipe);
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
  $("deleteCircuitCancel").addEventListener("click",cancelCircuitDeletion);
@@ -3272,6 +3333,7 @@ function initEvents(){
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  simulation(dt);
+ updateFollowCamera(dt);
  if(state.mode==="build"){
   if(state.viewDirty){renderScene(editCanvas,"build");state.viewDirty=false;}
  }else if(state.mode==="race")renderScene(raceCanvas,"race");
@@ -3280,7 +3342,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.2",state,showHub,selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.3",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
