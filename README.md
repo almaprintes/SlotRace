@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.21 · Eliminar marcas de unión y carriles cruzados en carrera
+
+**Prueba iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.21
+
+- **Juntas recta-curva:** en modo carrera no se dibuja `paintSeam`, que dejaba cortes oscuros transversales aunque el trazado físico fuese perfectamente tangente. El editor conserva juntas para identificar los módulos.
+- **Puente sin doble sombra:** se elimina el sombreado rectangular que surgía al repintar la plataforma superior sobre la base y se usa exactamente la misma paleta de asfalto que en el resto de la pista.
+- **Carriles sin cruces fantasma:** la plataforma superior recibe una subcapa completamente opaca (`source-over`, alfa 1), antes de sus carriles, para ocultar correctamente las marcas de la vía inferior.
+- **Rampas en carrera:** se suprime el segundo dibujo de líneas claras en el borde de las rampas. Las guías de elevación siguen apareciendo en «Construir».
+- **Físicas y guardados intactos:** no cambian radios, conectores, perfiles de elevación, coches ni almacenamiento local.
+- **Regresión directa:** comprobados los órdenes `base → coche inferior → cubierta` y `base → cubierta → coche superior`; cero costuras y líneas extra en carrera, cubierta opaca y marcadores conservados en el editor. Las pruebas completas de GitHub Actions son independientes.
+
+---
+
 # SlotRace DEV 0.14.20 · Puente sólido y coche oculto correctamente
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.20
