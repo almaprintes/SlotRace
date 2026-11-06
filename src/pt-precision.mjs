@@ -45,7 +45,9 @@ for(const [id,units,name] of straightSizes)
   {units,virtualPrecision:true,virtualMicroAdapter:units<=5});
 parts.START350=straight("Salida y meta 350",28*GEOMETRY.lengthUnit,
  "SR/META",{units:28,startFinish:true,virtualPrecision:true});
-for(const [radiusId,degs] of Object.entries({R1:[22.5,45,90],R2:[22.5,45],R3:[22.5],R4:[22.5]})){
+// Curvas de 90° independientes: una sola pieza, un solo arco continuo,
+// dos conectores externos. Las recetas antiguas de 2×45°/4×22,5° se conservan.
+for(const [radiusId,degs] of Object.entries({R1:[22.5,45,90],R2:[22.5,45,90],R3:[22.5,90],R4:[22.5,90]})){
   for(const deg of degs){
     const reference="SR/"+radiusId+"/"+String(deg).replace(".","_");
     const a=deg===22.5?"225":String(deg);
