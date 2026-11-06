@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path");
 (async()=>{
-const {STARTER,FIGURE_EIGHT,CATALOG,TABLE,TRACK_WIDTH,LANE_OFFSET,buildTrack,allowed,freeStock,UNLIMITED_DEVELOPMENT_STOCK,positionAt,nearestPiece,findLegalClosure,positionOnPiece,START}=await import("./src/track.mjs");
+const {STARTER,FIGURE_EIGHT,CATALOG,CURVE_FAMILIES,TABLE,TRACK_WIDTH,LANE_OFFSET,buildTrack,allowed,freeStock,UNLIMITED_DEVELOPMENT_STOCK,positionAt,nearestPiece,findLegalClosure,positionOnPiece,START}=await import("./src/track.mjs");
 const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
@@ -12,6 +12,22 @@ assert.equal(Object.keys(PARTS).length,21);
 assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,13);
 assert.equal(CATALOG.S0125.legacy,true,"Existing saved 12.5mm circuits remain readable");
 assert.deepEqual(Object.values(RADII),[150,300,450,600]);
+const familyIds=["R1","R2","R3","R4"];
+const historic=["G · PT/52","F · PT/51","H · PT/53","M · PT/84"];
+for(const [i,id] of familyIds.entries()){
+ assert.equal(CURVE_FAMILIES[id].radius,RADII[id],"Radio SR estable: "+id);
+ assert.equal(CURVE_FAMILIES[id].classicCode,historic[i],"Código Classic orientativo");
+ if(i)assert.equal(RADII[id]-RADII[familyIds[i-1]],TRACK_WIDTH,
+  "Los arcos y cuatro radios conservan paso modular: "+id);
+ const anglePieces=id==="R1"?["R1_90R"]:id==="R2"?
+  ["R2_45R","R2_45R"]:Array(4).fill(id+"_225R");
+ const arc=buildTrack(anglePieces,START),last=arc.ends.end;
+ assert.ok(Math.abs(last.x-START.x-RADII[id])<1e-6,"90° termina en radio correcto");
+ assert.ok(Math.abs(last.y-START.y-RADII[id])<1e-6);
+ assert.ok(Math.abs(last.h-Math.PI/2)<1e-9,"90° exactos");
+}
+assert.equal(CURVE_FAMILIES.R4.classicApproxMm,null,
+ "El radio exacto de la PT/84 histórica no se da por certificado");
 assert.equal(TRACK_WIDTH,150);assert.equal(LANE_OFFSET,37.5);
 assert.equal(GEOMETRY.lanePitch,75);
 assert.equal(CATALOG.S075.length,75);
@@ -69,7 +85,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.15/);
+assert.match(html,/DEV 0\.14\.17/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -175,5 +191,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.16 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.17 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
