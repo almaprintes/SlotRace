@@ -2809,26 +2809,29 @@ function paintBlueprintSupports(ctx,part,track=null){
 }
 function paintBlueprintOverpass(ctx,track){
  if(!track.bridge)return;
- const upper=track.parts[track.bridge.overParts[0]];
- if(!upper)return;
- const lower=track.parts[track.bridge.underParts?.[0]];
- const center=track.bridge.crossing||positionOnPiece(upper.start,upper.id,.5);
- const angle=upper.start.h;
- const slope=Math.abs(Math.sin(angle-(lower?.start?.h??angle+Math.PI/2)));
- const halfLength=Math.min(210,Math.max(103,
-  Math.ceil((TRACK_WIDTH/2+16)/Math.max(.55,slope))));
- ctx.save();ctx.translate(center.x,center.y);ctx.rotate(angle);
- ctx.beginPath();ctx.rect(-halfLength,-(TRACK_WIDTH+12)/2,
-  halfLength*2,TRACK_WIDTH+12);ctx.clip();
- ctx.rotate(-angle);ctx.translate(-center.x,-center.y);
- const pts=track.bridge.overParts.flatMap((index,i)=>
-  i?track.parts[index].points.slice(1):track.parts[index].points);
- paintBlueprintRibbon(ctx,pts);
- for(const partIndex of track.bridge.overParts){
-  const part=track.parts[partIndex];
-  if(part)paintBlueprintSeam(ctx,part.start);
+ const crossings=track.bridge.crossings?.length?track.bridge.crossings:
+  track.bridge.crossing?[{
+   ...track.bridge.crossing,upper:track.bridge.overParts[0],
+   lower:track.bridge.underParts?.[0],upperT:.5,lowerT:.5
+  }]:[];
+ for(const crossing of crossings){
+  const upper=track.parts[crossing.upper],lower=track.parts[crossing.lower];
+  if(!upper)continue;
+  const center=crossing;
+  const angle=positionOnPiece(upper.start,upper.id,crossing.upperT??.5).h;
+  const lowerAngle=lower?
+   positionOnPiece(lower.start,lower.id,crossing.lowerT??.5).h:angle+Math.PI/2;
+  const slope=Math.abs(Math.sin(angle-lowerAngle));
+  const halfLength=Math.min(210,Math.max(103,
+   Math.ceil((TRACK_WIDTH/2+16)/Math.max(.55,slope))));
+  ctx.save();ctx.translate(center.x,center.y);ctx.rotate(angle);
+  ctx.beginPath();ctx.rect(-halfLength,-(TRACK_WIDTH+12)/2,
+   halfLength*2,TRACK_WIDTH+12);ctx.clip();
+  ctx.rotate(-angle);ctx.translate(-center.x,-center.y);
+  paintBlueprintRibbon(ctx,upper.points);
+  paintBlueprintSeam(ctx,upper.start);
+  ctx.restore();
  }
- ctx.restore();
 }
 function paintBlueprintTrack(ctx,track){
  const groups=loosePaintGroups();
