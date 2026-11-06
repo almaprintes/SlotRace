@@ -118,7 +118,7 @@ const state={
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   cameraMode:old?.cameraMode==="follow"?"follow":"general",
   followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false},
-  gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
+  gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
@@ -139,7 +139,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  reference:state.reference,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
- gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
+ gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
@@ -2255,6 +2255,8 @@ function updateUI(){
  $("settingsSound").textContent=state.clicksEnabled?"Activado":"Desactivado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
+ $("settingsXRay").textContent=state.xRayEnabled?"Activado":"Desactivado";
+ $("settingsXRay").setAttribute("aria-pressed",String(state.xRayEnabled));
  for(const [id,mode] of [["settingsCameraGeneral","general"],["settingsCameraFollow","follow"]]){
   const button=$(id),active=state.cameraMode===mode;
   button.classList.toggle("is-active",active);
@@ -2897,6 +2899,66 @@ function paintGroundTrack(ctx,track,editing){
    paintSeam(ctx,part.start);
  }
  if(!track.elevation?.profiles?.[0])paintFinishLine(ctx,track);
+}
+// Rayos X: solo mostrar lo que queda realmente tapado por una cubierta.
+// La máscara usa el CONTORNO de cada plataforma completa, no pequeños
+// rectángulos de cruce ni agujeros que puedan destruir las curvas inferiores.
+const xRayClipCache=new WeakMap();
+function xRayDeckPolygons(track){
+ const cached=xRayClipCache.get(track);if(cached)return cached;
+ const polygons=elevatedDeckRuns(track).map(run=>{
+  const left=translated(run.points,TRACK_WIDTH/2-2);
+  const right=translated(run.points,-TRACK_WIDTH/2+2).reverse();
+  return[...left,...right];
+ }).filter(polygon=>polygon.length>=4);
+ xRayClipCache.set(track,polygons);return polygons;
+}
+function clipXRayDeck(ctx,track){
+ const polygons=xRayDeckPolygons(track);if(!polygons.length)return false;
+ ctx.beginPath();
+ for(const polygon of polygons){
+  ctx.moveTo(polygon[0].x,polygon[0].y);
+  for(let i=1;i<polygon.length;i++)ctx.lineTo(polygon[i].x,polygon[i].y);
+  ctx.closePath();
+ }
+ ctx.clip();
+ return true;
+}
+function paintXRaySilhouette(ctx,at){
+ if(!at)return;
+ const visual=visualCarPose(at);
+ ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h);
+ ctx.shadowBlur=0;ctx.lineWidth=4;ctx.strokeStyle="#b3fffa";
+ ctx.setLineDash([9,6]);
+ roundRect(ctx,-CAR_LENGTH_MM/2,-CAR_WIDTH_MM/2,CAR_LENGTH_MM,CAR_WIDTH_MM,10);
+ ctx.stroke();
+ // Sin sprite, ventanas ni rellenos: SOLO el contorno del coche oculto.
+ ctx.restore();
+}
+function paintXRayOverlay(ctx,track,hiddenCar=null){
+ if(!state.xRayEnabled||!track.bridge)return false;
+ const ground=groundDeckRuns(track);
+ if(!ground.length)return false;
+ ctx.save();
+ if(!clipXRayDeck(ctx,track)){ctx.restore();return false;}
+ ctx.globalCompositeOperation="source-over";
+ ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+ ctx.globalAlpha=.88;ctx.lineWidth=3;
+ ctx.setLineDash([19,15]);
+ // Solo los carriles de la pista inferior dentro del contorno de arriba.
+ // Como están recortados por la plataforma elevada, funcionan igualmente
+ // para tramos paralelos, curvas coincidentes y túneles largos.
+ for(const run of ground){
+  for(const offset of [-LANE_OFFSET,LANE_OFFSET]){
+   strokePath(ctx,translated(run.points,offset),"#8cece8",3);
+  }
+  strokePath(ctx,run.points,"#3eafc1",2);
+ }
+ ctx.setLineDash([]);
+ ctx.globalAlpha=1;
+ if(hiddenCar)paintXRaySilhouette(ctx,hiddenCar);
+ ctx.restore();
+ return true;
 }
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
@@ -3788,6 +3850,8 @@ function renderScene(canvas,mode){
    const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
   }
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
+  if(state.xRayEnabled)paintXRayOverlay(ctx,track,
+   mode==="race"&&track.valid&&!carAbove?p:null);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  // Las piezas aún sueltas son contenido del TALLER, no de la carrera.
  // Dibujarlas después de la cubierta permitía que sus carriles atravesasen
@@ -4112,6 +4176,10 @@ function initEvents(){
  $("settingsGrid").addEventListener("click",()=>{
   state.gridEnabled=!state.gridEnabled;save();updateUI();
  });
+ $("settingsXRay").addEventListener("click",()=>{
+  state.xRayEnabled=!state.xRayEnabled;
+  state.viewDirty=true;save();updateUI();
+ });
  $("settingsCameraGeneral").addEventListener("click",()=>setCameraMode("general"));
  $("settingsCameraFollow").addEventListener("click",()=>setCameraMode("follow"));
  $("menuRecipe").addEventListener("click",exportRecipe);
@@ -4257,12 +4325,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.24",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.25",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,xRayDeckPolygons,clipXRayDeck,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
