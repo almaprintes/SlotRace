@@ -1195,7 +1195,7 @@ function completeLap(){
 // Parámetros experimentales; no son medidas de coches reales.
 const DRIVE=Object.freeze({
  maxSpeed:1250,topSpeed:1150,gravity:9.81,
- lateralElasticity:.10, // La trasera responde también antes de perder adherencia.
+ lateralElasticity:.085, // Derrape visible sin penalizar de más al 95 %.
  fullThrottleSlipAt:.975, // El 100% sostenido no es seguro en curvas largas.
  fullThrottleLoad:90,minCurveDistance:65
 });
