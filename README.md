@@ -1,3 +1,15 @@
+# SlotRace DEV 0.13.5 · Colores coherentes para mejores vueltas
+
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.13.5
+
+- La tarjeta **Mejor izquierda** azul y la tarjeta **Mejor derecha** rosa identifican las vueltas de menor tiempo en cada carril **dentro de la misma sesión**.
+- En «Progreso vuelta a vuelta», las filas de esos mejores tiempos ahora conservan el mismo color: **azul para izquierda**, **rosa para derecha**.
+- La etiqueta **MEJOR DEL CARRIL** distingue el mejor registro de la sesión. **RÉCORD PERSONAL** continúa reflejando el récord histórico, independientemente del color de la fila.
+- Se ha eliminado el resaltado azul genérico de cualquier vuelta marcada como récord personal. Las demás vueltas y comparativas (mejora/retroceso) permanecen como antes.
+- Sin cambios en tiempos registrados, cronometraje, circuitos, partidas guardadas o física del juego.
+
+---
+
 # SlotRace DEV 0.13.4 · Cronómetro activado al acelerar
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.13.4

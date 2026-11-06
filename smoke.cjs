@@ -69,7 +69,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.13\.4/);
+assert.match(html,/DEV 0\.13\.5/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -86,6 +86,9 @@ assert.match(css,/\.hub-screen/);
  assert.match(css,/\.pocket-qty-controls/);
  assert.match(html,/id="caseMountGuide"/);
  assert.match(css,/\.case-mount-guide/);
+assert.match(css,/\.result-row\.is-best-left/);
+assert.match(css,/\.result-row\.is-best-right/);
+assert.match(css,/\.session-best-label/);
 for(const id of ["libraryDraftRecovery","libraryRecoverDraft","libraryVersionRecovery","libraryRestoreVersion"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Recuperación de circuitos "+id);
 }
@@ -101,5 +104,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.13.4 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.13.5 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

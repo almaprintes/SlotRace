@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.4");
+ assert.equal(game.version,"DEV 0.13.5");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -306,6 +306,13 @@ const path=require("node:path");
  assert.equal(st.mode,"results");
  assert.equal(elements.get("resultsScreen").hidden,false);
  assert.equal(elements.get("resultsLaps").children.length,4);
+ const lapRows=elements.get("resultsLaps").children;
+ assert.match(lapRows[1].className,/is-best-left/,"La mejor izquierda queda azul");
+ assert.match(lapRows[3].className,/is-best-right/,"La mejor derecha queda rosa");
+ assert.doesNotMatch(lapRows[0].className,/is-best-/,"La vuelta inicial no se resalta si luego fue superada");
+ assert.doesNotMatch(lapRows[2].className,/is-best-/,"Otra vuelta del mismo carril no se resalta");
+ assert.equal(lapRows[1].children[2].children[0].textContent,"MEJOR DEL CARRIL");
+ assert.equal(lapRows[3].children[2].children[0].textContent,"MEJOR DEL CARRIL");
  assert.equal(elements.get("resultsStats").children[1].children[1].textContent,
   "23,466 s","El combinado suma los mejores tiempos de cada carril");
  assert.equal(elements.get("resultsStats").children[0].children.length,2,
@@ -346,5 +353,5 @@ const path=require("node:path");
  assert.ok(withBackup.some(x=>x.name==="OchoA"));
  assert.ok(withBackup.some(x=>x.name==="Splash"));
 
- console.log("SlotRace DEV 0.13.4: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.13.5: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

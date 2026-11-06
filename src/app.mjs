@@ -932,8 +932,13 @@ function renderSessionSummary(){
  metric(scores,"Mejor combinado",combined,"combined-best");
  const list=$("resultsLaps");list.innerHTML="";
  for(const lap of state.sessionLaps){
-  const row=document.createElement("div");row.className="result-row"+
-   (lap.record?" is-record":"");
+  // El color señala la vuelta más rápida de CADA carril en ESTA sesión,
+  // no el récord histórico (que puede corresponder a otra sesión).
+  const bestOfLane=Number.isFinite(best[lap.lane])&&
+   Math.abs(lap.seconds-best[lap.lane])<0.0005;
+  const row=document.createElement("div");
+  row.className="result-row"+(bestOfLane?
+   (lap.lane===0?" is-best-left":" is-best-right"):"");
   const label=document.createElement("span");
   label.textContent="Vuelta "+lap.number+" · carril "+(lap.lane===0?"izquierdo":"derecho");
   const value=document.createElement("strong");value.textContent=format(lap.seconds)+" s";
@@ -943,6 +948,12 @@ function renderSessionSummary(){
    (lap.seconds<=lap.previous?"Mejora ":"Retrocede ")+
    format(Math.abs(lap.seconds-lap.previous))+" s";
   if(lap.record)diff.textContent+=" · RÉCORD PERSONAL";
+  if(bestOfLane){
+   const marker=document.createElement("b");
+   marker.className="session-best-label";
+   marker.textContent="MEJOR DEL CARRIL";
+   diff.appendChild(marker);
+  }
   row.appendChild(label);row.appendChild(value);row.appendChild(diff);
   list.appendChild(row);
  }
@@ -2754,7 +2765,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.4",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.13.5",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

@@ -1287,3 +1287,22 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .library-recovery p{font-size:11px;line-height:1.5;margin:0;color:#6b5942}
 .library-recovery .mini{width:100%;min-height:43px;background:#fff;border:1px solid #ddb952;
  color:#573c12;font-weight:950;border-radius:10px}
+
+/* DEV 0.13.5 · La mejor vuelta del carril conserva el color de su tarjeta superior.
+   Récord personal y mejor tiempo de esta sesión son conceptos independientes. */
+.result-row.is-best-left{
+ background:linear-gradient(120deg,#e9f9ff,#d9f4ff);
+ border:1px solid #b6def0;border-left:5px solid #22a7df;
+}
+.result-row.is-best-right{
+ background:linear-gradient(120deg,#fff1f4,#ffe0e7);
+ border:1px solid #f7cbd3;border-left:5px solid #d91743;
+}
+.result-row.is-best-left strong{color:#11344b}
+.result-row.is-best-right strong{color:#b10c2e}
+.result-row .session-best-label{
+ display:inline-block;white-space:nowrap;font-size:10px;
+ font-weight:1000;letter-spacing:.15px;margin-left:9px;
+}
+.result-row.is-best-left .session-best-label{color:#1b536b}
+.result-row.is-best-right .session-best-label{color:#b10c2e}
