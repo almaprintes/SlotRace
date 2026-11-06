@@ -7,9 +7,9 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
-assert.equal(Object.keys(CATALOG).length,21);
-assert.equal(Object.keys(PARTS).length,21);
-assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,13);
+assert.equal(Object.keys(CATALOG).length,27);
+assert.equal(Object.keys(PARTS).length,27);
+assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,16);
 assert.equal(CATALOG.S0125.legacy,true,"Existing saved 12.5mm circuits remain readable");
 assert.deepEqual(Object.values(RADII),[150,300,450,600]);
 const familyIds=["R1","R2","R3","R4"];
@@ -38,6 +38,14 @@ assert.equal(CATALOG.S600.length,600);
 assert.equal(CATALOG.START350.length,350);
 assert.equal(CATALOG.R2_45R.radius,300);
 assert.equal(CATALOG.R1_90L.radius,150);
+for(const [id,radius] of [["R2_90R",300],["R3_90R",450],["R4_90R",600]]){
+ assert.equal(CATALOG[id].radius,radius);
+ assert.equal(CATALOG[id.slice(0,-1)+"L"].angle,-Math.PI/2);
+ const part=buildTrack([id],START);
+ assert.equal(part.parts.length,1,"Una curva de 90° es una sola pieza");
+ assert.ok(Math.abs(part.ends.end.x-START.x-radius)<1e-6);
+ assert.ok(Math.abs(part.ends.end.y-START.y-radius)<1e-6);
+}
 for(const id of Object.keys(CATALOG)){
  assert.ok(CATALOG[id].length>0||CATALOG[id].radius>0,"Geometría definida: "+id);
  const end=positionOnPiece(START,id,1);
@@ -191,5 +199,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.17 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.18 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
