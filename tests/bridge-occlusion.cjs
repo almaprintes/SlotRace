@@ -29,6 +29,8 @@ const path=require("node:path");
    .replace('function paintCar(ctx,at,lane,paused=false){','function paintCar(ctx,at,lane,paused=false){window.__drawLog.push("car");')
    .replace('function paintContinuousTrack(ctx,track,editing){','function paintContinuousTrack(ctx,track,editing){window.__drawLog.push("base");')
    .replace('function paintSeam(ctx,p){','function paintSeam(ctx,p){window.__seamLog.push(p);')
+   .replace('function paintBridgeRampProfile(ctx,part,track=null){',
+    'function paintBridgeRampProfile(ctx,part,track=null){window.__rampDraws.push(part.index);')
    .replace('function paintElevatedDeck(ctx,track){','function paintElevatedDeck(ctx,track){window.__drawLog.push("deck");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -49,7 +51,7 @@ const path=require("node:path");
    set(target,key,value){target[key]=value;return true;}});
  for(const id of ["editCanvas","raceCanvas"])elements.get(id).getContext=()=>ctx;
  const document={getElementById:id=>elements.get(id),createElement:()=>node("palette"),addEventListener(){},hidden:false};
- const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],__seamLog:[],
+ const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,__drawLog:[],__seamLog:[],__rampDraws:[],
    matchMedia:()=>({matches:true}),setTimeout:fn=>fn(),addEventListener(){}};
  let now=0;const frames=[];
  const storage=new Map();
@@ -82,12 +84,24 @@ const path=require("node:path");
   "El puente se repinta entero detrás o delante del coche según su altura");
  assert.doesNotMatch(source.slice(source.indexOf("function paintSupportKit("),source.indexOf("function paintBridgeRampProfile(")),/fillRect\(-spec\.length\*\.5/,"El soporte no dibuja una placa separada sobre la pista");
  assert.match(source,/paintContinuousTrack\(ctx,track,mode==="build"\)/,"Una única capa continua para todas las piezas");
+ window.__seamLog.length=0;window.__rampDraws.length=0;
  const groundOrder=render(dForPiece(0),16);
  assert.deepEqual(groundOrder,["base","car","deck"],
    "El coche inferior se pinta antes de la banda elevada opaca");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","deck","car"],
    "El coche elevado se pinta por encima de la plataforma");
+ assert.equal(window.__seamLog.length,0,
+  "En carrera no hay cortes transversales de costuras entre piezas");
+ assert.equal(window.__rampDraws.length,0,
+  "En carrera no se superponen marcas adicionales sobre los raíles");
+ assert.match(source,/ctx\.globalCompositeOperation="source-over"/,
+  "La capa opaca no utiliza transparencias ni composiciones especiales");
+ assert.doesNotMatch(
+  source.slice(source.indexOf("function paintElevatedDeck("),
+   source.indexOf("function paintBridgeCrossing(")),
+  /shadowBlur=27|shadowOffsetY=16/,
+  "La plataforma superior no añade una sombra rectangular en cada empalme");
  const deck=game.rendering.elevatedDeckRuns(figure);
  assert.equal(deck.length,1,"Un tramo alto debe tener UNA banda continua");
  assert.ok(deck[0].indices.includes(7),"El tramo elevado contiene el cruce");
@@ -172,5 +186,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.20 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.21 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
