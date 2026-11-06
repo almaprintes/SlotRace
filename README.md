@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.4 · Seguimiento con zoom fijo 2×
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.4
+
+- **Ajustes → Cámara:** la opción Seguimiento pasa de 3× a **2×**, para ampliar el campo visible sin volver a la vista general.
+- **Sin cambios en el comportamiento:** altura y escala constantes; no hay giro de cámara ni zoom dinámico. Se conservan el suavizado de seguimiento, las zonas muertas laterales y verticales y el encuadre inmóvil en pausa.
+- **Compatibilidad:** se mantiene la preferencia guardada de cámara; no se tocan las físicas, los circuitos, las recetas ni los récords.
+- **Comprobación:** pruebas actualizadas para exigir 2× respecto de la vista general, sin alterar el resto de verificaciones.
+
+---
+
 # SlotRace DEV 0.14.3 · Dos cámaras de carrera configurables
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.3

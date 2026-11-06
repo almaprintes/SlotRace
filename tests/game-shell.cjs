@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.3");
+ assert.equal(game.version,"DEV 0.14.4");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -141,12 +141,12 @@ const path=require("node:path");
  assert.equal(st.cameraMode,"follow");
  assert.equal(elements.get("settingsCameraFollow").attrs["aria-pressed"],"true");
  assert.equal(elements.get("settingsCameraGeneral").attrs["aria-pressed"],"false");
- assert.match(elements.get("settingsCameraDescription").textContent,/Zoom fijo de 3×/);
+ assert.match(elements.get("settingsCameraDescription").textContent,/Zoom fijo de 2×/);
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"follow",
   "La cámara seleccionada persiste en el dispositivo");
  const followView=game.camera.makeView(elements.get("raceCanvas"),"race");
- assert.ok(Math.abs(followView.scale/standardView.scale-3)<1e-9,
-  "Seguimiento multiplica exactamente por 3 el zoom general");
+ assert.ok(Math.abs(followView.scale/standardView.scale-2)<1e-9,
+  "Seguimiento multiplica exactamente por 2 el zoom general");
  assert.equal(followView.angle,standardView.angle,
   "El seguimiento mantiene la orientación y no gira con el coche");
  elements.get("settingsCameraGeneral").listeners.click[0]();
@@ -578,5 +578,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.3: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.4: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

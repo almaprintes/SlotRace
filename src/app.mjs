@@ -1730,7 +1730,7 @@ function updateUI(){
   button.setAttribute("aria-pressed",String(active));
  }
  $("settingsCameraDescription").textContent=state.cameraMode==="follow"?
-  "Zoom fijo de 3×. Sigue el coche suavemente, sin girar ni cambiar la altura.":
+  "Zoom fijo de 2×. Sigue el coche suavemente, sin girar ni cambiar la altura.":
   "Se muestra todo el circuito sin mover la cámara.";
  $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
  for(const id of ["circuitName","workCircuitName"])
@@ -2845,9 +2845,9 @@ function scheduleResize(){
   resizeQueued=false;resize();
  }));
 }
-// Cámara de carrera con altura constante. El factor 3 no cambia al
+// Cámara de carrera con altura constante. El factor 2 no cambia al
 // acelerar, frenar, derrapar, cruzar puentes ni durante la transición.
-const FOLLOW_ZOOM=3;
+const FOLLOW_ZOOM=2;
 const FOLLOW_X_DEADZONE=.26;  // Tolerancia lateral amplia: evita barridos.
 const FOLLOW_Y_DEADZONE=.17;
 const FOLLOW_RESPONSE=5.5;  // Seguimiento amortiguado (independiente de FPS).
@@ -2858,7 +2858,7 @@ function setCameraMode(mode){
  state.followCamera.ready=false;
  save();updateUI();
  toast(mode==="follow"?
-  "Cámara de seguimiento activada · zoom fijo 3×.":
+  "Cámara de seguimiento activada · zoom fijo 2×.":
   "Vista general activada · circuito completo.");
  return true;
 }
@@ -3342,7 +3342,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.3",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.4",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
