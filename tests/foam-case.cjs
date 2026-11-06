@@ -48,7 +48,7 @@ const fs=require("node:fs"),path=require("node:path");
   return ra.radius-rb.radius||deg(a)-deg(b);
  });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.18");
+ assert.equal(game.version,"DEV 0.14.19");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -303,5 +303,28 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(st.loose[0].id,"R3_90R");
  assert.equal(game.removeLooseFromCase("R3_90R"),true);
  assert.equal(st.loose.length,0);
- console.log("SlotRace DEV 0.14.18: estante y curvas R2/R3/R4 de 90 grados — OK");
+ // El puente se eleva como tramo por dos puntos, sin depender del dedo en el cruce.
+ game.changeTypes(["R2_90R","R3_90R","R2_90R"],"Puente de prueba",[],geo.START);
+ game.puzzle.selectByTap("main",1);
+ assert.equal(game.puzzle.markBridgeRangeStart(),true);
+ assert.equal(st.bridgeRangeStart,1);
+ assert.equal(elements.get("bridgeRangeEnd").disabled,false);
+ assert.equal(game.puzzle.applyBridgeRange(false),true);
+ assert.deepEqual(st.bridgeParts,[1],"La curva central se eleva a 65 mm");
+ assert.equal(st.track.elevation.valid,true,"Las curvas grandes vecinas son rampas");
+ assert.deepEqual(st.track.elevation.profiles.map(p=>p.mode),["up","plateau","down"]);
+ assert.equal(game.puzzle.applyBridgeRange(true),true);
+ assert.deepEqual(st.bridgeParts,[],"Se baja el tramo completo de una pulsación");
+ game.changeTypes(geo.STARTER.slice(),"Pista circular",[]);
+ game.puzzle.selectByTap("main",10);
+ assert.equal(game.puzzle.markBridgeRangeStart(),true);
+ assert.deepEqual(game.puzzle.bridgeRangeIndices(10,2),[10,11,0,1,2],
+  "Seleccionar elevación puede continuar por la línea meta");
+ game.puzzle.selectBridgeRelative(1);
+ assert.equal(st.selection,11,"El selector navega piezas que se cruzan sin tocarlas");
+ game.puzzle.selectBridgeRelative(1);
+ assert.equal(st.selection,0,"Anterior y Siguiente recorren todo el circuito");
+ assert.match(html,/id="autoClose"[^>]*>✦ Cerrar<\/button>/,
+  "Cerrar es una acción visible fuera de Más");
+ console.log("SlotRace DEV 0.14.19: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
