@@ -32,6 +32,7 @@ const path=require("node:path");
    .replace('function paintBridgeRampProfile(ctx,part,track=null){',
     'function paintBridgeRampProfile(ctx,part,track=null){window.__rampDraws.push(part.index);')
    .replace('function paintElevatedDeck(ctx,track){','function paintElevatedDeck(ctx,track){window.__drawLog.push("deck");')
+   .replace('function paintLoose(ctx){','function paintLoose(ctx){window.__drawLog.push("loose");')
    .replace('function paintBridgeCrossing(ctx,track){','function paintBridgeCrossing(ctx,track){window.__drawLog.push("bridge");');
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -91,6 +92,22 @@ const path=require("node:path");
  const upperOrder=render(dForPiece(7),32);
  assert.deepEqual(upperOrder,["base","deck","car"],
    "El coche elevado se pinta por encima de la plataforma");
+ // Regresión universal: piezas sin acoplar no deben contaminar la pista
+ // de ningún circuito en carrera (antes pintaban raíles SOBRE el puente).
+ game.state.loose=[{id:"S350",x:figure.bridge.crossings[0].x-175,
+  y:figure.bridge.crossings[0].y,h:0}];
+ const groundWithLoose=render(dForPiece(0),48);
+ assert.deepEqual(groundWithLoose,["base","car","deck"],
+  "No aparecen carriles de piezas sueltas sobre el puente al competir");
+ const upperWithLoose=render(dForPiece(7),64);
+ assert.deepEqual(upperWithLoose,["base","deck","car"],
+  "No aparecen piezas sueltas sobre la vía superior durante la carrera");
+ // El editor sí debe mostrar las piezas sueltas para su construcción.
+ game.state.mode="build";
+ window.__drawLog.length=0;
+ game.rendering.renderScene(elements.get("editCanvas"),"build");
+ assert.ok(window.__drawLog.includes("loose"),"Las piezas sueltas siguen visibles en Construir");
+ game.state.mode="race";game.state.loose=[];
  assert.equal(window.__seamLog.length,0,
   "En carrera no hay cortes transversales de costuras entre piezas");
  assert.equal(window.__rampDraws.length,0,
@@ -186,5 +203,5 @@ const path=require("node:path");
  assert.equal(openKit.closed,false,"Tramo aún abierto");
  assert.ok(openKit.bridge,"El puente es visible durante la construcción");
  assert.equal(openKit.valid,false,"No correr hasta cerrar el circuito");
- console.log("SlotRace DEV 0.14.21 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
+ console.log("SlotRace DEV 0.14.22 bridge occlusion: bandas continuas, sin rendijas y coche bajo puente oculto — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
