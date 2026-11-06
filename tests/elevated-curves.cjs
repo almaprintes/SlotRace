@@ -46,7 +46,7 @@ const assert=require("node:assert/strict");
  assert.equal(geo.elevationAt(broad,0,1),65);
  assert.equal(geo.elevationAt(broad,1,.5),65);
  assert.equal(geo.elevationAt(broad,2,1),0);
- const tooShort=geo.buildTrack(["R1_45R","R2_90R","R1_45R"],geo.START,[1]);
+ const tooShort=geo.buildTrack(["R1_45R","R1_45R","R1_45R"],geo.START,[1]);
  assert.equal(tooShort.elevation.valid,false,
   "Las curvas estrechas/cortas no soportan una subida de 65 mm sin transición");
 
@@ -58,5 +58,5 @@ const assert=require("node:assert/strict");
  assert.equal(bridge.bridge.crossings.length,1);
  assert.equal(bridge.bridge.crossings[0].clearance,65);
  assert.equal(bridge.bridge.crossings[0].upper,0);
- console.log("SlotRace DEV 0.14.19: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
+ console.log("SlotRace DEV 0.14.26: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
