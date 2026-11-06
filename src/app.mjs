@@ -95,8 +95,23 @@ const storedLoose=Array.isArray(old?.loose)?old.loose.filter(p=>CATALOG[p?.id]&&
 const initialLoose=allowed([...initial,...storedLoose.map(p=>p.id)])?storedLoose:[];
 const initialOrigin=old?.origin&&[old.origin.x,old.origin.y,old.origin.h].every(Number.isFinite)?
  {...old.origin}:{...START};
+const REFERENCE_DB="slotrace-reference-images-v1";
+const REFERENCE_PREFIX="slotrace-reference-image-";
+const refClamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+function validReference(ref){
+ if(!ref||typeof ref.id!=="string"||!/^ref-[a-zA-Z0-9-]{6,60}$/.test(ref.id))return null;
+ const x=Number(ref.x),y=Number(ref.y),width=Number(ref.width),height=Number(ref.height);
+ if(![x,y,width,height].every(Number.isFinite)||width<=0||height<=0)return null;
+ return{id:ref.id,x,y,width:refClamp(width,10,10000),height:refClamp(height,10,10000),
+  scale:refClamp(Number(ref.scale)||1,.1,20),
+  angle:Number.isFinite(ref.angle)?refClamp(ref.angle,-Math.PI,Math.PI):0,
+  opacity:refClamp(Number.isFinite(ref.opacity)?ref.opacity:.30,0,.8),
+  visible:ref.visible!==false,locked:ref.locked!==false};
+}
 const state={
   circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
+  reference:validReference(old?.reference),referenceImage:null,
+  templatePanelOpen:false,templateIncludeInExport:false,templateLoading:false,
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
   library:initialLibrary,libraryTab:"circuits",sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
@@ -122,6 +137,7 @@ const boardValid=oldBoard&&["left","top","right","bottom","width","height"].ever
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
+ reference:state.reference,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode}));}
@@ -153,12 +169,202 @@ const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")
   "-rear-physics-v4"+(state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
+// La fotografía es un recurso del jugador, nunca parte de las físicas.
+// Se guarda en IndexedDB para no agotar localStorage con fotos; fallback
+// controlado a localStorage si IndexedDB no está disponible en la PWA.
+function referenceFallback(mode,id,data){
+ const key=REFERENCE_PREFIX+id;
+ if(mode==="put"){localStorage.setItem(key,data);return true;}
+ return localStorage.getItem(key);
+}
+function referenceStorage(mode,id,data){
+ return new Promise((resolve,reject)=>{
+  const fallback=()=>{
+   try{resolve(referenceFallback(mode,id,data));}catch(err){reject(err);}
+  };
+  if(typeof indexedDB==="undefined"){fallback();return;}
+  let req;
+  try{req=indexedDB.open(REFERENCE_DB,1);}catch(err){fallback();return;}
+  req.onupgradeneeded=()=>{
+   if(!req.result.objectStoreNames.contains("images"))
+    req.result.createObjectStore("images");
+  };
+  req.onerror=fallback;
+  req.onsuccess=()=>{
+   const db=req.result;
+   try{
+    const tx=db.transaction("images",mode==="put"?"readwrite":"readonly");
+    const store=tx.objectStore("images");
+    const op=mode==="put"?store.put(data,id):store.get(id);
+    let output=null;
+    op.onsuccess=()=>{output=mode==="put"?true:(op.result||null);};
+    tx.oncomplete=()=>{
+     db.close();
+     if(mode==="get"&&!output){fallback();return;}
+     resolve(output);
+    };
+    tx.onerror=()=>{db.close();fallback();};
+    tx.onabort=()=>{db.close();fallback();};
+   }catch(err){db.close();fallback();}
+  };
+ });
+}
+function decodeReferenceImage(data){
+ return new Promise((resolve,reject)=>{
+  if(typeof Image!=="function"){reject(new Error("Imagen no soportada"));return;}
+  const img=new Image();
+  img.onload=()=>{
+   if((img.naturalWidth||img.width)>0&&(img.naturalHeight||img.height)>0)resolve(img);
+   else reject(new Error("Imagen vacía"));
+  };
+  img.onerror=()=>reject(new Error("Imagen no compatible"));
+  img.src=data;
+ });
+}
+async function loadReferenceForState(){
+ const id=state.reference?.id;
+ state.referenceImage=null;
+ state.viewDirty=true;
+ if(!id)return false;
+ try{
+  const data=await referenceStorage("get",id);
+  if(!data){if(state.reference?.id===id)toast("La plantilla no está almacenada en este dispositivo.");return false;}
+  const img=await decodeReferenceImage(data);
+  if(state.reference?.id!==id)return false; // Circuito cambiado durante la carga.
+  state.referenceImage=img;state.viewDirty=true;
+  updateTemplateUI();return true;
+ }catch(e){
+  if(state.reference?.id===id)toast("No se pudo recuperar la imagen de referencia.");
+  return false;
+ }
+}
+function updateTemplateUI(){
+ const r=state.reference,exists=!!r;
+ $("templatePanel").hidden=!state.templatePanelOpen;
+ $("templateToggle").setAttribute("aria-expanded",String(state.templatePanelOpen));
+ $("templateMove").disabled=!exists;
+ $("templateVisibility").disabled=!exists;
+ $("templateFit").disabled=!exists;
+ $("templateRemove").disabled=!exists;
+ $("templateExport").disabled=!exists;
+ for(const key of ["templateOpacity","templateScale","templateRotate"])
+  $(key).disabled=!exists;
+ $("templateOpacity").value=String(Math.round((r?.opacity??.3)*100));
+ $("templateOpacityValue").textContent=Math.round((r?.opacity??.3)*100)+" % visible";
+ $("templateScale").value=String(Math.round((r?.scale??1)*100));
+ $("templateScaleValue").textContent=Math.round((r?.scale??1)*100)+" %";
+ $("templateRotate").value=String(Math.round((r?.angle??0)*180/Math.PI));
+ $("templateRotateValue").textContent=Math.round((r?.angle??0)*180/Math.PI)+"°";
+ $("templateMove").textContent=r&&!r.locked?"✓ Bloquear posición":"Mover imagen";
+ $("templateMove").setAttribute("aria-pressed",String(Boolean(r&&!r.locked)));
+ $("templateVisibility").textContent=r&&!r.visible?"Mostrar":"Ocultar";
+ $("templateVisibility").setAttribute("aria-pressed",String(Boolean(r?.visible)));
+ $("templateExport").checked=state.templateIncludeInExport;
+ $("templateStatus").textContent=state.templateLoading?"Preparando imagen…":
+  !r?"No hay imagen cargada.":"Imagen "+(r.visible?"visible":"oculta")+
+  " · "+(r.locked?"bloqueada":"arrastra sobre la mesa para moverla");
+}
+function openTemplatePanel(open=!state.templatePanelOpen){
+ state.templatePanelOpen=Boolean(open);updateTemplateUI();
+}
+function templateFit(){
+ const r=state.reference;if(!r)return false;
+ pushHistory();
+ r.scale=refClamp(state.workBoard.width*.85/r.width,.1,20);
+ r.x=(state.workBoard.left+state.workBoard.right)/2;
+ r.y=(state.workBoard.top+state.workBoard.bottom)/2;
+ r.angle=0;r.visible=true;
+ save();updateUI();toast("Plantilla centrada. Puedes ampliarla hasta un 2000 %.");return true;
+}
+function templateSet(prop,value){
+ const r=state.reference;if(!r)return false;
+ if(prop==="opacity")r.opacity=refClamp(Number(value)/100,0,.8);
+ else if(prop==="scale")r.scale=refClamp(Number(value)/100,.1,20);
+ else if(prop==="angle")r.angle=refClamp(Number(value),-180,180)*Math.PI/180;
+ else return false;
+ state.viewDirty=true;updateTemplateUI();return true;
+}
+function templateToggleMove(){
+ if(!state.reference)return false;
+ state.reference.locked=!state.reference.locked;
+ save();updateTemplateUI();
+ toast(state.reference.locked?"Plantilla bloqueada: ya puedes montar encima.":
+  "Arrastra la imagen sobre la mesa. Después pulsa «Bloquear posición».");
+ return true;
+}
+function templateToggleVisibility(){
+ if(!state.reference)return false;
+ state.reference.visible=!state.reference.visible;
+ save();state.viewDirty=true;updateTemplateUI();return true;
+}
+function templateRemove(){
+ if(!state.reference)return false;
+ pushHistory();
+ state.reference=null;state.referenceImage=null;state.templateIncludeInExport=false;
+ save();updateUI();toast("Plantilla quitada. Puedes recuperarla con Deshacer.");return true;
+}
+async function templateLoadFile(file){
+ if(!file)return false;
+ if(!file.type?.startsWith("image/")||file.size>20*1024*1024){
+  toast("Selecciona una imagen de hasta 20 MB.");return false;
+ }
+ state.templateLoading=true;updateTemplateUI();
+ try{
+  const raw=await new Promise((resolve,reject)=>{
+   const reader=new FileReader();
+   reader.onload=()=>resolve(reader.result);
+   reader.onerror=()=>reject(new Error("Lectura de archivo"));
+   reader.readAsDataURL(file);
+  });
+  const img=await decodeReferenceImage(raw);
+  const nw=img.naturalWidth||img.width,nh=img.naturalHeight||img.height;
+  const factor=Math.min(1,1600/Math.max(nw,nh));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(nw*factor));
+  canvas.height=Math.max(1,Math.round(nh*factor));
+  const ctx=canvas.getContext("2d");
+  if(!ctx||typeof canvas.toDataURL!=="function")throw new Error("Compresión no disponible");
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  const data=canvas.toDataURL("image/jpeg",.78);
+  if(!data.startsWith("data:image/")||data.length>4_000_000)
+   throw new Error("Imagen demasiado grande tras comprimir");
+  const id="ref-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
+  await referenceStorage("put",id,data);
+  const picture=await decodeReferenceImage(data);
+  pushHistory();
+  const width=state.workBoard.width*.85;
+  state.reference={id,x:(state.workBoard.left+state.workBoard.right)/2,
+   y:(state.workBoard.top+state.workBoard.bottom)/2,
+   width,height:width*nh/nw,scale:1,angle:0,opacity:.30,visible:true,locked:true};
+  state.referenceImage=picture;state.templateIncludeInExport=false;
+  save();updateUI();toast("Plantilla añadida debajo de la pista.");return true;
+ }catch(e){
+  toast("No se pudo cargar o guardar esa imagen. Prueba con JPG o PNG.");
+  return false;
+ }finally{state.templateLoading=false;updateTemplateUI();}
+}
+function paintReference(ctx){
+ const r=state.reference,img=state.referenceImage;
+ if(!r||!img||!r.visible||r.opacity<=0)return;
+ ctx.save();
+ ctx.translate(r.x,r.y);ctx.rotate(r.angle);
+ ctx.globalAlpha=r.opacity;
+ ctx.drawImage(img,-r.width*r.scale/2,-r.height*r.scale/2,
+  r.width*r.scale,r.height*r.scale);
+ ctx.restore();
+}
 function setMessage(msg){$("buildStatus").textContent=msg;}
-function snapshot(){return{types:state.types.slice(),loose:state.loose.map(p=>({...p})),bridgeParts:state.bridgeParts.slice(),origin:{...state.origin}};}
+function snapshot(){return{types:state.types.slice(),loose:state.loose.map(p=>({...p})),
+ bridgeParts:state.bridgeParts.slice(),origin:{...state.origin},
+ reference:state.reference?{...state.reference}:null};}
 function restoreSnapshot(shot){
  state.types=shot.types.slice();state.loose=(shot.loose||[]).map(p=>({...p}));
  state.bridgeParts=(shot.bridgeParts||[]).filter(i=>Number.isInteger(i)&&i>=0&&i<state.types.length);
  state.origin=shot.origin?{...shot.origin}:{...START};
+ state.reference=validReference(shot.reference);
+ state.referenceImage=null;state.templateIncludeInExport=false;
+ loadReferenceForState();
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  clearGapDiagnostic();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
@@ -185,7 +391,8 @@ function snapshotOfDraft(d){
  if(!d||!Array.isArray(d.types)||!allowed([...d.types,...(d.loose||[]).map(p=>p.id)]))return null;
  if(!d.types.length&&!(d.loose||[]).length)return null;
  return{types:d.types.slice(),loose:(d.loose||[]).map(p=>({...p})),
-  bridgeParts:(d.bridgeParts||[]).slice(),origin:{...(d.origin||START)}};
+  bridgeParts:(d.bridgeParts||[]).slice(),origin:{...(d.origin||START)},
+  reference:validReference(d.reference)};
 }
 function recoverableDraft(){
  const d=state.draft;
@@ -555,6 +762,8 @@ function circuitPackage(){
   name:circuitLabel(),direction:state.driveDirection,types:state.types.slice(),
   origin:{...state.origin},bridgeParts:state.bridgeParts.slice(),
   loose:state.loose.map(p=>({...p})),
+  // La foto es una ayuda local. No incorporar IDs de IndexedDB a recetas
+  // compartidas: esos archivos no existen en otros dispositivos.
   items:recipe.items.map(({id,name,count})=>({id,name,count})),
   exportedAt:new Date().toISOString()};
 }
@@ -1202,6 +1411,7 @@ function createNewCircuit(){
  if(hadPieces)state.draft={...snapshot(),name:state.circuitName,
   direction:state.driveDirection,activeId:state.activeCircuitId};
  state.circuitName="";state.activeCircuitId=null;state.sessionLaps=[];
+ state.reference=null;state.referenceImage=null;state.templateIncludeInExport=false;
  state.driveDirection=state.newCircuitDirection;
  changeTypes([],"Nuevo circuito · elige las piezas en el maletín.",[],START);
  resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};
@@ -1964,6 +2174,7 @@ function updateUI(){
  renderLibrary();
  updateLibraryTabs();
  const orphan=recoverableDraft();
+ updateTemplateUI();
  $("libraryDraftRecovery").hidden=!orphan;
  $("libraryRecoverDraft").textContent=orphan?"Recuperar «"+orphan.name+"»":"Recuperar borrador anterior";
  $("goHome").hidden=state.mode==="menu";
@@ -2986,6 +3197,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  }
  ctx.translate(frame.x+frame.width/2,frame.y+frame.height/2);
  ctx.scale(scale,scale);ctx.translate(-cx,-cy);
+ if(state.templateIncludeInExport)paintReference(ctx);
  paintBlueprintTrack(ctx,state.track);
  // Las letras se dibujan encima de las vías, después de los cruces, para
  // que sean legibles tanto en rectas como en curvas y en el puente.
@@ -3229,7 +3441,9 @@ function renderScene(canvas,mode){
  ctx.setTransform(v.dpr,0,0,v.dpr,0,0);
  ctx.fillStyle="#0a141b";ctx.fillRect(0,0,v.w,v.h);
  ctx.save();transform(ctx,v);
- paintTable(ctx);paintGrid(ctx);
+ paintTable(ctx);
+ if(mode==="build")paintReference(ctx); // Nunca afecta al juego.
+ paintGrid(ctx);
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=drivingPose(mode==="race"?state.distance:0);
  const carAbove=hasBridge&&carTrackLevel(track,p)==="upper";
@@ -3335,6 +3549,14 @@ function canvasPointerDown(e){
  if(state.mode!=="build")return;
  editCanvas.setPointerCapture(e.pointerId);
  const point=screenToWorld(e);
+ if(state.reference&&!state.reference.locked){
+  state.pointer.set(e.pointerId,{x:e.clientX,y:e.clientY,
+   originX:e.clientX,originY:e.clientY,originWorld:point,
+   templateDrag:true,startX:state.reference.x,startY:state.reference.y,
+   dragged:false});
+  if(state.pointer.size===2)startTwoFingerGesture();
+  return;
+ }
  // Ambos dedos pueden comenzar sobre cualquier tramo: si el primero
  // cae en el tapete y el segundo en la pieza, también admite giro.
  const loose=nearestLoose(point.x,point.y);
@@ -3357,6 +3579,17 @@ function canvasPointerMove(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  const oldX=p.x,oldY=p.y;p.x=e.clientX;p.y=e.clientY;
  const distance=Math.hypot(p.x-p.originX,p.y-p.originY);
+ if(p.templateDrag){
+  if(state.pointer.size!==1||p.consumed)return;
+  const to=screenToWorld(e);
+  if(distance>=3)p.dragged=true;
+  if(p.dragged&&state.reference){
+   state.reference.x=p.startX+to.x-p.originWorld.x;
+   state.reference.y=p.startY+to.y-p.originWorld.y;
+   state.viewDirty=true;
+  }
+  return;
+ }
  if(state.pointer.size>=2&&state.pinch?.mode==="rotate"){
   moveTwoFingerRotation(state.pinch);return;
  }
@@ -3427,6 +3660,11 @@ function canvasPointerMove(e){
 function canvasPointerEnd(e){
  const p=state.pointer.get(e.pointerId);if(!p)return;
  state.pointer.delete(e.pointerId);
+ if(p.templateDrag){
+  if(state.pointer.size<2)state.pinch=null;
+  if(p.dragged){save();updateTemplateUI();}
+  return;
+ }
  if(state.pointer.size<2&&state.pinch){
   const g=state.pinch;state.pinch=null;
   if(g.mode==="rotate"&&g.started){
@@ -3536,6 +3774,27 @@ function initEvents(){
  $("resultsAgain").addEventListener("click",play);
  $("menuExport").addEventListener("click",exportBlueprint);
  $("exportBlueprint").addEventListener("click",exportBlueprint);
+ $("templateToggle").addEventListener("click",()=>openTemplatePanel());
+ $("templateClose").addEventListener("click",()=>openTemplatePanel(false));
+ $("templateLoad").addEventListener("click",()=>$("templateFile").click());
+ $("templateFile").addEventListener("change",async e=>{
+  const file=e.target.files?.[0];
+  if(file)await templateLoadFile(file);
+  e.target.value="";
+ });
+ $("templateFit").addEventListener("click",templateFit);
+ $("templateMove").addEventListener("click",templateToggleMove);
+ $("templateVisibility").addEventListener("click",templateToggleVisibility);
+ $("templateRemove").addEventListener("click",templateRemove);
+ $("templateExport").addEventListener("change",e=>{
+  state.templateIncludeInExport=Boolean(e.target.checked);
+ });
+ for(const [id,prop] of [["templateOpacity","opacity"],["templateScale","scale"],["templateRotate","angle"]]){
+  const el=$(id);
+  el.addEventListener("pointerdown",()=>{if(state.reference)pushHistory();});
+  el.addEventListener("input",e=>templateSet(prop,e.target.value));
+  el.addEventListener("change",e=>{templateSet(prop,e.target.value);save();});
+ }
   $("menuContinue").addEventListener("click",openWorkshop);
  $("menuRace").addEventListener("click",menuRace);
  $("menuNew").addEventListener("click",createNewCircuit);
@@ -3630,8 +3889,13 @@ function loop(now){
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
 }
-protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.13",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+protectOrphanDraft();palette();initEvents();updateUI();resize();
+ loadReferenceForState();requestAnimationFrame(loop);
+window.slotraceLab={version:"DEV 0.14.14",state,
+ template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
+  templateLoadFile,templateFit,templateSet,templateToggleMove,
+  templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
+ showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

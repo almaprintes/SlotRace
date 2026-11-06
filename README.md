@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.14 · Plantilla de referencia fotográfica
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.14
+
+- **Plantilla debajo de la pista:** desde «Taller → Más → Plantilla de referencia» se carga una fotografía, plano o imagen compatible. Se dibuja sobre la mesa y por debajo de las pistas y piezas, sin modificar el juego.
+- **Tamaño completamente independiente:** control del **10 % al 2000 %**. Se puede ampliar la imagen muchísimo más que la mesa, sin cambiar las dimensiones reales de las piezas ni el zoom del circuito. «Ajustar a mesa» es solo un atajo opcional.
+- **Controles:** opacidad 0–80 % (30 % por defecto), giro −180° a +180°, movimiento con el dedo tras pulsar «Mover imagen», bloqueo de la posición para construir encima, ocultar/mostrar y quitar con Deshacer disponible.
+- **Persistencia por circuito:** la posición, tamaño, giro, opacidad y referencia se guardan con cada circuito en Mis circuitos. Los datos JPEG comprimidos (hasta 1600 píxeles) se guardan en IndexedDB cuando existe, con alternativa en localStorage para navegadores sin IndexedDB. Fotos en un dispositivo no se sincronizan automáticamente con otros.
+- **Exportación PNG:** por defecto el plano sale **sin fotografía**. La casilla «Incluir imagen al exportar PNG» permite añadirla debajo de las pistas para ese PNG solamente. No cambia la receta, ni las físicas, ni la colección de récords.
+- **Seguridad de los montajes:** una imagen bloqueada nunca intercepta el arrastre de las pistas. Mientras esté desbloqueada, arrastrar sobre la mesa mueve la imagen; bloquearla restablece los gestos normales de construcción.
+- **Regresiones:** pruebas de escala superior a la mesa, guardado/recuperación en circuitos, exportación limpia y opcional, movimiento sin mover piezas y ocultación.
+
+---
+
 # SlotRace DEV 0.14.13 · Constructor centrado en la mesa
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.13
