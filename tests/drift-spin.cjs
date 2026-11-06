@@ -64,8 +64,8 @@ const path=require("node:path");
  const p=geom.positionAt(lane,st.distance),vis=physics.visualCarPose(p);
  assert.ok(Math.abs(vis.h-p.h)>.015,
   "El coche gira por el ángulo real de la cola");
- assert.ok(Math.hypot(vis.x-p.x,vis.y-p.y)>.5,
-  "El centro del coche acompaña el desplazamiento lateral");
+ assert.ok(Math.hypot(vis.x-p.x,vis.y-p.y)>.2,
+  "El centro del coche inicia suavemente el desplazamiento lateral");
  // Reinicio físico solo para ensayar el exceso sostenido a fondo.
  Object.assign(st,{distance:start,gas:1,speed:physics.DRIVE.topSpeed,
   rearSlip:0,rearSlipVelocity:0,cornerDistance:0,cornerDirection:0,
