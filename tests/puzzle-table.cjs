@@ -42,7 +42,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.17");
+ assert.equal(game.version,"DEV 0.14.18");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -208,5 +208,44 @@ const path=require("node:path");
    label+" queda sin separación");
  }
 
- console.log("SlotRace DEV 0.14.17 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ // Regresión: al separar un tramo, TODAS las piezas han de compartir imán.
+ game.changeTypes(["S350","R3_90R","S175"],"Grupo que se desprende",[],{x:500,y:500,h:0});
+ const detached=game.puzzle.detachConnected(1);
+ assert.equal(st.loose.length,2);
+ assert.deepEqual(game.puzzle.looseMembers(detached),[0,1],
+  "La primera pieza del tramo también pertenece al grupo magnético");
+ assert.equal(st.loose[0].magnetGroup,st.loose[1].magnetGroup);
+ assert.equal(game.puzzle.snapLoose(detached),true,"Tramo completo vuelve a encajar");
+ assert.deepEqual(st.types,["S350","R3_90R","S175"]);
+ // Inversión real de un grupo de dos curvas: antes el límite de giro 90°
+ // impedía conectar el final del grupo con el final del circuito.
+ game.changeTypes(["S350"],"Inversión de grupo",[],{x:500,y:500,h:0});
+ const a=geo.positionOnPiece({x:0,y:0,h:0},"R3_225R",1);
+ const b=geo.positionOnPiece(a,"R3_225R",1);
+ const p={x:850-b.x,y:500-b.y,h:0},q=geo.positionOnPiece(p,"R3_225R",1);
+ st.loose=[
+  {id:"R3_225R",...p,magnetGroup:"magnet-prueba",magnetOrder:0},
+  {id:"R3_225R",x:q.x,y:q.y,h:q.h,magnetGroup:"magnet-prueba",magnetOrder:1}
+ ];
+ const proposal=game.puzzle.bestMagnet(0);
+ assert.ok(proposal?.reversed&&proposal?.kind==="main");
+ assert.ok(Math.abs(proposal.rotation)>Math.PI/2,
+  "La unión necesita un giro superior a 90°");
+ assert.equal(game.puzzle.snapLoose(0),true);
+ assert.deepEqual(st.types,["S350","R3_225L","R3_225L"]);
+ for(let i=1;i<st.track.parts.length;i++){
+  assert.ok(Math.hypot(st.track.parts[i-1].end.x-st.track.parts[i].start.x,
+   st.track.parts[i-1].end.y-st.track.parts[i].start.y)<1e-6,
+   "Sin separaciones al unir un grupo girado");
+ }
+ // Dos grupos sueltos que no forman aún una pista principal.
+ game.changeTypes([],"Imanes entre grupos",[],geo.START);
+ st.loose=[
+  {id:"S175",x:500,y:500,h:0,magnetGroup:"magnet-a",magnetOrder:0},
+  {id:"S175",x:675,y:500,h:0,magnetGroup:"magnet-a",magnetOrder:1},
+  {id:"R3_90R",x:855,y:504,h:0}
+ ];
+ assert.equal(game.puzzle.snapLoose(2),true,"Una curva grande conecta a un grupo");
+ assert.equal(game.puzzle.looseGroup(0).indices.length,3);
+ console.log("SlotRace DEV 0.14.18 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
