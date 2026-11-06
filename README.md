@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.25 · Rayos X para puentes, túneles y pistas ocultas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.25
+
+- **Ajustes → Rayos X:** interruptor opcional, inicialmente **Desactivado** y guardado en el navegador. Funciona tanto en Construir como en Jugar, sin alterar los circuitos ni los récords.
+- **Pistas ocultas:** se trazan sus carriles con líneas discontinuas turquesa únicamente dentro de la huella geométrica de una plataforma elevada. No se añaden carriles a otras zonas visibles.
+- **Coche bajo el puente:** durante la carrera, el coche que pasa por debajo se representa solo por el contorno discontinuo de la carrocería. El sprite y su pintura siguen ocultos. Un coche que circula arriba se dibuja normalmente.
+- **Túneles largos y curvas coincidentes:** la máscara recorre la plataforma completa, no solo los cruces puntuales. Por eso también cubre grandes secciones paralelas que quedan debajo de una pista elevada.
+- **Caso real de regresión:** `tests/fixtures/doble-ovalo.json` reproduce las 16 piezas y cuatro secciones elevadas de la receta «Doble ovalo», donde dos curvas R2 de 90° recorren exactamente el mismo arco a distintas alturas. `tests/xray.cjs` prueba la curva tapada a lo largo de cinco posiciones, la ausencia de marcas fuera del puente, la silueta y la persistencia del interruptor.
+- **Motor de capas:** se mantiene la separación entre pista inferior y elevada sin usar rectángulos de recorte destructivos. Las guías Rayos X son un dibujo superpuesto y no forman parte de la física ni de los circuitos exportados.
+
+---
+
 # SlotRace DEV 0.14.23 · Puentes del Doble Ocho: oclusión por cada intersección
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.23
