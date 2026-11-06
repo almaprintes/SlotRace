@@ -217,8 +217,60 @@ function loadSavedCircuit(id){
  state.camera={panX:0,panY:0,zoom:1};state.sessionLaps=[];
  save();openWorkshop();toast("Circuito recuperado: «"+item.name+"».");return true;
 }
+// Las fichas se eliminan por ID, nunca por nombre: dos diseños pueden
+// compartir un nombre tras una recuperación y deben ser independientes.
+let openSwipeCircuitId=null;
+let openSwipeFront=null;
+let openSwipeDeleteButton=null;
+let pendingDeleteCircuitId=null;
+let deleteFocusReturn=null;
+const SWIPE_REVEAL=100;
+function requestCircuitDeletion(id){
+ const item=state.library.find(c=>c.id===id);
+ if(!item)return false;
+ pendingDeleteCircuitId=id;
+ deleteFocusReturn=document.activeElement;
+ $("deleteCircuitName").textContent="«"+item.name+"»";
+ $("deleteCircuitNote").textContent=item.id===state.activeCircuitId?
+  "Se quitará de la colección. El circuito que tienes en la mesa quedará sin guardar.":
+  "Se eliminarán su ficha y sus mejores tiempos guardados. Los demás circuitos no cambiarán.";
+ $("circuitDeleteDialog").hidden=false;
+ $("deleteCircuitCancel").focus?.();
+ return true;
+}
+function cancelCircuitDeletion(){
+ pendingDeleteCircuitId=null;
+ $("circuitDeleteDialog").hidden=true;
+ deleteFocusReturn?.focus?.();deleteFocusReturn=null;
+}
+function confirmCircuitDeletion(){
+ const id=pendingDeleteCircuitId;
+ if(!id)return false;
+ const item=state.library.find(c=>c.id===id);
+ if(!item){cancelCircuitDeletion();return false;}
+ const remaining=state.library.filter(c=>c.id!==id);
+ // Guardar en el almacenamiento ANTES de cambiar memoria o récords.
+ if(!safelyWriteLibrary(remaining))return false;
+ state.library=remaining;
+ // No borrar los récords de ningún otro circuito, aunque compartan nombre.
+ const prefix="library-"+id+"-";
+ for(const key of Object.keys(state.records))if(key.startsWith(prefix))delete state.records[key];
+ if(state.activeCircuitId===id)state.activeCircuitId=null;
+ if(state.draft?.activeId===id)state.draft=null;
+ // Quitar del historial únicamente las revisiones de esa identidad.
+ const revisions=readCircuitRevisions();
+ try{localStorage.setItem(LIBRARY_REVISIONS_KEY,
+  JSON.stringify(revisions.filter(v=>v.sourceId!==id)));}
+ catch(e){/* El circuito ya fue eliminado del inventario; conservamos la copia si falla. */}
+ openSwipeCircuitId=null;openSwipeFront=null;openSwipeDeleteButton=null;
+ cancelCircuitDeletion();
+ save();updateUI();
+ toast("«"+item.name+"» eliminado de Mis circuitos.");
+ return true;
+}
 function renderLibrary(){
  const list=$("circuitLibrary");list.innerHTML="";
+ openSwipeFront=null;openSwipeDeleteButton=null;
  $("libraryCount").textContent=state.library.length+" guardados";
  if(!state.library.length){
   const empty=document.createElement("p");empty.className="library-empty";
@@ -226,7 +278,15 @@ function renderLibrary(){
   list.appendChild(empty);return;
  }
  for(const item of state.library){
+  const shell=document.createElement("div");shell.className="library-swipe";
+  const deleteButton=document.createElement("button");
+  deleteButton.type="button";deleteButton.className="library-delete";
+  deleteButton.setAttribute("aria-label","Eliminar circuito "+item.name);
+  deleteButton.innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18m-2 0-1 15H6L5 6m3 0V4h8v2M10 10v7m4-7v7"/></svg><span>Eliminar</span>';
   const row=document.createElement("div");row.className="library-entry";
+  row.tabIndex=0;
+  row.setAttribute("role","group");
+  row.setAttribute("aria-label","Circuito "+item.name+". Desliza a la izquierda para mostrar Eliminar");
   const info=document.createElement("div");info.className="library-info";
   const name=document.createElement("strong");name.textContent=item.name;
   const detail=document.createElement("small");
@@ -236,8 +296,75 @@ function renderLibrary(){
   info.appendChild(name);info.appendChild(detail);
   const button=document.createElement("button");button.className="mini";
   button.type="button";button.textContent="Abrir";
-  button.addEventListener("click",()=>loadSavedCircuit(item.id));
-  row.appendChild(info);row.appendChild(button);list.appendChild(row);
+  let lastSwipeAt=-Infinity;
+  button.addEventListener("click",()=>{
+   // iOS puede disparar click al levantar el dedo tras un gesto horizontal.
+   if(performance.now()-lastSwipeAt<400)return;
+   openSwipeCircuitId=null;openSwipeFront=null;openSwipeDeleteButton=null;
+   loadSavedCircuit(item.id);
+  });
+  row.appendChild(info);row.appendChild(button);
+  shell.appendChild(deleteButton);shell.appendChild(row);list.appendChild(shell);
+  const setOpen=(open)=>{
+   if(open&&openSwipeFront&&openSwipeFront!==row){
+    openSwipeFront.style.transform="translateX(0px)";
+    openSwipeDeleteButton.disabled=true;
+    openSwipeDeleteButton.tabIndex=-1;
+    openSwipeDeleteButton.setAttribute("aria-hidden","true");
+   }
+   if(open){openSwipeCircuitId=item.id;openSwipeFront=row;openSwipeDeleteButton=deleteButton;}
+   else if(openSwipeCircuitId===item.id){
+    openSwipeCircuitId=null;openSwipeFront=null;openSwipeDeleteButton=null;
+   }
+   row.style.transition="transform .19s ease";
+   row.style.transform=open?"translateX(-"+SWIPE_REVEAL+"px)":"translateX(0px)";
+   deleteButton.disabled=!open;
+   deleteButton.tabIndex=open?0:-1;
+   deleteButton.setAttribute("aria-hidden",String(!open));
+   row.setAttribute("aria-expanded",String(open));
+  };
+  setOpen(openSwipeCircuitId===item.id);
+  deleteButton.addEventListener("click",()=>requestCircuitDeletion(item.id));
+  let pointer=null;
+  row.addEventListener("pointerdown",e=>{
+   if(e.pointerType==="mouse"&&e.button!==0)return;
+   pointer={id:e.pointerId,x:e.clientX,y:e.clientY,
+    startOpen:openSwipeCircuitId===item.id,dragging:false};
+  });
+  row.addEventListener("pointermove",e=>{
+   if(!pointer||e.pointerId!==pointer.id)return;
+   const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
+   if(!pointer.dragging){
+    if(Math.abs(dy)>14&&Math.abs(dy)>Math.abs(dx)) {pointer=null;return;}
+    if(Math.abs(dx)<11||Math.abs(dx)<Math.abs(dy)*1.15)return;
+    pointer.dragging=true;
+    row.setPointerCapture?.(e.pointerId);
+   }
+   e.preventDefault?.();
+   const offset=Math.max(-SWIPE_REVEAL,Math.min(0,(pointer.startOpen?-SWIPE_REVEAL:0)+dx));
+   row.style.transition="none";
+   row.style.transform="translateX("+offset+"px)";
+  },{passive:false});
+  row.addEventListener("pointerup",e=>{
+   if(!pointer||e.pointerId!==pointer.id)return;
+   const {x,startOpen,dragging}=pointer;pointer=null;
+   if(!dragging)return;
+   e.preventDefault?.();
+   lastSwipeAt=performance.now();
+   const dx=e.clientX-x;
+   setOpen(startOpen?dx<45:dx< -43);
+  });
+  row.addEventListener("pointercancel",()=>{
+   const wasOpen=pointer?.startOpen??(openSwipeCircuitId===item.id);
+   pointer=null;setOpen(wasOpen);
+  });
+  row.addEventListener("keydown",e=>{
+   if(e.key==="ArrowLeft"){e.preventDefault();setOpen(true);}
+   if(e.key==="ArrowRight"||e.key==="Escape"){e.preventDefault();setOpen(false);}
+   if((e.key==="Delete"||e.key==="Backspace")&&openSwipeCircuitId===item.id){
+    e.preventDefault();requestCircuitDeletion(item.id);
+   }
+  });
  }
 }
 function circuitPackage(){
@@ -2661,6 +2788,14 @@ function initEvents(){
  });
  $("menuRecipe").addEventListener("click",exportRecipe);
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
+ $("deleteCircuitCancel").addEventListener("click",cancelCircuitDeletion);
+ $("deleteCircuitConfirm").addEventListener("click",confirmCircuitDeletion);
+ $("circuitDeleteDialog").addEventListener("click",e=>{
+  if(e.target===$("circuitDeleteDialog"))cancelCircuitDeletion();
+ });
+ window.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&pendingDeleteCircuitId){e.preventDefault();cancelCircuitDeletion();}
+ });
  $("libraryRecoverDraft").addEventListener("click",recoverDraftToLibrary);
  $("libraryRestoreVersion").addEventListener("click",restoreLastCircuitRevision);
  $("workSaveCircuit").addEventListener("click",saveCircuit);
@@ -2765,7 +2900,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.13.5",state,showHub,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.13.6",state,showHub,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

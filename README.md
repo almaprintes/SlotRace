@@ -1,3 +1,17 @@
+# SlotRace DEV 0.13.6 · Deslizar para borrar circuitos (estilo iOS)
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.13.6
+
+- En **Mis circuitos**, se puede deslizar una tarjeta hacia la **izquierda** para descubrir una **papelera roja** detrás. Deslizar a la derecha la cierra. Solo se muestra la acción de una tarjeta cada vez.
+- Pulsar «Eliminar» abre una **confirmación** con el nombre exacto del circuito. **Cancelar** no modifica los datos; la confirmación borra únicamente el circuito por **ID**, sin confundir una copia recuperada de OchoA con OchoA ni con Splash.
+- La colección se escribe en el almacenamiento **antes** de mutar el estado en memoria. Si falla el guardado, no se borra ningún circuito.
+- Se eliminan los tiempos propios y revisiones vinculadas a ese ID. El resto de circuitos, récords y versiones permanece intacto.
+- Si borras el circuito que está **en la mesa**, el trazado permanece como trabajo **sin guardar**, para evitar pérdida accidental del trabajo actual. El vínculo con la entrada borrada se limpia.
+- Las tarjetas usan eventos de puntero compatibles con Safari/iOS, con desplazamiento vertical libre; evitar apertura accidental tras el gesto y permitir abrir/cerrar usando teclado (flechas).
+- Se añaden pruebas de deslizar, cancelar y borrar una copia recuperada, confirmando la supervivencia del circuito original y de Splash.
+
+---
+
 # SlotRace DEV 0.13.5 · Colores coherentes para mejores vueltas
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.13.5

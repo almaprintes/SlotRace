@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.13.5");
+ assert.equal(game.version,"DEV 0.13.6");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -353,5 +353,59 @@ const path=require("node:path");
  assert.ok(withBackup.some(x=>x.name==="OchoA"));
  assert.ok(withBackup.some(x=>x.name==="Splash"));
 
- console.log("SlotRace DEV 0.13.5: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // Gestos tipo iOS: abrir papelera, cerrar al deslizar a la derecha, cancelar
+ // y borrar EXCLUSIVAMENTE la ficha elegida (sin tocar OchoA ni Splash).
+ assert.equal(game.loadSavedCircuit(rescued[0].id),true);
+ elements.get("workCircuitName").value="OchoA (recuperado)";
+ assert.equal(game.saveCircuit(),true);
+ const duplicateId=st.activeCircuitId;
+ assert.notEqual(duplicateId,rescued[0].id);
+ assert.equal(st.library[0].name,"OchoA (recuperado)");
+ const deskBefore=st.types.slice();
+ const untouchedOriginal=JSON.stringify(st.library.find(c=>c.id===rescued[0].id).snapshot);
+ const untouchedSplash=JSON.stringify(st.library.find(c=>c.id===splashId).snapshot);
+ const recordKeyDuplicate="library-"+duplicateId+"-T";
+ const recordKeyOriginal="library-"+rescued[0].id+"-T";
+ st.records[recordKeyDuplicate]=[6.1,6.2];
+ st.records[recordKeyOriginal]=[9.1,9.2];
+ game.showHub("library");
+ const libraryPanel=elements.get("circuitLibrary");
+ const currentCards=()=>libraryPanel.children.slice(-st.library.length);
+ const swipeShell=currentCards()[0],trash=swipeShell.children[0],front=swipeShell.children[1];
+ assert.equal(trash.disabled,true,"Papelera oculta y desactivada al principio");
+ function slide(from,to){
+  const evt=(x)=>({pointerId:7,pointerType:"touch",clientX:x,clientY:100,
+   preventDefault(){}});
+  front.listeners.pointerdown[0](evt(from));
+  front.listeners.pointermove[0](evt(to));
+  front.listeners.pointerup[0](evt(to));
+ }
+ slide(260,180);
+ assert.equal(front.style.transform,"translateX(-100px)","Deslizar izquierda descubre la papelera");
+ assert.equal(trash.disabled,false);
+ slide(160,240);
+ assert.equal(front.style.transform,"translateX(0px)","Deslizar derecha cierra acciones");
+ assert.equal(trash.disabled,true);
+ slide(260,160);
+ trash.listeners.click[0]();
+ assert.equal(elements.get("circuitDeleteDialog").hidden,false);
+ assert.equal(elements.get("deleteCircuitName").textContent,"«OchoA (recuperado)»");
+ elements.get("deleteCircuitCancel").listeners.click[0]();
+ assert.equal(elements.get("circuitDeleteDialog").hidden,true,"Cancelar cierra sin borrar");
+ assert.equal(st.library.some(c=>c.id===duplicateId),true);
+ trash.listeners.click[0]();
+ elements.get("deleteCircuitConfirm").listeners.click[0]();
+ assert.equal(elements.get("circuitDeleteDialog").hidden,true);
+ assert.equal(st.library.some(c=>c.id===duplicateId),false,"Solo se elimina la copia");
+ assert.equal(st.activeCircuitId,null,"Al borrar el activo, la mesa queda sin vinculación");
+ assert.deepEqual(st.types,deskBefore,"No se pierden las piezas en la mesa");
+ assert.equal(st.records[recordKeyDuplicate],undefined,"Solo se borran récords de esa identidad");
+ assert.deepEqual(st.records[recordKeyOriginal],[9.1,9.2],"Otros récords intactos");
+ assert.equal(JSON.stringify(st.library.find(c=>c.id===rescued[0].id).snapshot),untouchedOriginal);
+ assert.equal(JSON.stringify(st.library.find(c=>c.id===splashId).snapshot),untouchedSplash);
+ assert.equal(JSON.parse(saved.get("slotrace-circuit-library-v1")).some(c=>c.id===duplicateId),false);
+ assert.equal(st.library.some(c=>c.name==="OchoA"),true);
+ assert.equal(st.library.some(c=>c.name==="Splash"),true);
+
+ console.log("SlotRace DEV 0.13.6: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
