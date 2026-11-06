@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.7 · Derrape visible y curvas continuas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.7
+
+- **Conducción más fluida:** los puntos de los carriles se interpolan sobre el arco circular y la orientación del coche avanza continuamente. Se eliminan los saltos de postura producidos por el ángulo fijo de cada pequeño segmento poligonal, especialmente en uniones entre piezas.
+- **Más movimiento de la trasera:** aumenta moderadamente la deformación lateral y ahora el coche gira visualmente alrededor de la guía delantera. La cola se abre de forma progresiva; se conservan la masa, amortiguación y recuperación de agarre.
+- **Acelerador al 100 %:** ya no es una estrategia estable en curvas largas. Al superar el 97,5 % aparece progresivamente una sobrecarga de estabilidad de la guía, adicional a la fuerza lateral calculada con `v²/r`. Al 95 % la conducción sigue siendo rápida y permisiva; un tramo muy corto a fondo puede atravesarse sin salir.
+- **Pico tardío:** la sobrecarga se acumula a lo largo de la curva enlazada, conserva continuidad entre módulos y sólo permite descarrilar desde la segunda mitad.
+- **Tiempos:** guardado bajo física `rear-physics-v2`, manteniendo separados los récords anteriores.
+- **Validación:** pruebas para orientación continua en las juntas, derrape visible, radio interior/exterior, salidas a fondo sostenido y estabilidad en 60/120 Hz.
+
+Estos valores son de calibración del juego, no medidas físicas certificadas.
+
+---
+
 # SlotRace DEV 0.14.6 · Inercia realista de la trasera en curvas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.6

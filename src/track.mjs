@@ -115,7 +115,7 @@ function laneData(points,side){
   const nodes=points.map(p=>({...p,x:p.x-Math.sin(p.h)*side,y:p.y+Math.cos(p.h)*side}));
   let total=0;const lengths=[0];
   for(let i=1;i<nodes.length;i++){total+=hypot(nodes[i].x-nodes[i-1].x,nodes[i].y-nodes[i-1].y);lengths.push(total);}
-  return{nodes,lengths,total};
+  return{nodes,lengths,total,side};
 }
 export function buildTrack(types,origin=START,raisedParts=[]){
   if(!Array.isArray(types)||types.some(t=>!CATALOG[t]))throw Error("Catálogo inválido");
@@ -182,11 +182,26 @@ export function positionAt(lane,distance){
   let lo=0,hi=lane.lengths.length-1;
   while(hi-lo>1){const mid=(lo+hi)>>>1;if(lane.lengths[mid]<d)lo=mid;else hi=mid;}
   const a=lane.nodes[lo],b=lane.nodes[hi],fraction=(d-lane.lengths[lo])/(lane.lengths[hi]-lane.lengths[lo]||1);
-  const dx=b.x-a.x,dy=b.y-a.y;
-  return{x:a.x+dx*fraction,y:a.y+dy*fraction,h:Math.atan2(dy,dx),
+  // La tangente geométrica se interpola de forma continua. Antes se
+  // tomaba atan2 del segmento poligonal, que mantenía el ángulo fijo hasta
+  // la siguiente muestra y hacía "saltar" la postura del coche.
+  const dh=Math.atan2(Math.sin(b.h-a.h),Math.cos(b.h-a.h));
+  const h=a.h+dh*fraction;
+  const turn=Math.sign(b.curve||0);
+  const radius=Number.isFinite(b.radius)?
+    b.radius-(lane.side||0)*turn:Infinity;
+  // Sobre curvas: interpolación del arco circular de cada carril, no
+  // de la cuerda de la polilínea. Posición y orientación C1 en empalmes.
+  const signedRadius=turn*radius;
+  const x=turn&&Number.isFinite(radius)&&Math.abs(dh)>1e-9?
+    a.x+signedRadius*(Math.sin(h)-Math.sin(a.h)):
+    a.x+(b.x-a.x)*fraction;
+  const y=turn&&Number.isFinite(radius)&&Math.abs(dh)>1e-9?
+    a.y-signedRadius*(Math.cos(h)-Math.cos(a.h)):
+    a.y+(b.y-a.y)*fraction;
+  return{x,y,h,
     // El tramo activo es el del extremo B del segmento muestreado.
-    // Antes se heredaba la curva del extremo A al entrar en una recta
-    // (b.curve || a.curve), produciendo salidas "dentro" de una recta.
+    // Una recta nunca hereda la curva de la pieza anterior.
     curve:b.curve,radius:b.radius,
     // Necesario para saber si el coche circula bajo el puente o sobre él.
     // El tramo se asigna por el segmento de trayectoria, no por la

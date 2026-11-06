@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.6");
+ assert.equal(game.version,"DEV 0.14.7");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -369,7 +369,7 @@ const path=require("node:path");
  st.seconds=16.10;game.completeLap();
  st.lane=1;st.seconds=8.266;game.completeLap();
  assert.deepEqual(st.sessionLaps.map(l=>l.seconds),[16.75,15.20,16.10,8.266]);
- assert.equal(st.records["library-"+library[0].id+"-"+st.types.join("-")+"-rear-physics-v1"][0],15.20);
+ assert.equal(st.records["library-"+library[0].id+"-"+st.types.join("-")+"-rear-physics-v2"][0],15.20);
  assert.equal(game.endSession("menu"),true);
  assert.equal(st.mode,"results");
  assert.equal(elements.get("resultsScreen").hidden,false);
@@ -604,5 +604,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.6: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.7: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

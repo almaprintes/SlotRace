@@ -150,7 +150,7 @@ const format=n=>n.toFixed(3).replace(".",",");
  // Spark utiliza un sufijo propio para no mezclar coches distintos.
 const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
  state.types.join("-")+(state.driveDirection===-1?"-reverse":"")+
-  "-rear-physics-v1"+(state.selectedCar==="spark"?"-helix-spark":"");
+  "-rear-physics-v2"+(state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -1194,7 +1194,10 @@ function completeLap(){
 // neumáticos con fuerza de agarre y amortiguación, guía delantera retenida.
 // Parámetros experimentales; no son medidas de coches reales.
 const DRIVE=Object.freeze({
- maxSpeed:1250,topSpeed:1150,gravity:9.81,lateralElasticity:.02,minCurveDistance:65
+ maxSpeed:1250,topSpeed:1150,gravity:9.81,
+ lateralElasticity:.10, // La trasera responde también antes de perder adherencia.
+ fullThrottleSlipAt:.975, // El 100% sostenido no es seguro en curvas largas.
+ fullThrottleLoad:90,minCurveDistance:65
 });
 // Ficha por vehículo, preparada para futuras diferencias de comportamiento.
 const VEHICLE_DYNAMICS=Object.freeze({
@@ -1218,12 +1221,14 @@ function cornerForces(p,lane,speed=state.speed){
   inertialForceN:car.rearMassKg*lateralAcceleration,
   gripForceN:car.rearMassKg*gripAcceleration};
 }
-// Deslizamiento empieza cuando a_lateral supera el agarre. Deslot NO es
-// instantáneo: sucede si el desplazamiento/ángulo de la cola resulta excesivo.
+// Referencia del inicio de inestabilidad de la trasera: cuenta tanto la
+// adherencia centrípeta real como la pérdida de estabilidad de la guía a
+// velocidad extrema. No es un umbral de salida instantáneo.
 function curveLimit(p,lane){
  const radius=curveRadius(p,lane);
- return Number.isFinite(radius)?
-  Math.sqrt(carDynamics().gripG*DRIVE.gravity*1000*radius):Infinity;
+ return Number.isFinite(radius)?Math.min(
+  Math.sqrt(carDynamics().gripG*DRIVE.gravity*1000*radius),
+  DRIVE.fullThrottleSlipAt*DRIVE.topSpeed):Infinity;
 }
 const CURVE_SPAN_CACHE=new WeakMap();
 // Detectar el arco completo de piezas curvas consecutivas del mismo sentido.
@@ -1281,7 +1286,12 @@ function advanceRearDynamics(p,lane,dt){
  const envelope=turn?curveStressEnvelope(phase.progress):0;
  const excess=Math.max(0,forces.lateralAcceleration-forces.gripAcceleration);
  const elastic=DRIVE.lateralElasticity*Math.min(forces.lateralAcceleration,forces.gripAcceleration);
- const effectiveExcess=excess*envelope;
+ // A toda velocidad el coche pierde reserva de estabilidad de la guía,
+ // también en curvas amplias. El efecto tarda en crecer por el arco.
+ // No sustituye a v²/r ni elimina la diferencia entre los dos carriles.
+ const guideExcess=Math.max(0,state.speed/DRIVE.topSpeed-
+  DRIVE.fullThrottleSlipAt)*DRIVE.fullThrottleLoad*envelope;
+ const effectiveExcess=excess*envelope+guideExcess;
  const outwardForce=turn*car.rearMassKg*
   (effectiveExcess+elastic*(.25+.75*envelope));
  state.rearStress=effectiveExcess;
@@ -2390,11 +2400,15 @@ function visualCarPose(at){
    smoke:Math.max(0,1-t/2.5),spin:1};
  }
  const slip=state.rearSlip||0,car=carDynamics();
- const normalX=-Math.sin(at.h),normalY=Math.cos(at.h);
+ // El coche gira alrededor de su guía delantera, no sobre el centro:
+ // ahora el extremo trasero dibuja un arco bastante más visible y fluido.
+ const yaw=Math.atan2(slip,car.wheelbaseMM)*1.16;
+ const frontOffset=CAR_LENGTH_MM*.40;
+ const heading=at.h+yaw;
  return{...at,
-  x:at.x-normalX*slip*.45,
-  y:at.y-normalY*slip*.45,
-  h:at.h+Math.atan2(slip,car.wheelbaseMM),
+  x:at.x+frontOffset*(Math.cos(at.h)-Math.cos(heading)),
+  y:at.y+frontOffset*(Math.sin(at.h)-Math.sin(heading)),
+  h:heading,
   smoke:Math.min(1,Math.abs(slip)/(car.wheelbaseMM*Math.tan(car.guideYawLimit))),
   spin:0};
 }
@@ -3435,7 +3449,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.6",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.7",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

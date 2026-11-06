@@ -34,11 +34,11 @@ const path=require("node:path");
  );
  const game=window.slotraceLab;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.6");
+ assert.equal(game.version,"DEV 0.14.7");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
- assert.equal(game.version,"DEV 0.14.6");
+ assert.equal(game.version,"DEV 0.14.7");
  assert.equal(st.track.valid,true);
  assert.equal(st.track.bridge,null);
  const max=physics.DRIVE.topSpeed;
@@ -60,10 +60,13 @@ const path=require("node:path");
  const r1Limit=physics.curveLimit(pose(r1),1)/max;
  assert.ok(r1Limit>.88&&r1Limit<.92,
   "El deslizamiento inicial en R1 interior aparece cerca del 90%");
- assert.ok(physics.curveLimit(pose(r2),1)>max,
-  "R2 interior deja acelerar al 100% sin pérdida crítica");
- assert.ok(physics.curveLimit(pose(r3),1)>max);
- assert.ok(physics.curveLimit(pose(r4),1)>max);
+ const maxStable=physics.DRIVE.fullThrottleSlipAt*max;
+ assert.ok(maxStable>.95*max&&maxStable<max,
+  "El 100% provoca sobrecarga de guía; 95% puede ser estable");
+ assert.equal(physics.curveLimit(pose(r2),1),maxStable,
+  "R2 inicia su inestabilidad antes del 100%");
+ assert.equal(physics.curveLimit(pose(r3),1),maxStable);
+ assert.equal(physics.curveLimit(pose(r4),1),maxStable);
  assert.equal(physics.curveLimit(pose(r2,0),1),Infinity);
  assert.equal(physics.curveLimit(pose(r1,-1),0),physics.curveLimit(pose(r1),1),
   "Agarre interior idéntico cuando cambia el sentido de giro");
@@ -102,6 +105,16 @@ const path=require("node:path");
  const rightPhase=physics.curvePhase(geom.positionAt(phaseLane,seam+1),phaseLane,seam+1).progress;
  assert.ok(rightPhase>leftPhase&&rightPhase-leftPhase<.025,
   "El esfuerzo sigue creciendo sin reiniciarse en la junta de las piezas");
+ // La orientación debe avanzar continuamente incluso cuando cambia el módulo.
+ const beforeJoint=geom.positionAt(phaseLane,seam-.02);
+ const afterJoint=geom.positionAt(phaseLane,seam+.02);
+ const yawDelta=Math.atan2(
+  Math.sin(afterJoint.h-beforeJoint.h),Math.cos(afterJoint.h-beforeJoint.h));
+ assert.ok(Math.abs(yawDelta)<.004,
+  "La tangente del coche no salta al pasar de una pieza curva a otra");
+ const seamPose=geom.positionAt(phaseLane,seam);
+ assert.ok(Math.hypot(seamPose.x-beforeJoint.x,seamPose.y-beforeJoint.y)<.025);
+ assert.ok(Math.hypot(seamPose.x-afterJoint.x,seamPose.y-afterJoint.y)<.025);
  assert.ok(physics.curveStressEnvelope(.1)<physics.curveStressEnvelope(.5));
  assert.ok(physics.curveStressEnvelope(.5)<physics.curveStressEnvelope(.72));
  assert.ok(Math.abs(physics.curveStressEnvelope(.72)-1)<1e-10,
@@ -152,11 +165,44 @@ const path=require("node:path");
  assert.ok(r1Inner100.peakPhase>=.50,
   "El máximo esfuerzo debe darse en la segunda mitad de la curva");
  const r1Outer100=runCurve(r1Oval,0,1,1/60);
- assert.equal(r1Outer100.crashed,false,"R1 exterior permite mayor velocidad");
+ assert.equal(r1Outer100.crashed,true,
+  "Incluso el carril exterior R1 acaba saliéndose a fondo");
+ assert.ok(r1Outer100.phase>=.50);
+ const r2Inner95=runCurve(r2Oval,1,.95,1/60);
+ const r2Outer95=runCurve(r2Oval,0,.95,1/60);
+ assert.equal(r2Inner95.crashed,false,"R2 interior a 95% es estable");
+ assert.equal(r2Outer95.crashed,false,"R2 exterior a 95% es estable");
+ assert.ok(r2Inner95.slip>3,
+  "La trasera se desplaza visiblemente incluso sin descarrilar");
  const r2Inner100=runCurve(r2Oval,1,1,1/60);
  const r2Outer100=runCurve(r2Oval,0,1,1/60);
- assert.equal(r2Inner100.crashed,false,"R2 interior al 100% es estable");
- assert.equal(r2Outer100.crashed,false,"R2 exterior al 100% es estable");
+ assert.equal(r2Inner100.crashed,true,"R2 interior no admite 100% sostenido");
+ assert.equal(r2Outer100.crashed,true,"R2 exterior no admite 100% sostenido");
+ assert.ok(r2Inner100.phase>=.5);
+ assert.ok(r2Outer100.phase>=.5);
+ // También a radios amplios, el 100 % mantenido fuerza eventualmente
+ // a la guía; un único módulo corto puede atravesarse antes de perderla.
+ for(const radius of [r3,r4]){
+  let rear;
+  st.speed=max;st.rearSlip=0;st.rearSlipVelocity=0;
+  for(let i=0;i<120;i++)rear=physics.advanceRearDynamics(pose(radius),1,1/120);
+  assert.equal(rear.deslot,true,"La sobrecarga a fondo afecta también a R3/R4");
+  st.speed=max*.95;st.rearSlip=0;st.rearSlipVelocity=0;
+  for(let i=0;i<120;i++)rear=physics.advanceRearDynamics(pose(radius),1,1/120);
+  assert.equal(rear.deslot,false,"A 95 % se mantienen trazables las curvas amplias");
+ }
+ // El desplazamiento y el ángulo visible pivota alrededor de la guía.
+ st.rearSlip=12;
+ const paintPose={x:250,y:190,h:.72,curve:1,radius:r2};
+ const rendered=physics.visualCarPose(paintPose);
+ const nose=98*.40;
+ assert.ok(Math.hypot(
+  rendered.x+nose*Math.cos(rendered.h)-(paintPose.x+nose*Math.cos(paintPose.h)),
+  rendered.y+nose*Math.sin(rendered.h)-(paintPose.y+nose*Math.sin(paintPose.h)))<1e-8,
+  "La guía delantera permanece en su sitio durante el derrape");
+ assert.ok(Math.abs(rendered.h-paintPose.h)>.20,
+  "La trasera enseña más ángulo sin alterar su límite físico");
+ st.rearSlip=0;st.rearSlipVelocity=0;
  const fast=runCurve(r1Oval,1,1,1/120);
  assert.equal(fast.crashed,true,"Mismo deslot a 120 Hz");
  assert.ok(Math.abs(fast.distance-r1Inner100.distance)<25,
@@ -177,5 +223,5 @@ const path=require("node:path");
  const angle=physics.advanceRearDynamics(pose(r1),1,1/60);
  assert.ok(Math.abs(angle.yawRad)<physics.VEHICLE_DYNAMICS.gripline.guideYawLimit,
   "El ángulo de guía se mantiene dentro de los márgenes al reducir gas");
- console.log("SlotRace DEV 0.14.6: fuerza centrípeta, inercia trasera, R1 90/100%, R2 100%, recuperación y 60/120 Hz — OK");
+ console.log("SlotRace DEV 0.14.7: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
