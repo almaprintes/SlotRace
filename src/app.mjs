@@ -3713,8 +3713,13 @@ function renderScene(canvas,mode){
   }
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
- paintLoose(ctx);
- if(mode==="build")paintBridgeSelection(ctx);
+ // Las piezas aún sueltas son contenido del TALLER, no de la carrera.
+ // Dibujarlas después de la cubierta permitía que sus carriles atravesasen
+ // cualquier puente ya construido. La carrera sólo muestra la pista montada.
+ if(mode==="build"){
+  paintLoose(ctx);
+  paintBridgeSelection(ctx);
+ }
  paintGhost(ctx,track);
  ctx.restore();
 }
@@ -4176,7 +4181,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.21",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.22",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
