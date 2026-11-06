@@ -1,3 +1,25 @@
+# SlotRace DEV 0.14.2 · Planos con geometría real y Helix Spark jugable
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.2
+
+## Planos de la tienda
+- Los dos planos oficiales **Óvalo SR-Precision** (12 piezas) y **Ocho con puente** (14 piezas) muestran ahora un SVG creado directamente a partir de `buildTrack(types, START)` del motor del juego, no dibujos decorativos.
+- Vista cenital con pista doble, ranuras de ambos carriles, costuras de cada pieza, salida/meta y, en el ocho, capa de la recta elevada. La escala y geometría provienen exactamente de la receta que se monta al adquirir el plano.
+- Las cajas provisionales usan también una miniatura del plano auténtico que incluyen.
+- **Sprint urbano** sigue marcado «Plano en diseño» y no presenta una falsa receta. Sin geometría homologada no es adquirible.
+
+## Helix Spark jugable
+- Se incorpora `assets/cars/helix_spark.webp`, el sprite **cenital original** de `TopdownCraftrace/assets/skins/skin_helix_spark.webp` (no se estira la imagen de tres cuartos).
+- En **Garaje**, ambos vehículos tienen selección propia; pulsar «Elegir Spark» lo añade gratis a tu colección local de pruebas. El botón Jugar, la pista y el resumen muestran qué coche está seleccionado.
+- Se puede elegir Spark también tras adquirir su ficha de la tienda. El coche elegido queda en `slotrace-lab-10` bajo `selectedCar`; los datos previos se conservan.
+- Los coches comparten **exactamente las mismas físicas** durante esta etapa para no alterar las sensaciones de conducción por un cambio visual.
+- **Récords separados por coche:** las marcas de Gripline conservan sus claves existentes; las de Spark llevan el sufijo `-helix-spark`. No se borran ni migran los récords viejos.
+- Nuevo estado visual en el Garaje, imagen correcta en carrera, espera de aceleración inicial conservada y resumen de la sesión con el nombre del coche.
+
+Las compras son de prueba y gratuitas; no hay pagos reales ni cambios en la cantidad infinita de piezas de desarrollo. Ninguna receta, circuito guardado o récord histórico se sobrescribe.
+
+---
+
 # SlotRace DEV 0.14.1 · Auditoría y sistema visual unificado
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.1

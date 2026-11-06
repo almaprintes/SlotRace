@@ -1829,3 +1829,67 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){
  .home-screen .home-card,.main-navigation button{transition:none!important}
 }
+
+
+/* DEV 0.14.2 · Planos derivados de SR-Precision y segundo coche jugable. */
+.shop-blueprint-art,.shop-blueprint-pending{
+ position:relative;display:flex;align-items:center;justify-content:center;
+ width:100%;height:100%;min-height:0;overflow:hidden;
+ background:linear-gradient(145deg,#f8fafc,#e5edf3);
+ padding:9px 7px 20px;
+}
+.shop-blueprint-art::before{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background-image:linear-gradient(#9aabb519 1px,transparent 1px),
+  linear-gradient(90deg,#9aabb519 1px,transparent 1px);
+ background-size:23px 23px;
+}
+.shop-blueprint-art svg.shop-real-blueprint{
+ position:relative;z-index:1;display:block;
+ width:100%;height:100%;min-width:0;min-height:0;max-width:100%;max-height:100%;
+ object-fit:contain;filter:drop-shadow(0 4px 2px #24354828);
+}
+.shop-plan-caption{
+ position:absolute;bottom:4px;left:9px;z-index:2;
+ font-size:9px;font-weight:950;letter-spacing:1px;color:#556c7a;
+ background:#f4f8fbd9;border-radius:5px;padding:2px 4px;
+}
+.shop-blueprint-pending{flex-direction:column;gap:5px;text-align:center;
+ background:repeating-linear-gradient(-45deg,#e5ebf0 0 11px,#f2f5f8 11px 22px);
+ color:#697786;padding:14px}
+.shop-pending-icon{font-size:31px;color:#9daab5;line-height:1}
+.shop-blueprint-pending strong{font-size:13px;font-weight:900;color:#596b7b}
+.shop-blueprint-pending small{font-size:10px;line-height:1.35}
+.shop-box-track svg.shop-real-blueprint{
+ width:100%;height:100%;max-width:100%;max-height:100%;
+ padding:3px;
+}
+.shop-modal-art .shop-blueprint-art{padding:10px 12px 24px}
+.shop-modal-art .shop-real-blueprint{height:100%;width:100%}
+.shop-modal-art:has(.shop-blueprint-art){background:#e8eff5}
+.shop-card[data-kind="circuits"] .shop-card-art{background:#e9eff5}
+.garage-car{transition:border-color .18s,box-shadow .18s}
+.garage-car.garage-selected{
+ border:2px solid #d90b35;box-shadow:0 6px 18px #c00b2a22;
+}
+.garage-car.garage-selected .garage-car-detail{background:linear-gradient(#fff,#fff6f8)}
+.garage-select{
+ display:block;width:100%;min-height:43px;margin-top:10px;
+ border-radius:10px;border:1px solid #cc0b33;background:linear-gradient(130deg,#e92246,#b90029);
+ font-size:12px;font-weight:950;color:#fff;padding:9px 11px;
+}
+.garage-select[aria-pressed="true"]{
+ border-color:#b6d8d1;background:#e8f9f3;color:#116e58;
+}
+.garage-car .car-status{font-size:9px;font-weight:950;letter-spacing:.6px}
+.race-car-name{
+ display:inline-block;vertical-align:middle;margin:0 0 0 5px;
+ border-radius:16px;padding:6px 9px;background:#10323bdd;
+ border:1px solid #80ada9;color:#dafff3;font-size:10px;font-weight:850;
+}
+@media(max-width:480px){
+ .shop-blueprint-art{padding:6px 5px 18px}
+ .shop-plan-caption{font-size:8px;letter-spacing:.5px}
+ .garage-select{font-size:11px;min-height:40px}
+ .race-car-name{font-size:9px;padding:5px 7px}
+}

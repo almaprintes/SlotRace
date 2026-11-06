@@ -47,9 +47,9 @@ const SHOP_PRODUCTS=Object.freeze([
   subtitle:"Tu coche de competición",detail:"Vehículo inicial de SlotRace, disponible en la pista desde el principio.",
   highlights:["Disponible para correr","Coche incluido en tu caja"],art:"car"},
  {id:"car-spark",kind:"cars",name:"Helix Spark",short:"HELIX SPARK",
-  kicker:"COCHE DE COLECCIÓN",tag:"PRÓXIMO JUGABLE",car:"spark",
-  subtitle:"Segundo coche de SlotRace",detail:"Puedes añadirlo a tu colección de pruebas. La selección y conducción de este modelo todavía no están implementadas.",
-  highlights:["Coleccionable en DEV","Conducción pendiente"],art:"car"}
+  kicker:"COCHE DE COLECCIÓN",tag:"YA JUGABLE",car:"spark",
+  subtitle:"El deportivo que estabas esperando",detail:"Helix Spark ya puede seleccionarse en el Garaje y conducirse en tus circuitos. Comparte las mismas físicas y el mismo mando que Gripline durante las pruebas.",
+  highlights:["Conducción disponible","Sprite cenital original"],art:"car"}
 ]);
 const SHOP_CATEGORIES=Object.freeze({
  boxes:{title:"Cajas completas",button:"shopTabBoxes"},
@@ -100,6 +100,7 @@ const state={
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
   library:initialLibrary,sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
+  selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   gridEnabled:old?.gridEnabled!==false,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -121,7 +122,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
- driveDirection:state.driveDirection}));}
+ driveDirection:state.driveDirection,selectedCar:state.selectedCar}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -143,8 +144,11 @@ const hubScreens={
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
 const format=n=>n.toFixed(3).replace(".",",");
+// Los récords históricos de Gripline conservan su clave original.
+ // Spark utiliza un sufijo propio para no mezclar coches distintos.
 const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
- state.types.join("-")+(state.driveDirection===-1?"-reverse":"");
+ state.types.join("-")+(state.driveDirection===-1?"-reverse":"")+
+ (state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -1069,6 +1073,23 @@ function createNewCircuit(){
  resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};
  save();openWorkshop();
 }
+const CAR_MODELS=Object.freeze({
+ gripline:{name:"Avenir Gripline",id:"car-gripline"},
+ spark:{name:"Helix Spark",id:"car-spark"}
+});
+function selectCar(id){
+ if(!CAR_MODELS[id])return false;
+ const item=CAR_MODELS[id];
+ if(!shopOwned(item.id)){
+  const next=[...state.shopOwned,item.id];
+  try{localStorage.setItem(SHOP_OWNED_KEY,JSON.stringify(next));}
+  catch(e){toast("No se ha podido guardar el coche en tu colección.");return false;}
+  state.shopOwned=next;
+ }
+ state.selectedCar=id;
+ save();updateUI();toast(item.name+" seleccionado para la próxima carrera.");
+ return true;
+}
 function menuRace(){
  if(!state.track.valid){
   openWorkshop();toast("Cierra primero el circuito para poder competir.");
@@ -1083,9 +1104,10 @@ function play(){
   return false;
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
+ state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
- toast("¡Avenir Gripline listo! Acelera para iniciar el cronómetro.");
+ toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
  return true;
 }
 
@@ -1099,6 +1121,7 @@ function endSession(target="menu"){
 }
 function renderSessionSummary(){
  $("resultsCircuit").textContent=state.sessionName+" · "+
+  CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   (state.driveDirection===1?"Horario":"Antihorario")+
   " · "+state.sessionLaps.length+" vueltas completas";
  const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
@@ -1466,6 +1489,55 @@ function shopTrackSymbol(kind){
   '<path d="M18 56h36" stroke="#e42043" stroke-width="6" stroke-linecap="round"/>'+
   '</svg>';
 }
+
+// Planos oficiales dibujados desde las piezas y conexiones REALES del motor.
+const shopBlueprintCache=new Map();
+function shopBlueprintSvg(types,name="circuito"){
+ if(!types?.length)return "";
+ const key=name+"::"+types.join("|");
+ if(shopBlueprintCache.has(key))return shopBlueprintCache.get(key);
+ const layout=buildTrack(types,START);
+ const fmt=n=>Number(n.toFixed(2));
+ const path=pts=>"M "+pts.map(p=>fmt(p.x)+" "+fmt(p.y)).join(" L ");
+ const center=path(layout.points),width=TRACK_WIDTH;
+ const {left,right,top,bottom}=layout.bounds;
+ const pad=Math.max(80,width*.63);
+ const [x,y,w,h]=[left-pad,top-pad,Math.max(1,right-left+pad*2),Math.max(1,bottom-top+pad*2)].map(fmt);
+ const paint=(d,color,thick,attr="")=>'<path d="'+d+'" fill="none" stroke="'+color+
+  '" stroke-width="'+thick+'" stroke-linecap="round" stroke-linejoin="round" '+attr+'/>';
+ const surface=d=>paint(d,"#23313d",width+12)+paint(d,"#8797a6",width+4)+paint(d,"#f3f6f9",width-3);
+ const lanes=layout.lanes.map(l=>paint(path(l.nodes),"#1d2933",6)+paint(path(l.nodes),"#aab4be",1.3)).join("");
+ const seams=layout.parts.slice(1).map(part=>{
+  const p=part.start,half=width/2,dx=Math.sin(p.h)*half,dy=Math.cos(p.h)*half;
+  return '<line x1="'+fmt(p.x-dx)+'" y1="'+fmt(p.y+dy)+
+   '" x2="'+fmt(p.x+dx)+'" y2="'+fmt(p.y-dy)+
+   '" stroke="#314151" stroke-width="3.5" stroke-linecap="round"/>';
+ }).join("");
+ const crossing=(layout.bridge?.overParts||[]).map(i=>{
+  const part=layout.parts[i];if(!part)return "";
+  const d=path(part.points);
+  return '<g class="shop-blueprint-bridge">'+paint(d,"#102231",width+30,'opacity=".3"')+
+   surface(d)+layout.lanes.map((lane,ln)=>{
+    const side=ln===0?-LANE_OFFSET:LANE_OFFSET;
+    return paint(path(part.points.map(p=>({
+      x:p.x-Math.sin(p.h)*side,y:p.y+Math.cos(p.h)*side
+    }))),"#1c2b38",6);
+   }).join("")+'</g>';
+ }).join("");
+ const p=layout.parts[0]?.start||START;
+ const flag=Array.from({length:6},(_,i)=>
+  '<rect x="-12" y="'+fmt(-width/2+i*width/6)+'" width="24" height="'+
+  fmt(width/6)+'" fill="'+(i%2?"#fff":"#142333")+'"/>').join("");
+ const svg='<svg class="shop-real-blueprint shop-mini-track" viewBox="'+[x,y,w,h].join(" ")+
+  '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Plano real de '+name+
+  ': '+types.length+' piezas; '+(layout.valid?"circuito válido":"en construcción")+'">'+
+  paint(center,"#1e2b37",width+21,'opacity=".15"')+
+  surface(center)+lanes+seams+crossing+
+  '<g transform="translate('+fmt(p.x)+' '+fmt(p.y)+') rotate('+fmt(p.h*180/Math.PI)+')">'+flag+'</g></svg>';
+ shopBlueprintCache.set(key,svg);
+ return svg;
+}
+
 function shopArtwork(product){
  const car=product.car?'<img loading="lazy" src="'+shopCarImage(product.car)+
   '" alt="'+product.name+'" class="shop-car-image">':"";
@@ -1474,9 +1546,17 @@ function shopArtwork(product){
   '<div class="shop-box-face"><span class="shop-box-logo">Slot<span>Race</span> LAB ▨</span>'+
   '<span class="shop-box-name">'+product.short+'</span>'+
   '<span class="shop-box-sub">COLECCIÓN DE CIRCUITOS</span>'+car+
-  '<div class="shop-box-track">'+shopTrackSymbol(product.id==="box-rally"?"eight":"oval")+'</div>'+
+  '<div class="shop-box-track">'+shopBlueprintSvg(shopProduct(product.plans?.[0])?.types,product.short)+'</div>'+
   '<span class="shop-box-foot">PISTAS · COCHES · PLANOS</span></div></div>';
  if(product.kind==="cars")return '<div class="shop-car-visual">'+car+'</div>';
+ if(product.kind==="circuits"){
+  if(product.types)return '<div class="shop-blueprint-art">'+
+   shopBlueprintSvg(product.types,product.name)+
+   '<span class="shop-plan-caption">'+product.types.length+' PIEZAS · PLANO REAL</span></div>';
+  return '<div class="shop-blueprint-pending" aria-label="Plano pendiente de diseño">'+
+   '<span class="shop-pending-icon" aria-hidden="true">⌁</span>'+
+   '<strong>Plano en diseño</strong><small>Receta pendiente</small></div>';
+ }
  return '<div class="shop-simple-art shop-simple-'+product.art+'">'+shopTrackSymbol(product.art)+
   '<span>SR-PRECISION</span></div>';
 }
@@ -1554,7 +1634,7 @@ function shopOpenProduct(id){
   "Añadir gratis a mi colección":product.kind==="circuits"?
   "Guardar plano y montar":product.kind==="boxes"?
   "Ver planos de la caja":product.kind==="cars"&&product.id==="car-gripline"?
-  "Ir a jugar":"Ver mi colección";
+  "Elegir y jugar":"Ver mi colección";
  $("shopProductModal").hidden=false;
  $("shopModalClose").focus?.();
  return true;
@@ -1601,7 +1681,10 @@ function shopPrimaryAction(){
  if(!shopOwned(id))return shopAcquire(id);
  if(product.kind==="circuits")return shopInstallPlan(id);
  if(product.kind==="boxes"){shopCloseProduct();return shopSelectCategory("circuits");}
- if(id==="car-gripline"){shopCloseProduct();return menuRace();}
+ if(id==="car-gripline"||id==="car-spark"){
+  shopCloseProduct();if(!selectCar(id==="car-spark"?"spark":"gripline"))return false;
+  return menuRace();
+ }
  shopCloseProduct();state.shopCollectionExpanded=true;renderShop();return true;
 }
 
@@ -1625,6 +1708,16 @@ function updateUI(){
  $("mastSettings").setAttribute("aria-label",state.mode==="settings"?"Ajustes abiertos":"Abrir Ajustes");
  if(state.mode==="store")renderShop();
  $("garageRace").disabled=!state.track.valid;
+ $("garageRace").textContent="🏁 Jugar con "+CAR_MODELS[state.selectedCar].name;
+ $("garageCarGripline").classList.toggle("garage-selected",state.selectedCar==="gripline");
+ $("garageCarSpark").classList.toggle("garage-selected",state.selectedCar==="spark");
+ $("garageChooseGripline").textContent=state.selectedCar==="gripline"?"✓ Seleccionado":"Elegir Gripline";
+ $("garageChooseSpark").textContent=state.selectedCar==="spark"?"✓ Seleccionado":"Elegir Spark";
+ $("garageChooseGripline").setAttribute("aria-pressed",String(state.selectedCar==="gripline"));
+ $("garageChooseSpark").setAttribute("aria-pressed",String(state.selectedCar==="spark"));
+ $("garageStatusGripline").textContent=state.selectedCar==="gripline"?"COCHE SELECCIONADO":"DISPONIBLE";
+ $("garageStatusSpark").textContent=state.selectedCar==="spark"?"COCHE SELECCIONADO":"DISPONIBLE";
+ $("raceCarName").textContent=CAR_MODELS[state.selectedCar].name;
  $("settingsSound").textContent=state.clicksEnabled?"Activado":"Desactivado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
@@ -2223,17 +2316,22 @@ function visualCarPose(at){
   h:at.h+side*DRIVE.driftMaxAngle*d,
   smoke:d,spin:0};
 }
-// La piel cenital ORIGINAL del Avenir Gripline viene del repositorio
-// Top Down RACE. Se pinta como una imagen real, no como un coche dibujado
-// con rectángulos. Silueta de 98 mm frente a los 154 mm anteriores.
-const GRIPLINE_SPRITE_URL="./assets/cars/avenir_gripline.webp";
-const GRIPLINE_LENGTH_MM=98;
-const GRIPLINE_WIDTH_MM=49;
-const griplineImage=typeof Image==="function"?new Image():null;
-if(griplineImage){
- griplineImage.onload=()=>{state.viewDirty=true;};
- griplineImage.onerror=()=>{state.viewDirty=true;};
- griplineImage.src=GRIPLINE_SPRITE_URL;
+// Sprites cenitales originales de Top Down RACE: misma escala y físicas.
+// El modelo elegido sólo cambia la apariencia y el récord por coche.
+const CAR_LENGTH_MM=98,CAR_WIDTH_MM=49;
+const CAR_SKINS=Object.freeze({
+ gripline:"./assets/cars/avenir_gripline.webp",
+ spark:"./assets/cars/helix_spark.webp"
+});
+const carImages={};
+for(const [key,url] of Object.entries(CAR_SKINS)){
+ const img=typeof Image==="function"?new Image():null;
+ if(img){
+  img.onload=()=>{state.viewDirty=true;};
+  img.onerror=()=>{state.viewDirty=true;};
+  img.src=url;
+ }
+ carImages[key]=img;
 }
 function paintCar(ctx,at,lane,paused=false){
  if(!at)return;
@@ -2252,17 +2350,15 @@ function paintCar(ctx,at,lane,paused=false){
   ctx.restore();
  }
  ctx.shadowColor="#000a";ctx.shadowBlur=11;ctx.shadowOffsetY=6;
- if(griplineImage&&griplineImage.complete&&griplineImage.naturalWidth>0){
-  // El frontal de la imagen apunta hacia ARRIBA; la pista h=0
-  // apunta hacia la DERECHA. Sumamos 90° para mantener rumbo.
+ const current=carImages[state.selectedCar]||carImages.gripline;
+ if(current&&current.complete&&current.naturalWidth>0){
+  // En ambos sprites la parte delantera mira hacia arriba.
   ctx.rotate(Math.PI/2);
-  ctx.drawImage(griplineImage,-GRIPLINE_WIDTH_MM/2,-GRIPLINE_LENGTH_MM/2,
-   GRIPLINE_WIDTH_MM,GRIPLINE_LENGTH_MM);
+  ctx.drawImage(current,-CAR_WIDTH_MM/2,-CAR_LENGTH_MM/2,CAR_WIDTH_MM,CAR_LENGTH_MM);
  }else{
-  // Sólo durante la carga o fallo del fichero: indicador discreto
-  // para que el coche jamás desaparezca de una carrera.
-  ctx.fillStyle="#f8faff";roundRect(ctx,-49,-21,98,42,13);ctx.fill();
-  ctx.shadowBlur=0;ctx.fillStyle="#187ac0";
+  // Render de emergencia mientras carga: no ocultar el coche.
+  ctx.fillStyle="#f8faff";roundRect(ctx,-49,-21,CAR_LENGTH_MM,42,13);ctx.fill();
+  ctx.shadowBlur=0;ctx.fillStyle=state.selectedCar==="spark"?"#e3be1c":"#187ac0";
   ctx.fillRect(-27,-8,52,16);
  }
  ctx.restore();
@@ -3028,6 +3124,8 @@ function initEvents(){
   $(id).addEventListener("click",showMenu);
  $("libraryBuild").addEventListener("click",openWorkshop);
  $("garageRace").addEventListener("click",menuRace);
+ $("garageChooseGripline").addEventListener("click",()=>selectCar("gripline"));
+ $("garageChooseSpark").addEventListener("click",()=>selectCar("spark"));
  $("storeImport").addEventListener("click",()=>showHub("library"));
  for(const [category,meta] of Object.entries(SHOP_CATEGORIES))
   $(meta.button).addEventListener("click",()=>shopSelectCategory(category));
@@ -3182,7 +3280,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.1",state,showHub,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.2",state,showHub,selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};

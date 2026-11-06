@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.1: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.1 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.1">
+  <meta name="description" content="SlotRace DEV 0.14.2: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.2 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.2">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.1">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.2">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.1</div>
+    <div class="splash-version">DEV 0.14.2</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.1">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.2">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.1">DEV 0.14.1<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.2">DEV 0.14.2<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -126,16 +126,16 @@
     <div class="hub-scroll">
       <div class="hub-heading"><span class="hub-kicker">COLECCIÓN DE VEHÍCULOS</span><h1>Mi garaje</h1><p>Los primeros coches del universo Top Down RACE.</p></div>
       <div class="garage-showcase">
-        <article class="garage-car garage-available">
+        <article id="garageCarGripline" class="garage-car garage-available garage-selected">
           <div class="garage-car-preview"><img src="./assets/cars/avenir_gripline_threequarter.webp" alt="Avenir Gripline en tres cuartos" loading="lazy"></div>
-          <div class="garage-car-detail"><span class="car-status">COCHE ACTUAL</span><h2>Avenir Gripline</h2><p>El coche disponible para competir en SlotRace.</p></div>
+          <div class="garage-car-detail"><span id="garageStatusGripline" class="car-status">COCHE SELECCIONADO</span><h2>Avenir Gripline</h2><p>Listo para competir. Utiliza las físicas oficiales de SlotRace.</p><button id="garageChooseGripline" class="garage-select" type="button" aria-pressed="true">✓ Seleccionado</button></div>
         </article>
-        <article class="garage-car">
+        <article id="garageCarSpark" class="garage-car garage-available">
           <div class="garage-car-preview"><img src="./assets/cars/helix_spark_threequarter.webp" alt="Helix Spark en tres cuartos" loading="lazy"></div>
-          <div class="garage-car-detail"><span class="car-status soon">PRÓXIMAMENTE JUGABLE</span><h2>Helix Spark</h2><p>Ya puedes verlo en el garaje. Su incorporación al pilotaje llegará en otra versión.</p></div>
+          <div class="garage-car-detail"><span id="garageStatusSpark" class="car-status">DISPONIBLE</span><h2>Helix Spark</h2><p>Ya puedes conducirlo. Mismo mando y físicas, con su carrocería cenital original.</p><button id="garageChooseSpark" class="garage-select" type="button" aria-pressed="false">Elegir Spark</button></div>
         </article>
       </div>
-      <div class="hub-bottom-actions"><button id="garageRace" class="hub-primary" type="button">🏁 Jugar con Gripline</button><button id="garageHome" class="hub-back" type="button">‹ Volver al menú</button></div>
+      <div class="hub-bottom-actions"><button id="garageRace" class="hub-primary" type="button">🏁 Jugar con Avenir Gripline</button><button id="garageHome" class="hub-back" type="button">‹ Volver al menú</button></div>
     </div>
   </section>
   <section id="storeScreen" class="screen hub-screen shop-screen" hidden aria-label="Tienda SlotRace">
@@ -307,7 +307,7 @@
         <div class="hud"><small>CRONÓMETRO</small><strong class="green" id="lapTime">0,000</strong></div>
         <div class="hud"><small>ACELERADOR</small><strong id="power">0%</strong></div>
       </div>
-      <div class="race-hint"><span id="raceHint">Suelta antes de las curvas</span></div>
+      <div class="race-hint"><span id="raceHint">Suelta antes de las curvas</span><small id="raceCarName" class="race-car-name">Avenir Gripline</small></div>
     </div>
     <div class="race-controls">
       <div class="race-buttons">
@@ -389,6 +389,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.1"></script>
+<script type="module" src="./src/app.mjs?v=0.14.2"></script>
 </body>
 </html>

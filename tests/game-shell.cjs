@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.1");
+ assert.equal(game.version,"DEV 0.14.2");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -473,5 +473,51 @@ const path=require("node:path");
  assert.equal(st.library.length,storeCount,"No duplica el plano de tienda");
  assert.equal(game.shopInstallPlan("plan-urban"),false,"No instala planos en preparación");
 
- console.log("SlotRace DEV 0.14.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // Los planos comerciales se generan a partir de las piezas REALES del motor.
+ const realOval=game.shopBlueprintSvg(geo.STARTER,"Óvalo de prueba");
+ assert.match(realOval,/shop-real-blueprint/);
+ assert.match(realOval,/viewBox="[-\d\. ]+"/);
+ assert.equal((realOval.match(/<line /g)||[]).length,geo.STARTER.length-1,
+  "Cada costura pertenece a una unión real del óvalo");
+ assert.match(realOval,/Plano real de Óvalo de prueba/);
+ const realEight=game.shopBlueprintSvg(geo.FIGURE_EIGHT,"Ocho de prueba");
+ assert.match(realEight,/shop-blueprint-bridge/,"El plano del ocho muestra la vía elevada");
+ assert.match(realEight,/circuito válido/);
+ game.showHub("store");
+ game.shopSelectCategory("circuits");
+ assert.match(elements.get("shopProducts").innerHTML,/shop-real-blueprint/,
+  "La tienda usa geometría exacta, no iconos inventados");
+ assert.match(elements.get("shopProducts").innerHTML,/Plano en diseño/,
+  "No se inventan planos de circuitos aún sin receta");
+
+ // Elegir Spark en el garaje lo habilita sin afectar al Gripline.
+ game.showHub("garage");
+ elements.get("garageChooseSpark").listeners.click[0]();
+ assert.equal(st.selectedCar,"spark");
+ assert.equal(game.shopOwned("car-spark"),true,"Selección disponible en pruebas");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).selectedCar,"spark",
+  "El coche elegido persiste sin borrar el trazado");
+ assert.equal(elements.get("garageRace").textContent,"🏁 Jugar con Helix Spark");
+ assert.equal(elements.get("garageChooseSpark").attrs["aria-pressed"],"true");
+ assert.equal(game.openRace(),true,"El segundo coche puede competir en pista");
+ assert.equal(st.mode,"race");
+ assert.equal(st.raceStarted,false,"Spark espera la primera aceleración");
+ assert.equal(elements.get("raceCarName").textContent,"Helix Spark");
+ st.seconds=7.432;game.completeLap();
+ const sparkKeys=Object.keys(st.records).filter(k=>k.endsWith("-helix-spark"));
+ assert.ok(sparkKeys.length>0,"Los tiempos de Spark no pisan los de Gripline");
+ game.endSession("menu");
+ assert.match(elements.get("resultsCircuit").textContent,/Helix Spark/,
+  "El informe muestra con qué coche se condujo");
+ game.showHub("garage");
+ elements.get("garageChooseGripline").listeners.click[0]();
+ assert.equal(st.selectedCar,"gripline");
+ assert.equal(elements.get("garageRace").textContent,"🏁 Jugar con Avenir Gripline");
+ assert.equal(game.openRace(),true);
+ assert.equal(elements.get("raceCarName").textContent,"Avenir Gripline");
+ assert.equal(Object.keys(st.records).filter(k=>k.endsWith("-helix-spark")).length,
+  sparkKeys.length,"Cambiar de coche no borra los récords de Spark");
+ game.showMenu();
+
+ console.log("SlotRace DEV 0.14.2: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
