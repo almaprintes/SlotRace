@@ -1132,32 +1132,72 @@ function scatterLoose(id){
  const y=b.top+195+(Math.floor(n/cols)%4)*270;
  return addLoose(id,x,y,0);
 }
+// Atajos de 90°: combinaciones exactas de módulos existentes, no piezas falsas.
+const CURVE_90_PRESETS=Object.freeze({
+ R2_90R:Object.freeze(["R2_45R","R2_45R"]),
+ R3_90R:Object.freeze(Array(4).fill("R3_225R")),
+ R4_90R:Object.freeze(Array(4).fill("R4_225R"))
+});
 const pocketPartId=id=>id.includes("_")&&id.endsWith("R")?id.slice(0,-1)+state.caseCurveDirection:id;
+const shelfParts=id=>(CURVE_90_PRESETS[id]||[id]).map(pocketPartId);
+const presetLabel=id=>id.slice(0,2)+" · 90°";
+function matchingPresetLoose(id){
+ const ids=shelfParts(id);
+ if(!CURVE_90_PRESETS[id])return[];
+ for(let k=state.loose.length-1;k>=0;k--){
+  const group=looseGroup(k);
+  if(group&&group.parts.length===ids.length&&
+     group.parts.every((part,i)=>part.id===ids[i]))return group.indices;
+ }
+ return[];
+}
+function placeCurvePresetLoose(id,x,y,h=0){
+ const ids=shelfParts(id);
+ if(!CURVE_90_PRESETS[id]||
+    !allowed([...state.types,...state.loose.map(p=>p.id),...ids]))return false;
+ const b=state.workBoard,n=state.loose.length;
+ const cols=Math.max(2,Math.floor((b.width-300)/400));
+ const point=gridXY(
+  Math.max(b.left+145,Math.min(b.right-225,x??b.left+180+(n%cols)*400)),
+  Math.max(b.top+155,Math.min(b.bottom-220,y??b.top+195+(Math.floor(n/cols)%4)*270))
+ );
+ pushHistory();
+ const key=newMagnetGroup();
+ let pose={x:point.x,y:point.y,h};
+ for(const [i,pieceId] of ids.entries()){
+  state.loose.push({id:pieceId,x:pose.x,y:pose.y,h:pose.h,magnetGroup:key,magnetOrder:i});
+  pose=positionOnPiece(pose,pieceId,1);
+ }
+ state.selection=-1;state.looseSelection=state.loose.length-1;
+ state.selectionMode="group";state.selectedGroup=key;lastCaseAppend=null;
+ save();updateUI();
+ toast("Curva "+presetLabel(id)+" colocada: "+ids.length+" piezas unidas.");
+ return true;
+}
 // Tocar la caja monta por orden en el conector libre final.
  // El arrastre desde el asa sigue creando una pieza libre en el tapete.
 let lastCaseAppend=null;
 function inventoryAction(id){
- const chosen=pocketPartId(id);
- if(!CATALOG[chosen])return false;
+ const pieces=shelfParts(id);
+ if(!pieces.every(part=>CATALOG[part]))return false;
  if(state.track.closed){
-  const placed=scatterLoose(chosen);
+  if(CURVE_90_PRESETS[id])return placeCurvePresetLoose(id);
+  const placed=scatterLoose(pieces[0]);
   if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala si quieres iniciar otro tramo.");
   return placed;
  }
- const next=[...state.types,chosen];
+ const next=[...state.types,...pieces];
  if(!allowed([...next,...state.loose.map(p=>p.id)])){
   toast("No puedes utilizar más piezas de ese tipo.");return false;
  }
- // No cambiar origen, radios ni ángulos: buildTrack calcula todos los conectores.
  const didClose=buildTrack(next,state.origin,state.bridgeParts).closed;
  if(!changeTypes(next,"",state.loose,state.origin,{preserveBridge:true}))return false;
- state.selectedGroup="main";
- state.selection=state.types.length-1;
- state.selectionMode="piece";
- lastCaseAppend={id:chosen,count:state.types.length,history:state.history.length};
- updateUI();
- revealLatestBuilderPiece();
- if(!didClose)toast("✓ Pieza "+state.types.length+" encajada al final del circuito.");
+ state.selectedGroup="main";state.selection=state.types.length-1;state.selectionMode="piece";
+ lastCaseAppend={id:pieces.at(-1),pocketId:id,parts:pieces,count:state.types.length,history:state.history.length};
+ updateUI();revealLatestBuilderPiece();
+ if(!didClose)toast(CURVE_90_PRESETS[id]?
+  "✓ Curva "+presetLabel(id)+" montada con "+pieces.length+" piezas y juntas reales.":
+  "✓ Pieza "+state.types.length+" encajada al final del circuito.");
  return true;
 }
 function toggleCaseCurveDirection(){
@@ -1884,17 +1924,22 @@ function renderCasePages(){
  for(const pocket of $("pieces").children)pocket.hidden=!visible.has(pocket.dataset.piece);
 }
 function removeLooseFromCase(id){
- const chosen=pocketPartId(id);
- // «−» deshace la última pieza incorporada automáticamente, nunca una
- // pieza anterior de la pista ni un cambio posterior del usuario.
- if(lastCaseAppend?.id===chosen&&
+ const chosen=pocketPartId(id),parts=shelfParts(id);
+ if(lastCaseAppend?.pocketId===id&&
     lastCaseAppend.count===state.types.length&&
     lastCaseAppend.history===state.history.length&&
-    state.types.at(-1)===chosen){
-  lastCaseAppend=null;
-  undo();
-  toast("Última pieza acoplada devuelta a la caja.");
-  return true;
+    parts.every((piece,i)=>state.types[state.types.length-parts.length+i]===piece)){
+  lastCaseAppend=null;undo();
+  toast("Último montaje devuelto a la caja.");return true;
+ }
+ if(CURVE_90_PRESETS[id]){
+  const indices=matchingPresetLoose(id);
+  if(!indices.length){toast("No hay un tramo suelto de este radio para devolver.");return false;}
+  pushHistory();
+  for(const i of [...indices].sort((a,b)=>b-a))state.loose.splice(i,1);
+  state.looseSelection=-1;state.selection=-1;
+  state.selectedGroup=null;state.selectionMode="group";
+  save();updateUI();toast("Curva completa devuelta al estante.");return true;
  }
  const latest=state.loose.findLastIndex(p=>p.id===chosen);
  const index=state.looseSelection>=0&&state.loose[state.looseSelection]?.id===chosen?
@@ -2285,20 +2330,28 @@ function updateUI(){
   (total-used)+" de "+total+" piezas en sus huecos";
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
-  const id=el.dataset.piece,chosen=pocketPartId(id),free=freeStock([...state.types,...state.loose.map(p=>p.id)],chosen);
+  const id=el.dataset.piece,parts=shelfParts(id),chosen=pocketPartId(id);
+  const inventory=[...state.types,...state.loose.map(p=>p.id)];
+  const free=Math.min(...parts.map(part=>freeStock(inventory,part)));
   const unlimited=free===Infinity;
   el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
-  el.setAttribute("aria-label",CATALOG[chosen].name+" · "+(unlimited?"piezas ilimitadas":free+" disponibles")+
+  const shelfName=CURVE_90_PRESETS[id]?
+   "Curva "+presetLabel(id)+" · conjunto de "+parts.length+" piezas":CATALOG[chosen].name;
+  el.setAttribute("aria-label",shelfName+" · "+(unlimited?"disponible sin límite":free+" disponibles")+
    (state.track.closed?". Toca para colocar suelta.":". Toca para encajar en orden.")+
-   " Arrastra desde el asa para colocar una pieza suelta.");
+   " Arrastra desde el asa para colocarla libremente.");
   el.disabled=free===0;
   el.classList.toggle("empty",free===0);
   const minus=el.querySelector(".pocket-minus"),plus=el.querySelector(".pocket-plus");
-  if(minus)minus.disabled=!state.loose.some(p=>p.id===chosen)&&
-   !(lastCaseAppend?.id===chosen&&lastCaseAppend.count===state.types.length&&
-     lastCaseAppend.history===state.history.length&&state.types.at(-1)===chosen);
+  if(minus)minus.disabled=!(CURVE_90_PRESETS[id]?
+   matchingPresetLoose(id).length:state.loose.some(p=>p.id===chosen))&&
+   !(lastCaseAppend?.pocketId===id&&lastCaseAppend.count===state.types.length&&
+     lastCaseAppend.history===state.history.length);
   if(plus)plus.disabled=free===0;
-  el.classList.toggle("selected",(state.selection>=0&&state.types[state.selection]===chosen)||(state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen));
+  el.classList.toggle("selected",CURVE_90_PRESETS[id]?
+   (lastCaseAppend?.pocketId===id&&lastCaseAppend.count===state.types.length):
+   ((state.selection>=0&&state.types[state.selection]===chosen)||
+    (state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen)));
  }
  renderCasePages();
  $("caseMountGuide").textContent=state.track.closed?
@@ -2317,9 +2370,13 @@ const pocketNames={
  START350:"SALIDA / META",
  R1_225R:"R1 · 22,5°",R1_45R:"R1 · 45°",R1_90R:"R1 · 90°",
  R2_225R:"R2 · 22,5°",R2_45R:"R2 · 45°",
- R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°"
+ R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°",
+ R2_90R:"R2 · 90°",R3_90R:"R3 · 90°",R4_90R:"R4 · 90°"
 };
-const pocketIds=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")));
+const pocketIds=[
+ ...Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")),
+ ...Object.keys(CURVE_90_PRESETS)
+];
 // Fuente de color común entre la pista de la mesa y las miniaturas de la caja.
 const PIECE_LOOK=Object.freeze({
  shadow:"#0c1518",outer:"#65747a",rim:"#1e282d",deck:"#343e44",
@@ -2327,8 +2384,12 @@ const PIECE_LOOK=Object.freeze({
  guide:"#080c0e",edge:"#65787e",seam:"#0c1217"
 });
 function foamSlotSVG(id){
- const spec=CATALOG[id],n=spec.length?2:28;
- const pts=Array.from({length:n+1},(_,i)=>positionOnPiece({x:0,y:0,h:0},id,i/n));
+ const preset=CURVE_90_PRESETS[id],spec=CATALOG[id]||CATALOG[preset?.[0]],n=spec.length?2:28;
+ const pts=Array.from({length:n+1},(_,i)=>{
+  if(!preset)return positionOnPiece({x:0,y:0,h:0},id,i/n);
+  const r=spec.radius,h=Math.PI/2*i/n;
+  return{x:r*Math.sin(h),y:r*(1-Math.cos(h)),h};
+ });
  // El marco incluye el ancho REAL del módulo. Las rectas cortas dejan de
  // aparecer como píldoras redondeadas: llevan cantos perpendiculares.
  const half=(TRACK_WIDTH+24)/2;
@@ -2370,13 +2431,16 @@ function foamSlotSVG(id){
    line(LANE_OFFSET,"mini-slot-guide",5,PIECE_LOOK.guide)+
    line(-72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
    line(72,"mini-slot-edge",2.5,PIECE_LOOK.edge)+
-   seam(pts[0])+seam(pts[pts.length-1])+
+   seam(pts[0])+(preset?preset.slice(1).map((_,i)=>
+    seam(pts[Math.round((i+1)*n/preset.length)])).join(""):"")+seam(pts[pts.length-1])+
   '</g></svg>';
 }
 function palette(){
  const list=$("pieces");
  for(const id of pocketIds){
-  const spec=CATALOG[id];
+  const spec=CATALOG[id]||{
+   group:"curva",name:"Curva "+presetLabel(id),code:"COMBO · "+CURVE_90_PRESETS[id].length+" PIEZAS"
+  };
   const pocket=document.createElement("div");
   pocket.className="foam-pocket";pocket.dataset.piece=id;
   pocket.setAttribute("role","button");
@@ -2435,7 +2499,8 @@ function palette(){
   grip.addEventListener("click",e=>{e.preventDefault?.();e.stopPropagation?.();});
   grip.addEventListener("pointerdown",e=>{
    e.preventDefault?.();e.stopPropagation?.();
-   if(state.dragging||freeStock([...state.types,...state.loose.map(p=>p.id)],pocketPartId(id))<1)return;
+   if(state.dragging||shelfParts(id).some(part=>
+      freeStock([...state.types,...state.loose.map(p=>p.id)],part)<1))return;
    tapPointer=null;suppressNextClick=true;
    state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
     originX:e.clientX,originY:e.clientY,active:false};
@@ -2464,7 +2529,11 @@ function palette(){
    if(pt.x<b.left+85||pt.x>b.right-85||pt.y<b.top+85||pt.y>b.bottom-85){
     toast("Suelta dentro de la mesa verde.");return;
    }
-   if(!addLoose(pocketPartId(id),pt.x,pt.y))return;
+   if(CURVE_90_PRESETS[id]){
+    if(!placeCurvePresetLoose(id,pt.x,pt.y))return;
+   }else{
+    if(!addLoose(pocketPartId(id),pt.x,pt.y))return;
+   }
    snapLoose(state.loose.length-1,{history:false});
   });
   grip.addEventListener("pointercancel",e=>{
@@ -3914,7 +3983,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.15",state,
+window.slotraceLab={version:"DEV 0.14.16",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
