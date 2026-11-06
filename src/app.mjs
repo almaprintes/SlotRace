@@ -614,8 +614,13 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  const wasClosed=state.track.closed;
  pushHistory();
  const sameGeometry=next.length===state.types.length&&next.every((id,i)=>id===state.types[i]);
+ // Añadir rectas o curvas al FINAL no debe deshacer las elevaciones ya
+ // colocadas sobre las piezas anteriores, ni mover su índice guardado.
+ const stablePrefix=next.slice(0,Math.min(next.length,state.types.length))
+  .every((id,i)=>id===state.types[i]);
  state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
- if(!sameGeometry&&!preserveBridge)state.bridgeParts=[];
+ if(!sameGeometry&&!preserveBridge)
+  state.bridgeParts=stablePrefix?state.bridgeParts.filter(i=>i<next.length):[];
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
  save();updateUI();
