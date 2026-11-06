@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.19 · Puentes por tramos, cierre a la vista y selección de cruces
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.19
+
+- **Cerrar/Revisar visible:** botón propio junto a «Imagen» y «Jugar». «Cerrar» intenta el cierre exacto; si los conectores ya coinciden pero el puente es inválido, aparece «Revisar», explica el motivo y abre «Puentes». No se fuerza ningún cierre que altere la geometría.
+- **Puentes sin acertar con el dedo:** pestaña «Puentes» con «‹ Anterior», «Siguiente ›», «1 · Inicio» y «2 · Final y elevar». Se selecciona un intervalo de piezas por índice, incluyendo el paso por la línea de meta en un circuito cerrado. «↓ Bajar tramo» retira la elevación del bloque seleccionado; sigue disponible elevar una sola pieza.
+- **Seleccionar piezas superpuestas:** al tocar varias veces el mismo cruce se alterna entre la pieza superior y la inferior. Las flechas de «Puentes» permiten seleccionar incluso con zoom o dos vías visualmente superpuestas.
+- **Rampas sobre curvas amplias:** una curva con arco central de al menos **350 mm** puede ser transición de altura de 0 a 65 mm, sin modificar radio, ángulo o conectores horizontales. Las curvas demasiado cortas siguen generando aviso de rampa insuficiente.
+- **Diagnóstico separado:** el estado muestra desfase en mm/grados si los extremos están abiertos, advierte si faltan rampas y diferencia los conectores cerrados de un cruce verticalmente inválido.
+- **Compatibilidad:** no cambia la clave de guardado, los circuitos antiguos, la geometría plana, el motor de carrera ni los récords. El nuevo rango de selección es temporal, no se guarda en la receta.
+- **Verificaciones:** pruebas de rampas curvas, selección de rango y navegación circular, doble toque en un cruce y botón «Cerrar/Revisar». El resultado del despliegue de Pages debe comprobarse por separado.
+
+---
+
 # SlotRace DEV 0.14.18 · Curvas de 90° de una pieza y acoplamiento magnético reparado
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.18
