@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.12 · Contraderrape de latigazo al enderezar
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.12
+
+- **Latigazo mucho más rápido:** al entrar en recta, el muelle de la trasera pasa de **7 a 30 N/m** y la amortiguación de **0,24 a 0,50 Ns/m**. En la simulación a 60/120 Hz, desde 12 mm de derrape y velocidad lateral inicial cero, cruza el centro en unos **0,067 s** y alcanza unos **6 mm hacia el otro lado en 0,117 s**, frente a unos 0,25 s anteriormente.
+- **Seco pero continuo:** la trasera no se recoloca por teletransporte; mantiene la posición y velocidad acumuladas al salir de curva, cambia de lado con aceleración física y amortigua enseguida la oscilación. La guía delantera permanece sobre la ranura.
+- **Misma amplitud, más velocidad:** el contraderrape sigue siendo aproximadamente el 50 % del desplazamiento previo. No se ha modificado el agarre en curva, el umbral de salida ni el zoom.
+- **Récords separados:** el cambio de dinámica activa la etiqueta de física `rear-physics-v4` para tiempos nuevos. Los anteriores siguen disponibles como históricos en Mis circuitos → Mis récords.
+- **Pruebas:** velocidad del latigazo, amplitud, simetría, continuidad en juntas, estabilidad a 60 y 120 Hz y conservación de velocidad lateral.
+
+Parámetros de jugabilidad; no medidas verificadas de un Scalextric comercial.
+
+---
+
 # SlotRace DEV 0.14.11 · Contraderrape al enderezar en recta
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.11

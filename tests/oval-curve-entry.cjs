@@ -34,11 +34,11 @@ const path=require("node:path");
  );
  const game=window.slotraceLab;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.11");
+ assert.equal(game.version,"DEV 0.14.12");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
- assert.equal(game.version,"DEV 0.14.11");
+ assert.equal(game.version,"DEV 0.14.12");
  assert.equal(st.track.valid,true);
  assert.equal(st.track.bridge,null);
  const max=physics.DRIVE.topSpeed;
@@ -233,36 +233,53 @@ const path=require("node:path");
   Object.assign(st,{rearSlip:initialSlip,rearSlipVelocity:0,
    deslot:null,penalty:0,speed:max*.80});
   const start=physics.visualCarPose(paintPose);
-  let maxReverse=0,crossed=false,first=null;
+  let maxReverse=0,crossed=false,first=null,firstCrossSec=null,peakSec=0;
+  let settledAtHalfSecond=null;
   const samples=Math.round(1.5/dt);
   for(let i=0;i<samples;i++){
    const rear=physics.advanceRearDynamics({curve:0},1,dt);
    if(i===0)first=rear.slipMm;
    const reverse=-Math.sign(initialSlip)*rear.slipMm;
-   if(reverse>0)crossed=true;
-   maxReverse=Math.max(maxReverse,reverse);
+   if(reverse>0){
+    crossed=true;
+    if(firstCrossSec===null)firstCrossSec=(i+1)*dt;
+   }
+   if(reverse>maxReverse){maxReverse=reverse;peakSec=(i+1)*dt;}
+   if(settledAtHalfSecond===null&&(i+1)*dt>=.5)
+    settledAtHalfSecond=Math.abs(rear.slipMm);
   }
-  assert.ok(Math.abs(first-initialSlip)<.5,
-   "La trasera comienza a enderezarse sin saltar en la junta");
+  assert.ok(Math.abs(first-initialSlip)<2,
+   "El latigazo se calcula por aceleración real, no por cambio instantáneo de postura");
   assert.ok(crossed,"La trasera cruza la línea central al iniciar recta");
   assert.ok(maxReverse>=Math.abs(initialSlip)*.40&&
    maxReverse<=Math.abs(initialSlip)*.60,
    "El contraderrape alcanza aproximadamente la mitad hacia el otro lado");
+  assert.ok(firstCrossSec<=.085,
+   "La trasera cruza el eje en menos de 85 ms: latigazo ágil");
+  assert.ok(peakSec>=.09&&peakSec<=.145,
+   "El primer pico del contraderrape se alcanza hacia los 120 ms");
+  assert.ok(settledAtHalfSecond<.65,
+   "El latigazo se apaga rápidamente, sin bamboleo prolongado");
   assert.ok(Math.abs(st.rearSlip)<.4,
    "Tras el rebote la cola vuelve casi a la línea central");
   assert.ok(Math.abs(start.h-paintPose.h)>.20,
    "La recuperación parte del derrape visual real");
-  return maxReverse;
+  return{amplitude:maxReverse,peakSec,firstCrossSec};
  }
  const recoil60=checkCounterSlide(12,1/60);
  const recoil120=checkCounterSlide(12,1/120);
- assert.ok(Math.abs(recoil60-recoil120)<.5,
-  "El contraderrape es estable a 60 y 120 Hz");
+ assert.ok(Math.abs(recoil60.amplitude-recoil120.amplitude)<.5,
+  "La amplitud del latigazo es estable a 60 y 120 Hz");
+ assert.ok(Math.abs(recoil60.peakSec-recoil120.peakSec)<1/60,
+  "La rapidez del latigazo es estable a 60 y 120 Hz");
  checkCounterSlide(-12,1/120);
  // Prohibido introducir un reinicio de velocidad al entrar en recta.
- st.rearSlip=12;st.rearSlipVelocity=45;
+ st.rearSlip=12;st.rearSlipVelocity=180;
  physics.advanceRearDynamics({curve:0},1,1/120);
- assert.ok(st.rearSlip>12,"La inercia previa se conserva al salir de curva");
+ assert.ok(st.rearSlip>12,
+  "La inercia lateral previa sigue moviendo la cola al entrar en recta");
+ assert.ok(st.rearSlipVelocity>0,
+  "El impulso no se borra al cambiar de pieza");
  st.rearSlip=0;st.rearSlipVelocity=0;
  const fast=runCurve(r1Oval,1,1,1/120);
  assert.equal(fast.crashed,true,"Mismo deslot a 120 Hz");
@@ -284,5 +301,5 @@ const path=require("node:path");
  const angle=physics.advanceRearDynamics(pose(r1),1,1/60);
  assert.ok(Math.abs(angle.yawRad)<physics.VEHICLE_DYNAMICS.gripline.guideYawLimit,
   "El ángulo de guía se mantiene dentro de los márgenes al reducir gas");
- console.log("SlotRace DEV 0.14.11: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
+ console.log("SlotRace DEV 0.14.12: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
