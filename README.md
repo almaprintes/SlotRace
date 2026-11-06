@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.16 · Curvas abiertas de 90° en un toque
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.16
+
+- **Curvas grandes de 90°:** en Construir → Curvas aparecen tres combinaciones nuevas: **R2 · 90°** (2 × R2 de 45°), **R3 · 90°** (4 × R3 de 22,5°) y **R4 · 90°** (4 × R4 de 22,5°), además de la curva R1 de 90° ya existente.
+- **Piezas modulares, no inventadas:** cada atajo encaja todos sus módulos de una pulsación; las uniones aparecen en la miniatura y el trazado, la física, la receta y el guardado contienen las piezas individuales. Radio y ancho siguen siendo los de la familia SR-Precision experimental, no las dimensiones comerciales de Scalextric.
+- **Derecha o izquierda:** el selector del estante invierte las curvas completas. Con el circuito cerrado, tocar o arrastrar el atajo coloca el tramo como grupo magnético suelto. El botón «−» o Deshacer retira el montaje como una acción.
+- **Compatibilidad:** sin modificaciones del motor de física, los radios existentes ni los circuitos guardados. Las pruebas automatizadas verifican el ángulo, la unión sin huecos, el guardado y el deshacer completo.
+
+---
+
 # SlotRace DEV 0.14.15 · Imagen visible y estante que se desliza sin colocar piezas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.15
