@@ -3594,6 +3594,32 @@ function revealLatestBuilderPiece(){
  }
 }
 
+// Identifica siempre la pieza del puente seleccionada, incluso cuando
+// queda oculta bajo otra pista. El intervalo muestra una vista previa.
+function paintBridgeSelection(ctx){
+ if(state.caseCategory!=="bridge"||state.selection<0||state.mode!=="build")return;
+ const current=state.track.parts[state.selection];
+ if(!current)return;
+ if(state.bridgeRangeStart!=null){
+  const indices=bridgeRangeIndices(state.bridgeRangeStart,state.selection);
+  ctx.save();ctx.globalAlpha=.24;
+  for(const i of indices){
+   const part=state.track.parts[i];if(part)
+    strokePath(ctx,part.points,"#f6d374",TRACK_WIDTH+28);
+  }
+  ctx.restore();
+ }
+ const p=positionOnPiece(current.start,current.id,.5);
+ ctx.save();ctx.translate(p.x,p.y);
+ ctx.shadowColor="#000a";ctx.shadowBlur=18;
+ ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);
+ ctx.fillStyle="#0d3d45";ctx.fill();ctx.shadowBlur=0;
+ ctx.lineWidth=8;ctx.strokeStyle="#a3ffe5";ctx.stroke();
+ ctx.font="900 68px system-ui,-apple-system,sans-serif";
+ ctx.textAlign="center";ctx.textBaseline="middle";
+ ctx.fillStyle="#f3fff8";ctx.fillText(String(state.selection+1),0,3);
+ ctx.restore();
+}
 function renderScene(canvas,mode){
  if(!canvas.width||!canvas.height)return;
  const ctx=canvasCtx.get(canvas),v=makeView(canvas,mode);
@@ -3623,6 +3649,7 @@ function renderScene(canvas,mode){
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  paintLoose(ctx);
+ if(mode==="build")paintBridgeSelection(ctx);
  paintGhost(ctx,track);
  ctx.restore();
 }
