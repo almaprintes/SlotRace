@@ -42,16 +42,19 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.12");
+ assert.equal(game.version,"DEV 0.14.13");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
 
- // Primera pulsación selecciona el tramo entero; la segunda, la pieza.
- game.puzzle.selectByTap("main",2);
- assert.equal(st.selectionMode,"group");
+ // Una sola pulsación selecciona la pieza, sin doble toque oculto.
  game.puzzle.selectByTap("main",2);
  assert.equal(st.selectionMode,"piece");
+ assert.equal(st.selection,2);
+ assert.equal(game.activateGroupMove(),true,"El botón Tramo elige el grupo completo");
+ assert.equal(st.selectionMode,"group");
+ game.puzzle.selectByTap("main",2);
+ assert.equal(st.selectionMode,"piece","Tocar la pieza devuelve el modo individual");
  // Gesto real: tocar una pieza conectada y arrastrar >7 px.
  const before=st.track.parts.map(p=>({id:p.id,start:{...p.start}}));
  const target=st.track.parts[2].points[3],b=st.workBoard;
@@ -205,5 +208,5 @@ const path=require("node:path");
    label+" queda sin separación");
  }
 
- console.log("SlotRace DEV 0.14.12 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.14.13 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

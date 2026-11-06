@@ -69,11 +69,19 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.12/);
-for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
+assert.match(html,/DEV 0\.14\.13/);
+for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
 assert.match(css,/\.foam-pocket/);assert.match(css,/foam-insert/);
+assert.match(html,/class="screen builder-screen builder-workbench"/,
+ "Taller centrado en la mesa, no en páginas de caja");
+assert.match(css,/\.builder-workbench \.builder-scroll[\s\S]*?overflow:hidden!important/,
+ "La mesa evita el scroll vertical general");
+assert.match(html,/Girar selección 22,5 grados en sentido antihorario/,
+ "Giro antihorario accesible");
+assert.match(html,/Girar selección 22,5 grados en sentido horario/,
+ "Giro horario accesible");
 for(const id of ["menuLibrary","menuGarage","menuStore","menuSettings","libraryScreen","garageScreen","storeScreen","settingsScreen","settingsSound","settingsGrid"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Pantalla comercial "+id);
 }
@@ -159,5 +167,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.12 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.13 OK: 21 variantes reconocidas (una heredada), 13 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

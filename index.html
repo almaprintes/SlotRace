@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.12: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.12 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.12">
+  <meta name="description" content="SlotRace DEV 0.14.13: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.13 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.13">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.12">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.13">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.12</div>
+    <div class="splash-version">DEV 0.14.13</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.12">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.13">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.12">DEV 0.14.12<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.13">DEV 0.14.13<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -219,104 +219,90 @@
       <button id="settingsHome" class="hub-back" type="button">‹ Volver al menú</button>
     </div>
   </section>
-  <section id="buildScreen" class="screen builder-screen" aria-label="Taller de construcción de circuitos">
+  <section id="buildScreen" class="screen builder-screen builder-workbench" aria-label="Mesa de construcción de circuitos">
     <div class="builder-scroll" id="builderScroll">
-      <div class="builder-heading">
-        <span class="builder-checks" aria-hidden="true">▦</span>
-        <h1>CONSTRUCTOR DE CIRCUITOS</h1>
-        <span class="builder-stripe" aria-hidden="true"></span>
-      </div>
       <div class="build-topbar">
         <label class="work-name" for="workCircuitName">
-          <svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M3 17l4 4L21 7l-4-4L3 17Z"/></svg>
+          <span aria-hidden="true">✎</span>
           <input id="workCircuitName" maxlength="64" type="text" placeholder="Nombre del circuito" autocomplete="off" aria-label="Nombre del circuito">
         </label>
-        <button id="workDirection" class="mini direction-toggle" type="button" aria-label="Cambiar sentido de conducción"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.6 6M20 4v7h-7"/></svg><span class="tool-label">Horario</span><span class="direction-caret">⌄</span></button>
-        <button id="workSaveCircuit" class="mini primary" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM7 3v7h10V4M7 21v-8h10v8"/></svg><span>Guardar</span></button>
+        <button id="workDirection" class="mini direction-toggle" type="button" aria-label="Cambiar sentido de conducción"><span class="tool-label">Horario</span><span aria-hidden="true">⌄</span></button>
+        <button id="workSaveCircuit" class="mini primary" type="button" aria-label="Guardar el circuito">Guardar</button>
       </div>
       <div class="worktop">
         <div id="tableSpace" class="tableframe">
-          <canvas id="editCanvas" aria-label="Mesa de montaje: toca una pieza para seleccionarla; gírala con dos dedos en pasos exactos de 22,5 grados; pellizca sobre el fondo para zoom"></canvas>
+          <canvas id="editCanvas" aria-label="Mesa de construcción: toca una pieza para seleccionarla, usa los botones de giro y arrástrala para moverla. Pellizca con dos dedos para ampliar."></canvas>
           <div class="boardchip">
-            <div id="stateChip">EXTREMOS ABIERTOS</div><small id="stateDetails">Cargando el circuito…</small>
+            <div id="stateChip">MESA DE MONTAJE</div>
+            <small id="stateDetails">Elige una pieza de un borde para empezar.</small>
           </div>
-          <div class="boardtools" aria-label="Controles de la cámara">
-            <button id="zoomIn" type="button" aria-label="Ampliar mesa"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-            <button id="zoomOut" type="button" aria-label="Reducir mesa"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
-            <button id="zoomFit" type="button" aria-label="Centrar mesa"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
-            <button id="gridToggle" type="button" aria-label="Alternar cuadrícula milimetrada" aria-pressed="true">▦ 25 mm</button>
+          <div class="boardtools" aria-label="Ajustar vista de la mesa">
+            <button id="zoomIn" type="button" aria-label="Ampliar mesa">＋</button>
+            <button id="zoomOut" type="button" aria-label="Reducir mesa">−</button>
+            <button id="zoomFit" type="button" aria-label="Ver todo el circuito">⌗</button>
+            <button id="gridToggle" type="button" aria-label="Alternar cuadrícula" aria-pressed="true">▦</button>
           </div>
-          <div id="tableCaption" class="boardhint">Dos dedos: girar · Pellizcar: zoom</div>
-        </div>
-      </div>
-      <div class="controlbar">
-        <span id="buildStatus" class="status" aria-live="polite">Preparando circuito…</span>
-        <div class="right">
-          <button class="mini" id="measureGap" type="button" title="Medir el hueco entre conectores"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19h18V5H3v14ZM7 5v5m4-5v3m4-3v5m4-5v3"/></svg><span>Medir hueco</span></button>
-          <button class="mini" id="autoClose" type="button" title="Buscar un cierre matemáticamente exacto"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 4v4m-2-2h4"/></svg><span>Cerrar exacto</span></button>
-          <button class="mini" id="exportBlueprint" type="button" title="Exportar plano PNG con receta"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16H3V4a1 1 0 0 1 1-1ZM3 16l5-5 4 4 3-3 6 6M9 8h.01"/></svg><span>Exportar plano</span></button>
-          <button class="mini primary" id="play" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4m0 0c5-3 10 3 16 0v12c-6 3-11-3-16 0"/></svg><span class="tool-label">Jugar</span></button>
-        </div>
-      </div>
-      <div class="tray case-open" id="pieceCase">
-        <div class="tray-title">
-          <div class="case-title">
-            <span class="case-kicker">FAMILIA SR-PRECISION</span>
-            <strong><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9 4 9-4-9-4-9 4Zm0 0v10l9 4 9-4V7M12 11v10"/></svg> CAJA DE MONTAJE</strong>
-            <small id="caseCount">Preparando inventario…</small>
-          </div>
-          <span class="case-title-chevron" aria-hidden="true"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
-        </div>
-        <div id="gapInfo" class="gap-info" role="status" aria-live="polite" hidden>Selecciona los extremos y pulsa Medir hueco.</div>
-        <nav class="case-category" role="group" aria-label="Filtrar tipos de piezas">
-          <button id="caseStraights" class="case-category-tab is-current" data-category="straight" aria-pressed="true" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18H5V3Zm5 0v18m4-18v18"/></svg><span>Rectas</span></button>
-          <button id="caseCurves" class="case-category-tab" data-category="curve" aria-pressed="false" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V11a8 8 0 0 1 8-8h10M8 21V11a3 3 0 0 1 3-3h10"/></svg><span>Curvas</span></button>
-          <button id="caseSpecial" class="case-category-tab" data-category="special" aria-pressed="false" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 4v4m-2-2h4"/></svg><span>Especiales</span></button>
-          <button id="caseBridges" class="case-category-tab" data-category="bridge" aria-pressed="false" type="button"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h20M5 18v-4a7 7 0 0 1 14 0v4M9 18v-4a3 3 0 0 1 6 0v4"/></svg><span>Puentes</span></button>
-        </nav>
-        <p id="caseMountGuide" class="case-mount-guide" role="status">TOCA UNA PIEZA PARA ACOPLARLA AL FINAL · ARRASTRA EL ASA PARA DEJARLA SUELTA</p>
-        <div id="caseInterior" class="case-shell" role="group" aria-label="Maletín de piezas con espuma blanca recortada">
-          <div class="case-lid" aria-hidden="true"><span>CRAFT RACE STUDIO</span><span>FAMILIA SR-PRECISION · 13 FORMAS · 5 RECTAS · ∞ PIEZAS</span></div>
-          <button id="bridgeKit" class="bridge-kit" type="button" aria-label="Elevar o bajar a 65 milímetros una recta o curva seleccionada">
-            <span class="bridge-kit-icon" aria-hidden="true"><span class="bridge-deck"></span><span class="bridge-leg"></span><span class="bridge-leg"></span></span>
-            <span class="bridge-kit-copy"><strong>ELEVACIÓN · 65 mm</strong><small>Rectas y curvas · rampas automáticas</small></span>
-            <span class="bridge-kit-cta">+ COLOCAR</span>
-          </button>
-          <div id="pieces" class="pieces foam-insert" role="region" tabindex="0" aria-label="Caja de piezas SR-Precision. Selecciona una categoría, pulsa + para sacar una pieza o arrástrala por el asa hasta la mesa."></div>
-          <div class="case-pagination" id="casePagination">
-            <button id="casePrev" type="button" aria-label="Página anterior de piezas">‹</button>
-            <span id="casePageInfo" aria-live="polite">1 / 1</span>
-            <button id="caseNext" type="button" aria-label="Página siguiente de piezas">›</button>
-          </div>
-          <div class="case-foot"><span>↕ DESLIZA PARA VER PIEZAS · ELEVACIÓN: SELECCIONA RECTA O CURVA Y TOCA ELEVAR</span><span>⠿</span></div>
-        </div>
-        <div class="panel-line">
-          <h2><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20m-4-4 4 4 4-4M2 12h20M6 8l-4 4 4 4M8 6l4-4 4 4M18 8l4 4-4 4"/></svg> Herramientas de montaje</h2>
-          <span id="selected" class="selector">Toca un tramo para seleccionarlo</span>
-          <div class="buttons">
-            <button id="joinPiece" class="mini primary" type="button" aria-label="Iniciar la cadena o encajar una pieza"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg><span class="tool-label">Iniciar montaje</span></button>
-            <button id="undo" class="mini" type="button" aria-label="Deshacer último cambio"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a7 7 0 0 1 0 14"/></svg><span>Deshacer</span></button>
-            <button id="redo" class="mini" type="button" aria-label="Rehacer último cambio"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5m5 5H10a7 7 0 0 0 0 14"/></svg><span>Rehacer</span></button>
-            <button id="moveGroup" class="mini" type="button" aria-label="Seleccionar tramo para moverlo arrastrando"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20m-4-4 4 4 4-4M2 12h20M6 8l-4 4 4 4M8 6l4-4 4 4M18 8l4 4-4 4"/></svg><span>Mover tramo</span></button>
-            <button id="rotate" class="mini" type="button" aria-label="Girar pieza suelta o tramo 22,5 grados"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.6 6M20 4v7h-7"/></svg><span>Girar 22,5°</span></button>
-            <button id="remove" class="mini" type="button" aria-label="Eliminar pieza individual seleccionada"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18m-2 0-1 15H6L5 6m3 0V4h8v2M10 10v7m4-7v7"/></svg><span>Eliminar pieza</span></button>
-          </div>
-          <details class="builder-advanced">
-            <summary>Más herramientas <span>Curvas, ejemplos y mesa</span></summary>
-            <div class="builder-advanced-buttons">
-              <button id="curveDirection" class="mini" type="button" aria-label="Cambiar sentido de las curvas de la caja" aria-pressed="false">↷ Caja: derecha</button>
-              <button id="flip" class="mini" type="button" aria-label="Invertir la curva seleccionada">⇄ Voltear curva</button>
-              <button id="eight" class="mini" type="button" aria-label="Montar ocho de ejemplo">Ocho + puente</button>
-              <button id="oval" class="mini" type="button" aria-label="Montar óvalo de ejemplo">Óvalo</button>
-              <button id="clear" class="mini" type="button" aria-label="Vaciar la mesa">Vaciar mesa</button>
+          <div id="tableCaption" class="boardhint">Toca una pieza para seleccionarla · arrástrala para moverla</div>
+          <div class="controlbar">
+            <span id="buildStatus" class="status" aria-live="polite">Preparando mesa…</span>
+            <div class="right">
+              <button class="mini" id="autoClose" type="button" title="Cerrar automáticamente el circuito">✦ <span>Ayudar a cerrar</span></button>
+              <button class="mini primary" id="play" type="button" aria-label="Jugar en el circuito">🏁 <span class="tool-label">Jugar</span></button>
             </div>
-          </details>
+          </div>
+          <div class="panel-line" id="builderSelectionTools">
+            <span id="selected" class="selector" aria-live="polite">Toca una pieza para seleccionarla</span>
+            <div class="buttons" role="group" aria-label="Herramientas principales de montaje">
+              <button id="rotateCCW" class="mini builder-rotate" type="button" aria-label="Girar selección 22,5 grados en sentido antihorario"><span class="rotation-symbol">↶</span><span>Antihorario</span></button>
+              <button id="rotate" class="mini builder-rotate" type="button" aria-label="Girar selección 22,5 grados en sentido horario"><span class="rotation-symbol">↷</span><span>Horario</span></button>
+              <button id="undo" class="mini" type="button" aria-label="Deshacer último paso"><span class="rotation-symbol">↩</span><span>Deshacer</span></button>
+              <button id="joinPiece" class="mini primary" type="button" aria-label="Encajar pieza seleccionada"><span class="rotation-symbol">⊕</span><span class="tool-label">Encajar</span></button>
+              <button id="remove" class="mini" type="button" aria-label="Devolver pieza a las piezas disponibles"><span class="rotation-symbol">✕</span><span>Quitar</span></button>
+              <button id="moveGroup" class="mini" type="button" aria-label="Mover tramo completo"><span class="rotation-symbol">✥</span><span>Tramo</span></button>
+            </div>
+            <details class="builder-advanced">
+              <summary aria-label="Otras herramientas de montaje">⋯ Más</summary>
+              <div class="builder-advanced-buttons">
+                <button id="redo" class="mini" type="button">↪ Rehacer</button>
+                <button id="flip" class="mini" type="button" aria-label="Invertir curva seleccionada">⇄ Voltear curva</button>
+                <button id="curveDirection" class="mini" type="button" aria-label="Cambiar lado de las curvas disponibles" aria-pressed="false">↷ Curva derecha</button>
+                <button id="measureGap" class="mini" type="button">Medir hueco</button>
+                <button id="exportBlueprint" class="mini" type="button">Exportar plano</button>
+                <button id="bridgeKit" class="bridge-kit mini" type="button" aria-label="Elevar o bajar 65 milímetros la pieza seleccionada">
+                  <span class="bridge-kit-copy"><strong>Elevar pieza</strong><small>Rectas y curvas · rampas automáticas</small></span>
+                  <span class="bridge-kit-cta">+ COLOCAR</span>
+                </button>
+                <button id="oval" class="mini" type="button">Óvalo de ejemplo</button>
+                <button id="eight" class="mini" type="button">Ocho de ejemplo</button>
+                <button id="clear" class="mini" type="button">Vaciar mesa</button>
+                <button id="restore" class="mini alert" type="button" hidden>Recuperar trazado</button>
+                <button id="caseToggle" class="mini" type="button" aria-controls="caseInterior" aria-expanded="true" hidden><span class="tool-label">Abrir piezas</span></button>
+              </div>
+            </details>
+          </div>
+          <aside class="tray case-open" id="pieceCase" aria-label="Estante de piezas de circuito">
+            <div class="tray-title">
+              <div class="case-title"><strong>PIEZAS DISPONIBLES</strong><small id="caseCount">Piezas ilimitadas</small></div>
+            </div>
+            <div id="gapInfo" class="gap-info" role="status" aria-live="polite" hidden></div>
+            <nav class="case-category" role="group" aria-label="Elegir tipo de piezas">
+              <button id="caseStraights" class="case-category-tab is-current" type="button" aria-pressed="true">Rectas</button>
+              <button id="caseCurves" class="case-category-tab" type="button" aria-pressed="false">Curvas</button>
+              <button id="caseSpecial" class="case-category-tab" type="button" aria-pressed="false">Salida</button>
+              <button id="caseBridges" class="case-category-tab" type="button" aria-pressed="false">Puentes</button>
+            </nav>
+            <p id="caseMountGuide" class="case-mount-guide" role="status">TOCA PARA ENCAJAR · ARRASTRA PARA SOLTAR</p>
+            <div id="caseInterior" class="case-shell">
+              <div id="pieces" class="pieces foam-insert" role="region" tabindex="0" aria-label="Piezas disponibles; toca para encajar en el circuito o arrastra desde el asa para colocarlas libremente."></div>
+              <button id="bridgeDock" class="bridge-dock-button" type="button" hidden>⬆ Elevar pieza seleccionada · 65 mm</button>
+              <div class="case-pagination" id="casePagination" hidden>
+                <button id="casePrev" type="button" aria-label="Piezas anteriores">‹</button><span id="casePageInfo">1 / 1</span>
+                <button id="caseNext" type="button" aria-label="Más piezas">›</button>
+              </div>
+            </div>
+            <div id="caseClosed" class="case-closed" hidden>Abre el estante de piezas.</div>
+          </aside>
         </div>
-        <div class="case-actions">
-          <button id="restore" class="mini alert" type="button" hidden><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a7 7 0 0 1 0 14"/></svg><span>Recuperar trazado</span></button>
-          <button id="caseToggle" class="mini case-toggle" type="button" aria-controls="caseInterior" aria-expanded="true"><svg class="ui-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9 4 9-4-9-4-9 4Zm0 0v10l9 4 9-4V7M12 11v10"/></svg><span class="tool-label">Cerrar caja</span></button>
-        </div>
-        <div id="caseClosed" class="case-closed" hidden>▣ Caja cerrada · Ábrela para elegir piezas</div>
       </div>
     </div>
   </section>
@@ -412,6 +398,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.12"></script>
+<script type="module" src="./src/app.mjs?v=0.14.13"></script>
 </body>
 </html>

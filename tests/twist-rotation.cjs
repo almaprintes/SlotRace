@@ -42,132 +42,107 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.12");
- const step=Math.PI/8,deg=n=>n*Math.PI/180;
+ assert.equal(game.version,"DEV 0.14.13");
+ assert.match(html,/id="rotateCCW"/,"Giro antihorario presente");
+ assert.match(html,/id="rotate"/,"Giro horario presente");
+ const step=Math.PI/8;
+ const close=(a,b,tol=1e-7)=>assert.ok(Math.abs(a-b)<=tol,
+  "Esperado "+b+" obtenido "+a);
  const event=(x,y,pointerId)=>({clientX:x,clientY:y,pointerId,preventDefault(){}});
- const close=(a,b,tolerance=1e-8)=>assert.ok(Math.abs(a-b)<tolerance,
-  "Esperado "+b+" y obtenido "+a);
  function screenOf(point){
   const b=st.workBoard,scale=Math.min((390-16)/b.height,(600-16)/b.width);
   return{x:195-scale*(point.y-(b.top+b.bottom)/2),
    y:300+scale*(point.x-(b.left+b.right)/2)};
  }
- function beginTurn(at,a=71,b=72){
-  const on=screenOf(at);
-  game.puzzle.canvasPointerDown(event(on.x,on.y,a));
-  assert.ok(st.pointer.get(a).looseIndex>=0||st.pointer.get(a).trackIndex>=0,
-   "El primer dedo toca una pieza real");
-  game.puzzle.canvasPointerDown(event(on.x+72,on.y,b));
-  assert.equal(st.pinch.mode,"rotate","Dos dedos sobre una pieza activan giro");
-  return {x:on.x,y:on.y,a,b};
- }
- function turnTo(start,angle){
-  game.puzzle.canvasPointerMove(event(start.x+72*Math.cos(angle),
-   start.y+72*Math.sin(angle),start.b));
- }
- function finishTurn(start){
-  game.puzzle.canvasPointerEnd(event(start.x+72,start.y,start.b));
-  game.puzzle.canvasPointerEnd(event(start.x,start.y,start.a));
-  assert.equal(st.pointer.size,0);
-  assert.equal(st.pinch,null);
- }
  st.workBoard={left:0,top:0,right:2200,bottom:1450,width:2200,height:1450};
  st.camera={zoom:1,panX:0,panY:0};
- game.changeTypes([],"Mesa de prueba para giro exacto",[],geo.START);
+ game.changeTypes([],"Giros directos",[],geo.START);
  st.loose=[
   {id:"S350",x:500,y:500,h:0,magnetGroup:"test-turn",magnetOrder:0},
   {id:"S175",x:850,y:500,h:0,magnetGroup:"test-turn",magnetOrder:1}
  ];
- st.selectedGroup=null;st.selectionMode="group";st.looseSelection=-1;st.selection=-1;
+ st.selection=-1;st.looseSelection=-1;st.selectionMode="group";st.selectedGroup=null;
+ game.puzzle.selectByTap("loose",0);
+ assert.equal(st.selectionMode,"piece","Un toque selecciona una sola pieza");
+ const centerBefore=geo.positionOnPiece(st.loose[0],st.loose[0].id,.5);
  const initial=st.loose.map(p=>({...p}));
- const historySize=st.history.length;
- const start=beginTurn({x:650,y:500});
- turnTo(start,deg(8));
- close(st.loose[0].h,0);
- turnTo(start,deg(16));
- close(st.loose[0].h,step);
- close(st.loose[1].h,step);
- turnTo(start,deg(38));
- close(st.loose[0].h,2*step);
- turnTo(start,deg(-16));
+ const beforeHistory=st.history.length;
+ elements.get("rotateCCW").listeners.click[0]();
  close(st.loose[0].h,-step);
- const joinedA=geo.positionOnPiece(st.loose[0],st.loose[0].id,1);
- close(joinedA.x,st.loose[1].x,1e-7);
- close(joinedA.y,st.loose[1].y,1e-7);
- assert.equal(st.loose[1].magnetGroup,"test-turn","Grupo magnético conservado");
- assert.equal(st.history.length,historySize+1,"Un solo deshacer por giro completo");
- finishTurn(start);
+ close(st.loose[1].h,0);
+ const centerAfter=geo.positionOnPiece(st.loose[0],st.loose[0].id,.5);
+ close(centerAfter.x,centerBefore.x);
+ close(centerAfter.y,centerBefore.y);
+ assert.equal(st.history.length,beforeHistory+1,"Un solo deshacer por pulsación");
  game.undo();
- close(st.loose[0].x,initial[0].x);
+ close(st.loose[0].h,0);
  close(st.loose[1].h,0);
  game.redo();
  close(st.loose[0].h,-step);
+ // Deshacer/rehacer conserva piezas y limpia la selección: se vuelve a
+ // tocar la pieza antes de girar en sentido contrario.
+ game.puzzle.selectByTap("loose",0);
+ elements.get("rotate").listeners.click[0]();
+ close(st.loose[0].h,0); // Giro horario corrige el antihorario.
+ assert.equal(st.loose.length,2,"Las piezas no desaparecen al girar");
 
- // El mismo giro funciona en circuitos ya iniciados y conserva las
- // conexiones matemáticas entre todos los módulos.
- game.changeTypes(["S350","R2_45R","S175"],"Prueba tramo iniciado",[],{x:650,y:500,h:0});
+ // El botón «Tramo» selecciona de forma explícita la cadena completa.
+ game.changeTypes(["S350","R2_45R","S175"],"Prueba de tramo",[],{x:650,y:500,h:0});
  st.camera={zoom:1,panX:0,panY:0};
- st.selectedGroup=null;st.selectionMode="group";st.selection=-1;st.looseSelection=-1;
- const beforeMain={...st.origin},partsBefore=st.types.slice();
- const mainStart=beginTurn({x:780,y:500},81,82);
- turnTo(mainStart,deg(19));
- close(st.origin.h,step);
- assert.deepEqual(st.types,partsBefore,"El giro completo conserva todas las piezas montadas");
- const firstEnd=geo.positionOnPiece(st.track.parts[0].start,st.track.parts[0].id,1);
- close(firstEnd.x,st.track.parts[1].start.x);
- close(firstEnd.y,st.track.parts[1].start.y);
- finishTurn(mainStart);
+ game.puzzle.selectByTap("main",1);
+ assert.equal(st.selectionMode,"piece");
+ assert.equal(game.activateGroupMove(),true);
+ assert.equal(st.selectionMode,"group");
+ const beforeMain={...st.origin},beforeTypes=st.types.slice();
+ elements.get("rotate").listeners.click[0]();
+ close(st.origin.h,beforeMain.h+step);
+ assert.deepEqual(st.types,beforeTypes,"Girar tramo conserva la pista unida");
  game.undo();
  close(st.origin.x,beforeMain.x);
  close(st.origin.y,beforeMain.y);
  close(st.origin.h,beforeMain.h);
-
- // Una pieza explícitamente seleccionada se puede separar y girar,
- // sin girar a la fuerza todo el resto del trazado.
- game.puzzle.selectByTap("main",1);
+ // Botón de giro sobre una pieza conectada separa solamente esa pieza.
  game.puzzle.selectByTap("main",1);
  assert.equal(st.selectionMode,"piece");
- const mid=geo.positionOnPiece(st.track.parts[1].start,st.track.parts[1].id,.5);
  const beforePiece=st.types.slice();
- const pieceStart=beginTurn(mid,91,92);
- turnTo(pieceStart,deg(18));
- assert.equal(st.types.length,1,"La pieza individual se separa al girar");
- assert.ok(st.loose.length>=2,"Resto del tramo conservado como piezas sueltas");
- close(st.loose[0].h,st.track.parts[0].end.h+step,0.0000001);
- finishTurn(pieceStart);
+ elements.get("rotateCCW").listeners.click[0]();
+ assert.equal(st.types.length,1,"Girar una pieza montada la desancla");
+ assert.ok(st.loose.length>=2,"El resto se conserva sobre la mesa");
  game.undo();
- assert.deepEqual(st.types,beforePiece,"Deshacer recupera toda la cadena montada");
+ assert.deepEqual(st.types,beforePiece,"Deshacer restaura el montaje completo");
 
- // Si ambos dedos empiezan en una zona vacía, se mantiene el zoom.
- game.changeTypes([],"Prueba de zoom libre",[],geo.START);
+ // Un pellizco sobre una pieza SIEMPRE hace zoom y jamás la gira.
+ game.changeTypes([],"Zoom sin giro accidental",[],geo.START);
+ st.loose=[{id:"S350",x:650,y:500,h:0}];
  st.camera={panX:0,panY:0,zoom:1};
- game.puzzle.canvasPointerDown(event(22,22,101));
- game.puzzle.canvasPointerDown(event(122,22,102));
- assert.equal(st.pinch.mode,"camera");
- game.puzzle.canvasPointerMove(event(162,22,102));
- close(st.camera.zoom,1.4);
- game.puzzle.canvasPointerEnd(event(162,22,102));
- game.puzzle.canvasPointerEnd(event(22,22,101));
- assert.equal(st.loose.length,0,"Zoom sin creación accidental de piezas");
+ const on=screenOf({x:750,y:500});
+ game.puzzle.canvasPointerDown(event(on.x,on.y,101));
+ game.puzzle.canvasPointerDown(event(on.x+72,on.y,102));
+ assert.equal(st.pinch.mode,"camera","Dos dedos amplían, no giran");
+ game.puzzle.canvasPointerMove(event(on.x+108,on.y,102));
+ close(st.camera.zoom,1.5);
+ game.puzzle.canvasPointerEnd(event(on.x+108,on.y,102));
+ game.puzzle.canvasPointerEnd(event(on.x,on.y,101));
+ close(st.loose[0].h,0);
+ assert.equal(st.loose.length,1);
 
- // Añadir un segundo dedo mientras arrastramos una pista no debe perder
- // el movimiento original ni interceptar su evento de guardado.
- game.changeTypes(["S350"],"Movimiento previo al segundo dedo",[],{x:650,y:500,h:0});
+ // Un segundo dedo añadido durante un arrastre no reinicia ni pierde
+ // el movimiento del dedo original.
+ game.changeTypes(["S350"],"Arrastre de tramo",[],{x:650,y:500,h:0});
  st.camera={panX:0,panY:0,zoom:1};
  const dragPoint=screenOf({x:775,y:500});
  const originBefore={...st.origin};
  game.puzzle.canvasPointerDown(event(dragPoint.x,dragPoint.y,201));
  game.puzzle.canvasPointerMove(event(dragPoint.x+35,dragPoint.y+4,201));
- assert.equal(st.pointer.get(201).dragged,true,"El primer dedo ya está arrastrando");
+ assert.equal(st.pointer.get(201).dragged,true);
  game.puzzle.canvasPointerDown(event(dragPoint.x+90,dragPoint.y+5,202));
- assert.equal(st.pinch.mode,"camera","Segundo dedo sobre un arrastre no inicia rotación");
- assert.equal(st.pointer.get(201).consumed,undefined,"No cancelar el arrastre activo");
+ assert.equal(st.pinch.mode,"camera","Segundo dedo no activa un giro");
+ assert.equal(st.pointer.get(201).consumed,undefined);
  game.puzzle.canvasPointerEnd(event(dragPoint.x+90,dragPoint.y+5,202));
  game.puzzle.canvasPointerEnd(event(dragPoint.x+35,dragPoint.y+4,201));
- assert.notDeepEqual(st.origin,originBefore,"Se conserva la traslación original");
+ assert.notDeepEqual(st.origin,originBefore);
  const savedDrag=JSON.parse(saved.get("slotrace-lab-10"));
  close(savedDrag.origin.x,st.origin.x);
  close(savedDrag.origin.y,st.origin.y);
-
- console.log("SlotRace DEV 0.14.12: giro dos dedos 22,5°, tramo, pieza, zoom, arrastre y deshacer — OK");
+ console.log("SlotRace DEV 0.14.13: giro horario y antihorario por botones, pieza o tramo, zoom sin giros accidentales y deshacer — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

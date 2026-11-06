@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.12");
+ assert.equal(game.version,"DEV 0.14.13");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -83,6 +83,10 @@ const path=require("node:path");
  assert.match(html,/id="caseStraights"/);
  assert.match(html,/id="moveGroup"/);
  assert.match(html,/id="caseMountGuide"/);
+ assert.match(html,/id="rotateCCW"/,"Giro antihorario siempre visible");
+ assert.match(html,/class="screen builder-screen builder-workbench"/,
+  "Mesa principal a pantalla completa");
+ assert.match(html,/id="bridgeDock"/,"Puentes accesibles sin salir del estante");
  assert.equal(game.chooseCaseCategory("curve"),true);
  assert.equal(st.caseCategory,"curve");
  assert.equal(game.chooseCaseCategory("straight"),true);
@@ -648,5 +652,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.12: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.13: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

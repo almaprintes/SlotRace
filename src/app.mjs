@@ -906,12 +906,12 @@ function installBridgeKit(){
  return true;
 }
 function selectByTap(kind,index){
- const key=kind==="main"?"main":looseGroupKey(index);
- const length=kind==="main"?state.types.length:looseMembers(index).length;
- const same=state.selectedGroup===key;
- state.selectionMode=length<=1?"piece":same&&state.selectionMode==="group"?"piece":"group";
- state.selectedGroup=key;
- state.selection=kind==="main"?index:-1;state.looseSelection=kind==="main"?-1:index;
+ // Un toque = una pieza específica. Para mover todas las piezas juntas
+ // existe el botón explícito «Tramo», sin tener que adivinar un doble toque.
+ state.selectionMode="piece";
+ state.selectedGroup=kind==="main"?"main":looseGroupKey(index);
+ state.selection=kind==="main"?index:-1;
+ state.looseSelection=kind==="main"?-1:index;
  updateUI();
 }
 function scatterLoose(id){
@@ -947,6 +947,7 @@ function inventoryAction(id){
  state.selectionMode="piece";
  lastCaseAppend={id:chosen,count:state.types.length,history:state.history.length};
  updateUI();
+ revealLatestBuilderPiece();
  if(!didClose)toast("✓ Pieza "+state.types.length+" encajada al final del circuito.");
  return true;
 }
@@ -1130,19 +1131,27 @@ function removeSelected(){
  if(i>=0){state.loose.splice(i,1);state.looseSelection=-1;state.selectedGroup=null;save();updateUI();
  toast("Pieza devuelta a la caja. Las otras se quedan sobre la mesa.");}
 }
-function rotateLoose(){
- if(state.looseSelection<0){toast("Selecciona una pieza de la mesa para girarla.");return;}
- pushHistory();
- if(state.selectionMode==="piece")detachLooseMember(state.looseSelection);
- const indices=state.selectionMode==="group"?looseMembers(state.looseSelection):[state.looseSelection];
- const angle=Math.PI/8,c=Math.cos(angle),sn=Math.sin(angle);
- const anchor=state.loose[indices[0]],x=anchor.x,y=anchor.y;
- for(const i of indices){
-  const p=state.loose[i],dx=p.x-x,dy=p.y-y;
-  p.x=x+c*dx-sn*dy;p.y=y+sn*dx+c*dy;p.h+=angle;
+function rotateSelection(direction){
+ if(direction!==1&&direction!==-1)return false;
+ const onLoose=state.looseSelection>=0;
+ const index=onLoose?state.looseSelection:state.selection;
+ if(index<0){
+  toast("Toca primero una pieza de la pista. Después pulsa ↶ o ↷.");
+  return false;
  }
- save();updateUI();toast(indices.length>1?"Tramo completo girado 22,5°.":"Pieza girada 22,5°.");
+ // Usar el mismo motor de giro matemático que los gestos antiguos,
+ // conservando centro, conexiones, rejilla y un único paso de deshacer.
+ const g={target:onLoose?"loose":"main",index,
+  single:state.selectionMode!=="group",steps:0,started:false};
+ rotateGestureToSteps(g,direction);
+ if(!g.started)return false;
+ if(g.target==="main")extendWorkBoard();
+ save();updateUI();
+ toast((g.single?"Pieza":"Tramo")+" girado 22,5° "+
+  (direction===1?"en sentido horario.":"en sentido antihorario."));
+ return true;
 }
+function rotateLoose(){return rotateSelection(1);}
 function recoverDraft(){
  if(!state.draft)return;
  const d=state.draft;state.draft=null;
@@ -1161,6 +1170,8 @@ function drivingPose(distance=state.distance){
 }
 function openWorkshop(){
  state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
+ // El estante de piezas siempre permanece abierto y anclado a la mesa.
+ state.caseOpen=true;
  updateUI();resize();
 }
 function showHub(which){
@@ -1609,7 +1620,7 @@ function updateHud(){
  updateTriggerDisplay();
 }
 
-const CASE_PAGE_SIZE=3;
+const CASE_PAGE_SIZE=99; // Todo el tipo elegido se desplaza en un único estante lateral.
 const CASE_TABS={straight:"caseStraights",curve:"caseCurves",special:"caseSpecial",bridge:"caseBridges"};
 const pieceCategory=id=>id==="START350"?"special":id.startsWith("R")?"curve":"straight";
 function chooseCaseCategory(category){
@@ -1631,15 +1642,16 @@ function renderCasePages(){
   tab.setAttribute("aria-pressed",String(name===state.caseCategory));
  }
  const filtered=pocketIds.filter(id=>pieceCategory(id)===state.caseCategory);
- const pages=Math.max(1,Math.ceil(filtered.length/CASE_PAGE_SIZE));
- state.casePage=Math.max(0,Math.min(state.casePage,pages-1));
- $("casePageInfo").textContent=state.casePage+1+" / "+pages;
- $("casePrev").disabled=state.casePage<=0;
- $("caseNext").disabled=state.casePage>=pages-1;
- $("casePagination").hidden=state.caseCategory==="bridge";
- $("bridgeKit").hidden=state.caseCategory!=="bridge";
+ state.casePage=0;
+ $("casePageInfo").textContent="1 / 1";
+ $("casePrev").disabled=true;$("caseNext").disabled=true;
+ $("casePagination").hidden=true;
+ // El botón de elevar está también en Más; «Puentes» lo enseña directamente
+ // en el mismo estante en lugar de obligar a abrir la caja grande.
+ $("bridgeKit").hidden=false;
+ $("bridgeDock").hidden=state.caseCategory!=="bridge";
  $("pieces").hidden=state.caseCategory==="bridge";
- const visible=new Set(filtered.slice(state.casePage*CASE_PAGE_SIZE,(state.casePage+1)*CASE_PAGE_SIZE));
+ const visible=new Set(filtered);
  for(const pocket of $("pieces").children)pocket.hidden=!visible.has(pocket.dataset.piece);
 }
 function removeLooseFromCase(id){
@@ -2003,15 +2015,16 @@ function updateUI(){
  const selectedLength=state.selectedGroup==="main"?state.types.length:
   state.looseSelection>=0?looseMembers(state.looseSelection).length:0;
  $("selected").textContent=state.selectedGroup==null?
-  "TOCA UNA VEZ: TRAMO · OTRA VEZ: PIEZA":
+  "1. ELIGE UNA PIEZA · 2. GIRA O ARRASTRA":
   state.selectionMode==="group"?
-   "TRAMO UNIDO · "+selectedLength+" PIEZAS · ARRASTRA PARA MOVERLO":
+   "TRAMO COMPLETO · "+selectedLength+" PIEZAS · MOVER O GIRAR":
   state.looseSelection>=0?
-   "PIEZA · "+CATALOG[state.loose[state.looseSelection].id].name+" · ARRASTRA PARA SEPARAR":
-   "PIEZA "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
+   "SELECCIONADA: "+CATALOG[state.loose[state.looseSelection].id].name:
+   "SELECCIONADA: PIEZA "+(state.selection+1)+" · "+CATALOG[state.types[state.selection]].name;
  $("remove").disabled=state.selectionMode!=="piece"||
   (state.selection<0&&state.looseSelection<0);
- $("rotate").disabled=state.looseSelection<0;
+ $("rotate").disabled=state.looseSelection<0&&state.selection<0;
+ $("rotateCCW").disabled=$("rotate").disabled;
  $("curveDirection").textContent=state.caseCurveDirection==="R"?"↷ Caja: derecha":"↶ Caja: izquierda";
  $("curveDirection").setAttribute("aria-pressed",String(state.caseCurveDirection==="L"));
  $("flip").textContent="⇄ Voltear curva";
@@ -2059,14 +2072,12 @@ function updateUI(){
  }
  renderCasePages();
  $("caseMountGuide").textContent=state.track.closed?
-  "CIRCUITO CERRADO · Toque: pieza suelta · Asa: arrastrar":
-  "TOCA UNA PIEZA O + PARA ACOPLARLA AL FINAL · ARRASTRA EL ASA PARA DEJARLA SUELTA";
- $("tableCaption").textContent=state.pinch?.mode==="rotate"?
-  "GIRANDO · SALTOS EXACTOS DE 22,5°":
- state.looseSelection>=0?"DOS DEDOS: GIRAR 22,5° · ARRASTRA PARA ACOPLAR":
- state.selection>=0?"DOS DEDOS: GIRAR 22,5° · TOCA DOS VECES: PIEZA":
- state.dragging?"SUELTA LA PIEZA SOBRE EL TAPETE":
- "Dos dedos: girar 22,5° · Pellizcar: zoom";
+  "CERRADO · TOCA PARA DEJAR PIEZA SUELTA":
+  "TOCA PARA ENCAJAR · ARRASTRA EL ASA PARA COLOCAR SUELTA";
+ $("tableCaption").textContent=state.dragging?"SUELTA LA PIEZA SOBRE LA MESA":
+ state.selectionMode==="group"&&state.selectedGroup?"TRAMO · ARRASTRA PARA MOVER TODO":
+ state.looseSelection>=0||state.selection>=0?
+  "PIEZA SELECCIONADA · ↶ Y ↷ PARA GIRAR":"TOCA UNA PIEZA · O ELIGE UNA DEL ESTANTE";
  updateHud();
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
@@ -2138,7 +2149,8 @@ function palette(){
   const spec=CATALOG[id];
   const pocket=document.createElement("div");
   pocket.className="foam-pocket";pocket.dataset.piece=id;
-  pocket.setAttribute("role","group");
+  pocket.setAttribute("role","button");
+  pocket.tabIndex=0;
   pocket.dataset.kind=spec.group;
   pocket.setAttribute("aria-label",spec.name+" · "+spec.code);
   pocket.innerHTML='<span class="qty">×0</span>'+
@@ -2162,6 +2174,11 @@ function palette(){
    if(e.target===grip||grip.contains?.(e.target)||e.target?.closest?.(".pocket-qty-controls"))return;
    if(suppressNextClick&&e?.detail!==0){suppressNextClick=false;return;}
    suppressNextClick=false;inventoryAction(id);
+  });
+  pocket.addEventListener("keydown",e=>{
+   if(e.key==="Enter"||e.key===" "){
+    e.preventDefault?.();inventoryAction(id);
+   }
   });
   pocket.addEventListener("pointerdown",e=>{
    if(e.target===grip||e.target?.closest?.(".pocket-qty-controls"))return;
@@ -3182,6 +3199,30 @@ function worldFromPointer(v,screenX,screenY){
  const c=Math.cos(v.angle),s=Math.sin(v.angle);
  return{x:v.cx+c*x+s*y,y:v.cy-s*x+c*y};
 }
+function revealLatestBuilderPiece(){
+ if(state.mode!=="build"||!state.track.parts.length||!editCanvas.width)return;
+ const p=state.track.ends?.end;
+ if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
+ const v=makeView(editCanvas,"build");
+ if(v.w<80||v.h<160)return;
+ const c=Math.cos(v.angle),sn=Math.sin(v.angle);
+ const dx=p.x-v.cx,dy=p.y-v.cy;
+ const x=v.w/2+v.panX+(c*dx-sn*dy)*v.scale;
+ const y=v.h/2+v.panY+(sn*dx+c*dy)*v.scale;
+ // En retrato: franja inferior de piezas y fila de herramientas.
+ // En pantallas anchas: estante de piezas a la derecha.
+ const sideShelf=v.w>680;
+ const left=40,right=sideShelf?v.w-220:v.w-40;
+ const top=110,bottom=sideShelf?v.h-105:v.h-245;
+ if(right<=left||bottom<=top)return;
+ if(x<left||x>right||y<top||y>bottom){
+  const targetX=(left+right)/2,targetY=(top+bottom)/2;
+  state.camera.panX+=targetX-x;
+  state.camera.panY+=targetY-y;
+  state.viewDirty=true;
+ }
+}
+
 function renderScene(canvas,mode){
  if(!canvas.width||!canvas.height)return;
  const ctx=canvasCtx.get(canvas),v=makeView(canvas,mode);
@@ -3223,33 +3264,17 @@ const rotatePoint=(p,c,s,center)=>({
  x:center.x+(p.x-center.x)*c-(p.y-center.y)*s,
  y:center.y+(p.x-center.x)*s+(p.y-center.y)*c
 });
+// Zoom con dos dedos SIEMPRE, incluso si uno cae sobre una pieza.
+// El giro ahora tiene dos botones directos: ↶ y ↷. No lo mezclamos con
+// pellizcos que podrían alterar accidentalmente un circuito montado.
 function startTwoFingerGesture(){
  const pair=[...state.pointer.values()];
  if(pair.length!==2)return;
  const dx=pair[1].x-pair[0].x,dy=pair[1].y-pair[0].y;
- const bearing=Math.atan2(dy,dx);
- const hit=pair.find(p=>p.looseIndex>=0||p.trackIndex>=0);
  const dragging=pair.some(p=>p.dragged);
- // Si un dedo ya estaba arrastrando, el gesto no cancela ni pierde
- // ese movimiento: sólo el nuevo dedo queda consumido por el pellizco.
- if(dragging){
-  for(const p of pair)if(!p.dragged)p.consumed=true;
-  state.pinch={mode:"camera",distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
-  return;
- }
- // Ambos dedos sobre zona libre: mantener pinch-to-zoom + desplazamiento.
- for(const p of pair)p.consumed=true;
- if(!hit){
-  state.pinch={mode:"camera",distance:Math.hypot(dx,dy),zoom:state.camera.zoom};
-  return;
- }
- const target=hit.looseIndex>=0?"loose":"main";
- const index=target==="loose"?hit.looseIndex:hit.trackIndex;
- const key=target==="loose"?looseGroupKey(index):"main";
- const single=state.selectedGroup===key&&state.selectionMode==="piece"&&
-  (target==="loose"?state.looseSelection===index:state.selection===index);
- state.pinch={mode:"rotate",bearing,travel:0,steps:0,started:false,
-  target,index,single};
+ for(const p of pair)if(!dragging||!p.dragged)p.consumed=true;
+ state.pinch={mode:"camera",distance:Math.hypot(dx,dy),
+  zoom:state.camera.zoom};
 }
 function rotateGestureToSteps(g,steps){
  if(!Number.isInteger(steps)||steps===g.steps)return;
@@ -3535,10 +3560,12 @@ function initEvents(){
  });
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
- $("rotate").addEventListener("click",rotateLoose);
+ $("rotate").addEventListener("click",()=>rotateSelection(1));
+ $("rotateCCW").addEventListener("click",()=>rotateSelection(-1));
  $("flip").addEventListener("click",flipSelectedCurve);
  $("curveDirection").addEventListener("click",toggleCaseCurveDirection);
  $("bridgeKit").addEventListener("click",installBridgeKit);
+ $("bridgeDock").addEventListener("click",installBridgeKit);
  $("measureGap").addEventListener("click",measureOpenGap);
  $("caseToggle").addEventListener("click",()=>{
   state.caseOpen=!state.caseOpen;
@@ -3604,8 +3631,8 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.12",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+window.slotraceLab={version:"DEV 0.14.13",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas

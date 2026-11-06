@@ -5,6 +5,8 @@ name: SlotRace · pruebas automáticas
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -46,7 +48,7 @@ jobs:
       - name: Comprobar caja de corcho y extracción de inventario
         run: node tests/foam-case.cjs
 
-      - name: Comprobar giro táctil exacto de 22,5 grados con dos dedos
+      - name: Comprobar giro horario y antihorario mediante botones
         run: node tests/twist-rotation.cjs
 
       - name: Comprobar geometría PT-Precision y cierres exactos

@@ -1960,3 +1960,291 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .library-record-empty{color:#748394;font-size:12px;margin:8px 0 3px;line-height:1.5}
 .library-records-note{padding:4px 5px 8px}
 @media(prefers-reduced-motion:reduce){.library-tab{transition:none}}
+
+
+/* DEV 0.14.13 — mesa completa y estante inmediato. El taller no requiere
+   desplazar la página para elegir piezas, girar, unir o jugar. */
+.builder-workbench{min-height:0!important;overflow:hidden!important;background:#e7ebf0}
+.builder-workbench .builder-scroll{
+ display:flex!important;flex:1 1 auto!important;flex-direction:column;
+ min-height:0!important;max-width:none!important;width:100%!important;
+ padding:7px 8px 8px!important;overflow:hidden!important;
+}
+.builder-workbench .builder-heading{display:none!important}
+.builder-workbench .build-topbar{
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;
+ flex:none!important;min-height:42px;margin:0 0 7px!important;gap:5px!important
+}
+.builder-workbench .build-topbar .work-name{min-height:42px!important;padding:0 7px!important}
+.builder-workbench .build-topbar .work-name input{min-height:42px!important;font-size:13px!important;padding:4px!important}
+.builder-workbench .build-topbar .direction-toggle{min-width:0!important;max-width:none!important;font-size:11px!important;gap:4px!important;padding:5px 9px!important;min-height:42px!important}
+.builder-workbench .build-topbar #workSaveCircuit{
+ grid-column:auto!important;min-width:68px!important;width:auto!important;
+ min-height:42px!important;padding:6px 9px!important;font-size:12px!important;
+}
+.builder-workbench .worktop{
+ display:flex!important;flex:1 1 auto!important;min-height:0!important;
+ max-height:none!important;height:auto!important;padding:0!important;margin:0!important;
+}
+.builder-workbench .tableframe{
+ display:block!important;position:relative;flex:1 1 auto!important;min-height:0!important;
+ height:100%!important;overflow:hidden!important;border-radius:14px!important;
+ border:2px solid #88775d;box-shadow:0 4px 14px #1b35422b;
+}
+.builder-workbench .boardchip{
+ top:8px!important;left:8px!important;max-width:calc(100% - 85px)!important;
+ padding:7px 9px!important;border-radius:9px!important;
+ background:#0a252ce8!important;z-index:5;
+}
+.builder-workbench .boardchip>div{font-size:10px!important;line-height:1.15}
+.builder-workbench .boardchip small{font-size:9px!important;line-height:1.25}
+.builder-workbench .boardtools{top:7px!important;right:7px!important;z-index:6;gap:4px!important}
+.builder-workbench .boardtools button{
+ width:33px!important;min-width:33px!important;height:33px!important;min-height:33px!important;
+ padding:0!important;font-size:18px!important;border-radius:8px!important;
+}
+.builder-workbench .boardtools #gridToggle{
+ width:37px!important;min-width:37px!important;height:33px!important;
+ font-size:10px!important;letter-spacing:0!important;
+}
+.builder-workbench .boardhint{display:none!important}
+.builder-workbench .controlbar{
+ position:absolute!important;top:68px!important;left:8px!important;right:53px!important;
+ display:block!important;margin:0!important;padding:0!important;
+ width:auto!important;min-height:0!important;z-index:5;
+ border:0!important;background:transparent!important;
+}
+.builder-workbench .controlbar .status{display:none!important}
+.builder-workbench .controlbar .right{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ align-items:stretch!important;gap:7px!important;width:100%!important;
+}
+.builder-workbench .controlbar .right button{
+ display:flex!important;flex-direction:row!important;align-items:center;justify-content:center;
+ gap:5px!important;width:100%!important;min-width:0!important;
+ min-height:39px!important;padding:6px 5px!important;
+ font-size:11px!important;border-radius:10px!important;
+}
+.builder-workbench .panel-line{
+ position:absolute!important;left:7px!important;right:7px!important;bottom:175px!important;
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ width:auto!important;max-width:none!important;min-height:0!important;
+ margin:0!important;padding:0!important;gap:4px!important;z-index:12;
+}
+.builder-workbench .panel-line .selector{
+ display:block!important;flex:none!important;width:max-content!important;
+ max-width:calc(100% - 66px)!important;min-width:0!important;
+ border:1px solid #5c8984!important;border-radius:8px!important;
+ padding:5px 8px!important;background:#0c2931e8!important;
+ color:#e0fffa!important;font-size:9px!important;font-weight:900!important;
+ line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.builder-workbench .panel-line .buttons{
+ display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;
+ gap:4px!important;width:100%!important;max-width:none!important;
+ margin:0!important;overflow:visible!important;
+}
+.builder-workbench .panel-line .buttons .mini{
+ display:flex!important;flex-direction:column!important;align-items:center!important;
+ justify-content:center!important;gap:3px!important;
+ min-width:0!important;width:100%!important;min-height:55px!important;
+ padding:5px 1px!important;border-radius:10px!important;
+ color:#e9fffc!important;background:#15313ccf!important;
+ border:1px solid #75a5a6!important;
+ font-size:clamp(8px,2vw,11px)!important;font-weight:900!important;line-height:1.05!important;
+ text-align:center!important;white-space:normal!important;
+}
+.builder-workbench .panel-line .buttons .mini.primary{
+ background:linear-gradient(125deg,#7bf5d8,#3fd0b0)!important;
+ color:#042b27!important;border-color:#abffdf!important;
+}
+.builder-workbench .panel-line .buttons .mini:disabled{opacity:.35!important}
+.builder-workbench .panel-line .buttons .rotation-symbol{font-size:24px;line-height:1;font-weight:1000}
+.builder-workbench .panel-line .buttons .builder-rotate{
+ border-color:#bcf9d0!important;background:#1d4946!important;
+}
+.builder-workbench .builder-advanced{
+ position:absolute!important;right:0!important;top:-29px!important;
+ margin:0!important;padding:0!important;
+ border:0!important;background:transparent!important;z-index:30;
+}
+.builder-workbench .builder-advanced summary{
+ display:inline-flex;justify-content:center;align-items:center;
+ min-height:27px;padding:4px 9px;border-radius:8px;
+ background:#e8faf7;color:#10332e;border:1px solid #a6d9cd;
+ font-size:11px;font-weight:950;white-space:nowrap;
+}
+.builder-workbench .builder-advanced summary span{display:none}
+.builder-workbench .builder-advanced .builder-advanced-buttons{
+ display:none!important;
+}
+.builder-workbench .builder-advanced[open] .builder-advanced-buttons{
+ position:absolute!important;right:0;bottom:calc(100% + 5px);
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ width:min(340px,calc(100vw - 30px))!important;
+ max-height:min(55vh,370px);overflow-y:auto!important;
+ gap:7px!important;margin:0!important;padding:11px!important;
+ border:1px solid #6bb9ab;border-radius:12px;
+ background:#112b35f7;box-shadow:0 9px 40px #0009;
+}
+.builder-workbench .builder-advanced-buttons .mini,
+.builder-workbench .builder-advanced-buttons .bridge-kit{
+ width:100%!important;min-height:44px!important;padding:7px!important;
+ text-align:center!important;white-space:normal!important;
+ font-size:11px!important;
+}
+.builder-workbench .builder-advanced-buttons .bridge-kit{
+ display:flex!important;flex-direction:column!important;gap:4px!important;
+ grid-column:span 2;background:#204d4c!important;
+}
+.builder-workbench .builder-advanced-buttons .bridge-kit .bridge-kit-copy small{display:block!important}
+.builder-workbench .builder-advanced-buttons .bridge-kit .bridge-kit-cta{font-size:10px}
+.builder-workbench .builder-advanced-buttons #caseToggle{display:none!important}
+.builder-workbench #pieceCase{
+ position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;
+ flex:none!important;display:flex!important;flex-direction:column!important;
+ width:100%!important;height:168px!important;min-height:0!important;max-height:none!important;
+ margin:0!important;padding:6px 7px 7px!important;gap:4px!important;
+ border:0!important;border-top:2px solid #64d4bc!important;
+ border-radius:12px 12px 0 0!important;
+ background:linear-gradient(160deg,#102b33fa,#071e27fd)!important;
+ color:#edfffd!important;box-shadow:0 -4px 17px #0005!important;z-index:11;
+}
+.builder-workbench #pieceCase .tray-title{display:none!important}
+.builder-workbench #pieceCase .case-category{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ flex:0 0 31px!important;align-items:stretch!important;
+ gap:5px!important;padding:0!important;margin:0!important;
+}
+.builder-workbench #pieceCase .case-category-tab{
+ display:block!important;min-height:31px!important;height:31px!important;width:100%!important;
+ padding:4px 3px!important;border-radius:8px!important;font-size:10px!important;
+ font-weight:900!important;white-space:nowrap!important;
+}
+.builder-workbench #pieceCase .case-category-tab.is-current{
+ background:#5ce9c7!important;color:#082e2a!important;border-color:#baffdf!important;
+}
+.builder-workbench #pieceCase .case-mount-guide{
+ flex:none!important;min-height:0!important;margin:0!important;padding:0!important;
+ border:0!important;background:transparent!important;color:#92d7d1!important;
+ font-size:9px!important;line-height:1.2!important;letter-spacing:0!important;text-align:left!important;
+}
+.builder-workbench #caseInterior{
+ display:flex!important;flex:1 1 auto!important;flex-direction:column!important;
+ min-height:0!important;height:auto!important;margin:0!important;
+ padding:0!important;border:0!important;background:transparent!important;
+}
+.builder-workbench #caseInterior .pieces.foam-insert{
+ display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+ flex:1 1 auto!important;width:100%!important;height:100%!important;
+ min-height:0!important;max-height:none!important;gap:7px!important;
+ margin:0!important;padding:3px 2px 4px!important;
+ overflow-x:auto!important;overflow-y:hidden!important;grid-auto-rows:unset!important;
+ scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x;
+}
+.builder-workbench .foam-pocket{
+ position:relative!important;display:flex!important;flex-direction:column!important;
+ justify-content:flex-start!important;align-items:center!important;flex:0 0 87px!important;
+ min-width:87px!important;max-width:87px!important;width:87px!important;
+ height:100%!important;min-height:0!important;max-height:none!important;
+ padding:4px 2px!important;margin:0!important;border-radius:9px!important;
+ border:1px solid #476c78!important;background:linear-gradient(#f8fafb,#e4edf1)!important;
+ color:#183038!important;scroll-snap-align:start;cursor:pointer;
+}
+.builder-workbench .foam-pocket.selected{border-color:#1cc7a2!important;box-shadow:inset 0 0 0 2px #1bc6ac!important}
+.builder-workbench .foam-pocket .foam-well{
+ flex:1 1 auto!important;min-height:0!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:78px!important;max-width:78px!important;height:auto!important;
+ max-height:57px!important;margin:0 auto!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;
+}
+.builder-workbench .foam-pocket .foam-well svg{
+ display:block!important;width:100%!important;height:100%!important;max-height:57px!important;
+}
+.builder-workbench .foam-pocket .pocket-caption{
+ display:flex!important;flex-direction:column!important;gap:1px!important;
+ align-items:center!important;justify-content:center!important;
+ padding:0!important;margin:0!important;min-height:22px!important;
+ text-align:center!important;color:#18343e!important;
+}
+.builder-workbench .foam-pocket .pocket-caption strong{
+ display:block!important;color:#193846!important;
+ font-size:9px!important;font-weight:1000!important;line-height:1.05!important;
+}
+.builder-workbench .foam-pocket .pocket-caption small{
+ display:none!important;
+}
+.builder-workbench .foam-pocket .qty,
+.builder-workbench .foam-pocket .pocket-qty-controls,
+.builder-workbench #casePagination{display:none!important}
+.builder-workbench .foam-pocket .foam-drag-grip{
+ position:absolute!important;right:0!important;top:0!important;bottom:auto!important;
+ z-index:4!important;display:grid!important;place-items:center!important;
+ width:25px!important;height:24px!important;
+ border-radius:0 8px 0 9px!important;border:1px solid #80baaf!important;
+ background:#1b4e4a!important;color:#cfffee!important;
+ font-size:17px!important;line-height:1!important;touch-action:none!important;
+}
+.builder-workbench .foam-pocket[hidden],
+.builder-workbench #pieces[hidden],
+.builder-workbench #bridgeDock[hidden]{display:none!important}
+.builder-workbench .bridge-dock-button{
+ display:block;flex:1;min-height:77px;border:1px solid #76d4b7;
+ border-radius:12px;background:#235c55;color:#e5fff5;
+ font-size:13px;font-weight:950;text-align:center;
+}
+.builder-workbench .case-closed,.builder-workbench #gapInfo{display:none!important}
+.builder-workbench .foam-pocket:focus-visible{outline:3px solid #5cecc5;outline-offset:1px}
+
+/* En pantalla ancha, el estante se apoya en el lateral de la mesa. */
+@media(min-width:700px){
+ .builder-workbench .panel-line{right:179px!important;bottom:10px!important}
+ .builder-workbench .controlbar{right:190px!important;top:65px!important}
+ .builder-workbench #pieceCase{
+  top:0!important;bottom:0!important;left:auto!important;right:0!important;
+  width:170px!important;height:100%!important;
+  padding:10px 6px!important;gap:8px!important;
+  border-top:0!important;border-left:2px solid #64d4bc!important;
+  border-radius:0 12px 12px 0!important;
+ }
+ .builder-workbench #pieceCase .case-category{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  flex:0 0 69px!important;gap:5px!important;
+ }
+ .builder-workbench #pieceCase .case-category-tab{min-height:31px!important}
+ .builder-workbench #pieceCase .case-mount-guide{font-size:9px!important;line-height:1.25!important}
+ .builder-workbench #caseInterior .pieces.foam-insert{
+  flex-direction:column!important;flex-wrap:nowrap!important;
+  overflow-x:hidden!important;overflow-y:auto!important;touch-action:pan-y;
+  scroll-snap-type:y proximity;align-items:stretch!important;
+ }
+ .builder-workbench .foam-pocket{
+  flex:0 0 104px!important;width:100%!important;min-width:0!important;
+  max-width:none!important;height:104px!important;min-height:104px!important;
+  scroll-snap-align:start;
+ }
+ .builder-workbench .foam-pocket .foam-well{
+  max-width:126px!important;width:100%!important;height:65px!important;max-height:65px!important;
+ }
+ .builder-workbench .foam-pocket .foam-well svg{max-height:65px!important}
+}
+@media(max-width:380px){
+ .builder-workbench .panel-line .buttons .mini{font-size:8px!important}
+ .builder-workbench .panel-line .buttons .rotation-symbol{font-size:21px}
+ .builder-workbench .build-topbar .direction-toggle{padding:4px!important}
+}
+@media(orientation:landscape) and (max-height:520px){
+ .builder-workbench .worktop{height:auto!important;min-height:0!important}
+ .builder-workbench .panel-line{bottom:10px!important}
+ .builder-workbench .panel-line .buttons .mini{min-height:41px!important}
+ .builder-workbench .controlbar{top:48px!important}
+ .builder-workbench .boardchip{display:none!important}
+ .builder-workbench #pieceCase{top:0!important;bottom:0!important;height:100%!important}
+}
+
+/* Estado oculto del estante y sus categorías, incluso con CSS de alto contraste. */
+.builder-workbench #caseInterior #pieces[hidden],
+.builder-workbench #caseInterior[hidden],
+.builder-workbench #caseInterior #bridgeDock[hidden],
+.builder-workbench #pieceCase #casePagination[hidden]{display:none!important}
