@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.10 · Curvas elevadas y puentes continuos
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.10
+
+- **Curvas elevadas:** cualquier curva puede formar parte de una plataforma de 65 mm de altura; se pueden marcar varias piezas contiguas y conservar la elevación al prolongar el trazado.
+- **Rampas automáticas:** las rectas contiguas de 350 mm o más ascienden o descienden con un perfil suave; las curvas intermedias permanecen a la altura máxima, sin saltos en sus conectores.
+- **Cruces reales:** la validación compara las alturas de ambas vías en cada intersección. Se admite un cruce cuando existe una separación vertical suficiente y se detectan los cruces múltiples.
+- **Soportes en curvas y exportación:** patas distribuidas por los arcos elevados; el plano PNG conserva la representación de los pasos superiores. La geometría horizontal, el catálogo y los circuitos guardados mantienen su formato.
+- **Compatibilidad y seguridad:** el ocho original y el kit sobre recta siguen funcionando; si faltan rectas de transición, el constructor muestra el motivo y no permite correr con una discontinuidad vertical.
+- **Pruebas:** se añade una comprobación automática de dos curvas elevadas consecutivas, pendientes continuas y separación de 65 mm en los cruces.
+
+---
+
 # SlotRace DEV 0.14.9 · Más desplazamiento de la trasera en los derrapes
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.9
