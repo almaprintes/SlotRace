@@ -36,7 +36,20 @@ const assert=require("node:assert/strict");
  const invalid=geo.buildTrack(["R2_45R","R2_45R","S350"],geo.START,[1]);
  assert.equal(invalid.elevation.valid,false,
   "No se permite un salto de altura de 65 mm contra una curva sin rampa");
- assert.match(invalid.elevation.errors.join(" "),/recta de 350 mm/);
+ assert.match(invalid.elevation.errors.join(" "),/al menos 350 mm/);
+ const broad=geo.buildTrack(["R2_90R","R3_90R","R2_90R"],geo.START,[1]);
+ assert.equal(broad.elevation.valid,true,
+  "Una curva de 90° de radio grande puede hacer de rampa sin recta adicional");
+ assert.deepEqual(broad.elevation.profiles.map(p=>p.mode),
+  ["up","plateau","down"]);
+ assert.equal(geo.elevationAt(broad,0,0),0);
+ assert.equal(geo.elevationAt(broad,0,1),65);
+ assert.equal(geo.elevationAt(broad,1,.5),65);
+ assert.equal(geo.elevationAt(broad,2,1),0);
+ const tooShort=geo.buildTrack(["R1_45R","R2_90R","R1_45R"],geo.START,[1]);
+ assert.equal(tooShort.elevation.valid,false,
+  "Las curvas estrechas/cortas no soportan una subida de 65 mm sin transición");
+
  const rotated=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
  const ground=geo.buildTrack(rotated);
  const bridge=geo.buildTrack(rotated,geo.START,[0]);
@@ -45,5 +58,5 @@ const assert=require("node:assert/strict");
  assert.equal(bridge.bridge.crossings.length,1);
  assert.equal(bridge.bridge.crossings[0].clearance,65);
  assert.equal(bridge.bridge.crossings[0].upper,0);
- console.log("SlotRace DEV 0.14.10: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
+ console.log("SlotRace DEV 0.14.19: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
