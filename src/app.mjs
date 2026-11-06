@@ -2778,7 +2778,9 @@ function paintContinuousTrack(ctx,track,editing){
   strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
  for(const edge of [-72,72])strokePath(ctx,translated(path,edge),PIECE_LOOK.edge,2.5);
- for(const part of track.parts)paintSeam(ctx,part.start);
+ // En carrera, las costuras de montaje generan líneas transversales
+ // falsas en curvas, rampas y pasos inferiores. Sólo en el editor.
+ if(editing)for(const part of track.parts)paintSeam(ctx,part.start);
  if(editing&&state.selectedGroup==="main"&&state.selection>=0){
   ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.20:.42;
   strokePath(ctx,state.selectionMode==="group"?path:track.parts[state.selection].points,
@@ -2836,13 +2838,16 @@ function elevatedDeckRuns(track){
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
  for(const {points,offsets} of elevatedDeckRuns(track)){
-  // El sombreado da profundidad, pero la propia pista es OPACA:
-  // oculta completamente al coche y las juntas inferiores.
-  ctx.save();ctx.shadowColor="#000b";ctx.shadowBlur=27;
-  ctx.shadowOffsetY=16;
-  strokePath(ctx,points,PIECE_LOOK.shadow,TRACK_WIDTH+23);
-  ctx.restore();
-  strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+12);
+  // La misma textura que el trazado base. Dibujar por segunda vez una
+  // sombra con offset en el extremo de una rampa producía la "costura"
+  // rectangular de la captura: a partir de aquí no hay sombra extra.
+  ctx.save();
+  ctx.globalAlpha=1;
+  ctx.globalCompositeOperation="source-over";
+  ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+  // Subcapa 100% opaca, ANTES de bordes y carriles. El centro de la
+  // pista inferior deja de transparentarse bajo el cruce.
+  strokePath(ctx,points,PIECE_LOOK.outer,TRACK_WIDTH+14);
   strokePath(ctx,points,PIECE_LOOK.rim,TRACK_WIDTH+5);
   strokePath(ctx,points,PIECE_LOOK.deck,TRACK_WIDTH-4);
   strokePath(ctx,points,PIECE_LOOK.inner,TRACK_WIDTH-31);
@@ -2854,8 +2859,8 @@ function paintElevatedDeck(ctx,track){
   }
   for(const edge of [-72,72])
    strokePath(ctx,offsets[edge],PIECE_LOOK.edge,2.5);
-  // No pintar paintSeam aquí: los módulos de un tramo elevado
-  // forman una banda visual única, con carriles y bordes continuos.
+  ctx.restore();
+  // Sin juntas, relieves o bordes falsos al cambiar recta por curva.
  }
 }
 function paintBridgeCrossing(ctx,track){
@@ -3701,8 +3706,9 @@ function renderScene(canvas,mode){
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
   paintElevatedDeck(ctx,track);
-  // Las guías de inclinación deben quedar SOBRE la superficie elevada.
-  for(const index of track.elevation?.raisedParts||[]){
+  // Las guías de inclinación sólo son necesarias en Construir.
+  // En carrera cruzaban la calzada como marcas y raíles duplicados.
+  if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
    const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
   }
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
@@ -4170,7 +4176,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.20",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.21",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
