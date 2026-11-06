@@ -85,7 +85,8 @@ const path=require("node:path");
  assert.match(source,/paintElevatedDeck\(ctx,track\);/,
   "El puente se repinta entero detrás o delante del coche según su altura");
  assert.doesNotMatch(source.slice(source.indexOf("function paintSupportKit("),source.indexOf("function paintBridgeRampProfile(")),/fillRect\(-spec\.length\*\.5/,"El soporte no dibuja una placa separada sobre la pista");
- assert.match(source,/paintContinuousTrack\(ctx,track,mode==="build"\)/,"Una única capa continua para todas las piezas");
+ assert.match(source,/paintGroundWithBridgeCutouts\(ctx,track,mode==="build"\)/,
+  "La capa inferior se recorta con todas las máscaras antes de dibujar carriles");
  window.__seamLog.length=0;window.__rampDraws.length=0;
  const groundOrder=render(dForPiece(0),16);
  assert.deepEqual(groundOrder,["base","car","deck"],
@@ -98,6 +99,12 @@ const path=require("node:path");
   "Cada fotograma revisa todos los cruces y repinta la parte superior");
  const crossingPainter=source.slice(source.indexOf("function paintVerifiedCrossings("),
   source.indexOf("function paintBridgeCrossing("));
+ const cutting=source.slice(source.indexOf("function paintGroundWithBridgeCutouts("),
+  source.indexOf("function paintVerifiedCrossings("));
+ assert.match(cutting,/ctx\.clip\("evenodd"\)/,
+  "Cada ventana excluye de verdad los raíles inferiores de la primera pasada");
+ assert.match(cutting,/paintContinuousTrack\(ctx,track,editing\)/,
+  "La máscara se aplica antes de pintar la pista inferior");
  assert.match(crossingPainter,/for\(const cross of crossings\)/,
   "No hay un único cruce fijo ni excepciones por nombre de circuito");
  assert.match(crossingPainter,/ctx\.rect\(-halfLength/,
@@ -146,7 +153,8 @@ const path=require("node:path");
  // Simular dos intersecciones verificadas para garantizar que no se repinta
  // exclusivamente la primera (el error de los circuitos Doble Ocho).
  const multiBridge={...figure,bridge:{...figure.bridge,
-  crossings:[figure.bridge.crossings[0],{...figure.bridge.crossings[0]}]}};
+  crossings:[figure.bridge.crossings[0],{...figure.bridge.crossings[0],
+   x:figure.bridge.crossings[0].x+250}]}};
  const clips=[];
  const instrumentedCtx=new Proxy(ctx,{get(target,key){
   if(key==="clip")return()=>clips.push("clip");
@@ -155,6 +163,14 @@ const path=require("node:path");
  game.rendering.paintVerifiedCrossings(instrumentedCtx,multiBridge);
  assert.equal(clips.length,2,
   "Dos cruces independientes reciben sendas máscaras opacas");
+ const cuts=game.rendering.crossingCutouts(multiBridge);
+ assert.equal(cuts.length,2,"Cada cruce recibe ventana propia en la pista inferior");
+ assert.strictEqual(game.rendering.crossingCutouts(multiBridge),cuts,
+  "Ventanas reutilizadas mientras no cambie la geometría");
+ clips.length=0;
+ game.rendering.paintGroundWithBridgeCutouts(instrumentedCtx,multiBridge,false);
+ assert.deepEqual(clips,["clip"],
+  "Una única máscara evenodd abre todas las ventanas simultáneamente");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
