@@ -2924,17 +2924,46 @@ function clipXRayDeck(ctx,track){
  ctx.clip();
  return true;
 }
+// Contorno de deportivo cenital, con morro afinado, pasos de rueda,
+// hombros traseros y alerón. No se usa el rectángulo de colisión del coche.
+function traceXRayCarBody(ctx){
+ ctx.beginPath();
+ ctx.moveTo(48,-9);
+ ctx.quadraticCurveTo(51,0,48,9);          // morro
+ ctx.lineTo(41,15);
+ ctx.quadraticCurveTo(37,21,27,22);       // aleta delantera
+ ctx.quadraticCurveTo(22,25,17,24);
+ ctx.lineTo(-23,24);
+ ctx.quadraticCurveTo(-32,26,-38,23);     // aleta trasera
+ ctx.lineTo(-43,21);
+ ctx.quadraticCurveTo(-47,19,-47,14);     // parachoques trasero
+ ctx.lineTo(-47,-14);
+ ctx.quadraticCurveTo(-47,-19,-43,-21);
+ ctx.lineTo(-38,-23);
+ ctx.quadraticCurveTo(-32,-26,-23,-24);
+ ctx.lineTo(17,-24);
+ ctx.quadraticCurveTo(22,-25,27,-22);
+ ctx.quadraticCurveTo(37,-21,41,-15);
+ ctx.closePath();
+}
 function paintXRaySilhouette(ctx,at){
  if(!at)return;
  const visual=visualCarPose(at);
  ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h);
  ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
- ctx.setLineDash([9,6]);
- // Halo discreto: evita que el contorno se pierda sobre asfalto claro.
- roundRect(ctx,-CAR_LENGTH_MM/2,-CAR_WIDTH_MM/2,CAR_LENGTH_MM,CAR_WIDTH_MM,10);
- ctx.globalAlpha=.48;ctx.lineWidth=8;ctx.strokeStyle="#07313b";ctx.stroke();
- ctx.globalAlpha=1;ctx.lineWidth=3.5;ctx.strokeStyle="#b3fffa";ctx.stroke();
- // Solo la silueta; jamás sprites, luces, ventanas ni una carrocería rellena.
+ ctx.lineJoin="round";ctx.lineCap="round";
+ traceXRayCarBody(ctx);
+ // El tenue relleno conserva la forma completa incluso con mucho asfalto
+ // superpuesto, sin mostrar el sprite opaco del coche ni sus ventanillas.
+ ctx.globalAlpha=.11;ctx.fillStyle="#5df5ea";ctx.fill();
+ ctx.setLineDash([10,5]);
+ ctx.globalAlpha=.35;ctx.lineWidth=7;ctx.strokeStyle="#052b34";ctx.stroke();
+ ctx.shadowColor="#53f6e8";ctx.shadowBlur=7;
+ ctx.globalAlpha=.95;ctx.lineWidth=2.7;ctx.strokeStyle="#a8fff2";ctx.stroke();
+ ctx.shadowBlur=0;ctx.setLineDash([]);
+ // Un pequeño trazo de alerón da lectura de coche de carreras, no de caja.
+ ctx.beginPath();ctx.moveTo(-46,-23);ctx.lineTo(-46,23);
+ ctx.globalAlpha=.52;ctx.lineWidth=2;ctx.strokeStyle="#a8fff2";ctx.stroke();
  ctx.restore();
 }
 // Guardar las guías de los carriles por trazado: en túneles largos
@@ -2949,6 +2978,13 @@ function xRayGroundGuides(track){
  xRayGroundCache.set(track,guides);
  return guides;
 }
+function strokeXRayLine(ctx,points,color,width){
+ if(points.length<2)return;
+ ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+ for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
+ ctx.strokeStyle=color;ctx.lineWidth=width;
+ ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();
+}
 function paintXRayOverlay(ctx,track,hiddenCar=null){
  if(!state.xRayEnabled||!track.bridge)return false;
  const guides=xRayGroundGuides(track);
@@ -2957,18 +2993,21 @@ function paintXRayOverlay(ctx,track,hiddenCar=null){
  if(!clipXRayDeck(ctx,track)){ctx.restore();return false;}
  ctx.globalCompositeOperation="source-over";
  ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
- ctx.setLineDash([19,15]);
- // El doble trazo aporta contraste sin dibujar una pista fantasma sólida.
- // El clip de la cubierta limita los guiones al recorrido realmente oculto.
+ // Guías holográficas: trazos redondeados, finos y con brillo ligero.
+ // Solo quedan visibles donde existe asfalto bajo una cubierta superior.
+ ctx.setLineDash([23,17]);
  for(const guide of guides){
   for(const rail of guide.rails){
-   ctx.globalAlpha=.38;
-   strokePath(ctx,rail,"#06323e",7);
-   ctx.globalAlpha=.92;
-   strokePath(ctx,rail,"#8cece8",3);
+   ctx.globalAlpha=.27;
+   strokeXRayLine(ctx,rail,"#06323e",7);
+   ctx.globalAlpha=.78;
+   ctx.shadowColor="#5df5ea";ctx.shadowBlur=5;
+   strokeXRayLine(ctx,rail,"#8cece8",2.6);
+   ctx.shadowBlur=0;
   }
-  ctx.globalAlpha=.55;
-  strokePath(ctx,guide.center,"#3eafc1",2);
+  // Línea central más discreta para ayudar a leer túneles largos.
+  ctx.globalAlpha=.25;
+  strokeXRayLine(ctx,guide.center,"#3eafc1",1.4);
  }
  ctx.setLineDash([]);ctx.globalAlpha=1;
  if(hiddenCar)paintXRaySilhouette(ctx,hiddenCar);
@@ -4391,12 +4430,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.27",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.28",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,paintElevationJoins,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,paintElevationJoins,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
