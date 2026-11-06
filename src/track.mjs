@@ -86,30 +86,71 @@ function crossingCandidates(parts,closed){
    const det=ax*by-ay*bx;if(Math.abs(det)<EPS)continue;
    const rx=q.x-p.x,ry=q.y-p.y,t=(rx*by-ry*bx)/det,u=(rx*ay-ry*ax)/det;
    if(t< -1e-8||t>1+1e-8||u< -1e-8||u>1+1e-8)continue;
-   const at={a:i,b:j,x:p.x+t*ax,y:p.y+t*ay};
+   const at={a:i,b:j,x:p.x+t*ax,y:p.y+t*ay,ta:(x+t)/(a.length-1),tb:(y+u)/(b.length-1)};
    if(!found.some(c=>c.a===i&&c.b===j&&hypot(c.x-at.x,c.y-at.y)<.01))
     found.push(at);
   }
  }
  return found;
 }
-// La elevación debe verse durante el montaje aunque aún no se haya cerrado
-// el circuito; cerrar el trazado sigue siendo requisito independiente para correr.
-function manualBridge(parts,crossings,raisedParts,closed){
- if(!crossings.length)return null;
- const raised=[...new Set(raisedParts)].filter(i=>Number.isInteger(i)&&i>=0&&i<parts.length);
- if(raised.length!==1)return null; // Un tramo elevado por kit en esta fase.
- const index=raised[0],piece=parts[index],spec=CATALOG[piece.id];
- if(!spec?.length||spec.length<350)return null;
- const matches=crossings.filter(c=>c.a===index||c.b===index);
- if(matches.length!==crossings.length||matches.length!==1)return null;
- const c=matches[0],at=positionOnPiece(piece.start,piece.id,0);
- const progress=(c.x-at.x)*Math.cos(at.h)+(c.y-at.y)*Math.sin(at.h);
- // Las rampas y los soportes requieren un tramo recto suficiente a cada lado.
- if(progress<90||progress>spec.length-90)return null;
- return{height:BRIDGE_HEIGHT_MM,overParts:[index],
-  underParts:[c.a===index?c.b:c.a],supports:[index],virtual:false,
-  crossing:{x:c.x,y:c.y},ramps:true};
+// Perfil de altura continuo: cualquier curva puede ser una plataforma a 65 mm.
+// Las rectas contiguas absorben la pendiente sin tocar las dimensiones de pista.
+const MIN_TRANSITION_STRAIGHT_MM=350;
+const smoothHeight=t=>{const x=Math.max(0,Math.min(1,t));return x*x*(3-2*x);};
+function buildElevation(parts,raisedParts,closed){
+ const n=parts.length,selected=[...new Set(raisedParts)].filter(i=>
+  Number.isInteger(i)&&i>=0&&i<n).sort((a,b)=>a-b);
+ const chosen=new Set(selected),profiles=Array(n).fill(null),runs=[],errors=[];
+ if(!selected.length)return{profiles,selected,raisedParts:[],runs,errors,valid:true};
+ if(closed&&selected.length===n){
+  errors.push("Falta un tramo de subida y bajada: todo el circuito está elevado.");
+  runs.push(selected);
+ }else for(const i of selected){
+  const prev=i?i-1:closed?n-1:-1;
+  if(prev>=0&&chosen.has(prev))continue;
+  const run=[];let j=i;
+  while(j>=0&&chosen.has(j)&&!run.includes(j)){
+   run.push(j);j=j+1<n?j+1:closed?0:-1;
+  }
+  runs.push(run);
+ }
+ for(const run of runs)for(const i of run)profiles[i]={mode:"plateau"};
+ for(const run of runs){
+  if(!run.length)continue;
+  const first=run[0],last=run[run.length-1];
+  const before=first?first-1:closed?n-1:-1;
+  const after=last<n-1?last+1:closed?0:-1;
+  const ramp=(edge,neighbor,up)=>{
+   const adjacent=neighbor>=0?CATALOG[parts[neighbor].id]:null;
+   if(neighbor>=0&&!chosen.has(neighbor)&&!profiles[neighbor]&&
+      adjacent?.length>=MIN_TRANSITION_STRAIGHT_MM){
+    profiles[neighbor]={mode:up?"up":"down"};return;
+   }
+   // Los kits clásicos sobre rectas siguen funcionando con rampas internas.
+   const own=CATALOG[parts[edge].id];
+   if(own?.length>=MIN_TRANSITION_STRAIGHT_MM){
+    profiles[edge][up?"up":"down"]=Math.min(.4,Math.max(.18,140/own.length));
+    return;
+   }
+   errors.push("Falta una recta de 350 mm para "+
+    (up?"subir antes de la curva.":"bajar después de la curva."));
+  };
+  ramp(first,before,true);ramp(last,after,false);
+ }
+ return{profiles,selected,runs,errors,
+  raisedParts:profiles.flatMap((p,i)=>p?[i]:[]),valid:errors.length===0};
+}
+function heightAtProfile(e,index,t=.5){
+ const p=e?.profiles?.[index];if(!p)return 0;
+ if(p.mode==="up")return BRIDGE_HEIGHT_MM*smoothHeight(t);
+ if(p.mode==="down")return BRIDGE_HEIGHT_MM*(1-smoothHeight(t));
+ let z=BRIDGE_HEIGHT_MM;
+ if(p.up!=null)z=Math.min(z,BRIDGE_HEIGHT_MM*smoothHeight(t/p.up));
+ if(p.down!=null)z=Math.min(z,BRIDGE_HEIGHT_MM*smoothHeight((1-t)/p.down));
+ return z;
+}
+export function elevationAt(track,index,t=.5){
+ return heightAtProfile(track?.elevation,index,t);
 }
 function laneData(points,side){
   const nodes=points.map(p=>({...p,x:p.x-Math.sin(p.h)*side,y:p.y+Math.cos(p.h)*side}));
@@ -122,7 +163,7 @@ export function buildTrack(types,origin=START,raisedParts=[]){
   let pose={...origin},points=[{...origin,curve:0,radius:Infinity,pieceIndex:-1}],parts=[];
   for(const [index,id] of types.entries()){
     const start={...pose},spec=CATALOG[id],n=spec.length?7:20,section=[];
-    for(let k=0;k<=n;k++){const p=positionOnPiece(start,id,k/n);section.push({...p,pieceIndex:index});if(k>0)points.push({...p,pieceIndex:index});}
+    for(let k=0;k<=n;k++){const p=positionOnPiece(start,id,k/n);section.push({...p,pieceIndex:index,pieceT:k/n});if(k>0)points.push({...p,pieceIndex:index,pieceT:k/n});}
     pose=section[n];parts.push({id,index,start,end:{...pose},points:section});
   }
   const gap=hypot(pose.x-origin.x,pose.y-origin.y);
@@ -158,19 +199,31 @@ export function buildTrack(types,origin=START,raisedParts=[]){
   const onTable=bounds.left>=board.left+TABLE.edge&&bounds.right<=board.right-TABLE.edge&&
     bounds.top>=board.top+TABLE.edge&&bounds.bottom<=board.bottom-TABLE.edge;
   const crossings=crossingCandidates(parts,closed);
-  const intersection=crossings.length>0;
-  // Puente inicial incluido en la receta o kit de elevación colocado
-  // sobre una recta suficientemente larga. Sin soporte, cruce no validado.
-  const automatic=closed&&intersection&&hasAutomaticEightBridge(types);
-  // Si el jugador instala un kit, tiene prioridad sobre el puente de demo.
-  const manual=manualBridge(parts,crossings,raisedParts,closed);
-  const bridge=manual||(automatic?
-   {height:BRIDGE_HEIGHT_MM,overParts:[7],underParts:[0],supports:[7],
-    crossing:{x:crossings[0].x,y:crossings[0].y},ramps:true,virtual:true}:null);
-  const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
-  return{parts,types:[...types],points,lanes,closed,onTable,intersection,crossings,bridge,
-    valid:closed&&onTable&&(!intersection||Boolean(bridge)),
-    ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
+   const intersection=crossings.length>0;
+   const automatic=closed&&intersection&&hasAutomaticEightBridge(types)&&!raisedParts.length;
+   const elevation=buildElevation(parts,automatic?[7]:raisedParts,closed);
+   const crossedLevels=crossings.map(c=>{
+    const za=heightAtProfile(elevation,c.a,c.ta),zb=heightAtProfile(elevation,c.b,c.tb);
+    const upper=za>=zb?c.a:c.b,lower=upper===c.a?c.b:c.a;
+    return{...c,upper,lower,upperT:upper===c.a?c.ta:c.tb,
+     lowerT:lower===c.a?c.ta:c.tb,clearance:Math.abs(za-zb),
+     clear:Math.abs(za-zb)>=BRIDGE_HEIGHT_MM*.88};
+   });
+   const safeCrossings=crossedLevels.filter(c=>c.clear);
+   const bridge=elevation.selected.length?{
+    height:BRIDGE_HEIGHT_MM,overParts:[...new Set([
+     ...elevation.selected,...safeCrossings.map(c=>c.upper)])],
+    underParts:[...new Set(safeCrossings.map(c=>c.lower))],
+    supports:elevation.raisedParts.slice(),ramps:true,virtual:automatic,
+    crossing:safeCrossings.length?{x:safeCrossings[0].x,y:safeCrossings[0].y}:null,
+    crossings:safeCrossings,
+    valid:elevation.valid&&safeCrossings.length===crossings.length,
+    errors:elevation.errors
+   }:null;
+   const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
+   return{parts,types:[...types],points,lanes,closed,onTable,intersection,crossings,bridge,elevation,
+     valid:closed&&onTable&&elevation.valid&&safeCrossings.length===crossings.length,
+     ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,bounds,board,
     connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,
     nearConnection:gap<=TRACK_WIDTH&&types.length>=4,
@@ -206,12 +259,13 @@ export function positionAt(lane,distance){
     // Necesario para saber si el coche circula bajo el puente o sobre él.
     // El tramo se asigna por el segmento de trayectoria, no por la
     // proximidad visual al cruce: dos vías superpuestas son distintas.
-    pieceIndex:b.pieceIndex};
+    pieceIndex:b.pieceIndex,pieceT:a.pieceIndex===b.pieceIndex?
+      (a.pieceT||0)+((b.pieceT||0)-(a.pieceT||0))*fraction:
+      (b.pieceT||0)*fraction};
 }
 export function carTrackLevel(track,pose){
- // El nivel se determina por la pieza del recorrido, no por las coordenadas
- // X/Y: en el cruce ambos carriles pueden ocupar la misma proyección.
- return track?.bridge?.overParts?.includes(pose?.pieceIndex)?"upper":"lower";
+ return elevationAt(track,pose?.pieceIndex,pose?.pieceT??.5)>=BRIDGE_HEIGHT_MM*.5?
+  "upper":"lower";
 }
 export function nearestPiece(track,x,y){
   let best={index:-1,distance:Infinity};
