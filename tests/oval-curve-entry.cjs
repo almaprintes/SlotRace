@@ -34,11 +34,11 @@ const path=require("node:path");
  );
  const game=window.slotraceLab;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.10");
+ assert.equal(game.version,"DEV 0.14.11");
  game.changeTypes(geom.STARTER.slice(),"Óvalo de prueba",[]);
  game.openRace();
  const st=game.state,physics=game.physics;
- assert.equal(game.version,"DEV 0.14.10");
+ assert.equal(game.version,"DEV 0.14.11");
  assert.equal(st.track.valid,true);
  assert.equal(st.track.bridge,null);
  const max=physics.DRIVE.topSpeed;
@@ -226,6 +226,43 @@ const path=require("node:path");
  assert.ok(half.h>paintPose.h&&half.h<rendered.h,
   "El derrape progresa sin saltos ni reinicios de postura");
  
+ // Contraderrape de Scalextric: al salir de una curva no se borra
+ // el desplazamiento de la cola. El muelle de recta la hace cruzar el
+ // centro y sobrepasarlo aproximadamente a mitad de la amplitud previa.
+ function checkCounterSlide(initialSlip,dt){
+  Object.assign(st,{rearSlip:initialSlip,rearSlipVelocity:0,
+   deslot:null,penalty:0,speed:max*.80});
+  const start=physics.visualCarPose(paintPose);
+  let maxReverse=0,crossed=false,first=null;
+  const samples=Math.round(1.5/dt);
+  for(let i=0;i<samples;i++){
+   const rear=physics.advanceRearDynamics({curve:0},1,dt);
+   if(i===0)first=rear.slipMm;
+   const reverse=-Math.sign(initialSlip)*rear.slipMm;
+   if(reverse>0)crossed=true;
+   maxReverse=Math.max(maxReverse,reverse);
+  }
+  assert.ok(Math.abs(first-initialSlip)<.5,
+   "La trasera comienza a enderezarse sin saltar en la junta");
+  assert.ok(crossed,"La trasera cruza la línea central al iniciar recta");
+  assert.ok(maxReverse>=Math.abs(initialSlip)*.40&&
+   maxReverse<=Math.abs(initialSlip)*.60,
+   "El contraderrape alcanza aproximadamente la mitad hacia el otro lado");
+  assert.ok(Math.abs(st.rearSlip)<.4,
+   "Tras el rebote la cola vuelve casi a la línea central");
+  assert.ok(Math.abs(start.h-paintPose.h)>.20,
+   "La recuperación parte del derrape visual real");
+  return maxReverse;
+ }
+ const recoil60=checkCounterSlide(12,1/60);
+ const recoil120=checkCounterSlide(12,1/120);
+ assert.ok(Math.abs(recoil60-recoil120)<.5,
+  "El contraderrape es estable a 60 y 120 Hz");
+ checkCounterSlide(-12,1/120);
+ // Prohibido introducir un reinicio de velocidad al entrar en recta.
+ st.rearSlip=12;st.rearSlipVelocity=45;
+ physics.advanceRearDynamics({curve:0},1,1/120);
+ assert.ok(st.rearSlip>12,"La inercia previa se conserva al salir de curva");
  st.rearSlip=0;st.rearSlipVelocity=0;
  const fast=runCurve(r1Oval,1,1,1/120);
  assert.equal(fast.crashed,true,"Mismo deslot a 120 Hz");
@@ -247,5 +284,5 @@ const path=require("node:path");
  const angle=physics.advanceRearDynamics(pose(r1),1,1/60);
  assert.ok(Math.abs(angle.yawRad)<physics.VEHICLE_DYNAMICS.gripline.guideYawLimit,
   "El ángulo de guía se mantiene dentro de los márgenes al reducir gas");
- console.log("SlotRace DEV 0.14.10: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
+ console.log("SlotRace DEV 0.14.11: fuerza centrípeta, inercia trasera, derrape visible, R1-R4 a fondo arriesgadas, postura continua y 60/120 Hz — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

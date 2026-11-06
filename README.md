@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.11 · Contraderrape al enderezar en recta
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.11
+
+- **Contraderrape:** al salir de una curva la trasera cruza el centro y se desliza aproximadamente un **50 % al otro lado**, antes de quedar alineada de nuevo. No existe un reinicio de postura ni de velocidad lateral en las juntas.
+- **Modelo físico:** la masa trasera (45 g) mantiene la amortiguación estable en curva (3,6 N/m; 0,70 Ns/m). En recta recupera mediante muelle de 7 N/m y amortiguación de 0,24 Ns/m, causando un rebote decreciente de ~50 % en condiciones de referencia.
+- **Guía sujeta y trayectoria fluida:** la visualización sigue la posición lateral calculada y rota el coche alrededor del morro; no se añade una animación independiente. La recuperación funciona en ambos sentidos y a 60/120 Hz.
+- **Récords:** esta dinámica se identifica como `rear-physics-v3`, manteniendo visibles los mejores tiempos históricos v1/v2 en Mis circuitos → Mis récords.
+- **Compatibilidad:** conserva los cambios recientes de circuitos elevados y su editor.
+
+**Nota:** cifras de sintonización de juego, no mediciones certificadas de Scalextric.
+
+---
+
 # SlotRace DEV 0.14.10 · Curvas elevadas y puentes continuos
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.10

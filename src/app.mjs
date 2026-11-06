@@ -150,7 +150,7 @@ const format=n=>n.toFixed(3).replace(".",",");
  // Spark utiliza un sufijo propio para no mezclar coches distintos.
 const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
  state.types.join("-")+(state.driveDirection===-1?"-reverse":"")+
-  "-rear-physics-v2"+(state.selectedCar==="spark"?"-helix-spark":"");
+  "-rear-physics-v3"+(state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -359,7 +359,7 @@ function savedCircuitRecords(item){
    combined:times.every(value=>value!==null)?times[0]+times[1]:null});
  }
  variants.sort((a,b)=>Number(b.currentGeometry)-Number(a.currentGeometry)||
-  Number(b.physics===2)-Number(a.physics===2)||
+  Number(b.physics===3)-Number(a.physics===3)||
   b.physics-a.physics||a.car.localeCompare(b.car)||
   Number(a.reverse)-Number(b.reverse));
  return variants;
@@ -398,10 +398,10 @@ function renderLibraryRecords(){
   for(const entry of entries){
    const panel=document.createElement("div");
    panel.className="library-record-variant"+
-    (entry.physics===2&&entry.currentGeometry?" is-current":"");
+    (entry.physics===3&&entry.currentGeometry?" is-current":"");
    const name=entry.car==="spark"?"Helix Spark":"Avenir Gripline";
    const direction=entry.reverse?"Antihorario":"Horario";
-   const generation=entry.physics===2?"Físicas actuales (v2)":
+   const generation=entry.physics===3?"Físicas actuales (v3)":
     entry.physics?"Físicas v"+entry.physics+" · histórico":"Físicas originales · histórico";
    panel.appendChild(libraryText("div","library-record-variant-title",
     name+" · "+direction));
@@ -1323,9 +1323,11 @@ const DRIVE=Object.freeze({
 // Ficha por vehículo, preparada para futuras diferencias de comportamiento.
 const VEHICLE_DYNAMICS=Object.freeze({
  gripline:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
-  damperNsPerM:.70,wheelbaseMM:65,guideYawLimit:.245}),
+  damperNsPerM:.70,straightSpringNPerM:7,straightDamperNsPerM:.24,
+  wheelbaseMM:65,guideYawLimit:.245}),
  spark:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
-  damperNsPerM:.70,wheelbaseMM:65,guideYawLimit:.245})
+  damperNsPerM:.70,straightSpringNPerM:7,straightDamperNsPerM:.24,
+  wheelbaseMM:65,guideYawLimit:.245})
 });
 const carDynamics=()=>VEHICLE_DYNAMICS[state.selectedCar]||VEHICLE_DYNAMICS.gripline;
 function curveRadius(p,lane){
@@ -1416,12 +1418,22 @@ function advanceRearDynamics(p,lane,dt){
  const outwardForce=turn*car.rearMassKg*
   (effectiveExcess+elastic*(.25+.75*envelope));
  state.rearStress=effectiveExcess;
+ // En curva, el amortiguador prioriza estabilidad; en recta, el
+ // muelle recupera la trasera, cruza el eje y devuelve aprox. la mitad
+ // del desplazamiento anterior hacia el lado contrario antes de centrarse.
+ // No reiniciamos el desplazamiento ni la velocidad al cambiar de pieza.
+ const springRate=turn?car.springNPerM:car.straightSpringNPerM;
+ const dampingRate=turn?car.damperNsPerM:car.straightDamperNsPerM;
  for(let i=0;i<count;i++){
-  const spring=car.springNPerM*state.rearSlip/1000;
-  const damper=car.damperNsPerM*state.rearSlipVelocity/1000;
+  const spring=springRate*state.rearSlip/1000;
+  const damper=dampingRate*state.rearSlipVelocity/1000;
   const acceleration=(outwardForce-spring-damper)/car.rearMassKg*1000;
   state.rearSlipVelocity+=acceleration*step;
   state.rearSlip+=state.rearSlipVelocity*step;
+  if(!turn&&Math.abs(state.rearSlip)<.025&&
+     Math.abs(state.rearSlipVelocity)<.3){
+   state.rearSlip=0;state.rearSlipVelocity=0;
+  }
  }
  const limitMm=car.wheelbaseMM*Math.tan(car.guideYawLimit);
  state.drift=Math.min(1,Math.abs(state.rearSlip)/limitMm);
@@ -3591,7 +3603,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.10",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.11",state,showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
