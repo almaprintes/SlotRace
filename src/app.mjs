@@ -2374,7 +2374,7 @@ const pocketNames={
  R2_90R:"R2 · 90°",R3_90R:"R3 · 90°",R4_90R:"R4 · 90°"
 };
 const pocketIds=[
- ...Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R")),
+ ...Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))),
  ...Object.keys(CURVE_90_PRESETS)
 ];
 // Fuente de color común entre la pista de la mesa y las miniaturas de la caja.
