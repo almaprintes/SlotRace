@@ -60,6 +60,9 @@ jobs:
       - name: Comprobar cierre real por ambos extremos con hueco de 175 mm
         run: node tests/two-end-closure.cjs
 
+      - name: Comprobar plantilla de referencia: transparencia, escala, guardado y PNG
+        run: node tests/reference-template.cjs
+
       - name: Comprobar menú completo, conducción reversible y PNG con receta
         run: node tests/game-shell.cjs
 
