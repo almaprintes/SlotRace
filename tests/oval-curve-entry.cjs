@@ -192,7 +192,8 @@ const path=require("node:path");
   assert.equal(rear.deslot,false,"A 95 % se mantienen trazables las curvas amplias");
  }
  // El desplazamiento y el ángulo visible pivota alrededor de la guía.
- st.rearSlip=12;
+ // Limpiar el estado de la última prueba de descarrilamiento antes de dibujar.
+ st.deslot=null;st.penalty=0;st.rearSlip=12;
  const paintPose={x:250,y:190,h:.72,curve:1,radius:r2};
  const rendered=physics.visualCarPose(paintPose);
  const nose=98*.40;
