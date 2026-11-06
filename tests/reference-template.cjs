@@ -111,6 +111,11 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(JSON.stringify(st.types),trackBefore);
  assert.equal(t.templateToggleMove(),true);
  assert.equal(st.reference.locked,true);
+ assert.equal(t.templateToggleMove(),true);
+ assert.equal(st.reference.locked,false);
+ game.chooseCaseCategory("bridge");
+ assert.equal(st.reference.locked,true,
+  "Al entrar en Puentes la foto deja de interceptar la selección de piezas");
  t.templateToggleVisibility();
  painted=0;t.paintReference(context);
  assert.equal(painted,0,"Ocultar la imagen no altera el circuito");
