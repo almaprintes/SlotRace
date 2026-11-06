@@ -1,3 +1,21 @@
+# SlotRace DEV 0.14.6 · Inercia realista de la trasera en curvas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.6
+
+## Simulación nueva: inercia, agarre y guía de slot
+
+- El criterio de salida deja de ser un porcentaje fijo de acelerador o un medidor abstracto de estrés. La aceleración lateral es **v²/r**, usando la velocidad del coche y el radio efectivo de su carril (interior o exterior).
+- Cada vehículo tiene parámetros independientes preparados para configurar **masa trasera, coeficiente de agarre, rigidez lateral, amortiguación, distancia entre ejes y ángulo máximo de guía**. Gripline y Spark comparten inicialmente los mismos parámetros para no inventar diferencias.
+- Se integra a pasos de **1/120 s como máximo** la aceleración y la velocidad lateral de la trasera, incluyendo el exceso de fuerza respecto del agarre disponible y una pequeña deformación elástica de los neumáticos.
+- La trasera acumula un **desplazamiento lateral en mm** y un **ángulo real** respecto a la guía. Sólo al exceder el ángulo/recorrido admitido por la guía y recorrer parte de la curva aparece el descarrilamiento con la penalización actual de tres segundos.
+- Al soltar el acelerador o entrar en una recta, muelle y amortiguador recuperan progresivamente la alineación. Una segunda curva opuesta conserva la inercia que llevaba la trasera, en lugar de reiniciarla artificialmente.
+- El umbral de **inicio de pérdida de agarre en la R1 interior está calibrado alrededor del 90 % de la velocidad máxima**, pero esto no es un interruptor de salida: necesita tiempo y desplazamiento. En R2, R3 y R4 se admite el 100 % con el agarre inicial.
+- Se mantiene la cámara con zoom fijo 2× y aire por delante del coche. Los récords con la nueva física se guardan en claves `-rear-physics-v1`, preservando los anteriores sin mezclarlos.
+
+**Nota:** los coeficientes de masa/agarre son valores experimentales del juego, no mediciones certificadas de coches Scalextric. Las pruebas validan comportamiento y consistencia a 60/120 Hz, no equivalencia exacta con un automóvil a escala real.
+
+---
+
 # SlotRace DEV 0.14.5 · Cámara con espacio de anticipación
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.5

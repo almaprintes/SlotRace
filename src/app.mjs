@@ -109,7 +109,7 @@ const state={
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
   lane:0,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
-  drift:0,driftDirection:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
+  drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
@@ -150,7 +150,7 @@ const format=n=>n.toFixed(3).replace(".",",");
  // Spark utiliza un sufijo propio para no mezclar coches distintos.
 const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
  state.types.join("-")+(state.driveDirection===-1?"-reverse":"")+
- (state.selectedCar==="spark"?"-helix-spark":"");
+  "-rear-physics-v1"+(state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 function setMessage(msg){$("buildStatus").textContent=msg;}
@@ -510,7 +510,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -1107,7 +1107,7 @@ function play(){
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionCar=state.selectedCar;
- state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
+ state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();updateUI();resize();
  resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
@@ -1190,26 +1190,62 @@ function completeLap(){
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
  state.seconds=0;state.lap++;
 }
-// Ajustes del prototipo: más velocidad, mayor margen en curvas y aviso
-// visual de pérdida de adherencia antes de llegar al trompo.
+// Modelo de slot simplificado: masa trasera que desliza lateralmente,
+// neumáticos con fuerza de agarre y amortiguación, guía delantera retenida.
+// Parámetros experimentales; no son medidas de coches reales.
 const DRIVE=Object.freeze({
- maxSpeed:1250,topSpeed:1150,curveBase:690,derailMultiplier:1.20,
- driftStartsAt:.72,driftMaxAngle:.23,driftMaxOffset:12,
- // A un 70% de gas y velocidad estabilizada, el coche necesita
- // recorrer aprox. una curva de 45° antes de perder la ranura.
- stressReferenceExcess:.045,stressDistance:185,minCurveDistance:65,
- gripRecoveryPerSec:1.25
+ maxSpeed:1250,topSpeed:1150,gravity:9.81,lateralElasticity:.02,minCurveDistance:65
 });
-function curveLimit(p,lane){
+// Ficha por vehículo, preparada para futuras diferencias de comportamiento.
+const VEHICLE_DYNAMICS=Object.freeze({
+ gripline:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
+  damperNsPerM:.70,wheelbaseMM:65,guideYawLimit:.245}),
+ spark:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
+  damperNsPerM:.70,wheelbaseMM:65,guideYawLimit:.245})
+});
+const carDynamics=()=>VEHICLE_DYNAMICS[state.selectedCar]||VEHICLE_DYNAMICS.gripline;
+function curveRadius(p,lane){
  if(!p||!p.curve)return Infinity;
- // Los puntos de carril se generan desplazando el eje a su normal:
- // lane 0 = -LANE_OFFSET; lane 1 = +LANE_OFFSET.
- // En una curva derecha (+1), el carril 1 es INTERIOR (radio menor),
- // el 0 EXTERIOR; en una izquierda (-1) ocurre lo contrario.
- // Antes se SUMABA ese desplazamiento y se invertía el agarre.
- const lateralOffset=lane===0?-LANE_OFFSET:LANE_OFFSET;
- const radius=Math.max(70,p.radius-lateralOffset*p.curve);
- return DRIVE.curveBase*Math.sqrt(radius/CATALOG.R2_45R.radius)*DRIVE.derailMultiplier;
+ const offset=lane===0?-LANE_OFFSET:LANE_OFFSET;
+ return Math.max(70,p.radius-offset*p.curve);
+}
+function cornerForces(p,lane,speed=state.speed){
+ const car=carDynamics(),radiusMm=curveRadius(p,lane);
+ const lateralAcceleration=Number.isFinite(radiusMm)?
+  Math.max(0,speed*speed/radiusMm/1000):0; // m/s² (velocidad en mm/s)
+ const gripAcceleration=car.gripG*DRIVE.gravity;
+ return{radiusMm,lateralAcceleration,gripAcceleration,
+  inertialForceN:car.rearMassKg*lateralAcceleration,
+  gripForceN:car.rearMassKg*gripAcceleration};
+}
+// Deslizamiento empieza cuando a_lateral supera el agarre. Deslot NO es
+// instantáneo: sucede si el desplazamiento/ángulo de la cola resulta excesivo.
+function curveLimit(p,lane){
+ const radius=curveRadius(p,lane);
+ return Number.isFinite(radius)?
+  Math.sqrt(carDynamics().gripG*DRIVE.gravity*1000*radius):Infinity;
+}
+function advanceRearDynamics(p,lane,dt){
+ const car=carDynamics(),forces=cornerForces(p,lane);
+ const count=Math.max(1,Math.ceil(Math.max(0,dt)/(1/120)));
+ const step=Math.max(0,dt)/count,turn=p?.curve||0;
+ const excess=Math.max(0,forces.lateralAcceleration-forces.gripAcceleration);
+ const elastic=DRIVE.lateralElasticity*Math.min(forces.lateralAcceleration,forces.gripAcceleration);
+ const outwardForce=turn*car.rearMassKg*(excess+elastic);
+ for(let i=0;i<count;i++){
+  const spring=car.springNPerM*state.rearSlip/1000;
+  const damper=car.damperNsPerM*state.rearSlipVelocity/1000;
+  const acceleration=(outwardForce-spring-damper)/car.rearMassKg*1000;
+  state.rearSlipVelocity+=acceleration*step;
+  state.rearSlip+=state.rearSlipVelocity*step;
+ }
+ const limitMm=car.wheelbaseMM*Math.tan(car.guideYawLimit);
+ state.drift=Math.min(1,Math.abs(state.rearSlip)/limitMm);
+ state.driftDirection=Math.abs(state.rearSlip)>.1?Math.sign(state.rearSlip):0;
+ state.gripDebt=state.drift;
+ return{...forces,slipMm:state.rearSlip,slipVelocityMmS:state.rearSlipVelocity,
+  yawRad:Math.atan2(state.rearSlip,car.wheelbaseMM),
+  limitMm,deslot:Math.abs(state.rearSlip)>=limitMm};
 }
 function simulation(dt){
  if(!state.run||!state.track.valid)return;
@@ -1233,43 +1269,21 @@ function simulation(dt){
   state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
  ));
  const lane=state.track.lanes[drivingLaneIndex()],p=drivingPose();
- const limit=curveLimit(p,state.lane);
- const ratio=Number.isFinite(limit)?state.speed/limit:0;
  const travel=state.speed*dt;
  if(p?.curve){
-  // Las curvas de 45° contiguas son UNA MISMA curva a estos efectos.
-  // Así no reiniciamos artificialmente el agarre en cada junta.
   if(state.cornerDirection!==p.curve){
-   state.cornerDirection=p.curve;state.cornerDistance=0;state.gripDebt=0;
+   state.cornerDirection=p.curve;state.cornerDistance=0;
   }
   state.cornerDistance+=travel;
-  // La adherencia no se pierde al atravesar la arista inicial.
-  // El exceso de velocidad acumula desplazamiento lateral gradualmente;
-  // bajar el gas permite recuperar agarre incluso dentro de la curva.
-  if(ratio>1){
-   const excess=(ratio-1)/DRIVE.stressReferenceExcess;
-   state.gripDebt+=Math.pow(excess,1.15)*travel/DRIVE.stressDistance;
-  }else{
-   state.gripDebt=Math.max(0,state.gripDebt-DRIVE.gripRecoveryPerSec*dt);
-  }
- }else{
-  // Es una RECTA real: no aplicamos la fuerza de curva anterior.
-  state.cornerDistance=0;state.cornerDirection=0;
-  state.gripDebt=Math.max(0,state.gripDebt-DRIVE.gripRecoveryPerSec*3*dt);
- }
- if(p?.curve&&state.cornerDistance>=DRIVE.minCurveDistance&&state.gripDebt>=1){
+ }else{state.cornerDistance=0;state.cornerDirection=0;}
+ // La masa trasera acumula inercia lateral y puede recuperar tracción.
+ const rear=advanceRearDynamics(p,state.lane,dt);
+ if(p?.curve&&state.cornerDistance>=DRIVE.minCurveDistance&&rear.deslot){
   state.speed=0;state.penalty=3;
-  state.drift=0;state.gripDebt=0;
-  // El circuito y la distancia permanecen intactos. Solo animamos
-  // la salida lateral y el giro, y lo devolvemos al mismo punto.
+  state.drift=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;
   state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
-  toast("¡Trompo! Fuera de pista · +3 s.");return;
+  toast("¡Desencarrilado! La trasera perdió el agarre · +3 s.");return;
  }
- const desired= p?.curve?
-  Math.max(0,Math.min(1,(ratio-DRIVE.driftStartsAt)/(1-DRIVE.driftStartsAt))):0;
- // Entrada y salida suaves del derrape: no salta al cruzar un empalme.
- state.drift+=(desired-state.drift)*(1-Math.exp(-9*dt));
- state.driftDirection=state.drift>.002?(p?.curve||state.driftDirection):0;
  state.distance+=state.speed*dt;
  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
 }
@@ -2319,13 +2333,14 @@ function visualCarPose(at){
    h:at.h+side*turn,
    smoke:Math.max(0,1-t/2.5),spin:1};
  }
- const d=state.drift||0,side=state.driftDirection||0;
+ const slip=state.rearSlip||0,car=carDynamics();
  const normalX=-Math.sin(at.h),normalY=Math.cos(at.h);
  return{...at,
-  x:at.x-side*normalX*DRIVE.driftMaxOffset*d,
-  y:at.y-side*normalY*DRIVE.driftMaxOffset*d,
-  h:at.h+side*DRIVE.driftMaxAngle*d,
-  smoke:d,spin:0};
+  x:at.x-normalX*slip*.45,
+  y:at.y-normalY*slip*.45,
+  h:at.h+Math.atan2(slip,car.wheelbaseMM),
+  smoke:Math.min(1,Math.abs(slip)/(car.wheelbaseMM*Math.tan(car.guideYawLimit))),
+  spin:0};
 }
 // Sprites cenitales originales de Top Down RACE: misma escala y físicas.
 // El modelo elegido sólo cambia la apariencia y el récord por coche.
@@ -3364,10 +3379,10 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.5",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+window.slotraceLab={version:"DEV 0.14.6",state,showHub,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
- physics:{DRIVE,curveLimit,visualCarPose,simulationStep:simulation}};
+ physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{

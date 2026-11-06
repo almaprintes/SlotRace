@@ -33,62 +33,60 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
+ assert.equal(game.version,"DEV 0.14.6");
+ const r1Oval=["S350","S350",...Array(4).fill("R1_45R"),
+  "S350","S350",...Array(4).fill("R1_45R")];
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.5");
- game.openRace();
+ game.changeTypes(r1Oval,"Curva de prueba R1",[]);
+ assert.equal(game.openRace(),true);
  const st=game.state,physics=game.physics;
- assert.equal(st.raceStarted,false,"Salida manual, sin contar el tiempo de espera");
- assert.equal(st.track.valid,true);
+ assert.equal(st.raceStarted,false);
  assert.equal(physics.DRIVE.topSpeed,1150);
- assert.ok(physics.DRIVE.curveBase>610);
- assert.ok(physics.DRIVE.derailMultiplier>1.1);
- const lane=st.track.lanes[0];
- const match=[],piece=5;
- lane.nodes.forEach((p,i)=>{if(p.pieceIndex===piece)match.push(i)});
- assert.ok(match.length>4,"Curve exists");
- st.distance=(lane.lengths[match[2]]+lane.lengths[match.at(-3)])/2;
- const routePose=geom.positionAt(lane,st.distance);
- assert.ok(routePose.curve,"Pilot is inside curve");
- const limit=physics.curveLimit(routePose,0);
- assert.ok(limit>680,"Relaxed curve limit");
- st.gas=.60;
- st.speed=limit*.81;
- const tick=(deltaMs=16)=>{
+ const lane=st.track.lanes[1];
+ const first=lane.nodes.findIndex(p=>p.pieceIndex===2);
+ assert.ok(first>0);
+ const start=lane.lengths[first-1]+1;
+ st.lane=1;st.distance=start;st.gas=.93;st.speed=.93*physics.DRIVE.topSpeed;
+ const tick=(ms=16)=>{
   const before=st.seconds;
   for(let i=0;i<6;i++){
-   const next=frames.shift();assert.ok(next,"An animation frame exists");
-   clock+=deltaMs;next(clock);
+   const frame=frames.shift();assert.ok(frame,"Se generó un fotograma");
+   clock+=ms;frame(clock);
    if(st.seconds>before)return;
   }
-  throw Error("No simulation frame ran");
+  throw Error("No avanzó la simulación");
  };
+ // Un ligero exceso de agarre produce derrape progresivo, no expulsión.
  for(let i=0;i<8;i++)tick();
- assert.equal(st.penalty,0,"Safe drift must not cause an off-track penalty");
- assert.ok(st.drift>.08,"Near the threshold, visible drift develops smoothly");
+ assert.equal(st.penalty,0,"No se sale al 93% nada más entrar");
+ assert.ok(st.rearSlip>1,"La trasera acumula desplazamiento lateral");
+ assert.ok(st.drift>0,"El deslizamiento se muestra visualmente");
  const p=geom.positionAt(lane,st.distance),vis=physics.visualCarPose(p);
- assert.ok(Math.abs(vis.h-p.h)>.015,"Car body yaws while rails stay fixed");
- assert.ok(Math.hypot(vis.x-p.x,vis.y-p.y)>.5,"Car tail slides slightly");
- // Una velocidad muy alta debe terminar causando un trompo, pero nunca
- // en el mismo instante del primer contacto con la curva.
- const limitNow=physics.curveLimit(p,0);
- st.speed=limitNow*1.35;st.gas=1;
- for(let i=0;i<25&&st.penalty===0;i++)tick();
- assert.equal(st.penalty,3,"Accumulated excessive speed eventually causes a spin");
- assert.ok(st.deslot,"The spin state is present");
- const spinStartPose=geom.positionAt(lane,st.distance);
+ assert.ok(Math.abs(vis.h-p.h)>.015,
+  "El coche gira por el ángulo real de la cola");
+ assert.ok(Math.hypot(vis.x-p.x,vis.y-p.y)>.5,
+  "El centro del coche acompaña el desplazamiento lateral");
+ // Reinicio físico solo para ensayar el exceso sostenido a fondo.
+ Object.assign(st,{distance:start,gas:1,speed:physics.DRIVE.topSpeed,
+  rearSlip:0,rearSlipVelocity:0,cornerDistance:0,cornerDirection:0,
+  gripDebt:0,penalty:0,deslot:null});
+ for(let i=0;i<50&&st.penalty===0;i++)tick();
+ assert.equal(st.penalty,3,"La cola supera el ángulo máximo y desencarrila");
+ assert.ok(st.deslot,"Se conserva la animación de salida");
+ assert.equal(st.rearSlip,0,"La cola se reinicia durante la recolocación");
  const fixedDistance=st.distance,lap=st.lap;
+ const spinStartPose=geom.positionAt(lane,st.distance);
  for(let i=0;i<12;i++)tick(50);
- assert.ok(st.deslot.elapsed>.4,"The spin animation advances while immobilized");
- assert.equal(st.distance,fixedDistance,"No progress during off-track penalty");
- assert.equal(st.lap,lap,"No invalidation of the lap");
+ assert.ok(st.deslot.elapsed>.4);
+ assert.equal(st.distance,fixedDistance,"Durante la penalización no avanza");
+ assert.equal(st.lap,lap,"La vuelta no se invalida");
  const spin=physics.visualCarPose(geom.positionAt(lane,st.distance));
- assert.ok(Math.abs(spin.h-spinStartPose.h)>1,"Car turns visibly during spin");
- assert.ok(Math.hypot(spin.x-spinStartPose.x,spin.y-spinStartPose.y)>30,"Car moves outward during spin");
- for(let i=0;i<60&&st.penalty>0;i++)tick(50);
- assert.equal(st.penalty,0,"Penalty finishes automatically after 3 seconds");
- assert.equal(st.deslot,null,"Car snaps back to slot after animation");
- assert.equal(st.distance,fixedDistance,"Car returns to same point");
- assert.equal(st.lap,lap,"Lap remains valid");
- assert.ok(st.seconds>3,"Chronometer continues throughout the penalty");
- console.log("SlotRace DEV 0.14.5: increased speed, safe drift/yaw, animated spin, 3s penalty, fixed lap progress — OK");
+ assert.ok(Math.abs(spin.h-spinStartPose.h)>1);
+ assert.ok(Math.hypot(spin.x-spinStartPose.x,spin.y-spinStartPose.y)>30);
+ for(let i=0;i<80&&st.penalty>0;i++)tick(50);
+ assert.equal(st.penalty,0);
+ assert.equal(st.deslot,null);
+ assert.equal(st.distance,fixedDistance);
+ assert.ok(st.seconds>3);
+ console.log("SlotRace DEV 0.14.6: derrape por masa y radio, salida R1 a fondo y penalización de 3 s — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
