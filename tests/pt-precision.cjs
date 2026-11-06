@@ -34,10 +34,23 @@ const assert=require("node:assert/strict");
   const out=trace(recipe);
   assert.ok(out.exact,`Receta ${name} debe cerrar matemáticamente: ${JSON.stringify(out)}`);
  }
+ for(const id of ["R2","R3","R4"]){
+  const curve=PARTS[id+"_90R"],opposite=PARTS[id+"_90L"];
+  assert.ok(curve&&opposite,"Un solo módulo de 90° por sentido: "+id);
+  assert.equal(curve.degrees,90);
+  assert.equal(opposite.degrees,90);
+  assert.equal(curve.radius,RADII[id]);
+  const endpoint90=trace([id+"_90R"]);
+  const composed=trace(id==="R2"?[id+"_45R",id+"_45R"]:
+   Array(4).fill(id+"_225R"));
+  assert.ok(Math.abs(endpoint90.end.x-composed.end.x)<1e-6);
+  assert.ok(Math.abs(endpoint90.end.y-composed.end.y)<1e-6);
+  assert.ok(Math.abs(endpoint90.end.h-composed.end.h)<1e-9);
+ }
  assert.equal(PARTS.R1_90R.degrees,90);
  assert.equal(SPECIALS.X350.requiresLaneRouting,true);
  assert.equal(SPECIALS.BRIDGE.requiresElevation,true);
- assert.equal(Object.keys(PARTS).length,21);
+ assert.equal(Object.keys(PARTS).length,27);
  const straights=Object.entries(PARTS).filter(([,p])=>p.kind==="straight");
  assert.equal(straights.length,7,"Cinco longitudes activas, salida/meta y pieza heredada");
  assert.equal(PARTS.S0125.legacy,true,"12,5 mm sólo se conserva para circuitos antiguos");
@@ -68,5 +81,5 @@ const assert=require("node:assert/strict");
    "Mismo avance nominal en diferente número de rectas: "+seq);
  }
 
- console.log("SR-Precision OK: 21 IDs (1 heredada), 5 longitudes de rectas visibles, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
+ console.log("SR-Precision OK: 27 IDs (1 heredada), 5 longitudes de rectas visibles, unidad 12,5 mm, equivalencias de tramos, radios concéntricos, óvalo y ocho exactos.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
