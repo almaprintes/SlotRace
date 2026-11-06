@@ -3696,14 +3696,15 @@ function renderScene(canvas,mode){
  }
  // Dibujo continuo: los carriles de los módulos acoplados nunca se cortan.
  paintContinuousTrack(ctx,track,mode==="build");
- for(const index of track.elevation?.raisedParts||[]){
-  const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
- }
  if(hasBridge){
   // Orden de capas: pista base → coche inferior → puente completo
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
   paintElevatedDeck(ctx,track);
+  // Las guías de inclinación deben quedar SOBRE la superficie elevada.
+  for(const index of track.elevation?.raisedParts||[]){
+   const part=track.parts[index];if(part)paintBridgeRampProfile(ctx,part,track);
+  }
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  paintLoose(ctx);
