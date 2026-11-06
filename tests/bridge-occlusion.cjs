@@ -134,6 +134,21 @@ const path=require("node:path");
  const crossing=figure.bridge.crossings[0];
  assert.ok(deck[0].indices.includes(crossing.upper),
   "La banda opaca cubre la pieza superior del cruce");
+ // Misma comprobación para cada cruce de un circuito personalizado:
+ // no depender de la numeración fija de piezas del ocho de ejemplo.
+ const customCrossTypes=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
+ const customBridge=geo.buildTrack(customCrossTypes,geo.START,[0]);
+ assert.equal(customBridge.valid,true,"El ocho montado a mano admite puente");
+ for(const circuit of [figure,customBridge]){
+  const raised=new Set(game.rendering.elevatedDeckRuns(circuit).flatMap(run=>run.indices));
+  assert.ok(circuit.bridge.crossings.length>0);
+  for(const crossing of circuit.bridge.crossings){
+   assert.ok(raised.has(crossing.upper),
+    "Cada intersección de un circuito con puente se cubre con su propia vía superior");
+   assert.ok(circuit.elevation.profiles[crossing.upper],
+    "La vía superior pertenece al perfil elevado del trazado");
+  }
+ }
  const manualHigh=geo.buildTrack(["S350","R2_90R","R3_90R","R2_90R","S350"],geo.START,[2]);
  const manualRuns=game.rendering.elevatedDeckRuns(manualHigh);
  assert.equal(manualRuns.length,1);
