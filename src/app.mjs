@@ -1206,19 +1206,34 @@ function selectMainAtCrossing(x,y){
  return hits;
 }
 function selectByTap(kind,index){
- // Un toque = una pieza específica. Para mover todas las piezas juntas
- // existe el botón explícito «Tramo», sin tener que adivinar un doble toque.
- state.selectionMode="piece";
- state.selectedGroup=kind==="main"?"main":looseGroupKey(index);
+ // Al tocar otra pieza, elegirla sola. Al tocar la MISMA, alternar
+ // individual ↔ tramo magnético completo, tantas veces como se quiera.
+ const key=kind==="main"?"main":looseGroupKey(index);
+ const same=key===state.selectedGroup&&
+  (kind==="main"?state.selection===index:state.looseSelection===index);
+ state.selectionMode=same&&state.selectionMode==="piece"?"group":"piece";
+ state.selectedGroup=key;
  state.selection=kind==="main"?index:-1;
  state.looseSelection=kind==="main"?-1:index;
  updateUI();
 }
+// En móvil la caja tapa parte inferior del canvas y la barra superior
+// tapa la parte alta: situar el centro dentro del área realmente útil.
+function workshopVisibleCenter(){
+ const v=makeView(editCanvas,"build"),wide=v.w>680;
+ const left=Math.min(40,v.w*.1);
+ const right=wide?v.w-Math.min(220,v.w*.25):v.w-left;
+ const top=Math.min(110,v.h*.22);
+ const bottom=v.h-Math.min(wide?105:245,v.h*(wide?.18:.36));
+ return worldFromPointer(v,
+  right>left?(left+right)/2:v.w/2,
+  bottom>top?(top+bottom)/2:v.h/2);
+}
 function scatterLoose(id){
- // Las nuevas piezas aparecen en la zona visible, no lejos de la cámara.
- const v=makeView(editCanvas,"build");
- const c=worldFromPointer(v,v.w/2,v.h/2),n=state.loose.length;
- return addLoose(id,c.x+((n%5)-2)*260,c.y+((Math.floor(n/5)%4)-1.5)*240,0);
+ // Centrar la GEOMETRÍA de la nueva pieza, no su conector inicial.
+ const c=workshopVisibleCenter();
+ const mid=positionOnPiece({x:0,y:0,h:0},id,.5);
+ return addLoose(id,c.x-mid.x,c.y-mid.y,0);
 }
 // Piezas independientes de 90°: radio constante, una superficie y dos conectores.
 // Los antiguos trazados compuestos siguen siendo válidos sin migraciones.
@@ -1233,24 +1248,14 @@ function inventoryAction(id){
  const chosen=pocketPartId(id);
  if(!CATALOG[chosen])return false;
  if(freeStock([...state.types,...state.loose.map(p=>p.id)],chosen)<=0){
-  toast("Solo se admite una PT/82 por circuito.");return false;
+  toast("No quedan piezas de este tipo (PT/82: máximo una).");return false;
  }
- if(state.track.closed){
-  const placed=scatterLoose(chosen);
-  if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala para conectarla a otro tramo.");
-  return placed;
- }
- const next=[...state.types,chosen];
- if(!allowed([...next,...state.loose.map(p=>p.id)])){
-  toast("No puedes utilizar más piezas de ese tipo.");return false;
- }
- const didClose=buildTrack(next,state.origin,state.bridgeParts).closed;
- if(!changeTypes(next,"",state.loose,state.origin,{preserveBridge:true}))return false;
- state.selectedGroup="main";state.selection=state.types.length-1;state.selectionMode="piece";
- lastCaseAppend={id:chosen,pocketId:id,count:state.types.length,history:state.history.length};
- updateUI();revealLatestBuilderPiece();
- if(!didClose)toast("✓ Pieza "+chosen+" encajada con dos conectores.");
- return true;
+ // Tocar una tarjeta crea una pieza suelta delante del jugador. Unirla
+ // al circuito requiere acercarla al imán o pulsar «Iniciar/Encajar».
+ lastCaseAppend=null;
+ const placed=scatterLoose(chosen);
+ if(placed)toast("Pieza en el centro · arrástrala hasta el conector.");
+ return placed;
 }
 function toggleCaseCurveDirection(){
  state.caseCurveDirection=state.caseCurveDirection==="R"?"L":"R";
@@ -2573,7 +2578,7 @@ function updateUI(){
  const selectedLength=state.selectedGroup==="main"?state.types.length:
   state.looseSelection>=0?looseMembers(state.looseSelection).length:0;
  $("selected").textContent=state.selectedGroup==null?
-  "1. ELIGE UNA PIEZA · 2. GIRA O ARRASTRA":
+  "TOCA LA PIEZA · OTRO TOQUE SELECCIONA EL TRAMO COMPLETO":
   state.selectionMode==="group"?
    "TRAMO COMPLETO · "+selectedLength+" PIEZAS · MOVER O GIRAR":
   state.looseSelection>=0?
@@ -2664,12 +2669,9 @@ function updateUI(){
     (state.looseSelection>=0&&state.loose[state.looseSelection].id===chosen)));
  }
  renderCasePages();
- $("caseMountGuide").textContent=state.track.closed?
-  "CERRADO · TOCA PARA DEJAR PIEZA SUELTA":
-  state.caseCategory==="curve"?
-  "TOCA PARA ENCAJAR · R1 CERRADA → R4 MUY ABIERTA":
-  state.caseCategory==="bridge"?"◀ ▶ ELEGIR PIEZA · INICIO Y FINAL DEL TRAMO":
-  "TOCA PARA ENCAJAR · ARRASTRA EL ASA PARA COLOCAR SUELTA";
+ $("caseMountGuide").textContent=state.caseCategory==="bridge"?
+  "TOCA PARA COLOCAR EN EL CENTRO · CONECTA CON IMANES · PUENTES POR TRAMO":
+  "TOCA PARA COLOCAR EN EL CENTRO · ARRASTRA PARA ENCAJAR";
  $("tableCaption").textContent=state.dragging?"SUELTA LA PIEZA SOBRE LA MESA":
  state.selectionMode==="group"&&state.selectedGroup?"TRAMO · ARRASTRA PARA MOVER TODO":
  state.looseSelection>=0||state.selection>=0?
@@ -3380,7 +3382,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.39.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.40.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3388,7 +3390,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.39 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.40 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4492,8 +4494,8 @@ function canvasPointerDown(e){
  const chosen=hitList.find(hit=>hit.index===state.selection)||nearest;
  const trackIndex=chosen.distance<TRACK_WIDTH*.55?chosen.index:-1;
  const key=trackIndex>=0?"main":looseIndex>=0?looseGroupKey(looseIndex):null;
- // Primer toque selecciona el tramo; el siguiente toque selecciona la
- // pieza concreta. Un arrastre respeta el modo de selección vigente.
+ // Tocar dos veces alterna pieza ↔ tramo. Al arrastrar se conserva
+ // el modo de selección sin convertir el gesto en otro toque.
  const samePiece=trackIndex>=0?state.selection===trackIndex:state.looseSelection===looseIndex;
  const dragMode=key&&key===state.selectedGroup&&state.selectionMode==="piece"&&samePiece?"piece":"group";
  state.pointer.set(e.pointerId,{
@@ -4635,13 +4637,11 @@ function canvasPointerEnd(e){
   if(p.looseIndex>=0){
    state.lastTapHit=null;selectByTap("loose",p.looseIndex);
   }else if(p.trackIndex>=0){
-   const candidates=p.trackCandidates||[p.trackIndex],prior=state.lastTapHit;
-   const samePoint=prior&&Math.hypot(prior.x-p.originWorld.x,prior.y-p.originWorld.y)<TRACK_WIDTH*.33;
-   const sameSet=samePoint&&prior.candidates?.join(",")===candidates.join(",");
-   const previousPosition=sameSet?candidates.indexOf(prior.index):-1;
-   const next=previousPosition>=0?candidates[(previousPosition+1)%candidates.length]:p.trackIndex;
-   selectByTap("main",next);
-   state.lastTapHit={x:p.originWorld.x,y:p.originWorld.y,candidates,index:next};
+   // Prioridad: pulsaciones sucesivas alternan pieza/tramo sin saltar
+   // a otra pieza debajo de un cruce.
+   selectByTap("main",p.trackIndex);
+   state.lastTapHit={x:p.originWorld.x,y:p.originWorld.y,
+    candidates:p.trackCandidates||[p.trackIndex],index:p.trackIndex};
   }else{
    state.lastTapHit=null;state.selectedGroup=null;
    state.selection=-1;state.looseSelection=-1;updateUI();
@@ -4869,7 +4869,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.39",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.40",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
@@ -4878,7 +4878,7 @@ window.slotraceLab={version:"DEV 0.14.39",state,curve90Presets:CURVE_90_PRESETS,
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
- looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
+ looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.

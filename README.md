@@ -1,6 +1,20 @@
-# SlotRace DEV 0.14.39 · Mesa infinita para Catalunya Slot
+# SlotRace DEV 0.14.40 · Piezas al centro y selección alterna
 
-**Abrir DEV:** https://almaprintes.github.io/SlotRace/?v=0.14.39
+**Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.40
+
+- **Un toque en el estante:** cualquier recta, curva o especial se coloca como pieza **suelta** en el centro útil de la vista actual. El centro geométrico de la pieza, no el conector inicial, coincide con el centro visible. Funciona a cualquier zoom y después de desplazamientos grandes.
+- **Sin montaje automático:** tocar el catálogo ya no añade módulos al final del circuito; el montaje comienza con «Iniciar montaje» y continúa al acercar imanes o pulsar «Encajar».
+- **Selección alterna:** primer toque sobre una pieza = seleccionarla sola; segundo toque a la misma pieza = tramo completo conectado; tercero = pieza individual, y así sucesivamente. Funciona en el trazado principal y en grupos magnéticos sueltos.
+- **Cámara estable:** sacar una pieza no desplaza ni cambia el zoom.
+- **Regresiones:** se preservan las geometrías, las pistas elevadas, las uniones magnéticas, los récords, las recetas y la superficie de trabajo ampliable. Las pruebas incluyen cámara desplazada y cruces con varias capas.
+
+**Verificar en iPhone:** localización de la nueva pieza en el área útil y alternancia de la selección táctil.
+
+---
+
+# SlotRace DEV 0.14.40 · Mesa infinita para Catalunya Slot
+
+**Abrir DEV:** https://almaprintes.github.io/SlotRace/?v=0.14.40
 
 - **Construcción sin bordes:** el editor ya no impide colocar, arrastrar ni soltar módulos fuera del tapete original. Las medidas y los imanes conservan su geometría real, incluso a cientos de metros virtuales del origen.
 - **Tapete continuo:** el tablero del constructor se representa como una superficie verde sin marco. La retícula se dibuja únicamente en la zona visible y adapta su densidad al zoom, evitando calcular miles de líneas en iPhone.

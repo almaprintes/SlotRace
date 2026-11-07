@@ -42,7 +42,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.39");
+ assert.equal(game.version,"DEV 0.14.40");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -101,10 +101,18 @@ const path=require("node:path");
  game.puzzle.scatterLoose("S175");
  assert.equal(st.types.length,0,"Catalog tapping does NOT auto-connect");
  assert.equal(st.loose.length,3,"Multiple independent pieces can coexist");
+ // La pieza seleccionada debe aparecer delante del jugador, no repartida
+ // por una superficie cada vez más grande. Después se mueven aparte
+ // para probar las conexiones magnéticas sin solapamientos artificiales.
+ const central=game.puzzle.workshopVisibleCenter();
+ for(const piece of st.loose){
+  const middle=geo.positionOnPiece(piece,piece.id,.5);
+  assert.ok(Math.hypot(middle.x-central.x,middle.y-central.y)<18,
+   "Cada nueva pieza aparece centrada incluso con otras piezas presentes");
+ }
+ st.loose[1].x+=450;st.loose[1].y+=270;
+ st.loose[2].x-=550;st.loose[2].y+=350;
  const positions=st.loose.map(p=>({...p}));
- assert.notDeepEqual([positions[0].x,positions[0].y],[positions[1].x,positions[1].y],
-  "Different pieces should be scattered rather than stacked");
- assert.notDeepEqual([positions[1].x,positions[1].y],[positions[2].x,positions[2].y]);
  assert.equal(elements.get("joinPiece").disabled,false);
  st.looseSelection=0;
  game.puzzle.startSelectedPiece();
@@ -263,7 +271,8 @@ const path=require("node:path");
  assert.deepEqual(st.types,["S350","R3_90R"],
   "El tramo principal arrastrado se acopla a una curva suelta cercana");
  assert.equal(st.loose.length,0);
- // En un cruce, dos toques en el mismo punto alternan la pieza elegida.
+ // En un cruce, los toques sucesivos alternan PIEZA ↔ TRAMO sin
+ // cambiar arbitrariamente a la vía inferior debajo del mismo dedo.
  const crossingTypes=[...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)];
  game.changeTypes(crossingTypes,"Cruce de prueba",[],geo.START);
  const crossing=st.track.crossings[0];
@@ -280,8 +289,28 @@ const path=require("node:path");
   });
   game.puzzle.canvasPointerEnd({pointerId,clientX:195,clientY:300});
  }
+ st.selection=-1;st.looseSelection=-1;st.selectedGroup=null;st.selectionMode="group";
  tapCrossing(201);assert.equal(st.selection,candidates[0]);
- tapCrossing(202);assert.equal(st.selection,candidates[1],
-  "Segundo toque en el mismo cruce elige otra capa");
- console.log("SlotRace DEV 0.14.39 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ assert.equal(st.selectionMode,"piece","Primer toque selecciona una pieza");
+ tapCrossing(202);assert.equal(st.selection,candidates[0]);
+ assert.equal(st.selectionMode,"group","Segundo toque selecciona el tramo conectado");
+ tapCrossing(203);assert.equal(st.selection,candidates[0]);
+ assert.equal(st.selectionMode,"piece","Tercer toque vuelve a esa misma pieza");
+ game.puzzle.selectByTap("main",candidates[1]);
+ assert.equal(st.selection,candidates[1]);
+ assert.equal(st.selectionMode,"piece","Tocar otra pieza cambia la selección");
+ // Un grupo de piezas unidas magnéticamente obedece a la misma alternancia.
+ game.changeTypes([],"Alternar selección en grupo suelto",[
+  {id:"S350",x:500,y:500,h:0,magnetGroup:"group-switch",magnetOrder:0},
+  {id:"S175",x:850,y:500,h:0,magnetGroup:"group-switch",magnetOrder:1}
+ ],geo.START);
+ st.selectedGroup=null;st.selectionMode="group";st.looseSelection=-1;
+ game.puzzle.selectByTap("loose",1);
+ assert.equal(st.selectionMode,"piece");
+ game.puzzle.selectByTap("loose",1);
+ assert.equal(st.selectionMode,"group");
+ assert.equal(st.selectedGroup,"group-switch");
+ game.puzzle.selectByTap("loose",1);
+ assert.equal(st.selectionMode,"piece");
+ console.log("SlotRace DEV 0.14.40 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

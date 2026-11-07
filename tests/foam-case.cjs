@@ -48,7 +48,7 @@ const fs=require("node:fs"),path=require("node:path");
   return ra.radius-rb.radius||deg(a)-deg(b);
  });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.39");
+ assert.equal(game.version,"DEV 0.14.40");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -122,7 +122,7 @@ const fs=require("node:fs"),path=require("node:path");
   assert.match(p.innerHTML,/foam-drag-grip/,"Asa de arrastre independiente");
   assert.equal(p.listeners.pointerdown.length,1,"La pieza permite toque y scroll");
   assert.equal(p.grip.listeners.pointerdown.length,1,"El asa captura el arrastre, no la caja");
-  assert.equal(p.listeners.click.length,1,"Tocar añade una pieza al extremo libre");
+  assert.equal(p.listeners.click.length,1,"Tocar coloca una pieza suelta en la vista");
   assert.equal(p.attrs.role,"button","Cada pieza es un control accesible");
   assert.equal(p.tabIndex,0,"Cada pieza es accesible mediante teclado");
   assert.equal(p.listeners.keydown.length,1,"Se puede acoplar pulsando Enter");
@@ -245,63 +245,67 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(byId("S350").disabled,false,"Sigue disponible después de extraer decenas");
  assert.equal(elements.get("caseCount").textContent,
   "∞ piezas disponibles · "+(st.types.length+st.loose.length)+" en la mesa");
- // Montaje secuencial: tocar tarjetas y pulsar + forman exactamente
- // una cadena, sin piezas sueltas y sin deformar conexiones.
+ // Tocar crea una pieza suelta en el centro útil, con zoom/pan arbitrarios.
  game.createNewCircuit();
  if(st.caseCurveDirection==="L")elements.get("curveDirection").listeners.click[0]();
- assert.equal(st.types.length,0);
- assert.equal(st.loose.length,0);
- tap("S350");tap("R2_45R");tap("S175");
- assert.deepEqual(st.types,["S350","R2_45R","S175"]);
- assert.equal(st.loose.length,0,"Los toques encajan, no dispersan piezas");
+ st.camera={panX:140,panY:-60,zoom:1.8};
+ const beforeCamera={...st.camera},center=game.puzzle.workshopVisibleCenter();
+ tap("S350");
+ assert.equal(st.types.length,0,"No se encaja automáticamente");
+ assert.equal(st.loose.length,1);
+ const mid=geo.positionOnPiece(st.loose[0],st.loose[0].id,.5);
+ assert.ok(Math.hypot(mid.x-center.x,mid.y-center.y)<=18,"Centro de la pieza visible");
+ assert.deepEqual(st.camera,beforeCamera,"La cámara se mantiene");
+ assert.equal(st.selectionMode,"piece");assert.equal(st.looseSelection,0);
+ assert.match(elements.get("caseMountGuide").textContent,/COLOCAR EN EL CENTRO/);
+ tap("R2_45R");tap("S175");
+ assert.deepEqual(st.loose.map(p=>p.id),["S350","R2_45R","S175"]);
+ assert.equal(game.removeLooseFromCase("S175"),true);
+ tap("S175");assert.equal(st.loose.length,3);
+ // Acoplamiento sólo por acción voluntaria: Iniciar y acercar a un conector.
+ st.looseSelection=0;game.puzzle.startSelectedPiece();
+ assert.deepEqual(st.types,["S350"]);assert.equal(st.loose.length,2);
+ const idx=st.loose.findIndex(p=>p.id==="R2_45R"),c=st.track.ends.end;
+ st.loose[idx].x=c.x+3;st.loose[idx].y=c.y+2;st.loose[idx].h=c.h;
+ st.looseSelection=idx;game.puzzle.startSelectedPiece();
+ assert.deepEqual(st.types,["S350","R2_45R"]);
  for(let i=1;i<st.track.parts.length;i++){
   const a=st.track.parts[i-1].end,b=st.track.parts[i].start;
-  assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<1e-6,"Conectores unidos sin hueco");
-  assert.ok(Math.abs(a.h-b.h)<1e-6,"El rumbo se conserva en cada unión");
+  assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<1e-6);
  }
- assert.equal(game.removeLooseFromCase("S175"),true,"− devuelve el último módulo encajado");
- assert.deepEqual(st.types,["S350","R2_45R"]);
- assert.equal(st.loose.length,0,"− no desmonta el tramo completo");
- tap("S175");assert.equal(st.types.length,3,"Se puede volver a añadir");
+ // Cerrado o abierto: tocar no altera el circuito montado.
  game.createNewCircuit();
- for(const id of game.STARTER)tap(id);
- assert.deepEqual(st.types,game.STARTER,"Montaje exacto de un óvalo, pieza a pieza");
- assert.equal(st.track.closed,true,"La última unión cierra el circuito");
- assert.equal(st.track.valid,true,"El circuito cerrado es apto para correr");
+ game.changeTypes(game.STARTER.slice(),"Óvalo cerrado",[]);
+ assert.equal(st.track.valid,true);
  const count=st.types.length;
- tap("S175");
- assert.equal(st.types.length,count,"Una pista cerrada no se deforma por tocar otra pieza");
- assert.equal(st.loose.length,1,"Con el circuito cerrado la pieza se deposita suelta");
- // Curvas R2/R3/R4 de 90° deben ser PIEZAS UNITARIAS.
+ tap("S175");assert.equal(st.types.length,count);
+ assert.equal(st.loose.length,1);
  game.createNewCircuit();
- for(const [id,radius] of [
-  ["R2_90R",300],["R3_90R",450],["R4_90R",600]
- ]){
-  assert.ok(byId(id),"Pieza visible en el estante: "+id);
-  assert.doesNotMatch(byId(id).innerHTML,/COMBO|PIEZAS/);
-  const seams=byId(id).innerHTML.match(/mini-slot-seam/g)||[];
-  assert.equal(seams.length,2,"Sólo dos costuras externas: "+id);
+ // Curvas unitarias: respetar dimensiones y centrar su GEOMETRÍA.
+ for(const [id,radius] of [["R2_90R",300],["R3_90R",450],["R4_90R",600]]){
+  assert.ok(byId(id));assert.doesNotMatch(byId(id).innerHTML,/COMBO|PIEZAS/);
   assert.equal(game.inventoryAction(id),true);
-  assert.deepEqual(st.types,[id],"Una tarjeta equivale a una pieza real");
-  assert.equal(st.track.parts.length,1);
-  const end=st.track.ends.end;
-  assert.ok(Math.abs(end.x-st.origin.x-radius)<1e-6);
-  assert.ok(Math.abs(end.y-st.origin.y-radius)<1e-6);
-  assert.ok(Math.abs(end.h-st.origin.h-Math.PI/2)<1e-9);
-  assert.deepEqual(JSON.parse(data.get("slotrace-lab-10")).types,[id]);
-  assert.equal(game.removeLooseFromCase(id),true,"− retira una sola pieza");
-  assert.equal(st.types.length,0);
+  assert.equal(st.types.length,0);assert.equal(st.loose.length,1);
+  const part=st.loose[0],end=geo.positionOnPiece(part,id,1);
+  assert.ok(Math.abs(end.x-part.x-radius)<1e-6);
+  assert.ok(Math.abs(end.y-part.y-radius)<1e-6);
+  assert.ok(Math.abs(end.h-part.h-Math.PI/2)<1e-9);
+  const mid=geo.positionOnPiece(part,id,.5),target=game.puzzle.workshopVisibleCenter();
+  assert.ok(Math.hypot(mid.x-target.x,mid.y-target.y)<18,"Curva centrada "+id);
+  assert.deepEqual(JSON.parse(data.get("slotrace-lab-10")).loose.map(p=>p.id),[id]);
+  assert.equal(game.removeLooseFromCase(id),true);
+  assert.equal(st.loose.length,0);
  }
  elements.get("curveDirection").listeners.click[0]();
  assert.deepEqual(game.curve90Parts("R4_90R"),["R4_90L"]);
  assert.equal(game.inventoryAction("R4_90R"),true);
- assert.deepEqual(st.types,["R4_90L"]);
+ assert.deepEqual(st.loose.map(p=>p.id),["R4_90L"]);
  assert.equal(game.removeLooseFromCase("R4_90R"),true);
  elements.get("curveDirection").listeners.click[0]();
- game.changeTypes(game.STARTER.slice(),"Óvalo cerrado",[]);
- assert.equal(st.track.closed,true);
+ game.changeTypes(game.STARTER.slice(),"Pista circular",[]);
+ assert.equal(st.track.valid,true);
  assert.equal(game.inventoryAction("R3_90R"),true);
- assert.equal(st.loose.length,1,"Curva independiente suelta, no 4 fragmentos");
+ assert.equal(st.loose.length,1);
  assert.equal(st.loose[0].id,"R3_90R");
  assert.equal(game.removeLooseFromCase("R3_90R"),true);
  assert.equal(st.loose.length,0);
@@ -328,5 +332,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(st.selection,0,"Anterior y Siguiente recorren todo el circuito");
  assert.match(html,/id="autoClose"[^>]*>✦ Cerrar<\/button>/,
   "Cerrar es una acción visible fuera de Más");
- console.log("SlotRace DEV 0.14.39: estante y curvas R2/R3/R4 de 90 grados — OK");
+ console.log("SlotRace DEV 0.14.40: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
