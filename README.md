@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.34 — Sonido real de Scalextric
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.34
+
+- Sonido real aportado por el usuario, editado a bucle de 12,2 segundos (MP3 estéreo a 160 kbps).
+- Web Audio en bucle sin cambiar el tono ni las revoluciones; volumen suave según movimiento.
+- Silencio en espera, pausa, penalización, resultados o menú. Ajuste de motor independiente de los clics del mando.
+- No cambian físicas, puentes, geometría ni controles.
+
+---
+
 # SlotRace DEV 0.14.33 — Cobertura completa en cruces de diferente altura
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.33

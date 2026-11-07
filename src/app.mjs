@@ -125,7 +125,7 @@ const state={
  legacyDraft,
   lane:0,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
-  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,
+  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
@@ -139,7 +139,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  reference:state.reference,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
- gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
+ gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
@@ -1527,7 +1527,7 @@ function play(){
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
- state.mode="race";state.latest=performance.now();updateUI();resize();
+ state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
  resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
  return true;
@@ -1593,7 +1593,7 @@ function renderSessionSummary(){
 }
 function back(){endSession("build");}
 function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
- $("trigger").classList.remove("pressed");state.latest=performance.now();updateUI();
+ $("trigger").classList.remove("pressed");state.latest=performance.now();if(state.run)primeMotorAudio();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
 function switchLane(){if(state.run){toast("Pausa primero para cambiar de carril.");return;}state.lane=1-state.lane;resetLap();updateUI();toast("Carril "+(state.lane===0?"izquierdo":"derecho")+" · nueva tanda.");}
 function completeLap(){
@@ -1785,6 +1785,52 @@ function simulation(dt){
  state.distance+=state.speed*dt;
  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
 }
+
+// Sonido auténtico de Scalextric: sin síntesis y sin cambiar las revoluciones.
+const MOTOR_AUDIO_URL="./assets/audio/slotrace-motor-loop.mp3";
+let motorCtx=null,motorGain=null,motorSource=null,motorLoading=null,motorFailed=false,motorLastSync=-Infinity;
+function primeMotorAudio(){
+ if(!state.motorEnabled||motorFailed)return;
+ const AudioClass=window.AudioContext||window.webkitAudioContext;
+ if(!AudioClass||typeof fetch!=="function")return;
+ try{
+  if(!motorCtx){
+   motorCtx=new AudioClass();
+   motorGain=motorCtx.createGain();
+   motorGain.gain.value=0;
+   motorGain.connect(motorCtx.destination);
+  }
+  if(motorCtx.state==="suspended"){
+   const resumed=motorCtx.resume();
+   if(resumed&&typeof resumed.catch==="function")resumed.catch(()=>{});
+  }
+  if(motorLoading||motorSource)return;
+  motorLoading=fetch(MOTOR_AUDIO_URL,{cache:"force-cache"})
+   .then(response=>{if(!response.ok)throw new Error("Motor HTTP "+response.status);return response.arrayBuffer();})
+   .then(bytes=>motorCtx.decodeAudioData(bytes))
+   .then(buffer=>{
+    const source=motorCtx.createBufferSource();
+    source.buffer=buffer;
+    source.loop=true;
+    source.connect(motorGain);
+    source.start();
+    motorSource=source;
+   })
+   .catch(()=>{motorFailed=true;motorLoading=null;});
+ }catch(err){motorFailed=true;}
+}
+function syncMotorAudio(now=performance.now(),force=false){
+ if(!motorSource||!motorGain||!motorCtx||motorCtx.state!=="running")return;
+ if(!force&&now-motorLastSync<70)return;
+ motorLastSync=now;
+ const moving=state.motorEnabled&&state.mode==="race"&&state.run&&state.raceStarted
+  &&state.penalty<=0&&state.speed>25;
+ // Sólo cambia suavemente el volumen según el movimiento.
+ const volume=moving?Math.min(.57,.04+.48*Math.min(1,state.speed/850)):0;
+ const gain=motorGain.gain,time=motorCtx.currentTime;
+ gain.cancelScheduledValues(time);
+ gain.setTargetAtTime(volume,time,moving?.12:.055);
+}
 // Rueda de sintonización táctil: 20 muescas de 5% y sonido direccional.
 // El audio es generado localmente con Web Audio, sin archivos externos.
 const DIAL_STEP=5;
@@ -1863,6 +1909,7 @@ function triggerPointerDown(e){
  state.gas=0;updateTriggerDisplay();updateHud();
  // En Safari iOS el AudioContext debe activarse durante un gesto real.
  initDialAudio();
+ primeMotorAudio();
  try{$("trigger").setPointerCapture(e.pointerId);}catch(err){}
 }
 function triggerPointerMove(e){
@@ -2224,6 +2271,7 @@ function shopPrimaryAction(){
 
 function updateUI(){
  state.viewDirty=true;
+ syncMotorAudio(performance.now(),true);
  menu.hidden=state.mode!=="menu";
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  results.hidden=state.mode!=="results";
@@ -2254,6 +2302,8 @@ function updateUI(){
  $("raceCarName").textContent=CAR_MODELS[state.selectedCar].name;
  $("settingsSound").textContent=state.clicksEnabled?"Activado":"Desactivado";
  $("settingsSound").setAttribute("aria-pressed",String(state.clicksEnabled));
+ $("settingsMotor").textContent=state.motorEnabled?"Activado":"Desactivado";
+ $("settingsMotor").setAttribute("aria-pressed",String(state.motorEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
  $("settingsXRay").textContent=state.xRayEnabled?"Activado":"Desactivado";
  $("settingsXRay").setAttribute("aria-pressed",String(state.xRayEnabled));
@@ -3052,7 +3102,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.33.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.34.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3060,7 +3110,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.33 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.34 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4334,6 +4384,11 @@ function initEvents(){
   if(state.clicksEnabled)initDialAudio();
   save();updateUI();
  });
+ $("settingsMotor").addEventListener("click",()=>{
+  state.motorEnabled=!state.motorEnabled;
+  if(state.motorEnabled)primeMotorAudio();
+  save();updateUI();
+ });
  $("settingsGrid").addEventListener("click",()=>{
   state.gridEnabled=!state.gridEnabled;save();updateUI();
  });
@@ -4463,7 +4518,7 @@ function initEvents(){
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
  window.addEventListener("keyup",e=>{if(e.code==="Space"||e.code==="ArrowUp")state.keyboardGas=false;});
- const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;if(state.mode==="race")state.run=false;updateHud();};
+ const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;if(state.mode==="race")state.run=false;updateHud();syncMotorAudio(performance.now(),true);};
  window.addEventListener("blur",pauseBackground);
  document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseBackground();});
  window.addEventListener("resize",scheduleResize);
@@ -4476,6 +4531,7 @@ function initEvents(){
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  simulation(dt);
+ syncMotorAudio(now);
  updateFollowCamera(dt);
  if(state.mode==="build"){
   if(state.viewDirty){renderScene(editCanvas,"build");state.viewDirty=false;}
@@ -4486,7 +4542,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.33",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.34",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

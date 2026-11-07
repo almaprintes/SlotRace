@@ -151,7 +151,7 @@ assert.match(html,/Girar selección 22,5 grados en sentido antihorario/,
  "Giro antihorario accesible");
 assert.match(html,/Girar selección 22,5 grados en sentido horario/,
  "Giro horario accesible");
-for(const id of ["menuLibrary","menuGarage","menuStore","menuSettings","libraryScreen","garageScreen","storeScreen","settingsScreen","settingsSound","settingsGrid"]){
+for(const id of ["menuLibrary","menuGarage","menuStore","menuSettings","libraryScreen","garageScreen","storeScreen","settingsScreen","settingsSound","settingsMotor","settingsGrid"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Pantalla comercial "+id);
 }
 assert.match(css,/\.hub-screen/);
@@ -243,6 +243,11 @@ for(const fragment of ["function paintTable(","function paintTrack(","function p
 assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
+assert.ok(app.includes('MOTOR_AUDIO_URL="./assets/audio/slotrace-motor-loop.mp3"'));
+assert.ok(app.includes("source.loop=true"));
+const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-motor-loop.mp3"));
+assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
+assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.33 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.34 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

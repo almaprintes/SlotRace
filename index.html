@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.33: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.33 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.33">
+  <meta name="description" content="SlotRace DEV 0.14.34: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.34 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.34">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.33">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.34">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.33</div>
+    <div class="splash-version">DEV 0.14.34</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.33">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.34">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.33">DEV 0.14.33<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.34">DEV 0.14.34<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -198,7 +198,8 @@
     <div class="hub-scroll">
       <div class="hub-heading"><span class="hub-kicker">PERSONALIZA TU JUEGO</span><h1>Ajustes</h1><p>Las preferencias se guardan en este dispositivo.</p></div>
       <div class="settings-list">
-        <div class="setting-row"><div><h2>Clics del mando</h2><p>Activa o desactiva el sonido al acelerar.</p></div><button id="settingsSound" class="setting-toggle" type="button" aria-pressed="true">Activado</button></div>
+        <div class="setting-row"><div><h2>Clics del mando</h2><p>Activa o desactiva los clics del gatillo.</p></div><button id="settingsSound" class="setting-toggle" type="button" aria-pressed="true">Activado</button></div>
+        <div class="setting-row"><div><h2>Motor Scalextric real</h2><p>Grabación auténtica de un coche dando vueltas, en bucle mientras circula y sin alterar el tono.</p></div><button id="settingsMotor" class="setting-toggle" type="button" aria-pressed="true">Activado</button></div>
         <div class="setting-row"><div><h2>Cuadrícula del taller</h2><p>Muestra u oculta la retícula de 25 mm.</p></div><button id="settingsGrid" class="setting-toggle" type="button" aria-pressed="true">Activada</button></div>
         <div class="setting-row"><div><h2>Rayos X</h2><p>Muestra con líneas discontinuas la pista oculta bajo puentes y túneles. El coche inferior aparece solo como silueta. Funciona al construir y al jugar.</p></div><button id="settingsXRay" class="setting-toggle" type="button" aria-pressed="false" aria-label="Activar o desactivar Rayos X">Desactivado</button></div>
         <div class="setting-row camera-setting-row">
@@ -449,6 +450,6 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.33"></script>
+<script type="module" src="./src/app.mjs?v=0.14.34"></script>
 </body>
 </html>
