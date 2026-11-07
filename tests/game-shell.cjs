@@ -363,6 +363,37 @@ const path=require("node:path");
  assert.ok(!renderTexts.includes("ORDEN DE MONTAJE"),"El PNG ya no muestra orden de montaje");
  assert.ok(meta.frame.height>=1100,"Plano ampliado aprovechando el espacio liberado");
  assert.equal(meta.blueprintStyle,"white-track-black-seams");
+ const referred=rec.items.filter(item=>!item.accessory);
+ assert.equal(meta.markers.length,st.track.parts.length,
+   "Cada pieza colocada tiene una referencia visible");
+ assert.equal(Object.keys(meta.references).length,referred.length,
+   "Una sola letra distinta para cada tipo de módulo");
+ assert.ok(renderTexts.includes("LETRA EN PISTA = TIPO DE PIEZA"),
+   "La leyenda explica cómo se leen las letras del plano");
+ for(const item of referred){
+  const code=meta.references[item.id];
+  assert.match(code,/^[A-Z]+$/,"Referencia legible para "+item.id);
+  assert.equal(meta.markers.filter(marker=>marker.id===item.id).length,item.count,
+    "Número de etiquetas coincide con las piezas "+item.name);
+  assert.ok(meta.markers.filter(marker=>marker.id===item.id).every(marker=>marker.code===code),
+    "Las piezas del mismo tipo repiten el mismo código");
+  assert.equal(renderTexts.filter(text=>text===code).length,item.count+1,
+    "La referencia aparece en cada módulo y otra vez junto a la receta");
+ }
+ assert.equal(meta.references.BRIDGE_KIT,undefined,
+   "El kit de apoyo no se etiqueta como vía física");
+
+ assert.ok(printStrokes.some(v=>v.color==="#ffffff"&&v.width===geo.TRACK_WIDTH),
+  "La superficie del circuito se pinta en blanco puro");
+ assert.ok(printStrokes.some(v=>v.color==="#080c0f"&&v.width===5),
+  "Las juntas de cada pieza se imprimen en negro");
+ assert.ok(printStrokes.some(v=>v.color==="#10171a"&&v.width===geo.TRACK_WIDTH+8),
+  "El contorno negro separa la vía blanca del fondo verde");
+ assert.ok(meta.scale>0,"El circuito sigue centrado y encuadrado");
+ assert.ok(renderTexts.some(v=>v.includes("HORARIO")),"Dirección visible en plano");
+ assert.ok(renderTexts.some(v=>v.includes("×")),"Cantidades por modelo visibles");
+ assert.ok(renderTexts.some(v=>v.includes("Recta")||v.includes("Salida")),
+  "La receta muestra los nombres de las piezas, sin códigos de montaje");
  // El nombre queda completamente por ENCIMA de la ventana del plano.
  assert.ok(meta.frame.y>=300,"La cabecera tiene una franja exclusiva para el nombre");
  const originalBlueprintName=st.circuitName;
@@ -400,37 +431,6 @@ const path=require("node:path");
   }
  }
  st.loose.splice(-shortPieces.length);
- const referred=rec.items.filter(item=>!item.accessory);
- assert.equal(meta.markers.length,st.track.parts.length,
-   "Cada pieza colocada tiene una referencia visible");
- assert.equal(Object.keys(meta.references).length,referred.length,
-   "Una sola letra distinta para cada tipo de módulo");
- assert.ok(renderTexts.includes("LETRA EN PISTA = TIPO DE PIEZA"),
-   "La leyenda explica cómo se leen las letras del plano");
- for(const item of referred){
-  const code=meta.references[item.id];
-  assert.match(code,/^[A-Z]+$/,"Referencia legible para "+item.id);
-  assert.equal(meta.markers.filter(marker=>marker.id===item.id).length,item.count,
-    "Número de etiquetas coincide con las piezas "+item.name);
-  assert.ok(meta.markers.filter(marker=>marker.id===item.id).every(marker=>marker.code===code),
-    "Las piezas del mismo tipo repiten el mismo código");
-  assert.equal(renderTexts.filter(text=>text===code).length,item.count+1,
-    "La referencia aparece en cada módulo y otra vez junto a la receta");
- }
- assert.equal(meta.references.BRIDGE_KIT,undefined,
-   "El kit de apoyo no se etiqueta como vía física");
-
- assert.ok(printStrokes.some(v=>v.color==="#ffffff"&&v.width===geo.TRACK_WIDTH),
-  "La superficie del circuito se pinta en blanco puro");
- assert.ok(printStrokes.some(v=>v.color==="#080c0f"&&v.width===5),
-  "Las juntas de cada pieza se imprimen en negro");
- assert.ok(printStrokes.some(v=>v.color==="#10171a"&&v.width===geo.TRACK_WIDTH+8),
-  "El contorno negro separa la vía blanca del fondo verde");
- assert.ok(meta.scale>0,"El circuito sigue centrado y encuadrado");
- assert.ok(renderTexts.some(v=>v.includes("HORARIO")),"Dirección visible en plano");
- assert.ok(renderTexts.some(v=>v.includes("×")),"Cantidades por modelo visibles");
- assert.ok(renderTexts.some(v=>v.includes("Recta")||v.includes("Salida")),
-  "La receta muestra los nombres de las piezas, sin códigos de montaje");
  document.createElement=tag=>tag==="canvas"?pngCanvas:node("card");
  const result=await game.exportBlueprint();
  assert.equal(result,true,"Exportador abre menú de compartir en iOS");
