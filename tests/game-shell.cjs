@@ -58,7 +58,7 @@ const path=require("node:path");
  st.seconds=0;game.timing.updateChronometer();
  assert.match(source,/renderScene\(raceCanvas,"race"\);\s*updateChronometer\(\);/,
   "La lectura se pinta cada fotograma, no cada décima");
- assert.match(source,/function drawTableArtwork\(ctx\)/);
+ assert.match(source,/function drawTableArtwork\(ctx,b\)/);
  assert.match(source,/strokeGeometryCache=new WeakMap\(\)/);
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
