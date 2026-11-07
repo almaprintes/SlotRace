@@ -11,6 +11,7 @@ const path=require("node:path");
   .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
   .replace("function strokePath(ctx,points,color,width){","function strokePath(ctx,points,color,width){if(color===\"#0c1518\"&&width===TRACK_WIDTH+19)window.__shadowLog.push(points.length);");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
+ const css=fs.readFileSync(path.join(__dirname,"../src/site.css"),"utf8");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],listeners:{},dataset:{},style:{},textContent:"",innerHTML:"",disabled:false,hidden:false,
