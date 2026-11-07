@@ -7,6 +7,10 @@ const LIBRARY_KEY="slotrace-circuit-library-v1";
 const LIBRARY_REVISIONS_KEY="slotrace-circuit-versions-v1";
 const SHOP_OWNED_KEY="slotrace-shop-owned-v1";
 const SHOP_DEFAULT_OWNED=Object.freeze(["box-basic","car-gripline"]);
+// Receta original compartida de Catalunya Slot (60 piezas, 18,89 m).
+// Conservar orden, posición y orientación: corresponden al plano del usuario.
+const CATALUNYA_SLOT_TYPES=Object.freeze(["R3_225L","R4_225L","S600","S075","S350","S350","START350","S350","S350","S350","S350","S350","R2_45L","R2_45L","S350","S350","R2_45L","S350","S350","R2_90L","R2_90L","S350","S350","R1_90R","R1_90R","S175","S350","S350","S350","R2_90L","S350","S350","S350","R1_45R","S175","S350","R2_45R","S350","S350","R1_45R","R1_90R","S350","S350","S350","R2_90L","R2_90L","S350","S350","S350","S350","R2_45L","S350","S350","R2_90L","S350","S350","S350","R2_225R","R1_225L","S075"]);
+const CATALUNYA_SLOT_ORIGIN=Object.freeze({x:-774.9121317783404,y:-621.1758796080073,h:Math.PI/2});
 const SHOP_PRODUCTS=Object.freeze([
  {id:"box-basic",kind:"boxes",name:"Caja básica SR-Precision",short:"SR-PRECISION",
   kicker:"SET DE INICIACIÓN",tag:"TU CAJA",car:"gripline",
@@ -38,10 +42,11 @@ const SHOP_PRODUCTS=Object.freeze([
   kicker:"PLANO OFICIAL",tag:"RECETA REAL",car:null,
   subtitle:"Un cruce elevado con dos lóbulos",detail:"Un ocho de catorce piezas con puente automático, validado por la geometría de SlotRace.",
   types:FIGURE_EIGHT,highlights:["14 piezas","Puente 65 mm","Cierre validado"],art:"eight"},
- {id:"plan-urban",kind:"circuits",name:"Sprint urbano",short:"SPRINT URBANO",
-  kicker:"PRÓXIMAMENTE",tag:"EN DISEÑO",car:null,
-  subtitle:"Nuevo plano temático en preparación",detail:"Todavía no hay una receta geométrica homologada para este trazado. Se añadirá cuando esté validada.",
-  soon:true,highlights:["Plano en diseño","Receta pendiente"],art:"urban"},
+ {id:"plan-catalunya",kind:"circuits",name:"Catalunya Slot",short:"CATALUNYA SLOT",
+  kicker:"PLANO REAL",tag:"RECETA ORIGINAL",car:null,
+  subtitle:"Gran trazado de 60 piezas · 18,89 m",detail:"Circuito Catalunya Slot de 60 piezas y 18,89 metros, sentido horario. Receta real aportada por su constructor, sin elevaciones.",
+  types:CATALUNYA_SLOT_TYPES,origin:CATALUNYA_SLOT_ORIGIN,direction:1,
+  highlights:["60 piezas","18,89 m","Horario"],art:"catalunya"},
  {id:"car-gripline",kind:"cars",name:"Avenir Gripline",short:"GRIPLINE",
   kicker:"COCHE DE INICIO",tag:"JUGABLE",car:"gripline",
   subtitle:"Tu coche de competición",detail:"Vehículo inicial de SlotRace, disponible en la pista desde el principio.",
@@ -2346,11 +2351,11 @@ function shopTrackSymbol(kind){
 
 // Planos oficiales dibujados desde las piezas y conexiones REALES del motor.
 const shopBlueprintCache=new Map();
-function shopBlueprintSvg(types,name="circuito"){
+function shopBlueprintSvg(types,name="circuito",origin=START){
  if(!types?.length)return "";
- const key=name+"::"+types.join("|");
+ const key=name+"::"+types.join("|")+"::"+[origin.x,origin.y,origin.h].join(",");
  if(shopBlueprintCache.has(key))return shopBlueprintCache.get(key);
- const layout=buildTrack(types,START);
+ const layout=buildTrack(types,origin);
  const fmt=n=>Number(n.toFixed(2));
  const path=pts=>"M "+pts.map(p=>fmt(p.x)+" "+fmt(p.y)).join(" L ");
  const center=path(layout.points),width=TRACK_WIDTH;
@@ -2404,8 +2409,9 @@ function shopArtwork(product){
   '<span class="shop-box-foot">PISTAS · COCHES · PLANOS</span></div></div>';
  if(product.kind==="cars")return '<div class="shop-car-visual">'+car+'</div>';
  if(product.kind==="circuits"){
-  if(product.types)return '<div class="shop-blueprint-art">'+
-   shopBlueprintSvg(product.types,product.name)+
+  if(product.types)return '<div class="shop-blueprint-art'+
+   (product.id==="plan-catalunya"?" is-catalunya":"")+'">'+
+   shopBlueprintSvg(product.types,product.name,product.origin||START)+
    '<span class="shop-plan-caption">'+product.types.length+' PIEZAS · PLANO REAL</span></div>';
   return '<div class="shop-blueprint-pending" aria-label="Plano pendiente de diseño">'+
    '<span class="shop-pending-icon" aria-hidden="true">⌁</span>'+
@@ -2449,7 +2455,7 @@ function renderShop(){
  $("shopProducts").className="shop-products "+(category==="boxes"?"shop-products-boxes":"shop-products-grid");
  $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
  $("shopFeaturedSection").hidden=category!=="boxes";
- if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-urban"]
+ if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-catalunya"]
   .map(id=>shopCardMarkup(shopProduct(id),true)).join("");
  const owned=SHOP_PRODUCTS.filter(p=>shopOwned(p.id));
  $("shopCollectionSummary").textContent=owned.length+" productos disponibles · "+
@@ -2515,14 +2521,22 @@ function shopInstallPlan(id){
  if(!product||product.kind!=="circuits"||!product.types||!shopOwned(id)){
   toast("Primero adquiere el plano o una caja que lo incluya.");return false;
  }
- const existing=state.library.find(c=>c.shopPlanId===id);
+ // Si la receta ya está guardada por el jugador (por importación o edición),
+ // reutilizarla sin crear duplicados ni sobrescribir su circuito personal.
+ const direction=product.direction===-1?-1:1;
+ const existing=state.library.find(c=>c.shopPlanId===id||
+  (normalCircuitName(c.name)===normalCircuitName(product.name)&&
+   (c.direction===-1?-1:1)===direction&&
+   c.snapshot.types.join("|")===product.types.join("|")&&
+   !(c.snapshot.loose||[]).length));
  if(existing){shopCloseProduct();return loadSavedCircuit(existing.id);}
- const geometry=buildTrack(product.types,START);
+ const origin=product.origin||START;
+ const geometry=buildTrack(product.types,origin);
  if(!geometry.valid){toast("Este plano no ha superado la validación geométrica.");return false;}
  if(state.library.length>=120){toast("Inventario de circuitos completo.");return false;}
  const now=new Date().toISOString();
- const item={id:newCircuitId(),shopPlanId:id,name:product.name,direction:1,
-  snapshot:{types:product.types.slice(),loose:[],bridgeParts:[],origin:{...START}},
+ const item={id:newCircuitId(),shopPlanId:id,name:product.name,direction,
+  snapshot:{types:product.types.slice(),loose:[],bridgeParts:[],origin:{...origin}},
   createdAt:now,updatedAt:now};
  const next=[item,...state.library];
  if(!safelyWriteLibrary(next))return false;
@@ -3505,7 +3519,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.45.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.46.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3513,7 +3527,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.45 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.46 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -5043,7 +5057,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.45",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.46",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

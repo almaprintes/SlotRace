@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.45");
+ assert.equal(game.version,"DEV 0.14.46");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -160,8 +160,20 @@ const path=require("node:path");
  assert.equal(game.shopSelectCategory("packs"),true);
  assert.match(elements.get("shopProducts").innerHTML,/Pack puente 65 mm/);
  assert.equal(game.shopSelectCategory("circuits"),true);
- assert.match(elements.get("shopProducts").innerHTML,/Sprint urbano/);
- assert.equal(game.shopAcquire("plan-urban"),false,"Un plano sin receta no es adquirible");
+ assert.match(elements.get("shopProducts").innerHTML,/Catalunya Slot/);
+ assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Sprint urbano|Receta pendiente/);
+ const catalunyaPlan=game.shopProducts.find(p=>p.id==="plan-catalunya");
+ assert.ok(catalunyaPlan);
+ assert.equal(catalunyaPlan.types.length,60);
+ assert.deepEqual(catalunyaPlan.types.slice(0,7),["R3_225L","R4_225L","S600","S075","S350","S350","START350"]);
+ assert.equal(catalunyaPlan.direction,1);
+ const catTrack=geo.buildTrack(catalunyaPlan.types,catalunyaPlan.origin);
+ assert.equal(catTrack.closed,true,"Catalunya cierra geométricamente");
+ assert.equal(catTrack.valid,true,"Catalunya se puede instalar");
+ assert.ok(Math.abs(catTrack.length/1000-18.89)<.04,"Longitud 18,89 m");
+ const catSvg=game.shopBlueprintSvg(catalunyaPlan.types,catalunyaPlan.name,catalunyaPlan.origin);
+ assert.match(catSvg,/60 piezas/);
+ assert.match(elements.get("shopProducts").innerHTML,/is-catalunya/);
  assert.equal(game.shopSelectCategory("boxes"),true);
  assert.equal(game.shopOpenProduct("box-rally"),true);
  assert.equal(elements.get("shopProductModal").hidden,false);
@@ -677,7 +689,8 @@ const path=require("node:path");
  const storeCount=st.library.length;
  assert.equal(game.shopInstallPlan("plan-eight"),true,"Segunda apertura reutiliza la misma receta");
  assert.equal(st.library.length,storeCount,"No duplica el plano de tienda");
- assert.equal(game.shopInstallPlan("plan-urban"),false,"No instala planos en preparación");
+ assert.equal(game.shopInstallPlan("plan-catalunya"),false,
+  "Catalunya solo se instala tras añadirlo gratis");
 
  // Los planos comerciales se generan a partir de las piezas REALES del motor.
  const realOval=game.shopBlueprintSvg(geo.STARTER,"Óvalo de prueba");
@@ -935,6 +948,27 @@ const path=require("node:path");
  assert.ok(gridStrokes>0&&gridStrokes<450,
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
+ // Catalunya original desde la tienda; no sobrescribir las creaciones previas.
+ const beforeCatalogue=st.library.length;
+ game.showHub("store");
+ assert.equal(game.shopAcquire("plan-catalunya"),true);
+ assert.equal(game.shopOwned("plan-catalunya"),true);
+ assert.equal(game.shopInstallPlan("plan-catalunya"),true);
+ assert.equal(st.mode,"build");
+ assert.equal(st.circuitName,"Catalunya Slot");
+ assert.equal(st.library.length,beforeCatalogue+1);
+ assert.deepEqual(st.types,catalunyaPlan.types);
+ assert.deepEqual(st.origin,catalunyaPlan.origin);
+ assert.equal(st.track.valid,true);
+ // Simular Catalunya importado antes de existir en tienda (sin shopPlanId).
+ const existingCatalogue=st.library[0];
+ existingCatalogue.shopPlanId=undefined;
+ const afterCatalogue=st.library.length;
+ game.showHub("store");
+ assert.equal(game.shopInstallPlan("plan-catalunya"),true);
+ assert.equal(st.activeCircuitId,existingCatalogue.id);
+ assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
+ assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.14.45: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.46: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

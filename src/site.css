@@ -1876,6 +1876,19 @@ button:disabled{opacity:.35;cursor:not-allowed}
  font-size:9px;font-weight:950;letter-spacing:1px;color:#556c7a;
  background:#f4f8fbd9;border-radius:5px;padding:2px 4px;
 }
+/* DEV 0.14.46 · Catalunya Slot: plano vectorial real sobre tapete verde. */
+.shop-blueprint-art.is-catalunya{background:#16453f}
+.shop-blueprint-art.is-catalunya::before{
+ background-image:linear-gradient(#c5f3e714 1px,transparent 1px),
+  linear-gradient(90deg,#c5f3e714 1px,transparent 1px);
+ background-size:22px 22px;
+}
+.shop-blueprint-art.is-catalunya svg.shop-real-blueprint{
+ filter:drop-shadow(0 3px 2px #041f1d88);
+}
+.shop-blueprint-art.is-catalunya .shop-plan-caption{
+ background:#092c2acf;color:#8ef0d7;
+}
 .shop-blueprint-pending{flex-direction:column;gap:5px;text-align:center;
  background:repeating-linear-gradient(-45deg,#e5ebf0 0 11px,#f2f5f8 11px 22px);
  color:#697786;padding:14px}
