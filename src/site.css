@@ -1584,6 +1584,12 @@ button:disabled{opacity:.35;cursor:not-allowed}
  border:1px solid #dbe1e8;background:#f8fafc;border-radius:10px;
  color:#213041;padding:10px;font-size:12px;font-weight:900}
 .shop-modal-plans button span{color:#c30729}
+.shop-modal-card #shopModalContent>.shop-creator{
+ display:inline-block;margin:3px 0 9px;padding:6px 10px;
+ border:1px solid #b6e6d7;border-radius:8px;
+ background:#e9fbf5;color:#08776b;font-weight:900;
+ font-size:12px;letter-spacing:.4px;
+}
 .shop-modal-honesty,.shop-bridge-note{background:#f4f7fa;padding:9px 10px;border-radius:9px;
  font-size:11px!important;color:#70808e!important}
 .shop-modal-actions{display:grid;grid-template-columns:0.8fr 1.3fr;gap:9px}

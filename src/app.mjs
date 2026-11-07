@@ -43,7 +43,7 @@ const SHOP_PRODUCTS=Object.freeze([
   subtitle:"Un cruce elevado con dos lóbulos",detail:"Un ocho de catorce piezas con puente automático, validado por la geometría de SlotRace.",
   types:FIGURE_EIGHT,highlights:["14 piezas","Puente 65 mm","Cierre validado"],art:"eight"},
  {id:"plan-catalunya",kind:"circuits",name:"Catalunya Slot",short:"CATALUNYA SLOT",
-  kicker:"PLANO REAL",tag:"RECETA ORIGINAL",car:null,
+  kicker:"PLANO REAL",tag:"RECETA ORIGINAL",car:null,creator:"Juanfrikazo-dev",
   subtitle:"Gran trazado de 60 piezas · 18,89 m",detail:"Circuito Catalunya Slot de 60 piezas y 18,89 metros, sentido horario. Receta real aportada por su constructor, sin elevaciones.",
   types:CATALUNYA_SLOT_TYPES,origin:CATALUNYA_SLOT_ORIGIN,direction:1,
   highlights:["60 piezas","18,89 m","Horario"],art:"catalunya"},
@@ -71,6 +71,12 @@ function readShopOwned(){
  }catch(e){return SHOP_DEFAULT_OWNED.slice();}
 }
 const normalCircuitName=name=>String(name||"").trim().replace(/\s+/g," ").toLocaleLowerCase();
+// El nombre de autor pertenece a la receta y se conserva al compartirla.
+// Migración limitada a los dos circuitos creados anteriormente por el usuario.
+const LOCAL_CREATOR="Juanfrikazo-dev";
+const cleanCreator=value=>typeof value==="string"?value.trim().slice(0,48):"";
+const creatorForLegacyCircuit=name=>["mónaco slot","monaco slot","catalunya slot"]
+ .includes(normalCircuitName(name))?LOCAL_CREATOR:"";
 const newCircuitId=()=> "sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
 function readCircuitRevisions(){
  try{
@@ -115,6 +121,9 @@ function validReference(ref){
 }
 const state={
   circuitName:typeof old?.circuitName==="string"?old.circuitName.slice(0,64):"",
+  circuitCreator:typeof old?.circuitCreator==="string"?cleanCreator(old.circuitCreator):
+   cleanCreator(initialLibrary.find(c=>c.id===old?.activeCircuitId)?.creator)||
+   creatorForLegacyCircuit(old?.circuitName),
   reference:validReference(old?.reference),referenceImage:null,
   templatePanelOpen:false,templateIncludeInExport:false,templateLoading:false,
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
@@ -146,7 +155,8 @@ state.initialAutoFitNeeded=state.track.board.expanded;
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  reference:state.reference,
- circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
+ circuitName:state.circuitName,circuitCreator:state.circuitCreator,
+ activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
 const GRID_MM=25;
@@ -410,8 +420,19 @@ function safelyWriteLibrary(items){
  catch(e){toast("Error de almacenamiento. No se ha sustituido ningún circuito.");return false;}
 }
 function circuitLabel(){return state.circuitName.trim()||"Circuito sin nombre";}
+function circuitCreator(){
+ const item=state.library.find(c=>c.id===state.activeCircuitId);
+ // Una autoría explícita, incluso vacía, tiene prioridad. La migración
+ // por nombre solo sirve a los planos antiguos, que carecen del campo.
+ if(typeof state.circuitCreator==="string"&&state.circuitCreator.trim())
+  return cleanCreator(state.circuitCreator);
+ if(item&&typeof item.creator==="string")return cleanCreator(item.creator);
+ return creatorForLegacyCircuit(state.circuitName);
+}
 function archiveCircuitRevision(item){
- const revision={id:newCircuitId(),sourceId:item.id,name:item.name,direction:item.direction,
+ const revision={id:newCircuitId(),sourceId:item.id,name:item.name,
+  creator:cleanCreator(item.creator)||creatorForLegacyCircuit(item.name),
+  direction:item.direction,
   snapshot:JSON.parse(JSON.stringify(item.snapshot)),savedAt:new Date().toISOString()};
  const next=[revision,...readCircuitRevisions()].slice(0,30);
  try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify(next));return true;}
@@ -435,15 +456,17 @@ function protectOrphanDraft(){
  const revisions=readCircuitRevisions();
  if(revisions.some(v=>v.sourceId===key&&JSON.stringify(v.snapshot)===JSON.stringify(shot)))return;
  const entry={id:newCircuitId(),sourceId:key,name:d.name.trim().slice(0,64),
+  creator:cleanCreator(d.creator)||creatorForLegacyCircuit(d.name),
   direction:d.direction===-1?-1:1,snapshot:shot,savedAt:new Date().toISOString()};
  try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify([entry,...revisions].slice(0,30)));}
  catch(e){/* Nunca borrar ni modificar el borrador original por un fallo de espacio. */}
 }
-function addRecoveredCircuit(name,shot,direction){
+function addRecoveredCircuit(name,shot,direction,creator=""){
  if(state.library.length>=120){toast("Inventario completo: no cabe el circuito recuperado.");return false;}
  if(!shot||!allowed([...shot.types,...shot.loose.map(p=>p.id)]))return false;
  const date=new Date().toISOString();
  const item={id:newCircuitId(),name,createdAt:date,updatedAt:date,
+  creator:cleanCreator(creator)||creatorForLegacyCircuit(name),
   direction:direction===-1?-1:1,snapshot:shot};
  const next=[item,...state.library];
  if(!safelyWriteLibrary(next))return false;
@@ -455,7 +478,7 @@ function recoverDraftToLibrary(){
  const d=recoverableDraft();
  if(!d){toast("No hay un borrador anterior recuperable.");return false;}
  const shot=snapshotOfDraft(d);
- if(!addRecoveredCircuit(String(d.name).trim().slice(0,64),shot,d.direction))return false;
+ if(!addRecoveredCircuit(String(d.name).trim().slice(0,64),shot,d.direction,d.creator))return false;
  // Mantener el circuito actual sobre la mesa y la recuperación en el inventario.
  state.draft=null;save();updateUI();return true;
 }
@@ -465,7 +488,7 @@ function restoreLastCircuitRevision(){
  const last=versions[0];
  const name=state.library.some(item=>normalCircuitName(item.name)===normalCircuitName(last.name))?
   (last.name.slice(0,48)+" (recuperado)") :last.name;
- if(!addRecoveredCircuit(name,last.snapshot,last.direction))return false;
+ if(!addRecoveredCircuit(name,last.snapshot,last.direction,last.creator))return false;
  // Consumir la revisión recuperada para no duplicarla accidentalmente.
  try{localStorage.setItem(LIBRARY_REVISIONS_KEY,JSON.stringify(versions.slice(1)));}
  catch(e){/* Conservamos la copia si no es posible actualizar el historial. */}
@@ -492,6 +515,7 @@ function saveCircuit(){
  const oldRecord=!active?record():null;
  const item=create?{id:newCircuitId(),createdAt:now}:active;
  const nextItem={...item,name,direction:state.driveDirection,
+  creator:circuitCreator()||creatorForLegacyCircuit(name),
   snapshot:currentSnapshot,updatedAt:now};
  if(!create&&JSON.stringify({s:item.snapshot,d:item.direction})!==
   JSON.stringify({s:nextItem.snapshot,d:nextItem.direction})){
@@ -502,6 +526,7 @@ function saveCircuit(){
  if(!safelyWriteLibrary(next))return false;
  state.library=next;
  state.circuitName=name;state.activeCircuitId=nextItem.id;
+ state.circuitCreator=nextItem.creator;
  if(create&&oldRecord?.some(v=>v!==null)&&!state.records[recKey()])
   state.records[recKey()]=oldRecord.slice();
  save();updateUI();
@@ -513,8 +538,11 @@ function loadSavedCircuit(id,{stayInLibrary=false}={}){
  const item=state.library.find(c=>c.id===id);
  if(!item||!allowed(item.snapshot.types))return false;
  if(state.types.length||state.loose.length)state.draft={...snapshot(),
-  name:state.circuitName,direction:state.driveDirection,activeId:state.activeCircuitId};
+  name:state.circuitName,creator:circuitCreator(),
+  direction:state.driveDirection,activeId:state.activeCircuitId};
  state.circuitName=item.name;state.activeCircuitId=id;
+ state.circuitCreator=typeof item.creator==="string"?cleanCreator(item.creator):
+  creatorForLegacyCircuit(item.name);
  state.driveDirection=item.direction===-1?-1:1;
  state.newCircuitDirection=state.driveDirection;
  restoreSnapshot(item.snapshot);resetWorkBoard();
@@ -824,7 +852,8 @@ function renderLibrary(){
 function circuitPackage(){
  const recipe=blueprintData();
  return{format:"slotrace-recipe",version:1,geometry:"SR-PRECISION",
-  name:circuitLabel(),direction:state.driveDirection,types:state.types.slice(),
+  name:circuitLabel(),creator:circuitCreator(),
+  direction:state.driveDirection,types:state.types.slice(),
   origin:{...state.origin},bridgeParts:state.bridgeParts.slice(),
   loose:state.loose.map(p=>({...p})),
   // La foto es una ayuda local. No incorporar IDs de IndexedDB a recetas
@@ -866,6 +895,8 @@ async function importRecipe(file){
  if(state.library.length>=120){toast("Inventario completo (120 circuitos).");return false;}
  const item={id:"sr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8),
   name:String(data.name||"Circuito importado").trim().slice(0,64)||"Circuito importado",
+  creator:typeof data.creator==="string"?cleanCreator(data.creator):
+   creatorForLegacyCircuit(data.name),
   direction:data.direction===-1?-1:1,
   snapshot:{types:data.types.slice(),loose:data.loose.map(p=>({...p})),
    bridgeParts:data.bridgeParts.slice(),origin:{...data.origin}},
@@ -1640,8 +1671,10 @@ function changeDriveDirection(direction){
 function createNewCircuit(){
  const hadPieces=state.types.length||state.loose.length;
  if(hadPieces)state.draft={...snapshot(),name:state.circuitName,
-  direction:state.driveDirection,activeId:state.activeCircuitId};
- state.circuitName="";state.activeCircuitId=null;state.sessionLaps=[];
+  creator:circuitCreator(),direction:state.driveDirection,
+  activeId:state.activeCircuitId};
+ state.circuitName="";state.circuitCreator="";state.activeCircuitId=null;
+ state.sessionLaps=[];
  state.reference=null;state.referenceImage=null;state.templateIncludeInExport=false;
  state.driveDirection=state.newCircuitDirection;
  changeTypes([],"Nuevo circuito · elige las piezas en el maletín.",[],START);
@@ -2483,6 +2516,7 @@ function shopOpenProduct(id){
   '<div class="shop-modal-art">'+shopArtwork(product)+'</div>'+
   '<span class="shop-eyebrow">'+product.kicker+'</span>'+
   '<h2>'+product.name+'</h2><p>'+product.detail+'</p>'+
+  (product.creator?'<p class="shop-creator">CREADOR: '+product.creator+'</p>':"")+
   '<div class="shop-modal-tags">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
   groups+(product.bridge?'<p class="shop-bridge-note">Incluye kit puente 65 mm.</p>':"")+
   (includes?'<h3>Planos incluidos</h3><div class="shop-modal-plans">'+includes+'</div>':"")+
@@ -2536,6 +2570,7 @@ function shopInstallPlan(id){
  if(state.library.length>=120){toast("Inventario de circuitos completo.");return false;}
  const now=new Date().toISOString();
  const item={id:newCircuitId(),shopPlanId:id,name:product.name,direction,
+  creator:cleanCreator(product.creator),
   snapshot:{types:product.types.slice(),loose:[],bridgeParts:[],origin:{...origin}},
   createdAt:now,updatedAt:now};
  const next=[item,...state.library];
@@ -3519,7 +3554,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.47.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.48.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3527,7 +3562,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.47 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.48 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4189,7 +4224,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  const headingY=74;
  // Reservar una cabecera independiente: el rectángulo del circuito ya
  // nunca puede pintar por encima del nombre, incluso en dos líneas.
- const frame={x:x+13,y:313,width:bodyWidth-26,height:Math.round(width*.79)};
+ const frame={x:x+13,y:353,width:bodyWidth-26,height:Math.round(width*.79)};
  const metricsY=frame.y+frame.height+42;
  const recipeHeadingY=metricsY+170;
  const recipeRowY=recipeHeadingY+33;
@@ -4234,6 +4269,16 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.fillStyle="#effff7";ctx.font="800 "+nameSize+"px system-ui,sans-serif";
  for(const [lineIndex,line] of nameLines.entries())
   ctx.fillText(line,x+36,headingY+151+lineIndex*40);
+ // Firma del constructor fuera del área del circuito y de la receta.
+ const creator=circuitCreator();
+ const creatorText="CREADOR: "+(creator||"SIN INDICAR");
+ ctx.textAlign="left";ctx.fillStyle="#7adccc";
+ let creatorSize=22;
+ ctx.font="800 "+creatorSize+"px system-ui,sans-serif";
+ while(creatorSize>13&&ctx.measureText?.(creatorText)?.width>bodyWidth-60){
+  creatorSize--;ctx.font="800 "+creatorSize+"px system-ui,sans-serif";
+ }
+ ctx.fillText(creatorText,x+36,headingY+234);
  ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
  ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",
   width-x,headingY+51);
@@ -4323,7 +4368,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.textAlign="left";
  return {width,height:h,recipe,bounds,scale,frame,
   markers,titleLines:nameLines,titleFontSize:nameSize,
-  references:Object.fromEntries(refs),
+  creator,creatorText,references:Object.fromEntries(refs),
   blueprintStyle:"white-track-black-seams"};
 }
 async function exportBlueprint(){
@@ -5160,7 +5205,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.47",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.48",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

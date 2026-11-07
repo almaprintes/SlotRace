@@ -1,5 +1,5 @@
 "use strict";
-// DEV 0.14.47: cierre flexible físico (<10 mm), tanto por defecto
+// DEV 0.14.48: cierre flexible físico (<10 mm), tanto por defecto
 // como por exceso, y continuidad visual/física sin costura final.
 const assert=require("node:assert/strict");
 (async()=>{

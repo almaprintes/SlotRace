@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.47");
+ assert.equal(game.version,"DEV 0.14.48");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -165,6 +165,11 @@ const path=require("node:path");
  const catalunyaPlan=game.shopProducts.find(p=>p.id==="plan-catalunya");
  assert.ok(catalunyaPlan);
  assert.equal(catalunyaPlan.types.length,60);
+ assert.equal(catalunyaPlan.creator,"Juanfrikazo-dev");
+ assert.equal(game.shopOpenProduct("plan-catalunya"),true);
+ assert.match(elements.get("shopModalContent").innerHTML,
+  /CREADOR: Juanfrikazo-dev/,"La ficha oficial identifica al autor");
+ game.shopCloseProduct();
  assert.deepEqual(catalunyaPlan.types.slice(0,7),["R3_225L","R4_225L","S600","S075","S350","S350","START350"]);
  assert.equal(catalunyaPlan.direction,1);
  const catTrack=geo.buildTrack(catalunyaPlan.types,catalunyaPlan.origin);
@@ -400,6 +405,12 @@ const path=require("node:path");
  st.circuitName="Mónaco Slot";
  const monacoTitle=game.drawBlueprint(pngCtx,rec);
  assert.deepEqual(monacoTitle.titleLines,["Mónaco Slot"]);
+ assert.equal(monacoTitle.creator,"Juanfrikazo-dev","Autor de Mónaco Slot");
+ assert.equal(monacoTitle.creatorText,"CREADOR: Juanfrikazo-dev");
+ assert.ok(renderTexts.includes("CREADOR: Juanfrikazo-dev"),
+  "La firma se dibuja dentro del PNG, no solo en su metadata");
+ assert.equal(game.circuitPackage().creator,"Juanfrikazo-dev",
+  "La receta JSON de Mónaco conserva el nombre del creador");
  assert.ok(monacoTitle.frame.y>74+151+monacoTitle.titleFontSize,
   "La pista no vuelve a pintar encima del título");
  st.circuitName="Mónaco Slot especial con curvas históricas compactas y cerradas";
@@ -995,6 +1006,11 @@ const path=require("node:path");
  assert.equal(game.shopInstallPlan("plan-catalunya"),true);
  assert.equal(st.mode,"build");
  assert.equal(st.circuitName,"Catalunya Slot");
+ assert.equal(st.circuitCreator,"Juanfrikazo-dev");
+ assert.equal(st.library[0].creator,"Juanfrikazo-dev");
+ assert.equal(game.circuitPackage().creator,"Juanfrikazo-dev");
+ const catalunyaPNG=game.drawBlueprint(pngCtx,game.blueprintData());
+ assert.equal(catalunyaPNG.creator,"Juanfrikazo-dev");
  assert.equal(st.library.length,beforeCatalogue+1);
  assert.deepEqual(st.types,catalunyaPlan.types);
  assert.deepEqual(st.origin,catalunyaPlan.origin);
@@ -1009,5 +1025,5 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.14.47: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.48: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
