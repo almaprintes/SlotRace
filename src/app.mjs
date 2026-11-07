@@ -2941,6 +2941,19 @@ function strokePath(ctx,points,color,width){
  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="butt";ctx.lineJoin="round";ctx.stroke();
 }
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
+// La pista montada es estática durante la carrera. Reutilizar los puntos
+// desplazados de los raíles evita miles de objetos y pausas de GC a 5×.
+const trackOffsetCache=new WeakMap();
+function cachedTrackOffset(track,offset){
+ let entry=trackOffsetCache.get(track);
+ if(!entry||entry.points!==track.points){
+  entry={points:track.points,offsets:new Map()};
+  trackOffsetCache.set(track,entry);
+ }
+ if(!entry.offsets.has(offset))
+  entry.offsets.set(offset,translated(track.points,offset));
+ return entry.offsets.get(offset);
+}
 // Las coordenadas del tapete virtual no tienen bordes físicos.
 function visibleWorldBounds(v,padding=0){
  const pts=[[0,0],[v.w,0],[0,v.h],[v.w,v.h]].map(([x,y])=>worldFromPointer(v,x,y));
@@ -3109,13 +3122,13 @@ function paintContinuousTrack(ctx,track,editing){
  strokePath(ctx,path,PIECE_LOOK.deck,TRACK_WIDTH-4);
  strokePath(ctx,path,PIECE_LOOK.inner,TRACK_WIDTH-31);
  for(const laneOffset of [-LANE_OFFSET,LANE_OFFSET]){
-  const line=translated(path,laneOffset);
+  const line=cachedTrackOffset(track,laneOffset);
   strokePath(ctx,line,PIECE_LOOK.groove,11);
-  strokePath(ctx,translated(path,laneOffset-7.6),PIECE_LOOK.metalA,2.2);
-  strokePath(ctx,translated(path,laneOffset+7.6),PIECE_LOOK.metalB,2.2);
+  strokePath(ctx,cachedTrackOffset(track,laneOffset-7.6),PIECE_LOOK.metalA,2.2);
+  strokePath(ctx,cachedTrackOffset(track,laneOffset+7.6),PIECE_LOOK.metalB,2.2);
   strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
- for(const edge of [-72,72])strokePath(ctx,translated(path,edge),PIECE_LOOK.edge,2.5);
+ for(const edge of [-72,72])strokePath(ctx,cachedTrackOffset(track,edge),PIECE_LOOK.edge,2.5);
  paintX350(ctx,track);
  // En el taller conservamos las juntas ordinarias de módulos.
  // En las fronteras suelo/rampa, en cambio, la pista y los dos carriles
@@ -3418,7 +3431,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.42.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.43.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3426,7 +3439,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.42 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.43 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4190,7 +4203,8 @@ const FOLLOW_Y_DEADZONE=.075;
 const FOLLOW_LOOKAHEAD=.20;    // Anticipación: reserva pantalla delante del coche.
 const FOLLOW_LOOK_RESPONSE=3.2; // Cambia de dirección con calma, sin latigazos.
 const FOLLOW_SAFE_EDGE=.25;    // El coche nunca entra en el 25 % exterior.
-const FOLLOW_RESPONSE=7.0;     // Seguimiento amortiguado e independiente de FPS.
+const FOLLOW_RESPONSE=7.0;     // Seguimiento clásico 2× (sin cambios).
+const FOLLOW_CUSTOM_RESPONSE=10; // Filtro continuo: sin umbrales que produzcan latigazos.
 function setCameraMode(mode){
  if(!["general","follow","custom"].includes(mode))return false;
  if(mode===state.cameraMode)return true;
@@ -4244,6 +4258,18 @@ function updateFollowCamera(dt){
  const lookAlpha=1-Math.exp(-FOLLOW_LOOK_RESPONSE*step);
  f.lookX+=(targetLookX-f.lookX)*lookAlpha;
  f.lookY+=(targetLookY-f.lookY)*lookAlpha;
+ // A zoom alto, la guardia de borde de la cámara clásica producía saltos:
+ // teletransportaba el encuadre entero en un único fotograma. La cámara
+ // personalizada no usa ni zona muerta ni correcciones instantáneas.
+ // Sigue un objetivo con anticipación filtrada y amortiguación temporal.
+ if(state.cameraMode==="custom"){
+  const targetX=p.x+(cos*f.lookX+sin*f.lookY)/v.scale;
+  const targetY=p.y+(-sin*f.lookX+cos*f.lookY)/v.scale;
+  const followAlpha=1-Math.exp(-FOLLOW_CUSTOM_RESPONSE*step);
+  f.x+=(targetX-f.x)*followAlpha;
+  f.y+=(targetY-f.y)*followAlpha;
+  return;
+ }
  const dx=p.x-f.x,dy=p.y-f.y;
  const sx=(cos*dx-sin*dy)*v.scale,sy=(sin*dx+cos*dy)*v.scale;
  // El centro apunta por delante del coche. La tolerancia evita el nerviosismo.
@@ -4940,7 +4966,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.42",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.43",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

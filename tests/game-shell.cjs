@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.42");
+ assert.equal(game.version,"DEV 0.14.43");
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
  const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
@@ -206,6 +206,28 @@ const path=require("node:path");
  assert.equal(game.camera.setFollowZoom(100),30,"Aumento máximo de 30×");
  assert.equal(game.camera.setFollowZoom(-2),2,"Aumento mínimo de 2×");
  assert.equal(game.camera.setFollowZoom("no-válido"),5,"Restaurar valor predeterminado");
+ // Regresión visual: en 5× la cámara no puede pegar un salto entero
+ // cuando el coche se aleja del centro (antes la guardia lo hacía).
+ const cameraState={...st.followCamera},raceMode=st.mode,raceRun=st.run,raceSpeed=st.speed;
+ st.mode="race";st.run=true;st.speed=0;
+ const carPose=game.drivingPose();
+ const zoom5=game.camera.makeView(elements.get("raceCanvas"),"race");
+ st.followCamera.ready=true;
+ st.followCamera.x=carPose.x+zoom5.w*.55/zoom5.scale;
+ st.followCamera.y=carPose.y;
+ st.followCamera.lookX=0;st.followCamera.lookY=0;st.followCamera.settle=0;
+ const cameraFarX=st.followCamera.x;
+ game.camera.updateFollowCamera(1/60);
+ const firstStep=Math.hypot(st.followCamera.x-cameraFarX,
+  st.followCamera.y-carPose.y)*zoom5.scale;
+ assert.ok(firstStep<zoom5.w*.10,
+  "En 5× no hay teletransporte al reencuadrar (<10 % pantalla/fotograma)");
+ const afterFirst=st.followCamera.x;
+ game.camera.updateFollowCamera(1/60);
+ assert.ok(Math.abs(st.followCamera.x-carPose.x)<Math.abs(afterFirst-carPose.x),
+  "El seguimiento se acerca progresivamente al coche");
+ Object.assign(st.followCamera,cameraState);
+ st.mode=raceMode;st.run=raceRun;st.speed=raceSpeed;
  elements.get("settingsCameraGeneral").listeners.click[0]();
  assert.equal(elements.get("settingsCameraCustomPanel").hidden,true);
  assert.equal(st.cameraMode,"general");
@@ -874,5 +896,5 @@ const path=require("node:path");
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
 
- console.log("SlotRace DEV 0.14.42: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.43: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

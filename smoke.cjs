@@ -258,6 +258,8 @@ assert.match(app,/FOLLOW_CUSTOM_MAX_ZOOM=30/);
 assert.match(app,/function setFollowZoom\(value\)/);
 assert.match(css,/\.camera-zoom-panel\[hidden\]/);
 assert.match(app,/function updateFollowCamera\(dt\)/);
+assert.match(app,/const FOLLOW_CUSTOM_RESPONSE=10/);
+assert.match(app,/function cachedTrackOffset\(track,offset\)/);
 assert.match(app,/function resetFollowCamera\(\)/);
 assert.match(app,/cameraMode:state.cameraMode/);
 assert.match(css,/\.shop-blueprint-art/);
@@ -308,5 +310,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.42 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.43 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
