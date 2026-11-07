@@ -2580,3 +2580,10 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .account-heading h2{font-size:25px}
  .account-social{grid-template-columns:1fr}
 }
+
+.account-providers{padding:11px 13px;border:1px solid #b4dcd3;border-radius:11px;
+ background:#e9f8f3;color:#175a51;font-size:12px;margin:12px 0 9px}
+.account-providers strong{font-size:13px;display:block;color:#0b6557;margin-top:4px}
+.account-links{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+.account-links button{flex:1;min-width:150px;border:1px solid #b5cfc7;border-radius:10px;
+ background:#f3fbf8;color:#126455;padding:11px 8px;font-size:12px;font-weight:900}

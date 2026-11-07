@@ -27,6 +27,9 @@ jobs:
       - name: Comprobar geometría y prototipo
         run: node smoke.cjs
 
+      - name: Verificar cuenta global CraftRace Studio sin tocar partidas locales
+        run: node tests/studio-account.cjs
+
       - name: Comprobar control táctil analógico
         run: node tests/analog-trigger.cjs
 

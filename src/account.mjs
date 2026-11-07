@@ -4,6 +4,9 @@
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const PUBLISHABLE_KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const ACCOUNT_STORAGE="craftstudio-slotrace-auth-v1";
+const PENDING_IDENTITY_LINK="craftstudio-slotrace-identity-link-v1";
+// Capture callback before supabase-js consumes ?code from the URL.
+const OAUTH_CALLBACK=new URLSearchParams(location.search).has("code");
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
 const get=id=>document.getElementById(id);
 let client=null,accountUser=null,accountNick=null,busy=false;
@@ -31,10 +34,14 @@ function failure(error){
   return "Correo o contraseña incorrectos.";
  if(/provider is not enabled|unsupported provider/i.test(message))
   return "Este proveedor todavía no está habilitado en Supabase. La partida local permanece intacta.";
+ if(/manual_linking_disabled|identity linking is disabled/i.test(message))
+  return "Activa «Allow manual linking» en Supabase para añadir este proveedor sin cambiar de cuenta.";
  if(/not allowed|redirect|unauthorized/i.test(message))
   return "Hay que autorizar la URL de SlotRace en Supabase Auth. No se ha cambiado tu partida.";
  if(/network|failed to fetch|load failed/i.test(message))
   return "No hay conexión con el servicio de cuentas. Puedes seguir jugando sin registrarte.";
+ if(/no conservó la misma identidad/i.test(message))
+  return "El proveedor pertenece a otra cuenta. No se ha mezclado ningún dato; entra con tu identidad original.";
  return "No se pudo completar la operación. Revisa los datos y vuelve a intentarlo.";
 }
 function setBusy(value){busy=value;for(const button of modal.querySelectorAll("button"))if(button.id!=="accountClose")button.disabled=value;}
@@ -69,6 +76,7 @@ async function refresh(){
   const {data:sessionData,error:sessionError}=await api.auth.getSession();
   if(sessionError)throw sessionError;
   if(!sessionData?.session){
+   sessionStorage.removeItem(PENDING_IDENTITY_LINK);
    accountUser=null;accountNick=null;showStage("signedOut");
    notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
    return;
@@ -81,11 +89,12 @@ async function refresh(){
    notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
    return;
   }
+  await verifyLinkedIdentity(api);
   accountUser=user;
   const {data:account,error:lookup}=await api.from("craft_accounts")
    .select("user_id,nickname").eq("user_id",user.id).maybeSingle();
   if(lookup)throw lookup;
-  if(!account){
+  if(!account||!account.nickname){
    accountNick=null;
    const {data:tdr}=await api.from("profiles").select("nick")
     .eq("user_id",user.id).maybeSingle();
@@ -100,6 +109,12 @@ async function refresh(){
   get("accountCurrentNick").textContent=account.nickname;
   get("accountEmailDisplay").textContent=user.email||"Acceso mediante proveedor";
   get("accountLocalCircuitCount").textContent=localCircuitCount()+" circuitos guardados aquí";
+  const providers=new Set((user.identities||[]).map(item=>item.provider));
+  get("accountProviderList").textContent=[...providers].map(p=>
+   p==="google"?"Google":p==="apple"?"Apple":p==="email"?"Correo":p).join(" · ")||
+   "Proveedor no indicado";
+  get("accountLinkGoogle").hidden=providers.has("google");
+  get("accountLinkApple").hidden=providers.has("apple");
   showStage("connected");
   notice("Cuenta conectada. Tus circuitos locales siguen en este dispositivo.");
  }catch(error){
@@ -153,6 +168,44 @@ async function social(provider){
  const {error}=await api.auth.signInWithOAuth({provider,options:{redirectTo:redirect()}});
  if(error)throw error;
 }
+// Distinct Apple relay email is not an identity proof. To merge Google and
+// Apple without duplicating the UUID, link from a VERIFIED active session.
+// Supabase Auth must have Allow manual linking enabled for this operation.
+async function linkSocial(provider){
+ const api=await db();
+ const {data,error}=await api.auth.getUser();
+ const user=data?.user;
+ if(error||!user||user.is_anonymous||user.id!==accountUser?.id)
+  throw new Error("La sesión de CraftRace Studio no coincide. Vuelve a entrar.");
+ if((user.identities||[]).some(identity=>identity.provider===provider)){
+  notice("Este proveedor ya está vinculado a tu cuenta.");
+  return;
+ }
+ sessionStorage.setItem(PENDING_IDENTITY_LINK,JSON.stringify({userId:user.id,provider}));
+ const {error:linkError}=await api.auth.linkIdentity({
+  provider,options:{redirectTo:redirect()}
+ });
+ if(linkError){sessionStorage.removeItem(PENDING_IDENTITY_LINK);throw linkError;}
+}
+// Fail closed when a linking callback does not prove the SAME studio UUID.
+// No local track data is touched. The user can sign back into the old account.
+async function verifyLinkedIdentity(api){
+ // A dismissed OAuth tab must not log out the existing player.
+ if(!OAUTH_CALLBACK)return;
+ const stored=sessionStorage.getItem(PENDING_IDENTITY_LINK);
+ if(!stored)return;
+ sessionStorage.removeItem(PENDING_IDENTITY_LINK);
+ let pending;
+ try{pending=JSON.parse(stored);}catch(_){return;}
+ const {data,error}=await api.auth.getUser();
+ const user=data?.user;
+ if(error||!user||user.id!==pending.userId||
+   !(user.identities||[]).some(i=>i.provider===pending.provider&&
+      (!i.user_id||i.user_id===user.id))){
+  await api.auth.signOut({scope:"local"});
+  throw new Error("La vinculación no conservó la misma identidad. Vuelve a iniciar sesión con tu cuenta original.");
+ }
+}
 async function claim(){
  if(!accountUser)throw new Error("Debes iniciar sesión antes de registrar el apodo.");
  const nickname=get("accountNickname").value.trim();
@@ -164,9 +217,13 @@ async function claim(){
  const {data:{user},error:authError}=await api.auth.getUser();
  if(authError||!user||user.id!==accountUser.id||user.is_anonymous)
   throw new Error("La sesión ha cambiado. Vuelve a iniciar sesión.");
- const {error}=await api.from("craft_accounts")
-  .insert({user_id:user.id,nickname});
+ // Registered automatically by the shared Auth trigger. Nickname is
+ // claimed later, atomically, and never overwrites an existing studio alias.
+ const {data:updated,error}=await api.from("craft_accounts")
+  .update({nickname}).eq("user_id",user.id).is("nickname",null)
+  .select("nickname").maybeSingle();
  if(error)throw error;
+ if(!updated)throw new Error("Este perfil ya tiene un apodo. Comprueba tu cuenta.");
  await ensureSlotProfile(api,user.id);
  await refresh();
 }
@@ -188,14 +245,15 @@ get("accountLoginForm").addEventListener("submit",e=>{
 get("accountSignup").addEventListener("click",()=>{void run(signUp);});
 get("accountGoogle").addEventListener("click",()=>{void run(()=>social("google"));});
 get("accountApple").addEventListener("click",()=>{void run(()=>social("apple"));});
+get("accountLinkGoogle").addEventListener("click",()=>{void run(()=>linkSocial("google"));});
+get("accountLinkApple").addEventListener("click",()=>{void run(()=>linkSocial("apple"));});
 get("accountClaimForm").addEventListener("submit",e=>{
  e.preventDefault();void run(claim);
 });
 get("accountSignOut").addEventListener("click",()=>{void run(signOut);});
 get("accountRetry").addEventListener("click",()=>{void run(refresh);});
 // OAuth returning through GitHub Pages gets resolved even before opening settings.
-if(new URLSearchParams(location.search).has("code")||
-   new URLSearchParams(location.search).has("error")){
+if(OAUTH_CALLBACK||new URLSearchParams(location.search).has("error")){
  modal.hidden=false;void refresh();
 }
 // No Supabase dependency is loaded until the account is opened (or OAuth returns).
