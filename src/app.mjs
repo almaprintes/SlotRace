@@ -3519,7 +3519,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.46.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.47.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3527,7 +3527,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.46 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.47 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4079,38 +4079,106 @@ function paintBlueprintTrack(ctx,track){
 // Identificación visual por TIPO, no por posición: todas las curvas R1
 // 90° derechas llevan la misma letra. El círculo mantiene su tamaño en
 // píxeles exportados independientemente del zoom del plano.
-function paintBlueprintIdentifiers(ctx,track,groups,refs,scale){
+// Etiquetas inteligentes: prioriza las curvas y rectas más cortas, cuyo
+// centro está muy cerca del de otras piezas. Busca puntos alternativos
+// sobre la pieza y, si es necesario, pequeñas llamadas a los lados.
+// Todo se resuelve en píxeles del PNG, no en unidades del circuito.
+function paintBlueprintIdentifiers(ctx,track,groups,refs,scale,viewport){
  const pieces=[...track.parts,...groups.flatMap(group=>group.parts)];
- const markers=[];
  const crossing=track.bridge?.crossing;
  const underParts=new Set(track.bridge?.underParts||[]);
- for(const part of pieces){
-  const code=refs.get(part.id);
-  if(!code)continue;
-  let sample=.5;
-  // La letra de un tramo INFERIOR no debe aparecer encima del tramo
-  // superior justo en el cruce. Desplazarla dentro de su propia pieza.
+ const markers=new Array(pieces.length);
+ const placed=[];
+ const safeScale=Math.max(1e-9,scale);
+ const data=pieces.map((part,index)=>{
+  const spec=CATALOG[part.id],length=spec?.length||
+   (spec?.radius||100)*Math.abs(spec?.angle||0);
+  let preferred=.5;
   if(crossing&&track.parts[part.index]===part&&underParts.has(part.index)){
    const mid=positionOnPiece(part.start,part.id,.5);
    if(Math.hypot(mid.x-crossing.x,mid.y-crossing.y)<TRACK_WIDTH){
     const a=positionOnPiece(part.start,part.id,.28);
     const b=positionOnPiece(part.start,part.id,.72);
-    sample=Math.hypot(a.x-crossing.x,a.y-crossing.y)>
+    preferred=Math.hypot(a.x-crossing.x,a.y-crossing.y)>
      Math.hypot(b.x-crossing.x,b.y-crossing.y)?.28:.72;
    }
   }
-  const point=positionOnPiece(part.start,part.id,sample);
-  ctx.save();ctx.translate(point.x,point.y);
-  ctx.scale(1/scale,1/scale);
-  ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);
+  return{part,index,code:refs.get(part.id),length,preferred};
+ }).filter(item=>item.code);
+ // Resolver primero los módulos más cortos deja a las rectas largas
+ // la flexibilidad para situar su letra sin invadir las curvas densas.
+ const order=data.slice().sort((a,b)=>a.length-b.length||a.index-b.index);
+ const radii=[21,18,15,12];
+ const offsets=[0,-34,34,-57,57,-83,83,-113,113];
+ for(const entry of order){
+  const samples=[entry.preferred,.5,.28,.72,.14,.86,.04,.96]
+   .filter((value,index,array)=>array.findIndex(other=>Math.abs(other-value)<.01)===index);
+  let selected=null,fallback=null;
+  for(const radius of radii){
+   let best=null;
+   for(const sample of samples){
+    const point=positionOnPiece(entry.part.start,entry.part.id,sample);
+    for(const offset of offsets){
+     // Desplazamiento lateral en píxeles; mantiene la posición junto a SU pieza.
+     const wx=point.x-Math.sin(point.h)*offset/safeScale;
+     const wy=point.y+Math.cos(point.h)*offset/safeScale;
+     const sx=(wx-viewport.cx)*safeScale+viewport.width/2;
+     const sy=(wy-viewport.cy)*safeScale+viewport.height/2;
+     const margin=radius+5;
+     if(sx<margin||sx>viewport.width-margin||
+        sy<margin||sy>viewport.height-margin)continue;
+     let collision=0;
+     for(const other of placed){
+      const required=radius+other.radius+5;
+      collision+=Math.max(0,required-Math.hypot(sx-other.sx,sy-other.sy))**2;
+     }
+     const penalty=Math.abs(offset)*.55+
+      Math.abs(sample-entry.preferred)*34+
+      (21-radius)*3;
+     const candidate={x:wx,y:wy,sx,sy,radius,offset,
+      anchorX:point.x,anchorY:point.y,collision,penalty};
+     if(!fallback||collision*120+penalty<
+       fallback.collision*120+fallback.penalty)fallback=candidate;
+     if(collision===0&&(!best||penalty<best.penalty))best=candidate;
+    }
+   }
+   if(best){selected=best;break;}
+  }
+  if(!selected)selected=fallback;
+  if(!selected){
+   // Circuito extremo contra el borde: mantener una etiqueta legible.
+   const p=positionOnPiece(entry.part.start,entry.part.id,entry.preferred);
+   selected={x:p.x,y:p.y,
+    sx:(p.x-viewport.cx)*safeScale+viewport.width/2,
+    sy:(p.y-viewport.cy)*safeScale+viewport.height/2,
+    radius:12,offset:0,anchorX:p.x,anchorY:p.y};
+  }
+  placed.push(selected);
+  markers[entry.index]={id:entry.part.id,code:entry.code,
+   x:selected.x,y:selected.y,radius:selected.radius,
+   sx:selected.sx,sy:selected.sy,
+   anchorX:selected.anchorX,anchorY:selected.anchorY};
+ }
+ // Pintar en el orden original mantiene los metadatos y la receta.
+ // Una llamada visual indica a qué curva pertenece la letra desplazada.
+ for(const marker of markers){
+  if(!marker)continue;
+  const moved=Math.hypot(marker.x-marker.anchorX,marker.y-marker.anchorY)*safeScale;
+  if(moved>25){
+   ctx.save();ctx.strokeStyle="#e3fff7";ctx.lineWidth=1.8/safeScale;
+   ctx.beginPath();ctx.moveTo(marker.anchorX,marker.anchorY);
+   ctx.lineTo(marker.x,marker.y);ctx.stroke();ctx.restore();
+  }
+  ctx.save();ctx.translate(marker.x,marker.y);
+  ctx.scale(1/safeScale,1/safeScale);
+  ctx.beginPath();ctx.arc(0,0,marker.radius,0,Math.PI*2);
   ctx.fillStyle="#102d36";ctx.fill();
-  ctx.strokeStyle="#e9fffa";ctx.lineWidth=3;ctx.stroke();
+  ctx.strokeStyle="#e9fffa";ctx.lineWidth=marker.radius>=18?3:2;ctx.stroke();
   ctx.fillStyle="#ffffff";ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.font=code.length>1?"900 17px system-ui,sans-serif":
-   "900 23px system-ui,sans-serif";
-  ctx.fillText(code,0,1);
+  const fontSize=(marker.code.length>1?17:23)*marker.radius/21;
+  ctx.font="900 "+Math.max(12,Math.round(fontSize))+"px system-ui,sans-serif";
+  ctx.fillText(marker.code,0,1);
   ctx.restore();
-  markers.push({id:part.id,code,x:point.x,y:point.y});
  }
  return markers;
 }
@@ -4119,7 +4187,9 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  const refs=blueprintReferenceMap(recipe.items);
  const x=Math.round(width*.045),bodyWidth=width-2*x;
  const headingY=74;
- const frame={x:x+13,y:216,width:bodyWidth-26,height:Math.round(width*.79)};
+ // Reservar una cabecera independiente: el rectángulo del circuito ya
+ // nunca puede pintar por encima del nombre, incluso en dos líneas.
+ const frame={x:x+13,y:313,width:bodyWidth-26,height:Math.round(width*.79)};
  const metricsY=frame.y+frame.height+42;
  const recipeHeadingY=metricsY+170;
  const recipeRowY=recipeHeadingY+33;
@@ -4132,8 +4202,38 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.textAlign="left";ctx.fillText("SLOTRACE",x+36,headingY+59);
  ctx.fillStyle="#7adccc";ctx.font="800 24px system-ui,sans-serif";
  ctx.fillText("CRAFT RACE STUDIO · PLANO DE CIRCUITO",x+36,headingY+100);
- ctx.fillStyle="#effff7";ctx.font="800 33px system-ui,sans-serif";
- ctx.fillText(circuitLabel().slice(0,45),x+36,headingY+151);
+ // Medir el nombre completo: una línea cuando cabe, hasta dos si es
+ // largo. No truncar a 45 caracteres ni permitir que entre al marco.
+ const name=circuitLabel();
+ const titleMaxWidth=bodyWidth-60;
+ const titleMeasure=(text,size)=>{
+  ctx.font="800 "+size+"px system-ui,sans-serif";
+  const measured=ctx.measureText?.(text)?.width;
+  return Number.isFinite(measured)?measured:text.length*size*.62;
+ };
+ const titleRows=(value,size)=>{
+  const words=value.split(/\s+/).filter(Boolean),lines=[];
+  let row="";
+  for(const word of words){
+   const next=row?row+" "+word:word;
+   if(row&&titleMeasure(next,size)>titleMaxWidth){lines.push(row);row=word;}
+   else row=next;
+  }
+  if(row)lines.push(row);
+  return lines;
+ };
+ let nameSize=33,nameLines=titleRows(name,nameSize);
+ while(nameSize>18&&(nameLines.length>2||
+  nameLines.some(line=>titleMeasure(line,nameSize)>titleMaxWidth))){
+  nameSize--;nameLines=titleRows(name,nameSize);
+ }
+ // Un nombre sin espacios muy largo también conserva su texto completo.
+ if(nameLines.some(line=>titleMeasure(line,nameSize)>titleMaxWidth)){
+  nameSize=Math.max(12,Math.floor(titleMaxWidth/(Math.max(...nameLines.map(l=>l.length))*.62)));
+ }
+ ctx.fillStyle="#effff7";ctx.font="800 "+nameSize+"px system-ui,sans-serif";
+ for(const [lineIndex,line] of nameLines.entries())
+  ctx.fillText(line,x+36,headingY+151+lineIndex*40);
  ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
  ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",
   width-x,headingY+51);
@@ -4151,7 +4251,8 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  }:{minX:0,maxX:TABLE.width,minY:0,maxY:TABLE.height};
  const actualW=Math.max(100,bounds.maxX-bounds.minX);
  const actualH=Math.max(100,bounds.maxY-bounds.minY);
- const scale=Math.min((frame.width-35)/actualW,(frame.height-35)/actualH);
+ // Reservar píxeles para que las letras en el perímetro no se recorten.
+ const scale=Math.min((frame.width-92)/actualW,(frame.height-92)/actualH);
  const cx=(bounds.minX+bounds.maxX)/2,cy=(bounds.minY+bounds.maxY)/2;
  ctx.save();ctx.beginPath();ctx.rect(frame.x,frame.y,frame.width,frame.height);ctx.clip();
  ctx.strokeStyle="#ffffff0c";ctx.lineWidth=1;
@@ -4169,7 +4270,8 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  paintBlueprintTrack(ctx,state.track);
  // Las letras se dibujan encima de las vías, después de los cruces, para
  // que sean legibles tanto en rectas como en curvas y en el puente.
- const markers=paintBlueprintIdentifiers(ctx,state.track,groups,refs,scale);
+ const markers=paintBlueprintIdentifiers(ctx,state.track,groups,refs,scale,
+  {width:frame.width,height:frame.height,cx,cy});
  ctx.restore();
  // La sección de métricas se conserva debajo del plano ampliado.
  ctx.fillStyle="#102c35";ctx.fillRect(x,metricsY,bodyWidth,104);
@@ -4220,7 +4322,8 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  ctx.textAlign="right";ctx.fillText("TOP DOWN RACE: SLOTRACE",width-x,h-47);
  ctx.textAlign="left";
  return {width,height:h,recipe,bounds,scale,frame,
-  markers,references:Object.fromEntries(refs),
+  markers,titleLines:nameLines,titleFontSize:nameSize,
+  references:Object.fromEntries(refs),
   blueprintStyle:"white-track-black-seams"};
 }
 async function exportBlueprint(){
@@ -5057,7 +5160,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.46",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.47",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.46");
+ assert.equal(game.version,"DEV 0.14.47");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -363,6 +363,43 @@ const path=require("node:path");
  assert.ok(!renderTexts.includes("ORDEN DE MONTAJE"),"El PNG ya no muestra orden de montaje");
  assert.ok(meta.frame.height>=1100,"Plano ampliado aprovechando el espacio liberado");
  assert.equal(meta.blueprintStyle,"white-track-black-seams");
+ // El nombre queda completamente por ENCIMA de la ventana del plano.
+ assert.ok(meta.frame.y>=300,"La cabecera tiene una franja exclusiva para el nombre");
+ const originalBlueprintName=st.circuitName;
+ st.circuitName="Mónaco Slot";
+ const monacoTitle=game.drawBlueprint(pngCtx,rec);
+ assert.deepEqual(monacoTitle.titleLines,["Mónaco Slot"]);
+ assert.ok(monacoTitle.frame.y>74+151+monacoTitle.titleFontSize,
+  "La pista no vuelve a pintar encima del título");
+ st.circuitName="Mónaco Slot especial con curvas históricas compactas y cerradas";
+ const longTitle=game.drawBlueprint(pngCtx,rec,{width:920});
+ assert.equal(longTitle.titleLines.join(" "),st.circuitName,
+  "Nunca perder caracteres del nombre de un circuito");
+ assert.ok(longTitle.titleLines.length<=2,"El nombre largo ocupa un máximo de dos líneas");
+ assert.ok(longTitle.frame.y>74+151+(longTitle.titleLines.length-1)*40+longTitle.titleFontSize,
+  "El título multilinea tampoco entra en el marco");
+ st.circuitName=originalBlueprintName;
+ // Varios módulos cortos juntos requieren etiquetas independientes legibles.
+ const shortPieces=Array.from({length:6},(_,i)=>({
+  id:"R1_45R",x:2250+(i%3)*33,y:480+Math.floor(i/3)*36,h:0
+ }));
+ st.loose.push(...shortPieces);
+ const compactMeta=game.drawBlueprint(pngCtx,game.blueprintData());
+ const smallMarkers=compactMeta.markers.slice(-shortPieces.length);
+ assert.equal(smallMarkers.length,shortPieces.length);
+ for(let i=0;i<smallMarkers.length;i++){
+  const a=smallMarkers[i];
+  assert.equal(a.id,"R1_45R");
+  assert.ok(Number.isFinite(a.sx)&&Number.isFinite(a.sy));
+  assert.ok(a.sx>a.radius&&a.sx<compactMeta.frame.width-a.radius);
+  assert.ok(a.sy>a.radius&&a.sy<compactMeta.frame.height-a.radius);
+  for(let j=0;j<i;j++){
+   const b=smallMarkers[j];
+   assert.ok(Math.hypot(a.sx-b.sx,a.sy-b.sy)>=a.radius+b.radius+4,
+    "Las letras de dos curvas juntas nunca deben taparse");
+  }
+ }
+ st.loose.splice(-shortPieces.length);
  const referred=rec.items.filter(item=>!item.accessory);
  assert.equal(meta.markers.length,st.track.parts.length,
    "Cada pieza colocada tiene una referencia visible");
@@ -972,5 +1009,5 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.14.46: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.47: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

@@ -193,7 +193,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.46/);
+assert.match(html,/DEV 0\.14\.47/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -275,6 +275,12 @@ assert.match(app,/function resetFollowCamera\(\)/);
 assert.match(app,/cameraMode:state.cameraMode/);
 assert.match(css,/\.shop-blueprint-art/);
 assert.match(app,/function shopBlueprintSvg\(/);
+assert.match(app,/const frame=\{x:x\+13,y:313/,
+ "El área del plano comienza debajo del nombre");
+assert.match(app,/const radii=\[21,18,15,12\]/,
+ "Identificadores adaptativos en curvas muy juntas");
+assert.match(app,/titleLines:nameLines/,
+ "El nombre completo se exporta a una o dos líneas");
 assert.match(app,/const layout=buildTrack\(types,origin\)/);
 assert.match(app,/shop-blueprint-bridge/);
 for(const id of ["garageChooseGripline","garageChooseSpark","garageCarGripline",
@@ -321,5 +327,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.46 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.47 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
