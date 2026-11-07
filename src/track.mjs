@@ -242,7 +242,7 @@ export function buildTrack(types,origin=START,raisedParts=[]){
    const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
  const laneChangerIndex=types.indexOf("X350");
    return{parts,types:[...types],points,lanes,laneChangerIndex,closed,onTable,intersection,crossings,bridge,elevation,
-     valid:closed&&onTable&&elevation.valid&&safeCrossings.length===crossings.length,
+     valid:closed&&onTable&&elevation.valid&&types.filter(id=>id==="X350").length<=1&&safeCrossings.length===crossings.length,
      ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,bounds,board,
     connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,

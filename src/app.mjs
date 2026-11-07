@@ -1603,7 +1603,8 @@ function renderSessionSummary(){
  $("resultsCircuit").textContent=state.sessionName+" · "+
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   (state.driveDirection===1?"Horario":"Antihorario")+
-  " · "+state.sessionLaps.length+" vueltas completas";
+  " · "+(state.track.laneChangerIndex>=0?
+   state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas completas";
  if(state.track.laneChangerIndex>=0){
   const pairs=state.sessionLaps.filter(l=>l.changeover);
   const bestPair=pairs.reduce((best,l)=>Math.min(best,l.seconds),Infinity);
@@ -2510,7 +2511,8 @@ function updateUI(){
   t.closed?"EXTREMOS CERRADOS · REVISAR PUENTE":
   t.types.length?(t.bridge?"PUENTE EN MONTAJE · EXTREMOS ABIERTOS":"EXTREMOS ABIERTOS")+connectorInfo:
   state.loose.length?state.loose.length+" PIEZAS SUELTAS":"MESA VACÍA · COLOCA PIEZAS";
- const issue=t.elevation?.errors?.[0]||
+ const issue=(t.types.filter(id=>id==="X350").length>1?
+  "Solo se admite una PT/82 por circuito.":null)||t.elevation?.errors?.[0]||
   (t.intersection&&t.bridge&&!t.bridge.valid?"El cruce no tiene suficiente altura libre.":
    t.intersection&&!t.bridge?"Cruce al mismo nivel: necesita puente.":null);
  const help=issue||

@@ -17,6 +17,10 @@ const assert=require("node:assert/strict");
  const t=g.buildTrack(types);
  assert.equal(t.valid,true,"Sustituir S350 por PT/82 no cambia el cierre");
  assert.equal(t.laneChangerIndex,pos);
+ const duplicate=original.slice();
+ duplicate[0]="X350";duplicate[1]="X350";
+ assert.equal(g.buildTrack(duplicate).valid,false,
+  "El validador de circuitos rechaza recetas importadas con dos PT/82");
  assert.equal(t.lanes[0].total,g.buildTrack(original).lanes[0].total,
   "El cambio no altera las medidas exteriores del circuito");
  const a={entryLane:0,lane:1,pieceIndex:pos,pieceT:.51,

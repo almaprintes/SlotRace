@@ -750,8 +750,10 @@ const path=require("node:path");
  assert.equal(st.sessionLaps[0].changeover,true);
  assert.equal(st.x350FirstLap,null);
  assert.equal(game.endSession("menu"),true);
- assert.equal(elements.get("resultsStats").children.length,1,
-  "La clasificación PT/82 presenta solo tiempo combinado");
- assert.match(elements.get("resultsStats").children[0].children[1].textContent,/19,500/);
+ // El mock DOM no implementa la limpieza automática de children al
+ // escribir textContent="", así que inspeccionamos el último resultado.
+ const lastMetric=elements.get("resultsStats").children.at(-1);
+ assert.equal(lastMetric.children[0].textContent,"Mejor doble vuelta PT/82");
+ assert.match(lastMetric.children[1].textContent,/19,500/);
  console.log("SlotRace DEV 0.14.36: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
