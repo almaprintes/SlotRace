@@ -64,8 +64,17 @@ async function refresh(){
  notice("Comprobando tu cuenta…");
  try{
   const api=await db();
+  // Inspect local session only to avoid throwing on a first visit; authorize
+  // actual profile access exclusively through the verified getUser() result.
+  const {data:sessionData,error:sessionError}=await api.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session){
+   accountUser=null;accountNick=null;showStage("signedOut");
+   notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
+   return;
+  }
   const {data,error}=await api.auth.getUser();
-  if(error&&!data?.user)throw error;
+  if(error)throw error;
   const user=data?.user;
   if(!user||user.is_anonymous){
    accountUser=null;accountNick=null;showStage("signedOut");
