@@ -1352,12 +1352,12 @@ function measureOpenGap(){
  if(result){
   if(result.fromKey!==result.toKey)
    message="UNIÓN ENTRE DOS TRAMOS · "+message+
-    " Eso une dos cadenas, pero todavía puede quedar el cierre final.";
+    " Esta distancia conecta un extremo con otro, pero NO garantiza cerrar el circuito.";
   else if(result.problem==="touching")
    message="Conectores próximos: "+result.measured.distance+
     " mm · "+result.measured.angle+"°. "+
     "Se permite cerrar con ligera flexión si faltan menos de 10 mm y el giro no supera 1°.";
-  else message="CIERRE DEL TRAMO · "+message;
+  else message="HUECO DEL MISMO TRAMO · "+message;
   if(balance?.ok&&!balance.unchanged&&!result?.combination){
    message="CIERRE POR COMPENSACIÓN · "+balance.changes.map(c=>
     CATALOG[c.from].length.toLocaleString("es-ES")+" → "+
