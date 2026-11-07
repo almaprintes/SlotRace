@@ -351,7 +351,7 @@ export function countPieces(types){
 // Comprobamos una o dos sustituciones EN CUALQUIER POSICIÓN antes de intentar
 // añadir piezas. Las que parecen cerrar se validan con todas las colisiones.
 function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
- const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy),used=countPieces(types);
+ const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger),used=countPieces(types);
  let tested=0,nearest={gap:Infinity,changes:[]};
  const base=buildTrack(types,origin);
  if(base.gap<nearest.gap)nearest={gap:base.gap,changes:[]};
@@ -374,6 +374,7 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
  }
  for(let i=0;i<types.length;i++){
   const fromI=types[i];
+  if(CATALOG[fromI].laneChanger)continue;
   for(const toI of ids){
    if(toI===fromI||used[toI]>=stockLimit(toI))continue;
    candidate[i]=toI;
@@ -387,6 +388,7 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
  // que nunca pueden recuperar la orientación del conector.
  for(let i=0;i<types.length;i++){
   const fromI=types[i];
+  if(CATALOG[fromI].laneChanger)continue;
   for(const toI of ids){
    if(toI===fromI)continue;
    if(used[toI]>=stockLimit(toI))continue;
@@ -435,11 +437,11 @@ export function findStraightRebalance(types,{
  const dx=origin.x-base.ends.end.x,dy=origin.y-base.ends.end.y;
  if(hypot(dx,dy)<1e-6)
   return{ok:false,reason:"La separación no es longitudinal; revisa el cruce o el puente"};
- const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&id!=="START350"&&CATALOG[id].length);
+ const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&id!=="START350"&&!CATALOG[id].laneChanger&&CATALOG[id].length);
  const options=[];
  for(const part of base.parts){
   const initial=CATALOG[part.id];
-  if(!initial?.length||part.id==="START350")continue;
+  if(!initial?.length||part.id==="START350"||initial.laneChanger)continue;
   for(const to of ids){
    if(to===part.id)continue;
    const delta=CATALOG[to].length-initial.length;
@@ -501,7 +503,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   }
   // Primero intentar añadir UNA pieza al extremo: conserva intacto el montaje.
   // Evita sustituir dos tramos cuando sólo faltaba la última curva.
-  for(const id of Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy)){
+  for(const id of Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger)){
    const candidate=[...types,id];
    if(!allowed(candidate))continue;
    if(buildTrack(candidate,origin).valid)
@@ -510,7 +512,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   // Si no basta una adición, buscar sustituciones en cualquier punto.
   const global=findGlobalReplacements(types,{maxStates:24000,origin});
   if(global.ok)return global;
-  const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy),target=origin;
+  const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger),target=origin;
   let visits=0;
   // Cuanto menos se edita, antes se evalúa. Así no se rehace el circuito arbitrariamente.
   for(let cost=1;cost<=maxReplace+maxAdd;cost++){

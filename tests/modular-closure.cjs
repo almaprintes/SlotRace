@@ -14,7 +14,7 @@ const assert=require("node:assert/strict");
  for(const [id,rad] of Object.entries(RADII))
   assert.equal(rad/unit,Math.round(rad/unit),"Radio modular "+id);
  const active=Object.keys(CATALOG).filter(id=>CATALOG[id].length&&
-  !CATALOG[id].legacy&&id!=="START350");
+  !CATALOG[id].legacy&&id!=="START350"&&!CATALOG[id].laneChanger);
  assert.deepEqual(active,["S075","S0875","S175","S350","S600"]);
  assert.equal(CATALOG.S0125.legacy,true);
  function samePoint(a,b){

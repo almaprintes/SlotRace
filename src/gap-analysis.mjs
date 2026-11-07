@@ -13,7 +13,7 @@ export function composeStraightDistance(distance,catalog,unit=12.5,{maxUnits=800
  const units=Math.round(distance/unit);
  if(units<1||units>maxUnits||Math.abs(distance-units*unit)>1e-6)return null;
  const options=Object.entries(catalog)
-  .filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&id!=="START350"&&!p.legacy)
+  .filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&id!=="START350"&&!p.legacy&&!p.laneChanger)
   .map(([id,p])=>({id,units:Math.round(p.length/unit),length:p.length}))
   .filter(p=>p.units>=1&&Math.abs(p.length-p.units*unit)<1e-7)
   .sort((a,b)=>b.units-a.units||a.id.localeCompare(b.id));
@@ -33,7 +33,7 @@ export function measureGap(from,to,catalog,{tolerance=GAP_TOLERANCE_MM}={}){
  const forward=dx*ca+dy*sa,lateral=-dx*sa+dy*ca;
  const distance=Math.hypot(dx,dy);
  const heading=wrap(to.h-from.h);
- const straight=Object.entries(catalog).filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&!p.legacy)
+ const straight=Object.entries(catalog).filter(([id,p])=>Number.isFinite(p.length)&&p.length>0&&!p.legacy&&!p.laneChanger)
   .map(([id,p])=>({id,length:p.length,name:p.name,virtual:!!p.virtualMicroAdapter,
    difference:Math.abs(p.length-forward)}))
   .sort((a,b)=>a.difference-b.difference||a.length-b.length);
