@@ -706,8 +706,10 @@ const path=require("node:path");
  game.shopSelectCategory("circuits");
  assert.match(elements.get("shopProducts").innerHTML,/shop-real-blueprint/,
   "La tienda usa geometría exacta, no iconos inventados");
- assert.match(elements.get("shopProducts").innerHTML,/Plano en diseño/,
-  "No se inventan planos de circuitos aún sin receta");
+ assert.match(elements.get("shopProducts").innerHTML,/Catalunya Slot/,
+  "Se muestra Catalunya Slot con su receta real");
+ assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Plano en diseño/,
+  "El plano provisional ha desaparecido de la tienda");
 
  // Elegir Spark en el garaje lo habilita sin afectar al Gripline.
  game.showHub("garage");
