@@ -57,10 +57,13 @@ const path=require("node:path");
  assert.equal(st.selectionMode,"piece","Tocar la pieza devuelve el modo individual");
  // Gesto real: tocar una pieza conectada y arrastrar >7 px.
  const before=st.track.parts.map(p=>({id:p.id,start:{...p.start}}));
- const target=st.track.parts[2].points[3],b=st.workBoard;
- const scale=Math.min((390-16)/b.height,(600-16)/b.width);
- const toScreen=p=>({clientX:195-scale*(p.y-(b.top+b.bottom)/2),
-    clientY:300+scale*(p.x-(b.left+b.right)/2)});
+ const target=st.track.parts[2].points[3],b={...st.workBoard};
+ const view=game.workspace.makeView(elements.get("editCanvas"),"build");
+ const toScreen=p=>{
+  const dx=p.x-view.cx,dy=p.y-view.cy,c=Math.cos(view.angle),sn=Math.sin(view.angle);
+  return{clientX:view.w/2+view.panX+(c*dx-sn*dy)*view.scale,
+   clientY:view.h/2+view.panY+(sn*dx+c*dy)*view.scale};
+ };
  const pos=toScreen(target);
  function event(x,y,pointerId=5){return{pointerId,clientX:x,clientY:y,preventDefault(){}};}
  game.puzzle.canvasPointerDown(event(pos.clientX,pos.clientY));
@@ -80,8 +83,8 @@ const path=require("node:path");
  }
  assert.ok(st.loose[0].x!==before[2].start.x||st.loose[0].y!==before[2].start.y,
   "Dragged piece actually moves");
- assert.equal(st.workBoard.left,b.left);
- assert.equal(st.workBoard.right,b.right);
+ assert.ok(st.workBoard.left<=b.left&&st.workBoard.right>=b.right,
+  "La superficie puede ampliarse sin desplazar lo montado");
  const separated=st.loose.map(p=>({...p}));
  game.undo();
  assert.deepEqual(st.types,geo.FIGURE_EIGHT,"Undo restores original circuit");
