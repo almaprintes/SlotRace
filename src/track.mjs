@@ -59,8 +59,17 @@ export function hasAutomaticEightBridge(types){
    types.every((id,i)=>id===FIGURE_EIGHT[i]);
 }
 const EPS=1e-7;
-const SNAP_MM=3; // tolerancia del conector: no estiramos piezas.
+// El plástico de las pistas reales puede flexar ligeramente. Se admite
+// una holgura de cierre INFERIOR a 10 mm, tanto por defecto como por exceso.
+// El giro sigue limitado a 1° para no unir piezas cruzadas por error.
+export const FORCE_CLOSE_MM=10;
+export const STRICT_CLOSE_MM=3;
+// Las uniones internas de cada módulo siguen siendo matemáticamente exactas.
 const SNAP_RAD=Math.PI/180; // 1 grado máximo.
+export function closureWithinFlex(gap,headingGap,pieceCount){
+ return pieceCount>=4&&Number.isFinite(gap)&&gap<FORCE_CLOSE_MM&&gap>=0&&
+  Number.isFinite(headingGap)&&headingGap<=SNAP_RAD;
+}
 const BOARD_MARGIN=180; // margen virtual alrededor de la pista.
 
 const hypot=Math.hypot;
@@ -204,15 +213,43 @@ export function buildTrack(types,origin=START,raisedParts=[]){
   }
   const gap=hypot(pose.x-origin.x,pose.y-origin.y);
   const headingGap=Math.abs(norm(pose.h-origin.h));
-  const closed=types.length>=4&&gap<=SNAP_MM&&headingGap<=SNAP_RAD;
-  if(closed&&parts.length){
-    // El cierre se asienta sobre un único conector común; diferencias submilimétricas
-    // del muestreo se eliminan sin deformar el catálogo de piezas.
-    const endPoint=points[points.length-1];
-    endPoint.x=origin.x;endPoint.y=origin.y;endPoint.h=origin.h;
-    const lastPart=parts[parts.length-1];
-    lastPart.points[lastPart.points.length-1]=endPoint;
-    lastPart.end={...endPoint};
+  const closed=closureWithinFlex(gap,headingGap,types.length);
+  const forcedClosure=closed&&gap>STRICT_CLOSE_MM;
+  // Repartir la pequeña flexión por TODO el trazado. Antes solo se
+  // desplazaba el último punto al primero, provocando una costura
+  // visual y un giro brusco del coche cuando faltaban varios mm.
+  // En un trazado de 60 piezas, 9 mm se absorben sin deformar un único
+  // módulo. Los tipos, números de pieza y longitudes nominales siguen.
+  if(closed&&parts.length&&(gap>1e-8||headingGap>1e-8)){
+    const delta={x:origin.x-pose.x,y:origin.y-pose.y,h:norm(origin.h-pose.h)};
+    const lengths=types.map(id=>{
+      const spec=CATALOG[id];
+      return spec.length||spec.radius*Math.abs(spec.angle);
+    });
+    const prefix=[0];
+    for(const length of lengths)prefix.push(prefix.at(-1)+length);
+    const total=Math.max(1,prefix.at(-1));
+    const flex=(p,index,t)=>{
+      const progress=index<0?0:(prefix[index]+lengths[index]*t)/total;
+      const u=Math.max(0,Math.min(1,progress));
+      const f=u*u*(3-2*u);
+      p.x+=delta.x*f;p.y+=delta.y*f;p.h+=delta.h*f;
+    };
+    // Las dos representaciones del circuito (centro de pista y módulos)
+    // reciben la MISMA flexión, también en los conectores intermedios.
+    for(const p of points)flex(p,p.pieceIndex,p.pieceT||0);
+    for(const part of parts){
+      const n=part.points.length-1;
+      for(let i=0;i<=n;i++)flex(part.points[i],part.index,i/n);
+      part.start={...part.points[0]};
+      part.end={...part.points[n]};
+    }
+    // El último conector y el primero comparten exactamente un punto.
+    const last=points.at(-1),part=parts.at(-1);
+    for(const p of [last,part.points.at(-1),part.end]){
+      p.x=origin.x;p.y=origin.y;p.h=origin.h;
+    }
+    pose={...part.end};
   }
   const bounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity};
   for(const p of points){
@@ -261,7 +298,7 @@ export function buildTrack(types,origin=START,raisedParts=[]){
    return{parts,types:[...types],points,lanes,laneChangerIndex,closed,onTable,intersection,crossings,bridge,elevation,
      valid:closed&&onTable&&elevation.valid&&types.filter(id=>id==="X350").length<=1&&safeCrossings.length===crossings.length,
      ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
-    gap,headingGap,bounds,board,
+    gap,headingGap,forcedClosure,closureToleranceMm:FORCE_CLOSE_MM,bounds,board,
     connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,
     nearConnection:gap<=TRACK_WIDTH&&types.length>=4,
     length:lanes.reduce((acc,l)=>acc+l.total,0)/2};

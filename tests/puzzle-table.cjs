@@ -6,6 +6,7 @@ const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const blueprint=await import("../src/blueprint.mjs");
+ const pt=await import("../src/pt-precision.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
   .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
@@ -42,7 +43,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.40");
+ assert.equal(game.version,"DEV 0.14.41");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -312,5 +313,36 @@ const path=require("node:path");
  assert.equal(st.selectedGroup,"group-switch");
  game.puzzle.selectByTap("loose",1);
  assert.equal(st.selectionMode,"piece");
- console.log("SlotRace DEV 0.14.40 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ // El circuito Catalunya Slot se podrá cerrar con una flexión leve
+ // aun si el último conector SOBRA ~9,9 mm o FALTA ~9,1 mm.
+ const nearIds=[
+  "S0875","S0875","R2_225R","R1_225R","R3_225R","R1_225R",
+  "S075","R2_45R","R2_45R","R2_45R","R2_45R","S175",
+  "R1_225R","R1_225R","R1_225R","R1_225R"
+ ];
+ let pose={x:0,y:0,h:0};
+ const rawParts=nearIds.map((id,order)=>{
+  const part={id,x:pose.x,y:pose.y,h:pose.h,magnetGroup:"catalunya-flex",magnetOrder:order};
+  pose=pt.endpoint(pose,id);
+  return part;
+ });
+ game.changeTypes([],"Catalunya Slot (cierre flexible)",rawParts,{x:0,y:0,h:0});
+ assert.equal(st.loose.length,nearIds.length);
+ const closeGap=game.puzzle.measureOpenGap();
+ assert.ok(closeGap&&closeGap.distance>3&&closeGap.distance<10);
+ assert.equal(elements.get("boardGapInfo").hidden,false,
+  "Medir hueco debe publicar el dato encima de la mesa");
+ assert.equal(elements.get("boardGapInfo").dataset.status,"flex");
+ assert.match(elements.get("boardGapInfo").textContent,/CIERRE FLEXIBLE DISPONIBLE/);
+ assert.match(elements.get("boardGapInfo").textContent,/10 mm/);
+ game.puzzle.paintGapDiagnostic(ctx); // Dibujar puntos y unión sin errores
+ assert.equal(game.puzzle.closeExactly(),undefined);
+ assert.equal(st.track.closed,true,
+  "Pulsar Cerrar fuerza la holgura de menos de 10 mm");
+ assert.equal(st.track.forcedClosure,true);
+ assert.equal(st.loose.length,0,"El grupo magnético pasa al circuito cerrado");
+ assert.equal(st.track.types.length,nearIds.length);
+ assert.equal(elements.get("boardGapInfo").hidden,true,
+  "La medición se retira al cerrarse el montaje");
+ console.log("SlotRace DEV 0.14.41 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

@@ -1,6 +1,7 @@
 // SlotRace · medición física de huecos entre conectores de dos carriles.
-// Nunca estira geometrías ni declara un cierre sólo por proximidad visual.
-export const GAP_TOLERANCE_MM=3;
+// El juego permite una flexión distribuida <10 mm al cerrar y mantiene
+// 1° como límite de alineación.
+export const GAP_TOLERANCE_MM=10;
 export const HEADING_TOLERANCE_DEGREES=1;
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 const round=n=>Math.round(n*10)/10;
@@ -72,7 +73,9 @@ export function analyzeOpenEnds(groups,catalog,{selectedKey=null,maxDistance=600
 export function gapExplanation(result){
  if(!result)return "Selecciona un tramo con extremos próximos y pulsa Medir hueco.";
  const m=result.measured,n=result.nearest;
- if(result.problem==="touching")return "Los extremos están prácticamente juntos. Comprueba la orientación y usa Encajar.";
+ if(result.problem==="touching")return result.measured.angle<=HEADING_TOLERANCE_DEGREES?
+  "Separación "+m.distance+" mm · orientación "+m.angle+"°: cierre flexible disponible si hay menos de 10 mm. Pulsa Cerrar.":
+  "Separación "+m.distance+" mm: alinea la orientación de ambos conectores antes de cerrar.";
  if(result.problem==="angle")return "HUECO "+m.distance+" mm · Diferencia de orientación "+m.angle+"°. Una recta no servirá: cambia una curva o gira el tramo.";
  if(result.problem==="lateral")return "HUECO "+m.distance+" mm · Desfase lateral "+m.lateral+" mm. Una recta más corta no corrige el lateral: cambia una curva anterior.";
  if(result.problem==="backward")return "Los extremos se superponen en sentido longitudinal. Revisa la orientación de los tramos.";

@@ -7,6 +7,17 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
+assert.match(app,/function presentGapDiagnostic\(result,message\)/,
+ "Medir hueco siempre presenta la distancia sobre el taller");
+assert.match(app,/function paintGapDiagnostic\(ctx\)/,
+ "El canvas señala ambos conectores medidos");
+assert.match(app,/CIERRE FLEXIBLE DISPONIBLE/,
+ "La herramienta informa cuando se puede cerrar con flexión leve");
+assert.match(html,/id="boardGapInfo"/,
+ "El panel de medición debe existir en la mesa");
+assert.match(css,/#boardGapInfo:not\(\[hidden\]\)/,
+ "La medición debe ser visible incluso con el estilo de la PWA");
+
 assert.match(app,/function workshopVisibleCenter\(\)/,
  "El estante calcula el centro útil de la vista actual");
 assert.match(app,/const mid=positionOnPiece\(\{x:0,y:0,h:0\},id,\.5\)/,
@@ -182,7 +193,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.40/);
+assert.match(html,/DEV 0\.14\.41/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -293,5 +304,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.40 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.41 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

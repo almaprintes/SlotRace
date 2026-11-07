@@ -2448,3 +2448,24 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:660px){
  .race-hint .lane-indicator{font-size:10px;padding:5px 9px;margin-right:4px}
 }
+
+
+/* DEV 0.14.41 · Diagnóstico de cierre siempre visible y legible,
+   sin depender del panel antiguo #gapInfo oculto en móvil. */
+.builder-workbench #boardGapInfo[hidden]{display:none!important}
+.builder-workbench #boardGapInfo:not([hidden]){
+ position:absolute!important;display:block!important;z-index:24!important;
+ left:12px!important;right:12px!important;top:163px!important;
+ max-height:110px;overflow:auto;
+ margin:0!important;padding:9px 12px!important;
+ border:2px solid #6fb7c0!important;border-radius:11px!important;
+ background:#082932f2!important;color:#e9ffff!important;
+ font-size:clamp(10px,2.7vw,13px)!important;line-height:1.45!important;
+ font-weight:850!important;letter-spacing:.01em!important;
+ box-shadow:0 4px 16px #001e2ec4;pointer-events:none;
+}
+.builder-workbench #boardGapInfo[data-status="flex"]{border-color:#f4cf86!important}
+.builder-workbench #boardGapInfo[data-status="ok"]{border-color:#72e1b5!important}
+@media(min-width:700px){
+ .builder-workbench #boardGapInfo:not([hidden]){right:185px!important;top:148px!important}
+}

@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.41 · Cierre flexible real inferior a 10 mm
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.41
+
+- **Holgura de cierre:** si los dos conectores del mismo tramo distan menos de 10 mm, por longitud que falta o que sobra, y la orientación difiere como máximo 1°, el botón Cerrar acepta el circuito sin pedir una pieza de ajuste adicional.
+- **Flexión repartida:** la discrepancia se distribuye mediante una transición suave a lo largo de toda la pista, en los puntos y módulos que usa tanto el render como la física. El último conector queda exactamente en la meta; no se crea un salto entre carriles ni se modifican los identificadores nominales de las piezas.
+- **Diagnóstico visible:** Medir hueco enseña distancia total, desfase lateral y ángulo en una banda sobre el canvas, incluso si el panel antiguo está oculto por CSS. Los conectores medidos se señalan sobre la mesa. Se eliminó el límite artificial de 800 mm para poder diagnosticar cualquier circuito grande.
+- **Cierre sin trucos:** una separación igual o mayor que 10 mm, una diferencia angular mayor que 1° o un circuito con intersecciones de distinta altura incorrectamente construidas siguen sin autorizar un cierre jugable.
+- **Validación:** pruebas con dos recetas de huecos reales de 9,85 mm y 9,11 mm, una con exceso y la otra con defecto, más continuidad de ambos carriles y límite estricto de 10 mm.
+- **Conservación:** montajes y récords anteriores siguen guardados; la flexión mínima se reproduce al reconstruir el trazado a partir de la receta original.
+
+**Pendiente:** validación táctil y visual del circuito Catalunya Slot en iPhone.
+
+---
+
 # SlotRace DEV 0.14.40 · Piezas al centro y selección alterna
 
 **Abrir:** https://almaprintes.github.io/SlotRace/?v=0.14.40

@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.40");
+ assert.equal(game.version,"DEV 0.14.41");
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
  const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
@@ -853,5 +853,5 @@ const path=require("node:path");
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
 
- console.log("SlotRace DEV 0.14.40: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.41: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

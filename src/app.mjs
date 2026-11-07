@@ -835,6 +835,7 @@ async function importRecipe(file){
 function clearGapDiagnostic(){
  state.gapDiagnostic=null;
  $("gapInfo").hidden=true;
+ $("boardGapInfo").hidden=true;
 }
 function pushHistory(){
  clearGapDiagnostic();
@@ -943,7 +944,9 @@ function closeLooseLoop(index,{history=true}={}){
  state.selection=0;state.looseSelection=-1;state.dragLoose=-1;
  save();updateUI();
  toast(track.valid?
-  "¡Clac doble! Los dos extremos encajan: circuito cerrado.":
+  (track.forcedClosure?
+   "¡Cierre flexible! Ajustados "+track.gap.toFixed(1)+" mm en todo el circuito.":
+   "¡Clac doble! Los dos extremos encajan: circuito cerrado."):
   "Extremos unidos, pero falta resolver el cruce o la posición del puente.");
  return true;
 }
@@ -1293,18 +1296,46 @@ function openGroups(){
  }
  return groups;
 }
+// La medición se calcula siempre entre conectores REALES: aunque estén
+// a kilómetros de distancia, nunca debe devolver "sin resultado" por
+// el antiguo filtro de 800 mm.
+function nearestOpenGap(groups,selected){
+ const self=groups.filter(g=>g.count>=4).map(g=>({
+  ...gapAnalysis.measureGap(g.end,g.start,CATALOG),
+  fromKey:g.key,toKey:g.key
+ })).sort((a,b)=>a.distance-b.distance);
+ const others=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{
+  selectedKey:selected,maxDistance:Infinity});
+ const selfSelected=self.find(p=>p.fromKey===selected);
+ const nearSelf=self.find(p=>p.distance<=1000);
+ return selfSelected||nearSelf||others[0]||self[0]||null;
+}
+function presentGapDiagnostic(result,message){
+ const old=$("gapInfo"),overlay=$("boardGapInfo");
+ old.textContent=message;old.hidden=false;
+ if(!result){
+  overlay.textContent=message;overlay.hidden=false;
+  overlay.dataset.status="missing";return;
+ }
+ const m=result.measured;
+ const fmt=n=>Number(n).toLocaleString("es-ES",{maximumFractionDigits:1});
+ const close=m.distance<10&&m.angle<=1;
+ const forced=close&&m.distance>3;
+ const status=forced?"CIERRE FLEXIBLE DISPONIBLE · PULSA CERRAR":
+  close?"ALINEADO · PULSA CERRAR":
+  m.angle>1?"GIRO EXCESIVO · ALINEA LOS CONECTORES":
+  "DISTANCIA EXCESIVA · ACERCA LOS EXTREMOS";
+ const name=result.fromKey===result.toKey?"MISMO TRAMO":"ENTRE TRAMOS";
+ overlay.textContent="HUECO "+fmt(m.distance)+" mm · LATERAL "+
+  fmt(m.lateral)+" mm · ÁNGULO "+fmt(m.angle)+"° · "+
+  name+" · "+status+" (MÁX. <10 mm / 1°)";
+ overlay.dataset.status=forced?"flex":close?"ok":"open";
+ overlay.hidden=false;
+}
 function measureOpenGap(){
- const groups=openGroups(),selected=state.looseSelection>=0?looseGroupKey(state.looseSelection):
-  state.selection>=0?"main":null;
- let possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{selectedKey:selected,maxDistance:800});
- if(!possible.length&&selected)
-  possible=gapAnalysis.analyzeOpenEnds(groups,CATALOG,{maxDistance:800});
- // Priorizar el hueco del MISMO tramo: únicamente ese par de extremos
- // puede convertir una cadena abierta en circuito cerrado. Las distancias
- // entre dos tramos sueltos son puntos de montaje, no cierres.
- const sameGroup=p=>p.fromKey===p.toKey&&groups.some(g=>g.key===p.fromKey&&g.count>=4);
- const self=possible.filter(sameGroup);
- const result=self[0]||possible[0]||null;
+ const groups=openGroups(),selected=state.looseSelection>=0?
+  looseGroupKey(state.looseSelection):state.selection>=0?"main":null;
+ const result=nearestOpenGap(groups,selected);
  let message=gapAnalysis.gapExplanation(result);
  let balance=null;
  if(result?.fromKey===result?.toKey){
@@ -1313,36 +1344,33 @@ function measureOpenGap(){
    looseGroup(section.index)?.parts.map(part=>part.id):
    section?.key==="main"?state.types:null;
   if(pieceTypes?.length>=4){
-   const origin=section.start;
    const raised=section.index!=null?
     looseGroup(section.index).parts.flatMap((part,i)=>part.raised?[i]:[]):state.bridgeParts;
-   balance=findStraightRebalance(pieceTypes,{origin,raisedParts:raised});
+   balance=findStraightRebalance(pieceTypes,{origin:section.start,raisedParts:raised});
   }
  }
  if(result){
-  if(result.fromKey!==result.toKey){
+  if(result.fromKey!==result.toKey)
    message="UNIÓN ENTRE DOS TRAMOS · "+message+
-    " Esta distancia conecta un extremo con otro, pero NO garantiza cerrar el circuito.";
-  }else if(result.problem==="touching"){
-   const group=groups.find(g=>g.key===result.fromKey);
-   const candidate=group?.index!=null?loopFromLooseGroup(group.index):null;
-   message=candidate?.track.closed?
-    "LOS DOS EXTREMOS COINCIDEN · Pulsa Cerrar exacto para convertir el tramo unido en circuito.":
-    "Los conectores están muy próximos, pero comprueba su orientación y que todas las piezas estén acopladas.";
-  }else{
-   message="HUECO DEL MISMO TRAMO · "+message;
-  }
+    " Eso une dos cadenas, pero todavía puede quedar el cierre final.";
+  else if(result.problem==="touching")
+   message="Conectores próximos: "+result.measured.distance+
+    " mm · "+result.measured.angle+"°. "+
+    "Se permite cerrar con ligera flexión si faltan menos de 10 mm y el giro no supera 1°.";
+  else message="CIERRE DEL TRAMO · "+message;
   if(balance?.ok&&!balance.unchanged&&!result?.combination){
-   const edits=balance.changes.map(change=>
-    CATALOG[change.from].length.toLocaleString("es-ES")+" → "+CATALOG[change.to].length.toLocaleString("es-ES")+" mm").join(" + ");
-   message="CIERRE POR COMPENSACIÓN · Sustituir "+edits+
-    ". Sin pieza de 12,5 mm ni deformaciones. Pulsa Cerrar exacto.";
+   message="CIERRE POR COMPENSACIÓN · "+balance.changes.map(c=>
+    CATALOG[c.from].length.toLocaleString("es-ES")+" → "+
+    CATALOG[c.to].length.toLocaleString("es-ES")+" mm").join(" + ")+
+    ". Pulsa Cerrar para aplicar el ajuste válido.";
   }
+  if(result.distance>3&&result.distance<10&&result.headingDegrees<=1)
+   message+=" Cierre flexible permitido: el ajuste se reparte por el trazado.";
  }
  state.gapDiagnostic=result?{...result,message}:null;
- $("gapInfo").textContent=message;$("gapInfo").hidden=false;
+ presentGapDiagnostic(result,message);
  state.viewDirty=true;
- toast(result?"Distancia y orientación comprobadas.":"No hay dos extremos cercanos para medir.");
+ toast(result?"Medición visible sobre la mesa.":"Aún no hay extremos para medir.");
  return result;
 }
 function closeExactly(){
@@ -1355,7 +1383,9 @@ function closeExactly(){
    if(state.track.bridge||state.track.intersection)chooseCaseCategory("bridge");
    toast(issue);return false;
   }
-  toast("¡Circuito cerrado y verificado! Ya puedes jugar.");return true;
+  toast(state.track.forcedClosure?
+   "¡Cierre flexible validado! La tensión se distribuye por las piezas.":
+   "¡Circuito cerrado y verificado! Ya puedes jugar.");return true;
  }
  // Si el montaje aún vive como grupo magnético suelto, primero comprobar
  // sus DOS conectores. Antes este botón se deshabilitaba siempre.
@@ -1369,8 +1399,8 @@ function closeExactly(){
    if(group.index==null||group.count<4)continue;
    if(closeLooseLoop(group.index,{history:true}))return;
   }
-  // El jugador puede pedir el cierre con piezas modulares sin añadirlas
-  // manualmente, siempre que ambos extremos estén exactamente alineados.
+  // El jugador puede cerrar si los conectores quedan a menos de 10 mm
+  // y dentro de 1°: la pequeña tensión se reparte por el trazado.
   if(groups.length===1&&groups[0].count>=4){
    const group=looseGroup(groups[0].index);
    const fit=gapAnalysis.measureGap(group.end,group.start,CATALOG);
@@ -1403,13 +1433,11 @@ function closeExactly(){
      CATALOG[c.from].length.toLocaleString("es-ES")+" → "+CATALOG[c.to].length.toLocaleString("es-ES")+" mm").join(" + ")+".");
     return;
    }
-   const detail=gapAnalysis.gapExplanation(fit);
-   $("gapInfo").textContent="No se puede cerrar todavía: "+detail;
-   $("gapInfo").hidden=false;
-   toast("Los dos conectores aún no permiten un cierre válido.");
+   measureOpenGap();
+   toast("El cierre necesita un encaje real: revisa milímetros y ángulo sobre la pista.");
    return;
   }
-  toast("Tienes "+groups.length+" tramos separados. Encaja los dos extremos de cada unión antes de cerrar.");
+  toast("Tienes "+groups.length+" tramos separados. Encaja sus extremos antes de cerrar.");
   measureOpenGap();
   return;
  }
@@ -3382,7 +3410,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.40.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.41.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3390,7 +3418,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.40 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.41 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4345,6 +4373,23 @@ function paintBridgeSelection(ctx){
  ctx.fillStyle="#f3fff8";ctx.fillText(String(state.selection+1),0,3);
  ctx.restore();
 }
+// Marcar los dos conectores medidos. El texto está en el panel DOM,
+// porque así sigue siendo legible incluso con zoom de 0,0001×.
+function paintGapDiagnostic(ctx){
+ const g=state.gapDiagnostic;if(!g?.from||!g?.to)return;
+ const a=g.from,b=g.to;
+ ctx.save();
+ ctx.strokeStyle="#ffd27d";ctx.lineWidth=5;
+ ctx.setLineDash([14,9]);ctx.beginPath();
+ ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+ ctx.setLineDash([]);
+ for(const [p,color] of [[a,"#5ef5d5"],[b,"#ffacbc"]]){
+  ctx.beginPath();ctx.arc(p.x,p.y,13,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle="#102831";ctx.lineWidth=3;ctx.stroke();
+ }
+ ctx.restore();
+}
 function renderScene(canvas,mode){
  if(!canvas.width||!canvas.height)return;
  const ctx=canvasCtx.get(canvas),v=makeView(canvas,mode);
@@ -4391,6 +4436,7 @@ function renderScene(canvas,mode){
  if(mode==="build"){
   paintLoose(ctx);
   paintBridgeSelection(ctx);
+  paintGapDiagnostic(ctx);
  }
  paintGhost(ctx,track);
  ctx.restore();
@@ -4869,7 +4915,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.40",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.41",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
@@ -4877,7 +4923,7 @@ window.slotraceLab={version:"DEV 0.14.40",state,curve90Presets:CURVE_90_PRESETS,
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
-puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
