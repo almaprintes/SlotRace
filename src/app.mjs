@@ -172,6 +172,12 @@ const hubScreens={
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
 const format=n=>n.toFixed(3).replace(".",",");
+// La lectura del reloj se refresca en cada fotograma; el HUD completo,
+// más costoso, conserva su frecuencia reducida de 10 actualizaciones/s.
+function updateChronometer(){
+ const text=format(state.seconds),field=$("lapTime");
+ if(field.textContent!==text)field.textContent=text;
+}
 // Los récords históricos de Gripline conservan su clave original.
  // Spark utiliza un sufijo propio para no mezclar coches distintos.
 const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")+
@@ -2935,10 +2941,25 @@ function roundRect(ctx,x,y,w,h,r){
  r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
 }
+// Canvas2D tiene que reconstruir los segmentos al trazar cada fotograma.
+// Path2D permite conservar el contorno estático, también a zoom 5×.
+const strokeGeometryCache=new WeakMap();
 function strokePath(ctx,points,color,width){
- if(!points.length)return;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
- for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
- ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="butt";ctx.lineJoin="round";ctx.stroke();
+ if(!points.length)return;
+ ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="butt";ctx.lineJoin="round";
+ if(typeof Path2D==="function"){
+  let path=strokeGeometryCache.get(points);
+  if(!path){
+   path=new Path2D();path.moveTo(points[0].x,points[0].y);
+   for(let i=1;i<points.length;i++)path.lineTo(points[i].x,points[i].y);
+   strokeGeometryCache.set(points,path);
+  }
+  ctx.stroke(path);
+ }else{
+  ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+  for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
+  ctx.stroke();
+ }
 }
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
 // La pista montada es estática durante la carrera. Reutilizar los puntos
@@ -2994,13 +3015,10 @@ function paintGrid(ctx,v,mode="build"){
  }
  ctx.restore();
 }
-function paintTable(ctx,v,mode){
- if(mode==="build"){paintInfiniteWorkspace(ctx,v);return;}
- ctx.save();
- // La mesa debe cubrir la geometría sin mover ni deformar los conectores.
- const b=state.workBoard;
- ctx.translate(b.left,b.top);
- ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
+// El dibujo de madera/fieltro incluye 1000 puntitos decorativos y sombras.
+// Es inmutable: generar la textura UNA vez evita hacerlo cada fotograma.
+let tableArtworkTexture=null;
+function drawTableArtwork(ctx){
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
  const wood=ctx.createLinearGradient(0,0,TABLE.width,TABLE.height);
  wood.addColorStop(0,"#ad7443");wood.addColorStop(.45,"#6b4327");wood.addColorStop(1,"#a96c3c");
@@ -3033,6 +3051,29 @@ function paintTable(ctx,v,mode){
   ctx.fillStyle="#503725";ctx.beginPath();ctx.arc(corner[0],corner[1],17,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle="#d4b57b";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(corner[0]-8,corner[1]);ctx.lineTo(corner[0]+8,corner[1]);ctx.stroke();
  }
+}
+function paintTable(ctx,v,mode){
+ if(mode==="build"){paintInfiniteWorkspace(ctx,v);return;}
+ const b=state.workBoard;
+ ctx.save();
+ ctx.translate(b.left,b.top);
+ ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
+ if(!tableArtworkTexture&&typeof document.createElement==="function"){
+  try{
+   const canvas=document.createElement("canvas");
+   const textureScale=.75;
+   canvas.width=Math.ceil(TABLE.width*textureScale);
+   canvas.height=Math.ceil(TABLE.height*textureScale);
+   const paint=canvas.getContext?.("2d",{alpha:true});
+   if(paint){
+    paint.setTransform(textureScale,0,0,textureScale,0,0);
+    drawTableArtwork(paint);
+    tableArtworkTexture=canvas;
+   }
+  }catch(error){tableArtworkTexture=null;}
+ }
+ if(tableArtworkTexture)ctx.drawImage(tableArtworkTexture,0,0,TABLE.width,TABLE.height);
+ else drawTableArtwork(ctx);
  ctx.restore();
 }
 function paintSeam(ctx,p){
@@ -3431,7 +3472,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.43.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.44.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3439,7 +3480,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.43 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.44 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4959,18 +5000,21 @@ function loop(now){
  updateFollowCamera(dt);
  if(state.mode==="build"){
   if(state.viewDirty){renderScene(editCanvas,"build");state.viewDirty=false;}
- }else if(state.mode==="race")renderScene(raceCanvas,"race");
+ }else if(state.mode==="race"){
+  renderScene(raceCanvas,"race");
+  updateChronometer();
+ }
  if(!state._hudTime||now-state._hudTime>100){state._hudTime=now;updateHud();}
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.43",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.44",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
+ showHub,setLibraryTab,savedCircuitRecords,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},

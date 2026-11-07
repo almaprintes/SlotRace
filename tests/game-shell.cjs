@@ -49,7 +49,17 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.43");
+ assert.equal(game.version,"DEV 0.14.44");
+ // El cronómetro ya no espera a la actualización de 100 ms del HUD.
+ st.seconds=9.317;game.timing.updateChronometer();
+ assert.equal(elements.get("lapTime").textContent,"9,317");
+ st.seconds=9.334;game.timing.updateChronometer();
+ assert.equal(elements.get("lapTime").textContent,"9,334");
+ st.seconds=0;game.timing.updateChronometer();
+ assert.match(source,/renderScene\(raceCanvas,"race"\);\s*updateChronometer\(\);/,
+  "La lectura se pinta cada fotograma, no cada décima");
+ assert.match(source,/function drawTableArtwork\(ctx\)/);
+ assert.match(source,/strokeGeometryCache=new WeakMap\(\)/);
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
  const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
@@ -896,5 +906,5 @@ const path=require("node:path");
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
 
- console.log("SlotRace DEV 0.14.43: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.44: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
