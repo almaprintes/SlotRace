@@ -48,13 +48,14 @@ const assert=require("node:assert/strict");
   assert.ok(Math.abs(endpoint90.end.h-composed.end.h)<1e-9);
  }
  assert.equal(PARTS.R1_90R.degrees,90);
- assert.equal(SPECIALS.X350.requiresLaneRouting,true);
+ assert.equal(SPECIALS.X350.requiresLaneRouting,false);
+ assert.equal(PARTS.X350.laneChanger,true);
  assert.equal(SPECIALS.BRIDGE.requiresElevation,true);
- assert.equal(Object.keys(PARTS).length,27);
+ assert.equal(Object.keys(PARTS).length,28);
  const straights=Object.entries(PARTS).filter(([,p])=>p.kind==="straight");
- assert.equal(straights.length,7,"Cinco longitudes activas, salida/meta y pieza heredada");
+ assert.equal(straights.length,8,"Cinco rectas, salida/meta, PT/82 y heredada");
  assert.equal(PARTS.S0125.legacy,true,"12,5 mm sólo se conserva para circuitos antiguos");
- assert.equal(straights.filter(([,p])=>!p.legacy&&!p.startFinish).length,5);
+ assert.equal(straights.filter(([,p])=>!p.legacy&&!p.startFinish).length,6);
  for(const [id,p] of straights){
   assert.ok(Number.isInteger(p.length/GEOMETRY.lengthUnit),id+" no usa unidades exactas");
  }
