@@ -9,7 +9,7 @@ const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
 assert.doesNotMatch(app,/Pausa primero para cambiar de carril/,
  "El cambio de carril no puede exigir pausa");
-assert.match(app,/laneTransition:\{from,elapsed:0,duration:LANE_CHANGE_SECONDS\}/,
+assert.match(app,/state\.laneTransition=\{from,elapsed:0,duration:LANE_CHANGE_SECONDS\}/,
  "Cada cambio de carril empieza una transición animada");
 assert.match(app,/if\(!state\.lapEligible\|\|state\.laneTransition\)/,
  "Las vueltas que combinan carriles no producen récords");
