@@ -1,3 +1,19 @@
+# SlotRace DEV 0.14.39 · Mesa infinita para Catalunya Slot
+
+**Abrir DEV:** https://almaprintes.github.io/SlotRace/?v=0.14.39
+
+- **Construcción sin bordes:** el editor ya no impide colocar, arrastrar ni soltar módulos fuera del tapete original. Las medidas y los imanes conservan su geometría real, incluso a cientos de metros virtuales del origen.
+- **Tapete continuo:** el tablero del constructor se representa como una superficie verde sin marco. La retícula se dibuja únicamente en la zona visible y adapta su densidad al zoom, evitando calcular miles de líneas en iPhone.
+- **Cámara desacoplada del tamaño del circuito:** ampliar la construcción no reduce automáticamente las piezas en pantalla. Desplaza la vista para continuar trabajando en otra zona.
+- **Ver todo (⌗):** encuadra la pista, las piezas sueltas y la imagen de referencia; admite zoom lejano y reserva espacio para las herramientas de montaje.
+- **Recuperación:** al abrir un circuito guardado que supera la mesa inicial, se aplica el encuadre general. Los proyectos y recetas existentes no se modifican.
+- **Catalunya Slot:** escribe ese nombre en el campo de circuito y guarda tu montaje; no se sobrescriben otros circuitos y no se genera una receta ficticia.
+- **Sin cambios de físicas, puentes, Rayos X, tiempos ni inventario.** El área expandida es virtual, no un archivo de imagen gigante, por lo que tampoco aumenta el tamaño del canvas de memoria del iPhone.
+
+**Pruebas:** óvalo métrico de más de 40 m, colocación de piezas a 65 m de distancia, zoom invariable al ampliar, encuadre de todo el conjunto y retícula de coste acotado.
+
+---
+
 # SlotRace DEV 0.14.38 · Letras A/B en la pista y estado de carril
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.38

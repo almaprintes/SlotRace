@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.38");
+ assert.equal(game.version,"DEV 0.14.39");
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
  const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
@@ -813,5 +813,45 @@ const path=require("node:path");
  const lastMetric=elements.get("resultsStats").children.at(-1);
  assert.equal(lastMetric.children[0].textContent,"Mejor doble vuelta PT/82");
  assert.match(lastMetric.children[1].textContent,/19,500/);
- console.log("SlotRace DEV 0.14.37: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // Catalunya Slot: el tamaño del montaje no debe limitar la superficie
+ // ni encoger las pistas, y Ver todo debe calcular el encuadre real.
+ game.createNewCircuit();
+ const initialEditor=game.workspace.makeView(elements.get("editCanvas"),"build");
+ const straights=Array(70).fill("S350");
+ const giant=[...straights,...Array(4).fill("R2_45R"),
+  ...straights,...Array(4).fill("R2_45R")];
+ const huge=geo.buildTrack(giant,geo.START);
+ assert.ok(huge.closed&&huge.onTable&&huge.valid,
+  "Un circuito de decenas de metros debe ser homologable");
+ assert.ok(huge.board.width>geo.TABLE.width*8);
+ assert.equal(game.changeTypes(giant,"",[],geo.START),true);
+ const scaleAfter=game.workspace.makeView(elements.get("editCanvas"),"build").scale;
+ assert.ok(Math.abs(scaleAfter-initialEditor.scale)<1e-10,
+  "Añadir pista nunca debe alejar automáticamente la cámara");
+ assert.equal(game.workspace.addLoose("S350",65000,-55000),true);
+ assert.equal(st.loose.at(-1).x,65000);
+ assert.equal(st.loose.at(-1).y,-55000);
+ assert.ok(st.workBoard.right>65000&&st.workBoard.top< -55000);
+ assert.equal(game.workspace.fitWorkspace(),true);
+ assert.ok(st.camera.zoom<1,"Ver todo encuadra el circuito completo");
+ const fitView=game.workspace.makeView(elements.get("editCanvas"),"build");
+ assert.ok(fitView.scale<initialEditor.scale);
+ let gridStrokes=0,filled=0;
+ const testCtx=new Proxy({},{
+  get(_,key){
+   if(key==="stroke")return()=>gridStrokes++;
+   if(key==="fillRect")return()=>filled++;
+   if(key==="createLinearGradient")return()=>({addColorStop(){}});
+   return()=>{};
+  },set(obj,key,val){obj[key]=val;return true;}
+ });
+ const farView={...fitView,scale:.00001};
+ game.workspace.paintInfiniteWorkspace(testCtx,farView);
+ game.workspace.paintGrid(testCtx,farView,"build");
+ assert.equal(filled,1,"La superficie cubre solo el viewport");
+ assert.ok(gridStrokes>0&&gridStrokes<450,
+  "La cuadrícula se adapta al zoom en un circuito inmenso");
+ assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
+
+ console.log("SlotRace DEV 0.14.39: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

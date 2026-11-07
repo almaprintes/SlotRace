@@ -135,6 +135,7 @@ const state={
 const oldBoard=old?.workBoard;
 const boardValid=oldBoard&&["left","top","right","bottom","width","height"].every(k=>Number.isFinite(oldBoard[k]));
 state.workBoard=boardValid?{...oldBoard}:{...state.track.board};
+state.initialAutoFitNeeded=state.track.board.expanded;
 function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,bridgeParts:state.bridgeParts,
  origin:state.origin,workBoard:state.workBoard,draft:state.draft,records:state.records,
  reference:state.reference,
@@ -147,13 +148,20 @@ const coordinate=v=>state.gridEnabled?gridSnap(v):v;
 function gridXY(x,y){return {x:coordinate(x),y:coordinate(y)};}
 function extendWorkBoard(){
  const b=state.workBoard,t=state.track.board;
- // Ampliar si hace falta, pero NUNCA reducir mientras se arrastra:
- // cambiar el encuadre bajo el dedo provocaba saltos de cámara.
+ // Crece sin limitar las coordenadas. El rectángulo es informativo.
  b.left=Math.min(b.left,t.left);b.top=Math.min(b.top,t.top);
  b.right=Math.max(b.right,t.right);b.bottom=Math.max(b.bottom,t.bottom);
+ for(const piece of state.loose){
+  const spec=CATALOG[piece.id];if(!spec)continue;
+  const reach=Math.max(TRACK_WIDTH,spec.length||spec.radius*Math.abs(spec.angle))+200;
+  b.left=Math.min(b.left,piece.x-reach);b.top=Math.min(b.top,piece.y-reach);
+  b.right=Math.max(b.right,piece.x+reach);b.bottom=Math.max(b.bottom,piece.y+reach);
+ }
  b.width=b.right-b.left;b.height=b.bottom-b.top;
+ b.expanded=b.width>TABLE.width||b.height>TABLE.height;
 }
 function resetWorkBoard(){state.workBoard={...state.track.board};}
+extendWorkBoard();
 
 const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen"),results=$("resultsScreen");
 const hubScreens={
@@ -498,6 +506,7 @@ function loadSavedCircuit(id){
  state.newCircuitDirection=state.driveDirection;
  restoreSnapshot(item.snapshot);resetWorkBoard();
  state.camera={panX:0,panY:0,zoom:1};state.sessionLaps=[];
+ state.initialAutoFitNeeded=state.track.board.expanded;
  save();openWorkshop();toast("Circuito recuperado: «"+item.name+"».");return true;
 }
 // Las fichas se eliminan por ID, nunca por nombre: dos diseños pueden
@@ -861,11 +870,10 @@ function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");
  state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
 function addLoose(id,x,y,h=0){
  if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Solo puedes utilizar una PT/82 por circuito.");return false;}
- const b=state.workBoard,point=gridXY(
-  Math.max(b.left+145,Math.min(b.right-225,x)),
-  Math.max(b.top+155,Math.min(b.bottom-220,y))
- );
+ if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+ const point=gridXY(x,y);
  pushHistory();state.loose.push({id,x:point.x,y:point.y,h});
+ extendWorkBoard();
  state.selection=-1;state.looseSelection=state.loose.length-1;state.selectionMode="piece";state.selectedGroup=looseGroupKey(state.looseSelection);save();updateUI();toast("Pieza suelta. Muévela libremente; conéctala cuando quieras.");return true;
 }
 
@@ -1207,13 +1215,10 @@ function selectByTap(kind,index){
  updateUI();
 }
 function scatterLoose(id){
- // Cada toque de la caja añade una pieza nueva, sin reordenar las demás.
- const b=state.workBoard;
- const n=state.loose.length;
- const cols=Math.max(2,Math.floor((b.width-300)/400));
- const x=b.left+180+(n%cols)*400;
- const y=b.top+195+(Math.floor(n/cols)%4)*270;
- return addLoose(id,x,y,0);
+ // Las nuevas piezas aparecen en la zona visible, no lejos de la cámara.
+ const v=makeView(editCanvas,"build");
+ const c=worldFromPointer(v,v.w/2,v.h/2),n=state.loose.length;
+ return addLoose(id,c.x+((n%5)-2)*260,c.y+((Math.floor(n/5)%4)-1.5)*240,0);
 }
 // Piezas independientes de 90°: radio constante, una superficie y dos conectores.
 // Los antiguos trazados compuestos siguen siendo válidos sin migraciones.
@@ -1529,6 +1534,9 @@ function openWorkshop(){
  // El estante de piezas siempre permanece abierto y anclado a la mesa.
  state.caseOpen=true;
  updateUI();resize();
+ if(state.initialAutoFitNeeded){
+  state.initialAutoFitNeeded=false;fitWorkspace();
+ }
 }
 function showHub(which){
  if(!hubScreens[which])return false;
@@ -2665,7 +2673,7 @@ function updateUI(){
  $("tableCaption").textContent=state.dragging?"SUELTA LA PIEZA SOBRE LA MESA":
  state.selectionMode==="group"&&state.selectedGroup?"TRAMO · ARRASTRA PARA MOVER TODO":
  state.looseSelection>=0||state.selection>=0?
-  "PIEZA SELECCIONADA · ↶ Y ↷ PARA GIRAR":"TOCA UNA PIEZA · O ELIGE UNA DEL ESTANTE";
+  "PIEZA SELECCIONADA · ↶ Y ↷ PARA GIRAR":"MESA SIN LÍMITES · DESLIZA PARA MOVER · ⌗ VER TODO";
  updateHud();
 }
 // Un alojamiento por geometría; izquierda/derecha comparten el mismo molde.
@@ -2868,10 +2876,8 @@ function palette(){
    if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){
     toast("Suelta la pieza en el tapete. No se ha gastado ninguna.");return;
    }
-   const pt=screenToWorld(e),b=state.workBoard;
-   if(pt.x<b.left+85||pt.x>b.right-85||pt.y<b.top+85||pt.y>b.bottom-85){
-    toast("Suelta dentro de la mesa verde.");return;
-   }
+   const pt=screenToWorld(e);
+   // Cualquier coordenada del área visible admite una pieza.
    if(CURVE_90_PRESETS[id]){
     if(!placeCurvePresetLoose(id,pt.x,pt.y))return;
    }else{
@@ -2897,32 +2903,48 @@ function strokePath(ctx,points,color,width){
  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="butt";ctx.lineJoin="round";ctx.stroke();
 }
 function translated(points,off){return points.map(p=>({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off}));}
-function paintGrid(ctx){
+// Las coordenadas del tapete virtual no tienen bordes físicos.
+function visibleWorldBounds(v,padding=0){
+ const pts=[[0,0],[v.w,0],[0,v.h],[v.w,v.h]].map(([x,y])=>worldFromPointer(v,x,y));
+ const left=Math.min(...pts.map(p=>p.x))-padding,right=Math.max(...pts.map(p=>p.x))+padding;
+ const top=Math.min(...pts.map(p=>p.y))-padding,bottom=Math.max(...pts.map(p=>p.y))+padding;
+ return{left,right,top,bottom,width:right-left,height:bottom-top};
+}
+function paintInfiniteWorkspace(ctx,v){
+ const b=visibleWorldBounds(v,100/Math.max(v.scale,.000001));
+ const gradient=ctx.createLinearGradient(b.left,b.top,b.right,b.bottom);
+ gradient.addColorStop(0,"#245946");gradient.addColorStop(.55,"#1f5042");
+ gradient.addColorStop(1,"#153c35");
+ ctx.fillStyle=gradient;ctx.fillRect(b.left,b.top,b.width,b.height);
+}
+function paintGrid(ctx,v,mode="build"){
  if(!state.gridEnabled)return;
- const b=state.workBoard,edge=65;
- ctx.save();ctx.beginPath();
- ctx.rect(b.left+edge,b.top+edge,b.width-edge*2,b.height-edge*2);ctx.clip();
- for(const direction of ["x","y"]){
-   const from=direction==="x"?b.left+edge:b.top+edge;
-   const to=direction==="x"?b.right-edge:b.bottom-edge;
-   for(let coordinate=Math.ceil(from/GRID_MM)*GRID_MM;coordinate<=to;coordinate+=GRID_MM){
-     const major=Math.round(coordinate)%100===0;
-     ctx.beginPath();
-     if(direction==="x"){ctx.moveTo(coordinate,b.top+edge);ctx.lineTo(coordinate,b.bottom-edge);}
-     else{ctx.moveTo(b.left+edge,coordinate);ctx.lineTo(b.right-edge,coordinate);}
-     ctx.strokeStyle=major?"#d5ffde":"#bdedc4";
-     ctx.globalAlpha=major?.23:.085;
-     ctx.lineWidth=major?2.2:1;
-     ctx.stroke();
-   }
+ const r=visibleWorldBounds(v,30/Math.max(v.scale,.000001));
+ const b=mode==="build"?r:{
+  left:Math.max(r.left,state.workBoard.left+65),
+  top:Math.max(r.top,state.workBoard.top+65),
+  right:Math.min(r.right,state.workBoard.right-65),
+  bottom:Math.min(r.bottom,state.workBoard.bottom-65)};
+ if(b.right<=b.left||b.bottom<=b.top)return;
+ // Resolución adaptable al zoom: máximo unas decenas de líneas por eje.
+ const spacing=GRID_MM*2**Math.ceil(Math.log2(Math.max(1,12/Math.max(v.scale*GRID_MM,.000001))));
+ ctx.save();ctx.beginPath();ctx.rect(b.left,b.top,b.right-b.left,b.bottom-b.top);ctx.clip();
+ for(let x=Math.ceil(b.left/spacing)*spacing;x<=b.right;x+=spacing){
+  const major=Math.abs(x/100-Math.round(x/100))<1e-8;
+  ctx.beginPath();ctx.moveTo(x,b.top);ctx.lineTo(x,b.bottom);
+  ctx.strokeStyle="#d5ffde";ctx.globalAlpha=major?.23:.085;
+  ctx.lineWidth=major?2.2:1;ctx.stroke();
  }
- ctx.globalAlpha=.62;ctx.fillStyle="#e9ffdc";ctx.font="bold 15px system-ui";ctx.textAlign="left";
- for(let x=Math.ceil((b.left+150)/500)*500;x<b.right-150;x+=500){
-  ctx.fillText(x+" mm",x+5,b.top+111);
+ for(let y=Math.ceil(b.top/spacing)*spacing;y<=b.bottom;y+=spacing){
+  const major=Math.abs(y/100-Math.round(y/100))<1e-8;
+  ctx.beginPath();ctx.moveTo(b.left,y);ctx.lineTo(b.right,y);
+  ctx.strokeStyle="#d5ffde";ctx.globalAlpha=major?.23:.085;
+  ctx.lineWidth=major?2.2:1;ctx.stroke();
  }
  ctx.restore();
 }
-function paintTable(ctx){
+function paintTable(ctx,v,mode){
+ if(mode==="build"){paintInfiniteWorkspace(ctx,v);return;}
  ctx.save();
  // La mesa debe cubrir la geometría sin mover ni deformar los conectores.
  const b=state.workBoard;
@@ -3358,7 +3380,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.38.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.39.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3366,7 +3388,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.38 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.39 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -3763,8 +3785,8 @@ function paintLoose(ctx){
  if(state.dragging?.active&&state.mode==="build"){
   const d=state.dragging,rect=editCanvas.getBoundingClientRect();
   const w=worldFromPointer(makeView(editCanvas,"build"),d.x-rect.left,d.y-rect.top);
-  const b=state.workBoard;
-  if(w.x>=b.left&&w.x<=b.right&&w.y>=b.top&&w.y<=b.bottom){
+  // La vista previa se muestra incluso fuera del antiguo tapete.
+  {
    const end=state.track.ends.end,snap=!state.track.closed&&state.types.length>0&&Math.hypot(w.x-end.x,w.y-end.y)<SNAP_DISTANCE_MM;
    const snapped=gridXY(w.x,w.y);
    const pose=snap?{x:end.x,y:end.y,h:end.h}:{x:snapped.x,y:snapped.y,h:0};
@@ -4198,13 +4220,15 @@ function makeView(canvas,mode){
   (Number.isFinite(window.innerWidth)&&Number.isFinite(window.innerHeight)?
    window.innerHeight>window.innerWidth:h>w*1.1);
  const angle=portrait?Math.PI/2:0;
- const target=mode==="build"?state.workBoard:
+ // El zoom del editor usa una referencia FIJA: ampliar el circuito
+ // no reduce el tamaño de cada pieza ni modifica la cámara.
+ const target=mode==="build"?{left:0,top:0,right:TABLE.width,bottom:TABLE.height}:
   {left:state.track.bounds.left-160,right:state.track.bounds.right+160,
    top:state.track.bounds.top-160,bottom:state.track.bounds.bottom+160};
  const cx=(target.left+target.right)/2,cy=(target.top+target.bottom)/2;
  const bw=target.right-target.left,bh=target.bottom-target.top;
  const width=portrait?bh:bw,height=portrait?bw:bh;
- const base=Math.max(.01,Math.min((w-16)/width,(h-16)/height));
+ const base=Math.max(.000001,Math.min((w-16)/width,(h-16)/height));
  const follow=mode==="race"&&state.cameraMode==="follow";
  const zoom=mode==="build"?state.camera.zoom:follow?FOLLOW_ZOOM:1;
  const scale=base*zoom;
@@ -4220,6 +4244,46 @@ function worldFromPointer(v,screenX,screenY){
  let x=(screenX-v.w/2-v.panX)/v.scale,y=(screenY-v.h/2-v.panY)/v.scale;
  const c=Math.cos(v.angle),s=Math.sin(v.angle);
  return{x:v.cx+c*x+s*y,y:v.cy-s*x+c*y};
+}
+const BUILDER_MIN_ZOOM=.0001,BUILDER_MAX_ZOOM=8;
+function workspaceContentBounds(){
+ let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
+ const take=p=>{if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
+  left=Math.min(left,p.x);right=Math.max(right,p.x);
+  top=Math.min(top,p.y);bottom=Math.max(bottom,p.y);
+ };
+ for(const p of state.track.points)take(p);
+ for(const item of state.loose){
+  const spec=CATALOG[item.id];if(!spec)continue;
+  const pose={x:item.x,y:item.y,h:item.h},count=spec.length?7:20;
+  for(let i=0;i<=count;i++)take(positionOnPiece(pose,item.id,i/count));
+ }
+ const ref=state.reference;
+ if(ref?.visible){
+  const dx=ref.width*ref.scale/2,dy=ref.height*ref.scale/2,c=Math.cos(ref.angle),s=Math.sin(ref.angle);
+  for(const x of [-dx,dx])for(const y of [-dy,dy])
+   take({x:ref.x+x*c-y*s,y:ref.y+x*s+y*c});
+ }
+ return !Number.isFinite(left)?{left:0,top:0,right:TABLE.width,bottom:TABLE.height}:
+  {left:left-180,right:right+180,top:top-180,bottom:bottom+180};
+}
+function fitWorkspace(){
+ if(!editCanvas.width||!editCanvas.height)return false;
+ const b=workspaceContentBounds(),v=makeView(editCanvas,"build");
+ const topPad=Math.min(100,v.h*.18),bottomPad=Math.min(225,v.h*.28);
+ const portrait=Math.abs(v.angle)>1;
+ const bw=portrait?b.bottom-b.top:b.right-b.left;
+ const bh=portrait?b.right-b.left:b.bottom-b.top;
+ const wanted=Math.min(Math.max(90,v.w-65)/Math.max(1,bw),
+  Math.max(90,v.h-topPad-bottomPad)/Math.max(1,bh));
+ const base=v.scale/Math.max(.000001,state.camera.zoom);
+ state.camera.zoom=Math.max(BUILDER_MIN_ZOOM,Math.min(BUILDER_MAX_ZOOM,wanted/base));
+ const u=makeView(editCanvas,"build");
+ const dx=(b.left+b.right)/2-u.cx,dy=(b.top+b.bottom)/2-u.cy;
+ const c=Math.cos(u.angle),s=Math.sin(u.angle);
+ state.camera.panX=-(c*dx-s*dy)*u.scale;
+ state.camera.panY=(topPad-bottomPad)/2-(s*dx+c*dy)*u.scale;
+ state.viewDirty=true;return true;
 }
 function revealLatestBuilderPiece(){
  if(state.mode!=="build"||!state.track.parts.length||!editCanvas.width)return;
@@ -4285,9 +4349,9 @@ function renderScene(canvas,mode){
  ctx.setTransform(v.dpr,0,0,v.dpr,0,0);
  ctx.fillStyle="#0a141b";ctx.fillRect(0,0,v.w,v.h);
  ctx.save();transform(ctx,v);
- paintTable(ctx);
+ paintTable(ctx,v,mode);
  if(mode==="build")paintReference(ctx); // Nunca afecta al juego.
- paintGrid(ctx);
+ paintGrid(ctx,v,mode);
  const track=state.track,hasBridge=Boolean(track.bridge);
  const p=mode==="race"?displayDrivingPose():drivingPose(0);
  // Un coche que circula por la propia rampa siempre queda sobre SU
@@ -4482,13 +4546,14 @@ function canvasPointerMove(e){
   }
  }
  if(state.pointer.size===1&&p.moveMain){
-  const to=screenToWorld(e),b=state.workBoard;
+  const to=screenToWorld(e);
   state.origin={
-   x:Math.max(b.left+90,Math.min(b.right-90,coordinate(p.startOrigin.x+to.x-p.originWorld.x))),
-   y:Math.max(b.top+90,Math.min(b.bottom-90,coordinate(p.startOrigin.y+to.y-p.originWorld.y))),
+   x:coordinate(p.startOrigin.x+to.x-p.originWorld.x),
+   y:coordinate(p.startOrigin.y+to.y-p.originWorld.y),
    h:p.startOrigin.h
   };
   state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+  extendWorkBoard();
   state.viewDirty=true;return;
  }
  if(state.pointer.size===1&&p.looseIndex>=0){
@@ -4506,20 +4571,21 @@ function canvasPointerMove(e){
    p.memberIndices=[p.looseIndex];
    p.memberPositions=[{i:p.looseIndex,x:p.pieceStart.x,y:p.pieceStart.y}];
   }
-  const to=screenToWorld(e),b=state.workBoard;
+  const to=screenToWorld(e);
   const pivot=p.memberPositions.find(v=>v.i===p.looseIndex)||p.memberPositions[0];
-  const x=Math.max(b.left+140,Math.min(b.right-140,coordinate(pivot.x+to.x-p.originWorld.x)));
-  const y=Math.max(b.top+140,Math.min(b.bottom-140,coordinate(pivot.y+to.y-p.originWorld.y)));
+  const x=coordinate(pivot.x+to.x-p.originWorld.x);
+  const y=coordinate(pivot.y+to.y-p.originWorld.y);
   for(const original of p.memberPositions){
    const piece=state.loose[original.i];if(!piece)continue;
    piece.x=original.x+x-pivot.x;piece.y=original.y+y-pivot.y;
   }
+  extendWorkBoard();
   state.viewDirty=true;return;
  }
  if(state.pointer.size>=2&&state.pinch){
   const list=[...state.pointer.values()],a=list[0],b=list[1];
   const dist=Math.hypot(a.x-b.x,a.y-b.y);
-  state.camera.zoom=Math.max(.65,Math.min(4,state.pinch.zoom*dist/Math.max(1,state.pinch.distance)));
+  state.camera.zoom=Math.max(BUILDER_MIN_ZOOM,Math.min(BUILDER_MAX_ZOOM,state.pinch.zoom*dist/Math.max(1,state.pinch.distance)));
   state.camera.panX+=(e.clientX-oldX)/2;state.camera.panY+=(e.clientY-oldY)/2;
  }else{
   state.camera.panX+=e.clientX-oldX;state.camera.panY+=e.clientY-oldY;
@@ -4746,9 +4812,9 @@ function initEvents(){
   toast(state.gridEnabled?"Retícula de 25 mm activada.":"Retícula desactivada.");
  });
  $("autoClose").addEventListener("click",closeExactly);
- $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(4,state.camera.zoom*1.25);state.viewDirty=true;});
- $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(.65,state.camera.zoom/1.25);state.viewDirty=true;});
- $("zoomFit").addEventListener("click",()=>{state.camera={panX:0,panY:0,zoom:1};state.viewDirty=true;});
+ $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(BUILDER_MAX_ZOOM,state.camera.zoom*1.25);state.viewDirty=true;});
+ $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(BUILDER_MIN_ZOOM,state.camera.zoom/1.25);state.viewDirty=true;});
+ $("zoomFit").addEventListener("click",fitWorkspace);
  for(const type of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
   editCanvas.addEventListener(type,e=>{
    if(type==="pointerdown")canvasPointerDown(e);
@@ -4758,7 +4824,7 @@ function initEvents(){
  }
  editCanvas.addEventListener("wheel",e=>{
   if(state.mode!=="build")return;e.preventDefault();
-  state.camera.zoom=Math.max(.65,Math.min(4,state.camera.zoom*(e.deltaY>0?.9:1.1)));
+  state.camera.zoom=Math.max(BUILDER_MIN_ZOOM,Math.min(BUILDER_MAX_ZOOM,state.camera.zoom*(e.deltaY>0?.9:1.1)));
   state.viewDirty=true;
  },{passive:false});
  $("clickSound").addEventListener("click",()=>{
@@ -4803,11 +4869,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.38",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.39",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},
+ workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
