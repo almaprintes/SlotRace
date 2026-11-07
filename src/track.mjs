@@ -296,6 +296,48 @@ export function nearestPiece(track,x,y){
   }
   return best;
 }
+// Modelo determinista de choque de dos coches simultáneos en la PT/82.
+// El juego local es monoplaza por ahora; este contrato permite añadir
+// un segundo coche sin inventar una regla distinta en multijugador.
+export function pt82Collision(track,a,b){
+ const index=track?.laneChangerIndex??-1;
+ if(index<0||!a||!b||a.pieceIndex!==index||b.pieceIndex!==index)return false;
+ const laneOf=r=>r.entryLane??1-r.lane; // durante X, lane ya es el destino
+ if(laneOf(a)===laneOf(b)||a.penalty>0||b.penalty>0)return false;
+ // 98 mm de carrocería: la ventana central de contacto cubre
+ // menos de 1/3 de los 350 mm. No es un detector de "pieza ocupada".
+ return Math.abs(a.pieceT-.5)<=.145&&Math.abs(b.pieceT-.5)<=.145;
+}
+function pt82PieceDistance(lane,index,t){
+ for(let i=1;i<lane.nodes.length;i++){
+  const b=lane.nodes[i];
+  if(b.pieceIndex!==index)continue;
+  const a=lane.nodes[i-1];
+  const begin=a.pieceIndex===index?a.pieceT||0:0;
+  const finish=b.pieceT??1;
+  if(t<=finish+1e-8){
+   const f=Math.max(0,Math.min(1,(t-begin)/Math.max(1e-9,finish-begin)));
+   return lane.lengths[i-1]+f*(lane.lengths[i]-lane.lengths[i-1]);
+  }
+ }
+ return 0;
+}
+export function pt82ResolveCollision(track,a,b){
+ if(!pt82Collision(track,a,b))return null;
+ const reset=r=>{
+  const dir=r.driveDirection===-1?-1:1;
+  const entering=r.entryLane??1-r.lane;
+  const target=1-entering;
+  const lane=track.lanes[dir===-1?1-target:target];
+  // Reaparece después del cruce central, sobre su guía de destino.
+  const progress=dir===1?.73:.27;
+  const d=pt82PieceDistance(lane,track.laneChangerIndex,progress);
+  return{...r,lane:target,pieceIndex:track.laneChangerIndex,
+   pieceT:progress,distance:dir===1?d:(lane.total-d)%lane.total,
+   speed:0,penalty:3,collidedPT82:true,x350Armed:false};
+ };
+ return[reset(a),reset(b)];
+}
 export function countPieces(types){
   return Object.fromEntries(Object.keys(CATALOG).map(id=>[id,types.filter(t=>t===id).length]));
 }

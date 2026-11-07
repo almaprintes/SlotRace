@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.35");
+ assert.equal(game.version,"DEV 0.14.36");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -715,5 +715,43 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.35: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // PT/82: categoría Especiales, cupo, cambio automático y
+ // récord propio de dos vueltas sin mezclarlo con los carriles normales.
+ game.showMenu();game.openWorkshop();
+ assert.equal(game.chooseCaseCategory("special"),true);
+ const ptTypes=geo.STARTER.slice(),ptIndex=ptTypes.indexOf("S350");
+ ptTypes[ptIndex]="X350";
+ assert.equal(game.changeTypes(ptTypes,"PT/82",[],geo.START),true);
+ assert.equal(st.track.valid,true);
+ assert.equal(st.track.laneChangerIndex,ptIndex);
+ assert.equal(game.inventoryAction("X350"),false,
+  "No se admite una segunda PT/82");
+ assert.equal(game.openRace(),true);
+ assert.equal(st.lane,0,"La prueba PT/82 inicia obligatoriamente en A");
+ assert.equal(elements.get("lane").hidden,true,"El cambio manual desaparece");
+ assert.equal(game.lanes.switchLane(),false,"Cambio manual bloqueado también por código");
+ st.raceStarted=true;st.gas=.85;st.speed=300;st.run=true;st.distance=0;
+ game.physics.simulationStep(.03);
+ assert.equal(st.lane,1,"La PT/82 cambia de A a B al entrar");
+ assert.equal(st.x350Crossings,1);
+ assert.equal(st.laneTransition.physical,true);
+ const crossover=game.lanes.displayDrivingPose();
+ assert.equal(crossover.pieceIndex,ptIndex);
+ assert.ok(Number.isFinite(crossover.x)&&Number.isFinite(crossover.y));
+ st.seconds=10.125;st.laneTransition=null;st.x350Crossings=1;
+ game.completeLap();
+ assert.equal(st.x350FirstLap,10.125);
+ assert.equal(st.sessionLaps.length,0,"Solo una vuelta: aún no hay récord");
+ st.seconds=9.375;st.x350Crossings=1;st.lane=0;
+ game.completeLap();
+ assert.equal(st.sessionLaps.length,1);
+ assert.equal(st.sessionLaps[0].seconds,19.5,
+  "Tiempo oficial = dos vueltas consecutivas");
+ assert.equal(st.sessionLaps[0].changeover,true);
+ assert.equal(st.x350FirstLap,null);
+ assert.equal(game.endSession("menu"),true);
+ assert.equal(elements.get("resultsStats").children.length,1,
+  "La clasificación PT/82 presenta solo tiempo combinado");
+ assert.match(elements.get("resultsStats").children[0].children[1].textContent,/19,500/);
+ console.log("SlotRace DEV 0.14.36: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

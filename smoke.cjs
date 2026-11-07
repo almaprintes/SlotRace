@@ -61,9 +61,9 @@ assert.match(elevatedPainter,/ctx\.clip\(\)/,
 assert.doesNotMatch(elevatedPainter,/paintOpaqueRibbon\(ctx,paintPoints,paintOffsets\)/,
  "Prohibido repintar rampas y curva de suelo con extremos solapados");
 
-assert.equal(Object.keys(CATALOG).length,27);
-assert.equal(Object.keys(PARTS).length,27);
-assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,16);
+assert.equal(Object.keys(CATALOG).length,28);
+assert.equal(Object.keys(PARTS).length,28);
+assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,17);
 assert.equal(CATALOG.S0125.legacy,true,"Existing saved 12.5mm circuits remain readable");
 assert.deepEqual(Object.values(RADII),[150,300,450,600]);
 const familyIds=["R1","R2","R3","R4"];
@@ -90,6 +90,10 @@ assert.equal(CATALOG.S175.length,175);
 assert.equal(CATALOG.S350.length,350);
 assert.equal(CATALOG.S600.length,600);
 assert.equal(CATALOG.START350.length,350);
+assert.equal(CATALOG.X350.length,350);
+assert.equal(CATALOG.X350.laneChanger,true);
+assert.equal(freeStock(["X350"],"X350"),0);
+assert.equal(allowed(["X350","X350"]),false);
 assert.equal(CATALOG.R2_45R.radius,300);
 assert.equal(CATALOG.R1_90L.radius,150);
 for(const [id,radius] of [["R2_90R",300],["R3_90R",450],["R4_90R",600]]){
@@ -147,7 +151,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.35/);
+assert.match(html,/DEV 0\.14\.36/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -258,5 +262,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.35 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.36 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

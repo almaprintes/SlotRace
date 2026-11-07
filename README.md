@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.36 · PT/82 en Especiales
+
+**DEV:** https://almaprintes.github.io/SlotRace/?v=0.14.36
+
+- La pieza **X350 · Cambio PT/82** se incluye en la pestaña **Especiales**, con conexiones exteriores y longitud de 350 mm compatibles con la recta virtual S350.
+- **Máximo una PT/82** por construcción, incluso en modo desarrollo con inventario ilimitado. El control se aplica tanto a piezas montadas como a las sueltas.
+- Dos carriles en **X** y conducción automática a lo largo de la pieza. Los circuitos que la llevan ocultan y bloquean el cambio manual. El resto conserva el botón.
+- **Prueba oficial de dos vueltas consecutivas:** primera y segunda vuelta se recorren con intercambios obligatorios. Solo la suma de ambas constituye récord. La clasificación tiene una clave propia y no modifica los registros de carriles tradicionales.
+- **Regla de dos coches:** función determinista de detección de choque simultáneo en el centro de la X. Si dos coches entran en conflicto, ambos descarrilan y reaparecen justo pasado el cruce en sus carriles de destino, con 3 s de recuperación. La función está probada como base para carreras de dos coches; el modo de juego actual solo controla uno.
+- La geometría, físicas, pistas elevadas, modo Rayos X, piezas antiguas, recetas, archivos locales y récords anteriores se conservan.
+
+**Pendiente de validar en dispositivo:** aspecto de la PT/82, paso del coche por la X y carrera de dos vueltas. La integración de un segundo coche simultáneo es posterior.
+
+---
+
 # SlotRace DEV 0.14.35 — Cambio de carril fluido
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.35

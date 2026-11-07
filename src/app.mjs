@@ -123,7 +123,7 @@ const state={
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
-  lane:0,laneTransition:null,lapEligible:true,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
+  lane:0,laneTransition:null,lapEligible:true,x350Armed:true,x350Crossings:0,x350FirstLap:null,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
@@ -819,7 +819,7 @@ function pushHistory(){
  state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];
 }
 function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserveBridge=false}={}){
- if(!allowed([...next,...loose.map(p=>p.id)])){toast("La construcción contiene piezas desconocidas.");return false;}
+ if(!allowed([...next,...loose.map(p=>p.id)])){toast("Solo se admite una PT/82 por circuito; revisa el inventario.");return false;}
  const wasClosed=state.track.closed;
  pushHistory();
  const sameGeometry=next.length===state.types.length&&next.every((id,i)=>id===state.types[i]);
@@ -840,14 +840,14 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;
+function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
 function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");return;}
  state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
 function addLoose(id,x,y,h=0){
- if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Ese tipo de pieza no existe en el catálogo.");return false;}
+ if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Solo puedes utilizar una PT/82 por circuito.");return false;}
  const b=state.workBoard,point=gridXY(
   Math.max(b.left+145,Math.min(b.right-225,x)),
   Math.max(b.top+155,Math.min(b.bottom-220,y))
@@ -1214,6 +1214,9 @@ let lastCaseAppend=null;
 function inventoryAction(id){
  const chosen=pocketPartId(id);
  if(!CATALOG[chosen])return false;
+ if(freeStock([...state.types,...state.loose.map(p=>p.id)],chosen)<=0){
+  toast("Solo se admite una PT/82 por circuito.");return false;
+ }
  if(state.track.closed){
   const placed=scatterLoose(chosen);
   if(placed)toast("Circuito cerrado: pieza suelta. Arrástrala para conectarla a otro tramo.");
@@ -1485,14 +1488,26 @@ function displayDrivingPose(){
  if(!target||!change)return target;
  const from=poseOnDrivingLane(change.from,target.pieceIndex,target.pieceT);
  if(!from)return target;
- const mix=smoothLaneStep(change.elapsed/change.duration);
+ const physical=change.physical&&target.pieceIndex===change.pieceIndex;
+ if(change.physical&&!physical)return target;
+ const t=state.driveDirection===-1?1-(target.pieceT||0):(target.pieceT||0);
+ const mix=physical?switchEase(Math.max(0,Math.min(1,t))):
+  smoothLaneStep(change.elapsed/change.duration);
  const dh=Math.atan2(Math.sin(target.h-from.h),Math.cos(target.h-from.h));
+ const lateral=(target.x-from.x)*(-Math.sin(target.h))+
+  (target.y-from.y)*Math.cos(target.h);
+ const heading=physical?target.h+Math.atan2(lateral*6*t*(1-t)/350,1):from.h+dh*mix;
  return{...target,x:from.x+(target.x-from.x)*mix,
-  y:from.y+(target.y-from.y)*mix,h:from.h+dh*mix};
+  y:from.y+(target.y-from.y)*mix,h:heading};
 }
 function advanceLaneTransition(dt){
  const change=state.laneTransition;
  if(!change||state.mode!=="race")return;
+ if(change.physical){
+  const pose=drivingPose();
+  if(pose?.pieceIndex!==change.pieceIndex)state.laneTransition=null;
+  return;
+ }
  change.elapsed=Math.min(change.duration,change.elapsed+Math.max(0,dt));
  if(change.elapsed>=change.duration)state.laneTransition=null;
 }
@@ -1567,6 +1582,7 @@ function play(){
   return false;
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
+ if(state.track.laneChangerIndex>=0)state.lane=0;
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
@@ -1588,6 +1604,26 @@ function renderSessionSummary(){
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   (state.driveDirection===1?"Horario":"Antihorario")+
   " · "+state.sessionLaps.length+" vueltas completas";
+ if(state.track.laneChangerIndex>=0){
+  const pairs=state.sessionLaps.filter(l=>l.changeover);
+  const bestPair=pairs.reduce((best,l)=>Math.min(best,l.seconds),Infinity);
+  const scores=$("resultsStats");scores.textContent="";
+  const metric=document.createElement("div");metric.className="result-metric combined-best";
+  const label=document.createElement("span");label.textContent="Mejor doble vuelta PT/82";
+  const value=document.createElement("strong");
+  value.textContent=Number.isFinite(bestPair)?format(bestPair)+" s":"—";
+  metric.appendChild(label);metric.appendChild(value);scores.appendChild(metric);
+  const list=$("resultsLaps");list.innerHTML="";
+  for(const pair of pairs){
+   const row=document.createElement("div");row.className="result-row"+(pair.record?" is-best-left":"");
+   const title=document.createElement("span");title.textContent="Vueltas "+(pair.number-1)+" y "+pair.number;
+   const time=document.createElement("strong");time.textContent=format(pair.seconds)+" s";
+   const detail=document.createElement("small");
+   detail.textContent=format(pair.first)+" + "+format(pair.second)+" s · PT/82";
+   row.appendChild(title);row.appendChild(time);row.appendChild(detail);list.appendChild(row);
+  }
+  return;
+ }
  const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
   .reduce((min,l)=>Math.min(min,l.seconds),Infinity));
  const scores=$("resultsStats");
@@ -1638,6 +1674,7 @@ function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.ke
  $("trigger").classList.remove("pressed");state.latest=performance.now();if(state.run)primeMotorAudio();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
 function switchLane(){
+ if(state.track.laneChangerIndex>=0)return false;
  if(state.mode!=="race"||!state.track.valid)return false;
  if(state.laneTransition)return false;
  if(state.penalty>0){toast("Espera a recuperar el coche antes de cambiar de carril.");return false;}
@@ -1658,6 +1695,29 @@ function switchLane(){
 }
 function completeLap(){
  if(state.seconds<.05)return;
+ if(state.track.laneChangerIndex>=0){
+  const seconds=state.seconds;
+  const valid=state.x350Crossings===1&&!state.laneTransition?.duration;
+  if(state.x350FirstLap===null){
+   state.x350FirstLap=valid?seconds:null;
+   state.seconds=0;state.lap++;state.x350Crossings=0;
+   toast(valid?"Primera vuelta PT/82 registrada · queda otra.":"Primera vuelta sin cambio válido.");
+   return;
+  }
+  const first=state.x350FirstLap,total=first+seconds;
+  if(first!==null&&valid&&state.lane===0){
+   const key=recKey()+"-pt82-pair-v1";
+   const prior=typeof state.records[key]==="number"?state.records[key]:null;
+   const best=prior===null||total<prior;
+   state.sessionLaps.push({number:state.lap,lane:0,seconds:total,
+    first,second:seconds,changeover:true,previous:prior,record:best});
+   if(best){state.records[key]=total;save();}
+   toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
+  }else toast("Dos vueltas no homologadas: revisa el cruce.");
+  state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;state.lap++;
+  return;
+ }
+
  // La vuelta que ha combinado dos carriles no genera un récord oficial.
  // La carrera no se reinicia: al cruzar meta comienza otro parcial válido.
  if(!state.lapEligible||state.laneTransition){
@@ -1850,8 +1910,32 @@ function simulation(dt){
   state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
   toast("¡Desencarrilado! La trasera perdió el agarre · +3 s.");return;
  }
- state.distance+=state.speed*dt;
- if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
+ // Una PT/82 conmuta en el conector de entrada; el recorrido visible en
+ // la X usa el progreso de la pieza y no la duración de una animación.
+ if(state.track.laneChangerIndex>=0){
+  const idx=state.track.laneChangerIndex;
+  const entry=laneDistanceAtPiece(lane,idx,state.driveDirection===1?0:1);
+  const entryDrive=state.driveDirection===1?entry:(lane.total-entry)%lane.total;
+  const remaining=(entryDrive-state.distance+lane.total)%lane.total;
+  if(state.x350Armed&&remaining<=travel+1e-8){
+   const target=1-state.lane;
+   const nextLane=state.track.lanes[state.driveDirection===-1?1-target:target];
+   const nextEntry=laneDistanceAtPiece(nextLane,idx,state.driveDirection===1?0:1);
+   const driveEntry=state.driveDirection===1?nextEntry:(nextLane.total-nextEntry)%nextLane.total;
+   state.laneTransition={from:state.lane,pieceIndex:idx,physical:true};
+   state.lane=target;state.x350Armed=false;state.x350Crossings++;
+   const beyond=Math.max(0,travel-remaining);
+   state.distance=(driveEntry+beyond)%nextLane.total;
+   if(driveEntry+beyond>=nextLane.total)completeLap();
+  }else{
+   state.distance+=travel;
+   if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
+  }
+  if(drivingPose()?.pieceIndex!==idx)state.x350Armed=true;
+ }else{
+  state.distance+=travel;
+  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
+ }
 }
 
 // Sonido auténtico de Scalextric: sin síntesis y sin cambiar las revoluciones.
@@ -2002,15 +2086,24 @@ function updateHud(){
  $("power").textContent=Math.round(state.keyboardGas?100:state.gas*100)+"%";
  $("speed").textContent=Math.round(state.speed/10)+" cm/s";
  const v=record();
- $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
- $("bestRight").textContent=v[1]===null?"—":format(v[1])+" s";
- $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
+ if(state.track.laneChangerIndex>=0){
+  $("bestLeft").textContent=state.x350FirstLap===null?"—":format(state.x350FirstLap)+" s";
+  $("bestRight").textContent="2 vueltas";
+  const best=state.records[recKey()+"-pt82-pair-v1"];
+  $("combined").textContent=typeof best==="number"?format(best)+" s":"—";
+ }else{
+  $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
+  $("bestRight").textContent=v[1]===null?"—":format(v[1])+" s";
+  $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
+ }
  const pose=drivingPose();
  const isBelow=Boolean(state.track.bridge)&&carTrackLevel(state.track,pose)==="lower";
  const underCrossing=isBelow&&pose&&Boolean(state.track.bridge)&&
    Math.hypot(pose.x-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).x,
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
+   state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
+   state.track.laneChangerIndex>=0?"PT/82 · DOS VUELTAS, DOS CARRILES":
    state.laneTransition?"CAMBIANDO DE CARRIL · TRANSICIÓN SUAVE":
    !state.run?"EN PAUSA":
    !state.lapEligible?"VUELTA MIXTA · SIN RÉCORD":
@@ -2019,7 +2112,9 @@ function updateHud(){
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
    "Busca el límite sin pasarte en las curvas";
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
- $("lane").disabled=Boolean(state.laneTransition)||state.penalty>0;
+ $("lane").hidden=state.track.laneChangerIndex>=0;
+ $("lane").disabled=state.track.laneChangerIndex>=0||
+  Boolean(state.laneTransition)||state.penalty>0;
  $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ Carril";
  $("lane").setAttribute("aria-label","Cambiar al carril "+
   (state.lane===0?"derecho":"izquierdo"));
@@ -2029,7 +2124,7 @@ function updateHud(){
 
 const CASE_PAGE_SIZE=99; // Todo el tipo elegido se desplaza en un único estante lateral.
 const CASE_TABS={straight:"caseStraights",curve:"caseCurves",special:"caseSpecial",bridge:"caseBridges"};
-const pieceCategory=id=>id==="START350"?"special":id.startsWith("R")?"curve":"straight";
+const pieceCategory=id=>["START350","X350"].includes(id)?"special":id.startsWith("R")?"curve":"straight";
 function chooseCaseCategory(category){
  if(!CASE_TABS[category])return false;
  state.caseCategory=category;state.casePage=0;
@@ -2509,6 +2604,8 @@ function updateUI(){
   const free=Math.min(...parts.map(part=>freeStock(inventory,part)));
   const unlimited=free===Infinity;
   el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
+  const badge=el.querySelector(".pocket-stock");
+  if(badge)badge.textContent=CATALOG[chosen].laneChanger?"MÁX. 1":"∞";
   const shelfName=CURVE_90_PRESETS[id]?
    "Curva "+presetLabel(id)+" · conjunto de "+parts.length+" piezas":CATALOG[chosen].name;
   el.setAttribute("aria-label",shelfName+" · "+(unlimited?"disponible sin límite":free+" disponibles")+
@@ -2548,7 +2645,7 @@ function updateUI(){
 const pocketNames={
  S075:"RECTA 75",S0875:"RECTA 87,5",
  S175:"RECTA 175",S350:"RECTA 350",S600:"RECTA 600",
- START350:"SALIDA / META",
+ START350:"SALIDA / META",X350:"CAMBIO PT/82",
  R1_225R:"R1 · 22,5°",R1_45R:"R1 · 45°",R1_90R:"R1 · 90°",
  R2_225R:"R2 · 22,5°",R2_45R:"R2 · 45°",
  R3_225R:"R3 · 22,5°",R4_225R:"R4 · 22,5°",
@@ -2574,6 +2671,30 @@ const PIECE_LOOK=Object.freeze({
  inner:"#283139",groove:"#101418",metalA:"#94a5ac",metalB:"#a2b4bc",
  guide:"#080c0e",edge:"#65787e",seam:"#0c1217"
 });
+// Guías cruzadas sin romper los conectores de una recta de 350 mm.
+function switchEase(t){return t*t*(3-2*t);}
+function xSwitchPoints(part,offset,count=32){
+ return Array.from({length:count+1},(_,i)=>{
+  const t=i/count,p=positionOnPiece(part.start,part.id,t);
+  const side=offset*(1-2*switchEase(t));
+  return{x:p.x-Math.sin(p.h)*side,y:p.y+Math.cos(p.h)*side,h:p.h};
+ });
+}
+function paintX350(ctx,track){
+ const index=track.laneChangerIndex;if(index<0)return;
+ const part=track.parts[index];if(!part)return;
+ ctx.save();
+ // Borrar solo los carriles rectos de esta pieza. El asfalto y los
+ // cantos exteriores siguen siendo una superficie continua.
+ strokePath(ctx,part.points,PIECE_LOOK.inner,TRACK_WIDTH-31);
+ for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+  strokePath(ctx,xSwitchPoints(part,off),PIECE_LOOK.groove,11);
+  strokePath(ctx,xSwitchPoints(part,off-7.6),PIECE_LOOK.metalA,2.2);
+  strokePath(ctx,xSwitchPoints(part,off+7.6),PIECE_LOOK.metalB,2.2);
+  strokePath(ctx,xSwitchPoints(part,off),PIECE_LOOK.guide,5);
+ }
+ ctx.restore();
+}
 function foamSlotSVG(id){
  const preset=CURVE_90_PRESETS[id],spec=CATALOG[id]||CATALOG[preset?.[0]],n=spec.length?2:28;
  const pts=Array.from({length:n+1},(_,i)=>{
@@ -2598,7 +2719,8 @@ function foamSlotSVG(id){
  const stroke=(klass,shape,size,color,other="")=>
   '<path class="'+klass+'" d="'+shape+'" fill="none" stroke="'+color+'" stroke-width="'+width(size)+'" stroke-linecap="butt" stroke-linejoin="round" '+other+'/>';
  const layer=(klass,size,color)=>stroke(klass,main,size,color);
- const line=(off,klass,size,color)=>stroke(klass,path(translated(off)),size,color);
+ const line=(off,klass,size,color)=>stroke(klass,
+  path(spec.laneChanger?xSwitchPoints({start:{x:0,y:0,h:0},id},off):translated(off)),size,color);
  const seam=p=>stroke("mini-slot-seam",path([-TRACK_WIDTH/2,TRACK_WIDTH/2].map(off=>({
   x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off
  }))),3,PIECE_LOOK.seam);
@@ -2907,6 +3029,7 @@ function paintContinuousTrack(ctx,track,editing){
   strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
  for(const edge of [-72,72])strokePath(ctx,translated(path,edge),PIECE_LOOK.edge,2.5);
+ paintX350(ctx,track);
  // En el taller conservamos las juntas ordinarias de módulos.
  // En las fronteras suelo/rampa, en cambio, la pista y los dos carriles
  // son una sola superficie: dibujar paintSeam allí crea una raya negra
@@ -3175,7 +3298,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.35.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.36.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3183,7 +3306,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.35 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.36 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4619,7 +4742,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.35",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.36",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

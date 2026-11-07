@@ -45,6 +45,11 @@ for(const [id,units,name] of straightSizes)
   {units,virtualPrecision:true,virtualMicroAdapter:units<=5});
 parts.START350=straight("Salida y meta 350",28*GEOMETRY.lengthUnit,
  "SR/META",{units:28,startFinish:true,virtualPrecision:true});
+ // Cambio de carril con dos ranuras cruzadas. Exteriormente equivale a S350;
+ // el trazado interior se calcula como dos curvas suaves en X, no como un
+ // salto instantáneo ni como otra intersección del circuito.
+parts.X350=straight("Cambio de carril PT/82",28*GEOMETRY.lengthUnit,
+ "PT/82",{units:28,laneChanger:true,virtualPrecision:true});
 // Curvas de 90° independientes: una sola pieza, un solo arco continuo,
 // dos conectores externos. Las recetas antiguas de 2×45°/4×22,5° se conservan.
 for(const [radiusId,degs] of Object.entries({R1:[22.5,45,90],R2:[22.5,45,90],R3:[22.5,90],R4:[22.5,90]})){
@@ -59,7 +64,7 @@ export const PARTS=frozen(parts);
 // Familias especiales: geometría nominal de entrada y salida, NO enrutable
 // hasta modelar correctamente los dos carriles y las conexiones verticales.
 export const SPECIALS=frozen({
-  X350:frozen({name:"Cambio de carriles por parejas",reference:"PT/82",span:350,requiresLaneRouting:true}),
+  X350:frozen({name:"Cambio de carril",reference:"PT/82",span:350,requiresLaneRouting:false}),
   CROSS90:frozen({name:"Cruce a 90°",reference:"PT/83",requiresMultiConnectorTopology:true}),
   CURVE_CHICANE:frozen({name:"Chicane de curva",reference:"PT/85",requiresLaneRouting:true}),
   BRIDGE:frozen({name:"Puente y soportes",reference:"PT/68, PT/70",requiresElevation:true}),

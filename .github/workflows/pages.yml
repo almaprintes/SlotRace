@@ -69,6 +69,9 @@ jobs:
       - name: Comprobar menú completo, conducción reversible y PNG con receta
         run: node tests/game-shell.cjs
 
+      - name: Comprobar PT82 y choques simultáneos entre coches
+        run: node tests/pt82.cjs
+
       - name: Verificar archivos que sirve GitHub Pages
         run: |
           test -s index.html
