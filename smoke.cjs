@@ -275,7 +275,7 @@ assert.match(app,/function resetFollowCamera\(\)/);
 assert.match(app,/cameraMode:state.cameraMode/);
 assert.match(css,/\.shop-blueprint-art/);
 assert.match(app,/function shopBlueprintSvg\(/);
-assert.match(app,/const layout=buildTrack\(types,START\)/);
+assert.match(app,/const layout=buildTrack\(types,origin\)/);
 assert.match(app,/shop-blueprint-bridge/);
 for(const id of ["garageChooseGripline","garageChooseSpark","garageCarGripline",
  "garageCarSpark","raceCarName","garageStatusSpark"]){
