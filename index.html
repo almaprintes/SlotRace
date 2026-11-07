@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.48: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.48 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.48">
+  <meta name="description" content="SlotRace DEV 0.14.49: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.14.49 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.14.49">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -39,15 +39,15 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.48">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.49">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true">S</div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.48</div>
+    <div class="splash-version">DEV 0.14.49</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.48">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.14.49">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
@@ -57,7 +57,7 @@
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.48">DEV 0.14.48<br>LOCAL · PRUEBAS</div></div>
+    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.49">DEV 0.14.49<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
     <div class="home-scroll">
@@ -78,6 +78,7 @@
         <button id="menuGarage" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▰</span><span><strong>Garaje</strong><small>Tus coches y sus fichas</small></span><span aria-hidden="true">›</span></button>
         <button id="menuStore" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▧</span><span><strong>Tienda</strong><small>Cajas, packs, planos y coches</small></span><span aria-hidden="true">›</span></button>
         <button id="menuSettings" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">⚙</span><span><strong>Ajustes</strong><small>Personaliza la experiencia</small></span><span aria-hidden="true">›</span></button>
+        <button id="menuAccount" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">♙</span><span><strong>Mi cuenta</strong><small>CraftRace Studio · Piloto y constructor</small></span><span aria-hidden="true">›</span></button>
       </nav>
     </div>
   </section>
@@ -230,7 +231,11 @@
           </div>
         </div>
       </div>
-      <div class="hub-feature settings-help"><h2>Datos locales</h2><p>Los circuitos y los récords se guardan en este navegador. La sincronización de cuentas llegará más adelante.</p></div>
+      <div class="hub-feature settings-help"><h2>Mi cuenta CraftRace Studio</h2>
+        <p>La misma identidad de Top Down RACE, con perfiles separados. Tu colección y los récords siguen guardándose aquí hasta que actives una futura copia en la nube.</p>
+        <button id="settingsAccount" type="button" class="hub-back">♙ Entrar o registrar mi cuenta</button>
+      </div>
+      <div class="hub-feature settings-help"><h2>Datos locales</h2><p>Los circuitos y los récords se guardan en este navegador. Iniciar sesión no los sube, restaura ni elimina.</p></div>
       <button id="settingsHome" class="hub-back" type="button">‹ Volver al menú</button>
     </div>
   </section>
@@ -453,6 +458,56 @@
       </div>
     </div>
   </div>
+<div id="accountModal" class="account-overlay" role="dialog" aria-modal="true"
+ aria-labelledby="accountModalTitle" hidden>
+  <section class="account-dialog">
+    <header class="account-heading">
+      <div><small>CRAFTRACE STUDIO</small><h2 id="accountModalTitle">Mi cuenta</h2></div>
+      <button id="accountClose" type="button" aria-label="Cerrar mi cuenta">✕</button>
+    </header>
+    <p id="accountNotice" class="account-notice" role="status" aria-live="polite">El juego puede utilizarse sin registrarse.</p>
+    <div id="accountSignedOut">
+      <p class="account-hint">Usa la misma cuenta de Top Down RACE para conservar tu identidad. Si todavía tienes allí una partida anónima, vincúlala primero desde TDR.</p>
+      <div class="account-social">
+        <button id="accountGoogle" type="button"><span aria-hidden="true">G</span> Continuar con Google</button>
+        <button id="accountApple" type="button"><span aria-hidden="true">●</span> Continuar con Apple</button>
+      </div>
+      <div class="account-divider"><span>O ENTRA CON TU CORREO</span></div>
+      <form id="accountLoginForm" class="account-form">
+        <label for="accountEmail">Correo electrónico</label>
+        <input id="accountEmail" type="email" autocomplete="email" inputmode="email" required placeholder="tu@email.com">
+        <label for="accountPassword">Contraseña</label>
+        <input id="accountPassword" type="password" autocomplete="current-password" minlength="10" maxlength="128" required placeholder="Mínimo 10 caracteres">
+        <button type="submit" class="account-primary">Entrar con mi cuenta</button>
+      </form>
+      <button id="accountSignup" class="account-alt" type="button">Crear cuenta con este correo</button>
+      <p class="account-hint">Si es tu primera vez, recibirás un correo de confirmación cuando el servidor lo requiera. Google y Apple necesitan los proveedores y las redirecciones configurados en Supabase.</p>
+    </div>
+    <div id="accountClaim" hidden>
+      <p class="account-hint">Tu identidad está verificada. Elige un apodo público único para CraftRace Studio, válido en nuestros juegos.</p>
+      <form id="accountClaimForm" class="account-form">
+        <label for="accountNickname">Mi nombre de piloto y constructor</label>
+        <input id="accountNickname" type="text" required minlength="3" maxlength="24"
+          pattern="[A-Za-z0-9_-]{3,24}" autocomplete="off" autocapitalize="off"
+          spellcheck="false" placeholder="Tu apodo único">
+        <small>Entre 3 y 24 caracteres: letras sin tildes, números, - y _.</small>
+        <button class="account-primary" type="submit">Registrar mi nombre</button>
+      </form>
+    </div>
+    <div id="accountConnected" hidden>
+      <div class="account-identity"><span aria-hidden="true">♙</span><div>
+        <strong id="accountCurrentNick"></strong>
+        <small id="accountEmailDisplay"></small>
+      </div></div>
+      <p class="account-hint">Cuenta CraftRace Studio activa. El perfil de SlotRace se guarda en la base de datos, separado del progreso de TDR.</p>
+      <div class="account-local"><strong id="accountLocalCircuitCount">0 circuitos guardados aquí</strong>
+        <small>Estos circuitos todavía no están en la nube. No desinstales la PWA ni borres sus datos.</small></div>
+      <button id="accountSignOut" type="button" class="account-alt">Cerrar sesión</button>
+    </div>
+    <button id="accountRetry" type="button" class="account-retry">Comprobar conexión y sesión</button>
+    <p class="account-hint account-footnote">Sin compras, sin subir circuitos y sin sustituir ninguna partida. Los datos de cada juego permanecen separados.</p>
+  </section>
+</div>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
 <script>
@@ -464,6 +519,7 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.48"></script>
+<script type="module" src="./src/app.mjs?v=0.14.49"></script>
+<script type="module" src="./src/account.mjs?v=0.14.49"></script>
 </body>
 </html>

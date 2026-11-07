@@ -2521,3 +2521,62 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(min-width:700px){
  .builder-workbench #boardGapInfo:not([hidden]){right:185px!important;top:148px!important}
 }
+
+/* DEV 0.14.49 — Cuenta compartida CraftRace Studio.
+   Los controles de identidad nunca bloquean el modo invitado. */
+.account-overlay{position:fixed;inset:0;z-index:1500;background:#06121ddc;
+ display:flex;align-items:center;justify-content:center;
+ padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px))
+ max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.account-overlay[hidden],.account-overlay [hidden]{display:none!important}
+.account-dialog{width:min(100%,540px);max-height:100%;overflow:auto;background:#fff;
+ border:1px solid #c9d8e0;border-radius:19px;padding:18px;color:#1b2939;
+ box-shadow:0 18px 60px #0008}
+.account-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.account-heading small{font-size:11px;color:#0c8d80;font-weight:1000;letter-spacing:1.2px}
+.account-heading h2{font-size:29px;line-height:1.1;margin:3px 0 0;font-weight:1000}
+#accountClose{width:42px;height:42px;border-radius:12px;border:1px solid #d7dfe5;
+ background:#f3f6f8;color:#243a49;font-size:20px}
+.account-notice{background:#eaf8f5;border:1px solid #b7e5d7;color:#086e5c;
+ border-radius:10px;padding:11px 12px;font-size:13px;font-weight:750;line-height:1.45;
+ margin:17px 0 13px}
+.account-notice.is-error{background:#fff1ee;color:#9b1a24;border-color:#f3c7be}
+.account-hint{font-size:12px;color:#596c7a;line-height:1.55;margin:11px 0}
+.account-social{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:17px 0}
+.account-social button{display:flex;align-items:center;justify-content:center;gap:7px;
+ min-width:0;min-height:47px;border:1px solid #d2dbe4;border-radius:11px;
+ background:#f6f8fb;color:#182c3a;font-weight:850;font-size:12px;padding:8px}
+.account-social button span{font-weight:1000;font-size:19px}
+.account-divider{border-bottom:1px solid #dfe4e8;margin:24px 0 20px;position:relative;
+ text-align:center;height:1px}
+.account-divider span{background:#fff;padding:0 9px;position:relative;top:-9px;
+ color:#607586;font-size:10px;font-weight:900;letter-spacing:.8px}
+.account-form{display:grid;gap:9px}
+.account-form label{font-weight:850;font-size:12px;color:#314454}
+.account-form input{width:100%;min-height:46px;border-radius:10px;border:1px solid #cbd6df;
+ padding:11px 13px;background:#f8fafb;color:#172939;font-size:15px}
+.account-form input:focus-visible{outline:3px solid #2acaae;outline-offset:1px}
+.account-form small{font-size:11px;line-height:1.4;color:#6d8190}
+.account-primary{min-height:48px;padding:12px 16px;margin-top:8px;border:1px solid #bc0b31;
+ border-radius:11px;color:#fff;background:linear-gradient(135deg,#e62349,#b90029);
+ font-weight:950;font-size:14px}
+.account-alt,.account-retry{min-height:42px;width:100%;border:1px solid #d1dae2;
+ border-radius:10px;background:#f6f8fa;color:#22374a;font-weight:800;
+ padding:9px;margin-top:10px;font-size:12px}
+.account-retry{margin-top:15px}
+.account-identity{display:flex;gap:14px;align-items:center;background:#effaf7;
+ border:1px solid #cce9e1;padding:15px;border-radius:13px}
+.account-identity>span{width:48px;height:48px;display:grid;place-items:center;
+ border-radius:13px;background:#0e8778;color:#fff;font-size:28px}
+.account-identity strong{display:block;font-size:18px;overflow-wrap:anywhere}
+.account-identity small{display:block;color:#607988;font-size:12px;margin-top:3px}
+.account-local{display:grid;gap:4px;padding:12px;border-radius:12px;background:#f4f6f9;
+ border:1px solid #dce4e9}
+.account-local strong{color:#1b3645}
+.account-local small{font-size:11px;color:#687b89;line-height:1.45}
+.account-footnote{border-top:1px solid #e2e9ef;padding-top:12px;margin-top:14px}
+.account-dialog button:disabled{opacity:.55;cursor:wait}
+@media(max-width:360px){.account-dialog{padding:13px}
+ .account-heading h2{font-size:25px}
+ .account-social{grid-template-columns:1fr}
+}
