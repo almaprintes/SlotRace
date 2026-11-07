@@ -703,7 +703,7 @@ const path=require("node:path");
  // El cambio no requiere pausa, mantiene la pieza y la velocidad,
  // anima el coche, mueve la cámara y protege los récords de cada carril.
  const laneBadge=elements.get("laneIndicator");
- assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane),
+ assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane).toUpperCase(),
   "La insignia muestra el carril ocupado antes del cambio");
  const laneBtn=elements.get("lane");
  assert.equal(laneBtn.disabled,false,"Carril disponible incluso con carrera activa");
@@ -713,7 +713,7 @@ const path=require("node:path");
  laneBtn.listeners.click[0]();
  assert.equal(st.run,false,"Cambiar no modifica la pausa");
  assert.equal(st.lane,1-oldLane);
- assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane),
+ assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane).toUpperCase(),
   "Al cambiar de carril se actualiza el texto permanente del HUD");
  assert.equal(st.speed,oldSpeed,"Velocidad conservada");
  assert.equal(st.seconds,12.345,"Cronómetro conservado");
