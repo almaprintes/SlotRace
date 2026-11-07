@@ -29,6 +29,7 @@ export const CATALOG=Object.freeze(Object.fromEntries(
   ...(s.kind==="straight"?{length:s.length}:{radius:s.radius,angle:s.angle}),
   stock:s.kind==="straight"?8:12,group:s.kind==="straight"?"recta":"curva",
   virtualMicroAdapter:Boolean(s.virtualMicroAdapter),
+  laneChanger:Boolean(s.laneChanger),
   legacy:Boolean(s.legacy),
   radiusId:s.radiusId||null,degrees:s.degrees||0
  })])
@@ -53,6 +54,7 @@ const norm=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export const UNLIMITED_DEVELOPMENT_STOCK=true;
 export function stockLimit(id){
  if(!CATALOG[id])return 0;
+ if(CATALOG[id].laneChanger)return 1;
  return UNLIMITED_DEVELOPMENT_STOCK?Infinity:CATALOG[id].stock;
 }
 export function allowed(types){
@@ -238,7 +240,8 @@ export function buildTrack(types,origin=START,raisedParts=[]){
     errors:elevation.errors
    }:null;
    const lanes=[laneData(points,-LANE_OFFSET),laneData(points,LANE_OFFSET)];
-   return{parts,types:[...types],points,lanes,closed,onTable,intersection,crossings,bridge,elevation,
+ const laneChangerIndex=types.indexOf("X350");
+   return{parts,types:[...types],points,lanes,laneChangerIndex,closed,onTable,intersection,crossings,bridge,elevation,
      valid:closed&&onTable&&elevation.valid&&safeCrossings.length===crossings.length,
      ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,bounds,board,
