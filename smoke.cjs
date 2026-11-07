@@ -281,7 +281,7 @@ assert.match(app,/function resetFollowCamera\(\)/);
 assert.match(app,/cameraMode:state.cameraMode/);
 assert.match(css,/\.shop-blueprint-art/);
 assert.match(app,/function shopBlueprintSvg\(/);
-assert.match(app,/const frame=\{x:x\+13,y:313/,
+assert.match(app,/const frame=\{x:x\+13,y:353/,
  "El área del plano comienza debajo del nombre");
 assert.match(app,/const radii=\[21,18,15,12\]/,
  "Identificadores adaptativos en curvas muy juntas");
