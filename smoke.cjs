@@ -7,6 +7,14 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
+const groundBase=app.slice(app.indexOf("function paintGroundTrack("),
+ app.indexOf("// Rayos X:"));
+assert.match(groundBase,/paintContinuousTrack\(ctx,track,editing\)/,
+ "El suelo y las rampas deben compartir una base visual continua");
+const sceneBody=app.slice(app.indexOf("function renderScene("),
+ app.indexOf("function screenToWorld("));
+assert.doesNotMatch(sceneBody,/paintElevationJoins\(/,
+ "No permitir un parche de conectores por encima del puente");
 assert.equal(Object.keys(CATALOG).length,27);
 assert.equal(Object.keys(PARTS).length,27);
 assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,16);
@@ -199,5 +207,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.28 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.29 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

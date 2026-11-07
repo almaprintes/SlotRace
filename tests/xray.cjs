@@ -93,12 +93,16 @@ const fs=require("node:fs"),path=require("node:path");
   assert.equal(join.points.length,before.points.length+after.points.length-1,
    "El asfalto se pinta como una sola ruta sin dos extremos en la frontera");
  }
- const clipsBefore=clips.length;
- game.rendering.paintElevationJoins(ctx,track);
- assert.equal(clips.length-clipsBefore,2,
-  "Una soldadura de render localizada por frontera sin recortar las curvas");
- assert.match(source,/paintElevationJoins\(ctx,track\)/,
-  "La pasada de soldadura se aplica también durante la carrera");
+ const baseBefore=strokes.length;
+ game.rendering.paintGroundTrack(ctx,track,false);
+ assert.ok(strokes.length>baseBefore,
+  "La base geométrica se pinta como una sola pista continua");
+ assert.match(source,/function paintGroundTrack\(ctx,track,editing\)\{[\s\S]*?paintContinuousTrack\(ctx,track,editing\);/,
+  "La base del circuito debe usar la trayectoria única completa");
+ const renderBody=source.slice(source.indexOf("function renderScene("),
+  source.indexOf("function screenToWorld("));
+ assert.doesNotMatch(renderBody,/paintElevationJoins\(/,
+  "No puede haber parches de juntas dibujados encima de otros niveles");
  const polygons=game.rendering.xRayDeckPolygons(track);
  assert.ok(polygons.length===1&&polygons[0].length>25);
  assert.strictEqual(game.rendering.xRayDeckPolygons(track),polygons,"Máscara cacheada");
@@ -163,5 +167,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.28: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.29: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

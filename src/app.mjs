@@ -2892,13 +2892,10 @@ function paintFinishLine(ctx,track){
  ctx.restore();
 }
 function paintGroundTrack(ctx,track,editing){
- if(!track.bridge){paintContinuousTrack(ctx,track,editing);return;}
- for(const run of groundDeckRuns(track))paintOpaqueRibbon(ctx,run.points);
- if(editing){
-  for(const part of track.parts)if(!track.elevation?.profiles?.[part.index])
-   paintSeam(ctx,part.start);
- }
- if(!track.elevation?.profiles?.[0])paintFinishLine(ctx,track);
+ // Base continua: suelo, rampas y curvas comparten la misma superficie.
+ // Separar los niveles en pasadas creaba terminaciones transversales.
+ // Después se superpone únicamente la cubierta elevada para la oclusión.
+ paintContinuousTrack(ctx,track,editing);
 }
 // Rayos X: solo mostrar lo que queda realmente tapado por una cubierta.
 // La máscara usa el CONTORNO de cada plataforma completa, no pequeños
@@ -3039,23 +3036,6 @@ function elevationJoins(track){
  }
  elevationJoinCache.set(track,joins);
  return joins;
-}
-function paintElevationJoins(ctx,track){
- const joins=elevationJoins(track);
- for(const join of joins){
-  ctx.save();
-  ctx.translate(join.x,join.y);ctx.rotate(join.h);
-  // El recorte SOLO afecta al punto de conexión. El trazado repintado
-  // lleva continuidad en asfalto, bordes y ambos carriles antes/después.
-  // Los extremos de esta pequeña ventana se superponen a una textura
-  // idéntica: no se añade un borde o una línea transversal nueva.
-  ctx.beginPath();
-  ctx.rect(-64,-(TRACK_WIDTH+26)/2,128,TRACK_WIDTH+26);
-  ctx.clip();
-  ctx.rotate(-join.h);ctx.translate(-join.x,-join.y);
-  paintOpaqueRibbon(ctx,join.points);
-  ctx.restore();
- }
 }
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
@@ -3941,7 +3921,6 @@ function renderScene(canvas,mode){
   // El repintado localizado por recortes añadía nuevos artefactos al
   // coincidir con bordes y curvas; queda fuera de la pasada de carrera.
   paintElevatedDeck(ctx,track);
-  paintElevationJoins(ctx,track);
   // Las guías de inclinación sólo son necesarias en Construir.
   // En carrera cruzaban la calzada como marcas y raíles duplicados.
   if(mode==="build")for(const index of track.elevation?.raisedParts||[]){
@@ -4430,12 +4409,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.28",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.29",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,paintElevationJoins,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

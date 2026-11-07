@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.29 · Base sin cortes y oclusión estable
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.29
+
+- **Base continua:** suelo, curvas y rampas se dibujan en una sola trayectoria; no se crean extremos artificiales en los conectores.
+- **Orden de visibilidad:** el coche que circula abajo se dibuja antes de la cubierta elevada y el superior después; se elimina el parche rectangular de uniones que podía tapar cubiertas.
+- **Datos intactos:** sin cambios en geometrías, perfil de altura, recetas, físicas ni guardados.
+- **Importante:** la inspección visual en iPhone queda pendiente. Los tests automáticos no equivalen a verla correctamente en el dispositivo.
+
+---
+
 # SlotRace DEV 0.14.28 · Rayos X con silueta de deportivo y carriles holográficos
 
 **Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.28
