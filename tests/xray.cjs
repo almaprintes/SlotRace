@@ -119,7 +119,7 @@ const fs=require("node:fs"),path=require("node:path");
    label+": las carreras no muestran juntas");
  };
  checkSeams(track,"Doble óvalo");
- // La extensión de 52 mm de la DEV 0.14.32 se retiró porque
+ // La extensión de 52 mm de la DEV 0.14.33 se retiró porque
  // repintaba asfalto encima de la curva de suelo junto a su rampa.
  const deck=game.rendering.elevatedDeckRuns(track)[0];
  assert.ok(!("paintPoints" in deck)&&!("paintOffsets" in deck),
@@ -222,13 +222,60 @@ const fs=require("node:fs"),path=require("node:path");
   assert.ok(polygons.some(p=>inside(at,p)),
    "La curva inferior queda bajo la cubierta en t="+fraction);
  }
- // Ninguno de los dos conectores suelo/rampa puede quedar dentro de
- // la segunda pasada de asfalto: son exactamente los puntos denunciados.
- for(const join of transitions){
-  const point={x:join.x,y:join.y};
-  assert.ok(!cover.some(poly=>inside(point,poly)),
-   "La cubierta del cruce no alcanza la frontera "+join.from+"→"+join.to);
+ // Regresión de DEV 0.14.33: el recorte acababa 40 mm ANTES
+ // del conector porque creía que esa zona no contenía cruces.
+ // Sin embargo, el otro tramo elevado cruza por encima JUSTO allí.
+ // Comprobar ambos carriles, antes/después de cualquier t de cruce,
+ // incluso cuando t=0 o t=1 y la vía inferior es una rampa.
+ const withinMask=point=>cover.some(poly=>inside(point,poly));
+ const coverageAt=(part,t,off=0)=>{
+  const p=geo.positionOnPiece(part.start,part.id,t);
+  return withinMask({x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off});
+ };
+ for(const cross of track.bridge.crossings){
+  const part=track.parts[cross.lower];
+  const t=Math.max(.005,Math.min(.995,cross.lowerT));
+  for(const dt of [-.012,0,.012]){
+   const sample=Math.max(.005,Math.min(.995,t+dt));
+   for(const offset of [-geo.LANE_OFFSET,0,geo.LANE_OFFSET]){
+    assert.ok(coverageAt(part,sample,offset),
+     "El nivel superior cubre el carril inferior "+cross.lower+
+     " en t="+sample.toFixed(3)+" off="+offset);
+   }
+  }
  }
+ // Casos de las capturas: el último centímetro de una recta de suelo
+ // y la rampa siguiente también están protegidos, sin truncar 40 mm.
+ assert.ok(coverageAt(track.parts[2],.995),
+  "Cruce al final de la recta inferior, delante del conector suelo/rampa");
+ assert.ok(coverageAt(track.parts[3],.005),
+  "La rampa que comienza bajo otro puente también tiene oclusión");
+ // Una curva inferior coincidente durante su arco completo necesita
+ // una máscara completa, no una ventana en cada centro de cruce.
+ for(const t of [.02,.15,.5,.85,.98]){
+  assert.ok(coverageAt(track.parts[13],t,geo.LANE_OFFSET),
+   "Curva inferior coincidente: carril cubierto a lo largo de t="+t);
+ }
+ // No depender de la receta exacta: el Ocho básico y los trazados
+ // renumerados mantienen la misma regla de oclusión.
+ const otherBridges=[rotated,geo.buildTrack(geo.FIGURE_EIGHT),
+  geo.buildTrack([...geo.FIGURE_EIGHT.slice(7),...geo.FIGURE_EIGHT.slice(0,7)],
+   geo.START,[0])];
+ for(const variant of otherBridges){
+  const covers=game.rendering.crossingClipPolygons(variant);
+  assert.ok(covers.length>0,"La variante válida tiene huellas inferiores");
+  for(const cross of variant.bridge.crossings){
+   const part=variant.parts[cross.lower];
+   const t=Math.max(.005,Math.min(.995,cross.lowerT));
+   const p=geo.positionOnPiece(part.start,part.id,t);
+   for(const off of [-geo.LANE_OFFSET,0,geo.LANE_OFFSET]){
+    assert.ok(covers.some(poly=>inside({
+     x:p.x-Math.sin(p.h)*off,y:p.y+Math.cos(p.h)*off
+    },poly)), "No enseñar raíles inferiores en otros circuitos");
+   }
+  }
+ }
+
  const visible=geo.positionOnPiece(track.parts[1].start,track.parts[1].id,.5);
  assert.ok(!polygons.some(poly=>inside(visible,poly)),
   "No marcar como ocultos carriles a la vista");
@@ -263,5 +310,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.32: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.33: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

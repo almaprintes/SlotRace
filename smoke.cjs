@@ -39,6 +39,12 @@ const crossingClip=app.slice(app.indexOf("function crossingClipPolygons("),
  app.indexOf("function paintElevatedDeck("));
 assert.match(crossingClip,/track\.bridge\?\.crossings/,
  "La oclusión utiliza únicamente cruces geométricos verificados");
+assert.match(crossingClip,/groundDeckRuns\(track\)/,
+ "La máscara superior debe cubrir toda la huella de la pista inferior");
+assert.match(crossingClip,/profileLower/,
+ "Las rampas también pueden pasar por debajo de otro tramo elevado");
+assert.doesNotMatch(crossingClip,/40\/length|margin=Math\.min|Math\.min\(\.24/,
+ "No volver a truncar el recorte 40 mm antes de un conector");
 const elevatedPainter=app.slice(app.indexOf("function paintElevatedDeck("),
  app.indexOf("// Reglas de oclusión por INTERSECCIÓN"));
 assert.match(elevatedPainter,/ctx\.clip\(\)/,
@@ -132,7 +138,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.32/);
+assert.match(html,/DEV 0\.14\.33/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -238,5 +244,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.32 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.33 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -3052,43 +3052,44 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.32.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.33.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
 function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
- const intervals=new Map(),profiles=track.elevation?.profiles||[];
- for(const cross of track.bridge?.crossings||[]){
-  const part=track.parts[cross.lower],t=cross.lowerT;
-  if(!part||!Number.isFinite(t))continue;
-  if(!intervals.has(part.index))intervals.set(part.index,[]);
-  intervals.get(part.index).push(Math.max(0,Math.min(1,t)));
- }
- const polygons=[];
- for(const [index,positions] of intervals){
-  const part=track.parts[index],spec=CATALOG[part.id];
-  const length=spec.length||spec.radius*Math.abs(spec.angle);
-  if(!(length>0))continue;
-  // El margen cubre la anchura del paso superior, sin usar rectángulos
-  // arbitrarios que corten o descubran las curvas del nivel inferior.
-  const margin=Math.min(.5,(TRACK_WIDTH+85)/length);
-  let from=Math.max(0,Math.min(...positions)-margin);
-  let to=Math.min(1,Math.max(...positions)+margin);
-  const previous=index>0?index-1:track.closed?track.parts.length-1:-1;
-  const next=index+1<track.parts.length?index+1:track.closed?0:-1;
-  // Nunca repintar el propio conector suelo/rampa: la pasada base ya
-  // ha dibujado una sola superficie continua en esa frontera.
-  if(previous>=0&&Boolean(profiles[previous])!==Boolean(profiles[index]))
-   from=Math.max(from,Math.min(.24,40/length));
-  if(next>=0&&Boolean(profiles[next])!==Boolean(profiles[index]))
-   to=Math.min(to,1-Math.min(.24,40/length));
-  if(to-from<.001)continue;
-  const count=Math.max(3,Math.ceil((to-from)*length/13));
-  const points=Array.from({length:count+1},(_,k)=>
-   positionOnPiece(part.start,part.id,from+(to-from)*k/count));
-  const half=TRACK_WIDTH/2+13;
-  polygons.push([...translated(points,half),...translated(points,-half).reverse()]);
+ const crossings=track.bridge?.crossings||[];
+ if(!crossings.length){crossingClipCache.set(track,[]);return [];}
+ // El fallo de DEV 0.14.33 venía de recortar la pista inferior a
+ // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
+ // se solapan mucho antes/después de que crucen sus ejes, y algunos
+ // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
+ // un recorte artificial de 40 mm en el inicio/fin de una rampa.
+ // La máscara correcta es toda la huella de las pistas INFERIORES:
+ // así no hay discontinuidades ni siquiera en curvas coincidentes.
+ const half=TRACK_WIDTH/2+18;
+ const polygonFor=points=>{
+  if(points.length<2)return null;
+  const left=translated(points,half);
+  const right=translated(points,-half).reverse();
+  return[...left,...right];
+ };
+ // Cada tramo continuo de suelo usa una sola huella, sin tapas
+ // independientes en los conectores. En trazados cerrados también
+ // funciona cuando el tramo atraviesa el índice 0.
+ const polygons=groundDeckRuns(track)
+  .map(run=>polygonFor(run.points)).filter(Boolean);
+ // Una rampa también puede ser la vía INFERIOR de otro cruce:
+ // p. ej. el conector de la recta que sube bajo otra pista a 65 mm.
+ // No podemos excluirla por tener perfil de elevación.
+ const profileLower=new Set(crossings.map(c=>c.lower)
+  .filter(i=>track.elevation?.profiles?.[i]));
+ for(const index of profileLower){
+  const part=track.parts[index];
+  if(part){
+   const poly=polygonFor(part.points);
+   if(poly)polygons.push(poly);
+  }
  }
  crossingClipCache.set(track,polygons);
  return polygons;
@@ -4485,7 +4486,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.32",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.33",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

@@ -1,6 +1,19 @@
-# SlotRace DEV 0.14.32 · Eliminar el doble dibujo en las uniones suelo/rampa
+# SlotRace DEV 0.14.33 — Cobertura completa en cruces de diferente altura
 
-**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.32
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.33
+
+- **Regresión de DEV 0.14.32 corregida:** ya no se corta la máscara 40 mm antes de los conectores. Era precisamente donde un tramo superior podía cruzar por encima de la curva o recta inferior.
+- **Huella de la pista inferior:** los raíles, bordes y coche inferiores quedan cubiertos cuando existe una vía superior, incluidos los cruces en extremos de módulos, curvas coincidentes o rampas que pasan bajo otro tramo elevado.
+- **Conectores del suelo a la rampa:** mantienen el asfalto continuo y sin repintar la carretera elevada completa encima de la unión.
+- **Validación:** casos de Doble óvalo, Ocho, ocho con piezas renumeradas, ambos carriles y extremos de piezas; no se cambian físicas, niveles de altura, perfiles, tiempos, recetas ni guardados.
+
+**La revisión visual final todavía se debe realizar en iPhone; que las pruebas pasen no sustituye esa comprobación.**
+
+---
+
+# SlotRace DEV 0.14.33 · Eliminar el doble dibujo en las uniones suelo/rampa
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.33
 
 - **Corrección de la DEV 0.14.31:** se eliminan los 52 mm de solape que agravaban la unión entre la curva a ras de suelo y la recta elevada.
 - **Una sola superficie en los conectores:** el trazado original ya dibuja asfalto, carriles y bordes continuos. No se vuelve a pintar un tramo elevado entero en los conectores.
