@@ -65,6 +65,7 @@ const EPS=1e-7;
 export const FORCE_CLOSE_MM=10;
 export const STRICT_CLOSE_MM=3;
 // Las uniones internas de cada módulo siguen siendo matemáticamente exactas.
+const SNAP_MM=FORCE_CLOSE_MM; // Búsquedas de cierres y compensaciones
 const SNAP_RAD=Math.PI/180; // 1 grado máximo.
 export function closureWithinFlex(gap,headingGap,pieceCount){
  return pieceCount>=4&&Number.isFinite(gap)&&gap<FORCE_CLOSE_MM&&gap>=0&&
@@ -299,7 +300,7 @@ export function buildTrack(types,origin=START,raisedParts=[]){
      valid:closed&&onTable&&elevation.valid&&types.filter(id=>id==="X350").length<=1&&safeCrossings.length===crossings.length,
      ends:{begin:{...origin},end:closed?{...origin}:{...pose}},
     gap,headingGap,forcedClosure,closureToleranceMm:FORCE_CLOSE_MM,bounds,board,
-    connectorAligned:gap<=SNAP_MM&&headingGap<=SNAP_RAD,
+    connectorAligned:gap<FORCE_CLOSE_MM&&headingGap<=SNAP_RAD,
     nearConnection:gap<=TRACK_WIDTH&&types.length>=4,
     length:lanes.reduce((acc,l)=>acc+l.total,0)/2};
 }
