@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.36");
+ assert.equal(game.version,"DEV 0.14.37");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -384,8 +384,16 @@ const path=require("node:path");
  assert.equal(elements.get("resultsScreen").hidden,false);
  assert.equal(elements.get("resultsLaps").children.length,4);
  const lapRows=elements.get("resultsLaps").children;
- assert.match(lapRows[1].className,/is-best-left/,"La mejor izquierda queda azul");
- assert.match(lapRows[3].className,/is-best-right/,"La mejor derecha queda rosa");
+ assert.match(lapRows[1].className,/is-best-right/,"El índice lógico 0 corresponde al Carril B del ocho");
+ assert.match(lapRows[3].className,/is-best-left/,"El índice lógico 1 corresponde al Carril A del ocho");
+ assert.equal(game.lanes.laneAIndex(),1,"El primer giro a derechas define el interior en meta");
+ assert.equal(game.lanes.laneLabel(0),"Carril B");
+ assert.equal(game.lanes.laneLabel(1),"Carril A");
+ const resultLaneTiles=elements.get("resultsStats").children[0].children;
+ assert.equal(resultLaneTiles[0].children[0].textContent,"Mejor Carril A");
+ assert.equal(resultLaneTiles[0].children[1].textContent,"8,266 s");
+ assert.equal(resultLaneTiles[1].children[0].textContent,"Mejor Carril B");
+ assert.equal(resultLaneTiles[1].children[1].textContent,"15,200 s");
  assert.doesNotMatch(lapRows[0].className,/is-best-/,"La vuelta inicial no se resalta si luego fue superada");
  assert.doesNotMatch(lapRows[2].className,/is-best-/,"Otra vuelta del mismo carril no se resalta");
  assert.equal(lapRows[1].children[2].children[0].textContent,"MEJOR DEL CARRIL");
@@ -416,6 +424,11 @@ const path=require("node:path");
   "Primero los tiempos actuales de Gripline y sentido horario");
  assert.equal(savedVariants[0].combined,23.466,
   "El combinado usa los dos carriles de la misma variante");
+ assert.deepEqual(savedVariants[0].times,[15.2,8.266],
+  "La nueva nomenclatura no reescribe los índices antiguos");
+ assert.equal(game.lanes.laneAIndex(savedVariants[0].types,1),1);
+ assert.equal(game.lanes.laneAIndex(savedVariants.find(v=>v.reverse).types,-1),0,
+  "En sentido contrario Carril A sigue en la misma guía física");
  assert.ok(savedVariants.some(v=>v.physics===1&&v.car==="spark"),
   "Los tiempos históricos del Spark siguen accesibles");
  assert.ok(savedVariants.some(v=>v.reverse&&v.physics===2),
@@ -433,6 +446,11 @@ const path=require("node:path");
  const recordCard=recordCards.find(card=>card.children[0].children[0].children[0].textContent==="Ocho de pruebas");
  assert.ok(recordCard,"La ficha de récords conserva el nombre del circuito");
  assert.equal(recordCard.children.length,4,"Tres variantes diferenciadas");
+ const currentCells=recordCard.children[1].children[2].children;
+ assert.equal(currentCells[0].children[0].textContent,"Carril A");
+ assert.equal(currentCells[0].children[1].textContent,"8,266 s");
+ assert.equal(currentCells[1].children[0].textContent,"Carril B");
+ assert.equal(currentCells[1].children[1].textContent,"15,200 s");
  assert.equal(recordCard.children[1].children[2].children[2].children[1].textContent,
   "23,466 s","Combinado correctamente formateado");
  assert.match(recordCard.children[3].children[1].textContent,/histórico/);
@@ -727,12 +745,12 @@ const path=require("node:path");
  assert.equal(game.inventoryAction("X350"),false,
   "No se admite una segunda PT/82");
  assert.equal(game.openRace(),true);
- assert.equal(st.lane,0,"La prueba PT/82 inicia obligatoriamente en A");
+ assert.equal(st.lane,game.lanes.laneAIndex(),"La prueba PT/82 comienza en el Carril A interior");
  assert.equal(elements.get("lane").hidden,true,"El cambio manual desaparece");
  assert.equal(game.lanes.switchLane(),false,"Cambio manual bloqueado también por código");
  st.raceStarted=true;st.gas=.85;st.speed=300;st.run=true;st.distance=0;
  game.physics.simulationStep(.03);
- assert.equal(st.lane,1,"La PT/82 cambia de A a B al entrar");
+ assert.equal(st.lane,1-game.lanes.laneAIndex(),"La PT/82 cambia de A a B al entrar");
  assert.equal(st.x350Crossings,1);
  assert.equal(st.laneTransition.physical,true);
  const crossover=game.lanes.displayDrivingPose();
@@ -742,7 +760,7 @@ const path=require("node:path");
  game.completeLap();
  assert.equal(st.x350FirstLap,10.125);
  assert.equal(st.sessionLaps.length,0,"Solo una vuelta: aún no hay récord");
- st.seconds=9.375;st.x350Crossings=1;st.lane=0;
+ st.seconds=9.375;st.x350Crossings=1;st.lane=game.lanes.laneAIndex();
  game.completeLap();
  assert.equal(st.sessionLaps.length,1);
  assert.equal(st.sessionLaps[0].seconds,19.5,
@@ -755,5 +773,5 @@ const path=require("node:path");
  const lastMetric=elements.get("resultsStats").children.at(-1);
  assert.equal(lastMetric.children[0].textContent,"Mejor doble vuelta PT/82");
  assert.match(lastMetric.children[1].textContent,/19,500/);
- console.log("SlotRace DEV 0.14.36: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.37: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

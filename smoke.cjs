@@ -7,6 +7,11 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
+assert.match(app,/laneLabel\(state\.lane\)/,
+ "El HUD muestra Carril A/B y no etiquetas relativas al sentido");
+assert.match(app,/const a=laneAIndex\(\)/,
+ "Los tiempos se ordenan según la ranura interior de salida/meta");
+
 assert.doesNotMatch(app,/Pausa primero para cambiar de carril/,
  "El cambio de carril no puede exigir pausa");
 assert.match(app,/state\.laneTransition=\{from,elapsed:0,duration:LANE_CHANGE_SECONDS\}/,
@@ -151,7 +156,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.36/);
+assert.match(html,/DEV 0\.14\.37/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -262,5 +267,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.36 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.37 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

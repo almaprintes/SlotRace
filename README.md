@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.37 · Carril A / Carril B
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.37
+
+- **Carril A:** ranura interior en la línea de salida/meta; **Carril B:** la otra ranura. La referencia geométrica es el primer giro después de meta, incluso en circuitos con bucles opuestos.
+- La designación física no cambia al invertir el sentido horario/antihorario. El HUD, botón Cambiar, resultados por vuelta y biblioteca de récords muestran A/B correctamente.
+- **Sin migración destructiva:** las claves de récords antiguas y sus arrays [0,1] siguen intactos; los tiempos se ordenan en pantalla según la ranura real y el sentido registrado.
+- **PT/82:** la salida de prueba se fija en Carril A interior; el récord de dos vueltas utiliza clave v2, independiente de las pruebas antiguas que podían arrancar en otra ranura.
+- Sin modificaciones en geometrías, físicas, Rayos X, puentes, recetas ni partidas locales.
+
+**Por validar en iPhone:** lectura de A/B en meta y cambio de nomenclatura al seleccionar el sentido inverso.
+
+---
+
 # SlotRace DEV 0.14.36 · PT/82 en Especiales
 
 **DEV:** https://almaprintes.github.io/SlotRace/?v=0.14.36

@@ -58,5 +58,5 @@ const assert=require("node:assert/strict");
  assert.equal(bridge.bridge.crossings.length,1);
  assert.equal(bridge.bridge.crossings[0].clearance,65);
  assert.equal(bridge.bridge.crossings[0].upper,0);
- console.log("SlotRace DEV 0.14.36: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
+ console.log("SlotRace DEV 0.14.37: curvas elevadas, rampas C1, validación de cruces y compatibilidad — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

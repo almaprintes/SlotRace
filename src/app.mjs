@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis} from "./track.mjs";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
@@ -168,6 +168,15 @@ const recKey=()=>(state.activeCircuitId?"library-"+state.activeCircuitId+"-":"")
  state.types.join("-")+(state.driveDirection===-1?"-reverse":"")+
   "-rear-physics-v4"+(state.selectedCar==="spark"?"-helix-spark":"");
 const record=()=>{const v=state.records[recKey()];return Array.isArray(v)&&v.length===2?v:[null,null];};
+ // La etiqueta depende de la ranura INTERIOR en meta y no de izquierda/derecha.
+ // Los índices numéricos de los récords originales permanecen inalterados.
+ const laneAIndex=(types=state.types,direction=state.driveDirection)=>
+  laneAIndexAtFinish(types,direction);
+ const laneLabel=(logical,types=state.types,direction=state.driveDirection)=>
+  logical===laneAIndex(types,direction)?"Carril A":"Carril B";
+ const laneLetter=(logical,types=state.types,direction=state.driveDirection)=>
+  logical===laneAIndex(types,direction)?"A":"B";
+
 function toast(text){state.notice=text;state.noticeUntil=performance.now()+2600;$("toast").textContent=text;$("toast").classList.add("show");}
 // La fotografía es un recurso del jugador, nunca parte de las físicas.
 // Se guarda en IndexedDB para no agotar localStorage con fotos; fallback
@@ -562,7 +571,9 @@ function savedCircuitRecords(item){
   const reverse=signature.endsWith("-reverse");
   if(reverse)signature=signature.slice(0,-"-reverse".length);
   const currentGeometry=signature===currentShape;
-  variants.push({key,car,reverse,physics,currentGeometry,times,
+  const keyTypes=signature.split("-");
+  const variantTypes=keyTypes.every(id=>CATALOG[id])?keyTypes:item.snapshot.types;
+  variants.push({key,car,reverse,physics,currentGeometry,types:variantTypes,times,
    combined:times.every(value=>value!==null)?times[0]+times[1]:null});
  }
  variants.sort((a,b)=>Number(b.currentGeometry)-Number(a.currentGeometry)||
@@ -616,12 +627,14 @@ function renderLibraryRecords(){
     generation+(entry.currentGeometry?"":" · Trazado anterior")));
    const times=document.createElement("div");
    times.className="library-record-times";
-   for(const [index,label] of ["Izquierda","Derecha"].entries()){
+   const innerIndex=laneAIndex(entry.types,entry.reverse?-1:1);
+   for(const [index,label] of ["Carril A","Carril B"].entries()){
+    const recordIndex=index===0?innerIndex:1-innerIndex;
     const tile=document.createElement("div");
     tile.className="library-record-time "+(index===0?"lane-left":"lane-right");
     tile.appendChild(libraryText("small","",label));
     tile.appendChild(libraryText("strong","",
-     entry.times[index]===null?"—":format(entry.times[index])+" s"));
+     entry.times[recordIndex]===null?"—":format(entry.times[recordIndex])+" s"));
     times.appendChild(tile);
    }
    const combined=document.createElement("div");
@@ -1582,7 +1595,7 @@ function play(){
   return false;
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
- if(state.track.laneChangerIndex>=0)state.lane=0;
+ if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
@@ -1620,13 +1633,14 @@ function renderSessionSummary(){
    const title=document.createElement("span");title.textContent="Vueltas "+(pair.number-1)+" y "+pair.number;
    const time=document.createElement("strong");time.textContent=format(pair.seconds)+" s";
    const detail=document.createElement("small");
-   detail.textContent=format(pair.first)+" + "+format(pair.second)+" s · PT/82";
+   detail.textContent=format(pair.first)+" + "+format(pair.second)+" s · salida Carril A · PT/82";
    row.appendChild(title);row.appendChild(time);row.appendChild(detail);list.appendChild(row);
   }
   return;
  }
  const best=[0,1].map(lane=>state.sessionLaps.filter(l=>l.lane===lane)
   .reduce((min,l)=>Math.min(min,l.seconds),Infinity));
+ const a=laneAIndex(),b=1-a;
  const scores=$("resultsStats");
  scores.textContent="";
  const lanes=document.createElement("div");lanes.className="results-lane-metrics";
@@ -1637,8 +1651,8 @@ function renderSessionSummary(){
   tile.appendChild(label);tile.appendChild(time);parent.appendChild(tile);
   return tile;
  }
- metric(lanes,"Mejor izquierda",Number.isFinite(best[0])?format(best[0])+" s":"—","result-metric lane-left");
- metric(lanes,"Mejor derecha",Number.isFinite(best[1])?format(best[1])+" s":"—","result-metric lane-right");
+ metric(lanes,"Mejor Carril A",Number.isFinite(best[a])?format(best[a])+" s":"—","result-metric lane-left");
+ metric(lanes,"Mejor Carril B",Number.isFinite(best[b])?format(best[b])+" s":"—","result-metric lane-right");
  scores.appendChild(lanes);
  const combined=best.every(Number.isFinite)?format(best[0]+best[1])+" s":"—";
  metric(scores,"Mejor combinado",combined,"combined-best");
@@ -1650,9 +1664,9 @@ function renderSessionSummary(){
    Math.abs(lap.seconds-best[lap.lane])<0.0005;
   const row=document.createElement("div");
   row.className="result-row"+(bestOfLane?
-   (lap.lane===0?" is-best-left":" is-best-right"):"");
+   (lap.lane===a?" is-best-left":" is-best-right"):"");
   const label=document.createElement("span");
-  label.textContent="Vuelta "+lap.number+" · carril "+(lap.lane===0?"izquierdo":"derecho");
+  label.textContent="Vuelta "+lap.number+" · "+laneLabel(lap.lane);
   const value=document.createElement("strong");value.textContent=format(lap.seconds)+" s";
   const diff=document.createElement("small");
   diff.className=lap.previous===null?"is-initial":lap.seconds<=lap.previous?"is-gain":"is-loss";
@@ -1690,7 +1704,7 @@ function switchLane(){
  if(state.raceStarted)state.lapEligible=false;
  state.followCamera.settle=.85;
  updateHud();
- toast("Cambio suave al carril "+(to===0?"izquierdo":"derecho")+
+ toast("Cambio suave al "+laneLabel(to)+
   (state.raceStarted?" · vuelta sin récord.":"."));
  return true;
 }
@@ -1706,11 +1720,12 @@ function completeLap(){
    return;
   }
   const first=state.x350FirstLap,total=first+seconds;
-  if(first!==null&&valid&&state.lane===0){
-   const key=recKey()+"-pt82-pair-v1";
+  if(first!==null&&valid&&state.lane===laneAIndex()){
+   // v2 inicia siempre en el interior; no mezclar tiempos históricos B→A.
+   const key=recKey()+"-pt82-pair-v2";
    const prior=typeof state.records[key]==="number"?state.records[key]:null;
    const best=prior===null||total<prior;
-   state.sessionLaps.push({number:state.lap,lane:0,seconds:total,
+   state.sessionLaps.push({number:state.lap,lane:laneAIndex(),seconds:total,
     first,second:seconds,changeover:true,previous:prior,record:best});
    if(best){state.records[key]=total;save();}
    toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
@@ -1734,7 +1749,7 @@ function completeLap(){
   seconds:sec,previous,record:isRecord});
  if(isRecord){
   v[state.lane]=sec;state.records[recKey()]=v;save();
-  toast("¡Récord personal "+(state.lane===0?"izquierda":"derecha")+"! "+format(sec)+" s");
+  toast("¡Récord personal "+laneLabel(state.lane)+"! "+format(sec)+" s");
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
  state.seconds=0;state.lap++;
 }
@@ -2086,15 +2101,17 @@ function updateHud(){
  $("lapTime").textContent=format(state.seconds);
  $("power").textContent=Math.round(state.keyboardGas?100:state.gas*100)+"%";
  $("speed").textContent=Math.round(state.speed/10)+" cm/s";
- const v=record();
+ const v=record(),a=laneAIndex();
+ $("bestLeftLabel").textContent=state.track.laneChangerIndex>=0?"VUELTA 1":"CARRIL A";
+ $("bestRightLabel").textContent=state.track.laneChangerIndex>=0?"PRUEBA":"CARRIL B";
  if(state.track.laneChangerIndex>=0){
   $("bestLeft").textContent=state.x350FirstLap===null?"—":format(state.x350FirstLap)+" s";
   $("bestRight").textContent="2 vueltas";
-  const best=state.records[recKey()+"-pt82-pair-v1"];
+  const best=state.records[recKey()+"-pt82-pair-v2"];
   $("combined").textContent=typeof best==="number"?format(best)+" s":"—";
  }else{
-  $("bestLeft").textContent=v[0]===null?"—":format(v[0])+" s";
-  $("bestRight").textContent=v[1]===null?"—":format(v[1])+" s";
+  $("bestLeft").textContent=v[a]===null?"—":format(v[a])+" s";
+  $("bestRight").textContent=v[1-a]===null?"—":format(v[1-a])+" s";
   $("combined").textContent=v[0]!==null&&v[1]!==null?format(v[0]+v[1])+" s":"—";
  }
  const pose=drivingPose();
@@ -2104,21 +2121,21 @@ function updateHud(){
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
-   state.track.laneChangerIndex>=0?"PT/82 · DOS VUELTAS, DOS CARRILES":
+   state.track.laneChangerIndex>=0?"PT/82 · "+laneLabel(state.lane).toUpperCase()+" · DOS VUELTAS":
    state.laneTransition?"CAMBIANDO DE CARRIL · TRANSICIÓN SUAVE":
    !state.run?"EN PAUSA":
    !state.lapEligible?"VUELTA MIXTA · SIN RÉCORD":
    !state.raceStarted?"ESPERANDO SALIDA · ACELERA PARA COMENZAR":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
-   "Busca el límite sin pasarte en las curvas";
+   laneLabel(state.lane)+" · Busca el límite sin pasarte en las curvas";
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").hidden=state.track.laneChangerIndex>=0;
  $("lane").disabled=state.track.laneChangerIndex>=0||
   Boolean(state.laneTransition)||state.penalty>0;
- $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ Carril";
- $("lane").setAttribute("aria-label","Cambiar al carril "+
-  (state.lane===0?"derecho":"izquierdo"));
+ $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ "+laneLabel(1-state.lane);
+ $("lane").setAttribute("aria-label","Cambiar de "+laneLabel(state.lane)+
+  " a "+laneLabel(1-state.lane));
  $("trigger").disabled=!state.run;
  updateTriggerDisplay();
 }
@@ -3300,7 +3317,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.36.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.37.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3308,7 +3325,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.36 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.37 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4744,12 +4761,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.36",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.37",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},
- lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+ lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},

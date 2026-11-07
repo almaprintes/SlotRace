@@ -36,6 +36,23 @@ export const CATALOG=Object.freeze(Object.fromEntries(
 ));
 export const STARTER=Object.freeze([...RECIPES.ovalR2]);
 export const FIGURE_EIGHT=Object.freeze([...RECIPES.eightR2]);
+// Carril A es la ranura INTERIOR junto a salida/meta, no "izquierda".
+// Se decide con el primer giro al salir de meta: en una curva derecha
+// (ángulo positivo) el lado interior es +LANE_OFFSET; a izquierdas, -.
+// Así se mantiene la etiqueta física incluso al invertir la marcha.
+// En circuitos con giros opuestos a ambos lados de meta (como un ocho),
+// se adopta de forma estable el primer giro posterior a la línea.
+export function finishInteriorPhysicalLane(types){
+ const firstCurve=types.find(id=>Math.abs(CATALOG[id]?.angle||0)>1e-9);
+ return firstCurve&&CATALOG[firstCurve].angle<0?0:1;
+}
+// El motor histórico invierte el índice lógico al conducir en sentido
+// antihorario. No cambiamos esos índices ni el formato de los récords.
+export function laneAIndexAtFinish(types,driveDirection=1){
+ const physical=finishInteriorPhysicalLane(types);
+ return driveDirection===-1?1-physical:physical;
+}
+
 export const BRIDGE_HEIGHT_MM=65;
 export function hasAutomaticEightBridge(types){
  return Array.isArray(types)&&types.length===FIGURE_EIGHT.length&&

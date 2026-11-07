@@ -71,6 +71,8 @@ jobs:
 
       - name: Comprobar PT82 y choques simultáneos entre coches
         run: node tests/pt82.cjs
+      - name: Comprobar Carril A interior en meta y Carril B exterior
+        run: node tests/lane-names.cjs
 
       - name: Verificar archivos que sirve GitHub Pages
         run: |
