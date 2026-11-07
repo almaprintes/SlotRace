@@ -1943,6 +1943,9 @@ function simulation(dt){
    const beyond=Math.max(0,travel-remaining);
    state.distance=(driveEntry+beyond)%nextLane.total;
    if(driveEntry+beyond>=nextLane.total)completeLap();
+   // La PT/82 conmuta físicamente de ranura en este mismo paso de
+   // simulación: el HUD debe anunciar el carril destino sin retraso.
+   updateHud();
   }else{
    state.distance+=travel;
    if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
