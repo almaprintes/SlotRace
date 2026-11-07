@@ -48,7 +48,39 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.37");
+ assert.equal(game.version,"DEV 0.14.38");
+ // Marcas de fábrica en salida/meta: las letras son físicas, no
+ // etiquetas relativas a la dirección del coche.
+ const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
+ assert.equal(ovalMarks.length,2);
+ assert.deepEqual(ovalMarks.map(m=>m.letter),["B","A"],
+  "Óvalo estándar: A impresa en el interior de meta");
+ assert.equal(ovalMarks[1].physicalLane,geo.finishInteriorPhysicalLane(geo.STARTER));
+ const finishFirst=geo.buildTrack(geo.STARTER).parts[0];
+ const nearMeta=geo.positionOnPiece(finishFirst.start,finishFirst.id,.20);
+ assert.ok(Math.hypot(ovalMarks[0].x-ovalMarks[1].x,
+  ovalMarks[0].y-ovalMarks[1].y)>geo.LANE_OFFSET,
+  "Las letras quedan físicamente separadas junto a cada ranura");
+ assert.ok(Number.isFinite(nearMeta.x)&&Number.isFinite(ovalMarks[1].h));
+ const savedDirection=st.driveDirection;
+ st.driveDirection=-1;
+ assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER))
+  .map(m=>m.letter),["B","A"],
+  "La dirección de conducción nunca cambia las letras impresas");
+ st.driveDirection=savedDirection;
+ assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(["S350"])),[],
+  "No imprimir las letras en circuitos abiertos");
+ const printedLetters=[];
+ const stencilContext=new Proxy({},{
+  get(_,name){return name==="fillText"?(value)=>printedLetters.push(value):()=>{};},
+  set(target,name,value){target[name]=value;return true;}
+ });
+ game.rendering.paintLaneStencils(stencilContext,geo.buildTrack(geo.STARTER));
+ assert.deepEqual(printedLetters,["B","A"],
+  "El canvas realmente dibuja ambas letras en su ranura");
+ assert.match(html,/id="laneIndicator"/);
+ assert.match(css,/\.race-hint \.lane-indicator\.lane-b/);
+
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -669,6 +701,9 @@ const path=require("node:path");
  assert.deepEqual(st.followCamera,pausedPosition,"En pausa no oscila la cámara");
  // El cambio no requiere pausa, mantiene la pieza y la velocidad,
  // anima el coche, mueve la cámara y protege los récords de cada carril.
+ const laneBadge=elements.get("laneIndicator");
+ assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane),
+  "La insignia muestra el carril ocupado antes del cambio");
  const laneBtn=elements.get("lane");
  assert.equal(laneBtn.disabled,false,"Carril disponible incluso con carrera activa");
  const oldLane=st.lane,oldSpeed=st.speed,oldPose=game.drivingPose();
@@ -677,6 +712,8 @@ const path=require("node:path");
  laneBtn.listeners.click[0]();
  assert.equal(st.run,false,"Cambiar no modifica la pausa");
  assert.equal(st.lane,1-oldLane);
+ assert.equal(laneBadge.textContent,"OCUPAS "+game.lanes.laneLabel(st.lane),
+  "Al cambiar de carril se actualiza el texto permanente del HUD");
  assert.equal(st.speed,oldSpeed,"Velocidad conservada");
  assert.equal(st.seconds,12.345,"Cronómetro conservado");
  assert.equal(st.raceStarted,true,"No hay salida nueva");
@@ -751,6 +788,8 @@ const path=require("node:path");
  st.raceStarted=true;st.gas=.85;st.speed=300;st.run=true;st.distance=0;
  game.physics.simulationStep(.03);
  assert.equal(st.lane,1-game.lanes.laneAIndex(),"La PT/82 cambia de A a B al entrar");
+ assert.equal(elements.get("laneIndicator").textContent,"OCUPAS CARRIL B",
+  "La PT/82 actualiza el indicador tras cruzar la X");
  assert.equal(st.x350Crossings,1);
  assert.equal(st.laneTransition.physical,true);
  const crossover=game.lanes.displayDrivingPose();

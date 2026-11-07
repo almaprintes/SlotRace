@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.38 · Letras A/B en la pista y estado de carril
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.38
+
+- **Meta/salida:** dos insignias pequeñas A (azul cian) y B (rosa), impresas junto a las ranuras, dentro del borde exterior del asfalto. Se pintan en el constructor y en carrera, y no bloquean los raíles ni generan costuras adicionales.
+- **Nomenclatura física estable:** A siempre marca el interior en la salida/meta y B el exterior, aunque el jugador invierta el sentido de marcha. El cálculo es compartido con la versión 0.14.37.
+- **HUD en carrera:** indicador visible «OCUPAS CARRIL A/B» con el color correspondiente, también durante cambios manuales y automáticos mediante PT/82.
+- **Resultados:** mantiene los tonos identificativos de los tiempos de A (cian) y B (rosa), reforzados en el pie del HUD. Las letras, además del color, evitan depender exclusivamente de la percepción cromática.
+- **Preservación:** sin cambios en físicas, capas de puentes, Rayos X, tiempos, claves de récord, recetas ni partidas guardadas.
+- **Pruebas:** se comprueban ambos sellos en el canvas, el sentido reversible, el HUD y los circuitos abiertos.
+
+**Revisar en iPhone:** legibilidad de las dos letras junto a meta y el indicador de carril en horizontal/vertical.
+
+---
+
 # SlotRace DEV 0.14.37 · Carril A / Carril B
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.37

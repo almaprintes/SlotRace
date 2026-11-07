@@ -2102,6 +2102,11 @@ function updateHud(){
  $("power").textContent=Math.round(state.keyboardGas?100:state.gas*100)+"%";
  $("speed").textContent=Math.round(state.speed/10)+" cm/s";
  const v=record(),a=laneAIndex();
+ const laneBadge=$("laneIndicator"),letter=laneLetter(state.lane);
+ const badgeLabel="OCUPAS CARRIL "+letter;
+ if(laneBadge.textContent!==badgeLabel)laneBadge.textContent=badgeLabel;
+ laneBadge.classList.toggle("lane-a",letter==="A");
+ laneBadge.classList.toggle("lane-b",letter==="B");
  $("bestLeftLabel").textContent=state.track.laneChangerIndex>=0?"VUELTA 1":"CARRIL A";
  $("bestRightLabel").textContent=state.track.laneChangerIndex>=0?"PRUEBA":"CARRIL B";
  if(state.track.laneChangerIndex>=0){
@@ -3169,6 +3174,39 @@ function paintFinishLine(ctx,track){
  }
  ctx.restore();
 }
+// Marcas impresas junto a las ranuras, no sobre sus guías metálicas.
+// La etiqueta procede de la posición FÍSICA en salida/meta; no gira
+// con el sentido de conducción ni altera ningún tiempo de vuelta.
+function finishLaneMarkings(track){
+ if(!track?.closed||!track.parts?.length)return [];
+ const first=track.parts[0],spec=CATALOG[first.id];
+ const length=spec.length||spec.radius*Math.abs(spec.angle);
+ const pose=positionOnPiece(first.start,first.id,Math.min(.56,70/length));
+ const inner=laneAIndex(track.types,1);
+ const side=Math.min(TRACK_WIDTH/2-14,LANE_OFFSET+23);
+ return[0,1].map(physicalLane=>{
+  const offset=physicalLane===0?-side:side;
+  return{letter:physicalLane===inner?"A":"B",physicalLane,
+   x:pose.x-Math.sin(pose.h)*offset,
+   y:pose.y+Math.cos(pose.h)*offset,h:pose.h};
+ });
+}
+function paintLaneStencils(ctx,track){
+ const markings=finishLaneMarkings(track);
+ for(const mark of markings){
+  const a=mark.letter==="A";
+  ctx.save();ctx.translate(mark.x,mark.y);ctx.rotate(mark.h);
+  // Pequeña impresión circular de fábrica, completamente dentro del
+  // borde exterior; no colorear el asfalto ni tapar el carril.
+  ctx.beginPath();ctx.arc(0,0,11.5,0,Math.PI*2);
+  ctx.fillStyle=a?"#155a76":"#7d2d50";ctx.fill();
+  ctx.lineWidth=1.7;ctx.strokeStyle=a?"#81e4ff":"#ff9dc0";ctx.stroke();
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.font="900 17px system-ui,-apple-system,sans-serif";
+  ctx.fillStyle="#fff";ctx.fillText(mark.letter,0,.5);
+  ctx.restore();
+ }
+}
 function paintGroundTrack(ctx,track,editing){
  // Base continua: suelo, rampas y curvas comparten la misma superficie.
  // Separar los niveles en pasadas creaba terminaciones transversales.
@@ -3317,7 +3355,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.37.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.38.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3325,7 +3363,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.37 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.38 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4259,6 +4297,7 @@ function renderScene(canvas,mode){
  }
  // Dibujo continuo: los carriles de los módulos acoplados nunca se cortan.
  paintGroundTrack(ctx,track,mode==="build");
+ paintLaneStencils(ctx,track);
  if(hasBridge){
   // Orden de capas: pista base → coche inferior → puente completo
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
@@ -4761,13 +4800,13 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.37",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.38",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

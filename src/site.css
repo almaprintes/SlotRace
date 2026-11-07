@@ -2428,3 +2428,23 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .builder-workbench #bridgePanel .bridge-actions button:last-child{grid-column:span 2}
  .builder-workbench #bridgePanel{overflow-y:auto}
 }
+
+
+/* DEV 0.14.38 · identidad discreta, permanente y accesible de carriles. */
+:root{--slot-lane-a:#81e4ff;--slot-lane-b:#ff9dc0}
+.race-hint .lane-indicator{
+ display:inline-flex;align-items:center;justify-content:center;
+ margin:0 7px 4px 0;padding:6px 11px;border-radius:20px;
+ font-size:11px;font-weight:950;letter-spacing:.045em;white-space:nowrap;
+ border:1px solid var(--slot-lane-a);background:#123c4de9;color:#c5f4ff;
+ box-shadow:inset 0 1px 0 #fff2;
+}
+.race-hint .lane-indicator.lane-b{
+ border-color:var(--slot-lane-b);background:#51253be9;color:#ffe0eb;
+}
+.race-footer #bestLeftLabel,.race-footer #bestLeft{color:var(--slot-lane-a);font-weight:900}
+.race-footer #bestRightLabel,.race-footer #bestRight{color:var(--slot-lane-b);font-weight:900}
+.race-hint #raceHint{margin-bottom:4px}
+@media(max-width:660px){
+ .race-hint .lane-indicator{font-size:10px;padding:5px 9px;margin-right:4px}
+}
