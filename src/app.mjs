@@ -504,7 +504,7 @@ function saveCircuit(){
   "Guardado en Mis circuitos: «"+name+"».");
  return true;
 }
-function loadSavedCircuit(id){
+function loadSavedCircuit(id,{stayInLibrary=false}={}){
  const item=state.library.find(c=>c.id===id);
  if(!item||!allowed(item.snapshot.types))return false;
  if(state.types.length||state.loose.length)state.draft={...snapshot(),
@@ -515,7 +515,27 @@ function loadSavedCircuit(id){
  restoreSnapshot(item.snapshot);resetWorkBoard();
  state.camera={panX:0,panY:0,zoom:1};state.sessionLaps=[];
  state.initialAutoFitNeeded=state.track.board.expanded;
- save();openWorkshop();toast("Circuito recuperado: «"+item.name+"».");return true;
+ save();
+ if(stayInLibrary){
+  // Elegir por el nombre carga las piezas y actualiza «EN MESA», pero
+  // mantiene abierta la colección. El botón Abrir sigue yendo al taller.
+  updateUI();
+  toast("Seleccionado en la mesa: «"+item.name+"».");
+ }else{
+  openWorkshop();
+  toast("Circuito recuperado: «"+item.name+"».");
+ }
+ return true;
+}
+function selectSavedCircuit(id){
+ const item=state.library.find(c=>c.id===id);
+ if(!item)return false;
+ // Tocar de nuevo el nombre del circuito que ya está en mesa no debe
+ // sobrescribir una edición que aún no se haya guardado.
+ if(id===state.activeCircuitId){
+  updateUI();toast("«"+item.name+"» ya está seleccionado.");return true;
+ }
+ return loadSavedCircuit(id,{stayInLibrary:true});
 }
 // Las fichas se eliminan por ID, nunca por nombre: dos diseños pueden
 // compartir un nombre tras una recuperación y deben ser independientes.
@@ -697,7 +717,8 @@ function renderLibrary(){
   list.appendChild(empty);return;
  }
  for(const item of state.library){
-  const shell=document.createElement("div");shell.className="library-swipe";
+  const shell=document.createElement("div");shell.className="library-swipe"+
+   (item.id===state.activeCircuitId?" is-selected":"");
   const deleteButton=document.createElement("button");
   deleteButton.type="button";deleteButton.className="library-delete";
   deleteButton.setAttribute("aria-label","Eliminar circuito "+item.name);
@@ -707,7 +728,10 @@ function renderLibrary(){
   row.setAttribute("role","group");
   row.setAttribute("aria-label","Circuito "+item.name+". Desliza a la izquierda para mostrar Eliminar");
   const info=document.createElement("div");info.className="library-info";
-  const name=document.createElement("strong");name.textContent=item.name;
+  const name=document.createElement("button");
+  name.type="button";name.className="library-name";name.textContent=item.name;
+  name.setAttribute("aria-label","Seleccionar "+item.name+" sin salir de Mis circuitos");
+  name.setAttribute("aria-pressed",String(item.id===state.activeCircuitId));
   const detail=document.createElement("small");
   detail.textContent=item.snapshot.types.length+" piezas · "+
    (item.direction===-1?"Antihorario":"Horario")+
@@ -716,6 +740,12 @@ function renderLibrary(){
   const button=document.createElement("button");button.className="mini";
   button.type="button";button.textContent="Abrir";
   let lastSwipeAt=-Infinity;
+  name.addEventListener("click",()=>{
+   // No interpretar como selección un toque que terminó en deslizamiento.
+   if(performance.now()-lastSwipeAt<400)return;
+   openSwipeCircuitId=null;openSwipeFront=null;openSwipeDeleteButton=null;
+   selectSavedCircuit(item.id);
+  });
   button.addEventListener("click",()=>{
    // iOS puede disparar click al levantar el dedo tras un gesto horizontal.
    if(performance.now()-lastSwipeAt<400)return;
@@ -3475,7 +3505,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.44.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.45.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3483,7 +3513,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.44 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.45 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -5013,11 +5043,11 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.44",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.45",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
+ showHub,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},

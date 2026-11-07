@@ -193,7 +193,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.44/);
+assert.match(html,/DEV 0\.14\.45/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -233,6 +233,10 @@ for(const id of ["circuitDeleteDialog","deleteCircuitName","deleteCircuitConfirm
  assert.match(html,new RegExp('id="'+id+'"'),"Eliminar de Mis circuitos "+id);
 }
 assert.match(css,/\.library-swipe/);
+assert.match(app,/function selectSavedCircuit\(id\)/,"Tocar el nombre selecciona sin navegación");
+assert.match(app,/loadSavedCircuit\(id,\{stayInLibrary=false\}=\{\}\)/);
+assert.match(css,/\.library-swipe\.is-selected \.library-entry/);
+assert.match(css,/\.library-name\[aria-pressed="true"\]/);
 assert.match(css,/\.library-delete/);
 assert.match(css,/\.circuit-delete-overlay\[hidden\]/);
 for(const id of ["libraryDraftRecovery","libraryRecoverDraft","libraryTabCircuits","libraryTabRecords","libraryRecordsPanel","libraryRecordsList"]){
@@ -313,5 +317,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.44 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.45 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.44");
+ assert.equal(game.version,"DEV 0.14.45");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -596,6 +596,36 @@ const path=require("node:path");
  game.showHub("library");
  const libraryPanel=elements.get("circuitLibrary");
  const currentCards=()=>libraryPanel.children.slice(-st.library.length);
+ const cardFor=id=>currentCards()[st.library.findIndex(c=>c.id===id)];
+ const nameFor=id=>cardFor(id).children[1].children[0].children[0];
+ const openFor=id=>cardFor(id).children[1].children[1];
+ // Tocar el título selecciona y carga ese circuito SIN abrir el taller.
+ assert.equal(st.activeCircuitId,duplicateId);
+ assert.equal(nameFor(rescued[0].id).textContent,"OchoA");
+ nameFor(rescued[0].id).listeners.click[0]();
+ assert.equal(st.mode,"library","Elegir por el nombre no cambia de pantalla");
+ assert.equal(st.activeCircuitId,rescued[0].id);
+ assert.equal(st.circuitName,"OchoA");
+ assert.equal(elements.get("circuitName").value,"OchoA");
+ assert.deepEqual(st.types,st.library.find(c=>c.id===rescued[0].id).snapshot.types);
+ assert.equal(nameFor(rescued[0].id).attrs["aria-pressed"],"true");
+ assert.ok(cardFor(rescued[0].id).className.includes("is-selected"),
+  "El circuito seleccionado queda destacado en la lista");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).activeCircuitId,rescued[0].id,
+  "La selección persiste");
+ nameFor(duplicateId).listeners.click[0]();
+ assert.equal(st.mode,"library");
+ assert.equal(st.activeCircuitId,duplicateId);
+ const draftBeforeRepeat=st.draft;
+ nameFor(duplicateId).listeners.click[0]();
+ assert.equal(st.draft,draftBeforeRepeat,
+  "Volver a tocar el nombre activo no pisa el borrador");
+ assert.equal(nameFor(duplicateId).attrs["aria-pressed"],"true");
+ // Abrir mantiene la acción anterior y sí lleva al taller.
+ openFor(duplicateId).listeners.click[0]();
+ assert.equal(st.mode,"build","El botón Abrir sigue entrando al taller");
+ assert.equal(st.activeCircuitId,duplicateId);
+ game.showHub("library");
  const swipeShell=currentCards()[0],trash=swipeShell.children[0],front=swipeShell.children[1];
  assert.equal(trash.disabled,true,"Papelera oculta y desactivada al principio");
  function slide(from,to){
@@ -906,5 +936,5 @@ const path=require("node:path");
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
 
- console.log("SlotRace DEV 0.14.44: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.45: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
