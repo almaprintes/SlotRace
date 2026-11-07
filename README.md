@@ -1,3 +1,15 @@
+# SlotRace DEV 0.14.30 · Fronteras suelo–rampa sin falsas costuras
+
+**Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.30
+
+- **Dos fronteras del Doble óvalo:** las juntas suelo/rampa ya no dibujan una raya oscura atravesando el asfalto ni los dos pares de remaches laterales. No se borran las juntas normales de otras piezas.
+- **Circuitos personalizados:** se identifican los conectores por perfiles de elevación y coincidencia real de puntos; funciona también cuando un tramo elevado cruza el índice cero del circuito.
+- **Marcas de rampa:** las líneas decorativas de pendiente empiezan y terminan más al interior de la pieza, evitando remates falsos junto al conector.
+- **Sin tocar el juego:** mismos módulos, elevaciones, físicas, sistema de oclusión, Rayos X, tiempos y partidas locales.
+- **Validación:** las pruebas automáticas comprueban el dibujo de juntas en el Doble óvalo; la revisión visual final se realiza en el iPhone.
+
+---
+
 # SlotRace DEV 0.14.29 · Base sin cortes y oclusión estable
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.29

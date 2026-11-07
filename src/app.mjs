@@ -2732,7 +2732,11 @@ function paintBridgeRampProfile(ctx,part,track=null){
  let spans=[];
  if(!profile){
   if(!track&&spec.length>=350)spans=[[.02,.23],[.77,.98]];
- }else if(profile.mode==="up"||profile.mode==="down")spans=[[.02,.98]];
+ }else if(profile.mode==="up"||profile.mode==="down"){
+  // Las guías de pendiente son informativas: no deben terminar justo
+  // junto a una costura suelo/rampa ni parecer raíles truncados.
+  spans=[[.08,.92]];
+ }
  else{
   if(profile.up!=null)spans.push([.02,profile.up]);
   if(profile.down!=null)spans.push([1-profile.down,.98]);
@@ -2780,9 +2784,19 @@ function paintContinuousTrack(ctx,track,editing){
   strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
  for(const edge of [-72,72])strokePath(ctx,translated(path,edge),PIECE_LOOK.edge,2.5);
- // En carrera, las costuras de montaje generan líneas transversales
- // falsas en curvas, rampas y pasos inferiores. Sólo en el editor.
- if(editing)for(const part of track.parts)paintSeam(ctx,part.start);
+ // En el taller conservamos las juntas ordinarias de módulos.
+ // En las fronteras suelo/rampa, en cambio, la pista y los dos carriles
+ // son una sola superficie: dibujar paintSeam allí crea una raya negra
+ // transversal y remaches falsos que aparentan cortes y fugas de nivel.
+ // El conector se determina geométricamente; también sirve si el cierre
+ // de un circuito queda entre el último módulo y el índice cero.
+ if(editing){
+  const transitionStarts=track.bridge?
+   new Set(elevationJoins(track).map(join=>join.to)):null;
+  for(const part of track.parts){
+   if(!transitionStarts?.has(part.index))paintSeam(ctx,part.start);
+  }
+ }
  if(editing&&state.selectedGroup==="main"&&state.selection>=0){
   ctx.save();ctx.globalAlpha=state.selectionMode==="group"?.20:.42;
   strokePath(ctx,state.selectionMode==="group"?path:track.parts[state.selection].points,
@@ -4409,7 +4423,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.29",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.30",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

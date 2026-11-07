@@ -17,7 +17,9 @@ const fs=require("node:fs"),path=require("node:path");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
  assert.match(html,/id="settingsXRay"/,"Rayos X aparece en Ajustes");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
-  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
+  .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
+  .replace("function paintSeam(ctx,p){",
+   "function paintSeam(ctx,p){window.__seamPositions.push(p);");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],dataset:{},listeners:{},style:{},attrs:{},
@@ -60,6 +62,7 @@ const fs=require("node:fs"),path=require("node:path");
  const document={getElementById:id=>elements.get(id),createElement:()=>node("piece"),
   addEventListener(){},hidden:false};
  const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,
+  __seamPositions:[],
   matchMedia:()=>({matches:true}),setTimeout:fn=>fn(),addEventListener(){}};
  const data=new Map();
  const localStorage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};
@@ -93,6 +96,42 @@ const fs=require("node:fs"),path=require("node:path");
   assert.equal(join.points.length,before.points.length+after.points.length-1,
    "El asfalto se pinta como una sola ruta sin dos extremos en la frontera");
  }
+ // Instrumentar el pintado real: la detección geométrica era correcta
+ // en la .29, pero la costura seguía apareciendo sobre la pista.
+ const checkSeams=(testTrack,label)=>{
+  const boundaries=game.rendering.elevationJoins(testTrack);
+  const omit=new Set(boundaries.map(j=>j.to));
+  window.__seamPositions.length=0;
+  game.rendering.paintGroundTrack(ctx,testTrack,true);
+  const painted=window.__seamPositions.slice();
+  assert.equal(painted.length,testTrack.parts.length-omit.size,
+   label+": costuras ordinarias visibles y fronteras de rampa sin marca");
+  for(const part of testTrack.parts){
+   const hits=painted.filter(p=>p===part.start);
+   assert.equal(hits.length,omit.has(part.index)?0:1,
+    label+": costura del módulo "+part.index);
+  }
+  window.__seamPositions.length=0;
+  game.rendering.paintGroundTrack(ctx,testTrack,false);
+  assert.equal(window.__seamPositions.length,0,
+   label+": las carreras no muestran juntas");
+ };
+ checkSeams(track,"Doble óvalo");
+ const rotate=3;
+ const rotated=geo.buildTrack(
+  [...recipe.types.slice(rotate),...recipe.types.slice(0,rotate)],
+  track.parts[rotate].start,
+  recipe.bridgeParts.map(i=>(i-rotate+recipe.types.length)%recipe.types.length));
+ assert.ok(rotated.closed&&rotated.valid,
+  "Rotar la numeración del circuito mantiene una receta válida");
+ assert.ok(game.rendering.elevationJoins(rotated).some(j=>j.to===0),
+  "El empalme suelo/rampa debe funcionar también en el índice cero");
+ checkSeams(rotated,"Doble óvalo rotado");
+ const rampPainter=source.slice(source.indexOf("function paintBridgeRampProfile("),
+  source.indexOf("function paintBridgePillars("));
+ assert.match(rampPainter,/spans=\[\[\.08,\.92\]\]/,
+  "Las marcas de rampa deben quedar dentro de sus conectores");
+
  const baseBefore=strokes.length;
  game.rendering.paintGroundTrack(ctx,track,false);
  assert.ok(strokes.length>baseBefore,
@@ -167,5 +206,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.29: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.30: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

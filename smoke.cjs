@@ -11,6 +11,12 @@ const groundBase=app.slice(app.indexOf("function paintGroundTrack("),
  app.indexOf("// Rayos X:"));
 assert.match(groundBase,/paintContinuousTrack\(ctx,track,editing\)/,
  "El suelo y las rampas deben compartir una base visual continua");
+const builderPainter=app.slice(app.indexOf("function paintContinuousTrack("),
+ app.indexOf("const elevatedDeckCache"));
+assert.match(builderPainter,/transitionStarts=track\.bridge\?/,
+ "En el taller se omiten solo las costuras geométricas de suelo/rampa");
+assert.match(builderPainter,/!transitionStarts\?\.has\(part\.index\)\)paintSeam/,
+ "Los otros módulos conservan sus juntas");
 const sceneBody=app.slice(app.indexOf("function renderScene("),
  app.indexOf("function screenToWorld("));
 assert.doesNotMatch(sceneBody,/paintElevationJoins\(/,
@@ -101,7 +107,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.29/);
+assert.match(html,/DEV 0\.14\.30/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -207,5 +213,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.29 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.30 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
