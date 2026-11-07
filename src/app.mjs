@@ -3017,8 +3017,8 @@ function paintGrid(ctx,v,mode="build"){
 }
 // El dibujo de madera/fieltro incluye 1000 puntitos decorativos y sombras.
 // Es inmutable: generar la textura UNA vez evita hacerlo cada fotograma.
-let tableArtworkTexture=null;
-function drawTableArtwork(ctx){
+let tableArtworkTexture=null,tableArtworkSize="";
+function drawTableArtwork(ctx,b){
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
  const wood=ctx.createLinearGradient(0,0,TABLE.width,TABLE.height);
  wood.addColorStop(0,"#ad7443");wood.addColorStop(.45,"#6b4327");wood.addColorStop(1,"#a96c3c");
@@ -3058,6 +3058,9 @@ function paintTable(ctx,v,mode){
  ctx.save();
  ctx.translate(b.left,b.top);
  ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
+ // El rótulo de medidas también debe cambiar al abrir otro circuito.
+ const key=Math.round(b.width)+"×"+Math.round(b.height);
+ if(key!==tableArtworkSize){tableArtworkTexture=null;tableArtworkSize=key;}
  if(!tableArtworkTexture&&typeof document.createElement==="function"){
   try{
    const canvas=document.createElement("canvas");
@@ -3067,13 +3070,13 @@ function paintTable(ctx,v,mode){
    const paint=canvas.getContext?.("2d",{alpha:true});
    if(paint){
     paint.setTransform(textureScale,0,0,textureScale,0,0);
-    drawTableArtwork(paint);
+    drawTableArtwork(paint,b);
     tableArtworkTexture=canvas;
    }
   }catch(error){tableArtworkTexture=null;}
  }
  if(tableArtworkTexture)ctx.drawImage(tableArtworkTexture,0,0,TABLE.width,TABLE.height);
- else drawTableArtwork(ctx);
+ else drawTableArtwork(ctx,b);
  ctx.restore();
 }
 function paintSeam(ctx,p){
