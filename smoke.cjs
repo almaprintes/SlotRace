@@ -259,7 +259,7 @@ assert.match(app,/function setFollowZoom\(value\)/);
 assert.match(css,/\.camera-zoom-panel\[hidden\]/);
 assert.match(app,/function updateFollowCamera\(dt\)/);
 assert.match(app,/function updateChronometer\(\)/,"El reloj refresca la lectura con cada fotograma");
-assert.match(app,/function drawTableArtwork\(ctx\)/,"La madera y el fieltro se prerenderizan");
+assert.match(app,/function drawTableArtwork\(ctx,b\)/,"La madera y el fieltro se prerenderizan");
 assert.match(app,/const strokeGeometryCache=new WeakMap\(\)/,"La geometría no se regenera cada fotograma");
 assert.match(app,/const FOLLOW_CUSTOM_RESPONSE=10/);
 assert.match(app,/function cachedTrackOffset\(track,offset\)/);
