@@ -42,7 +42,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.14.30");
+ assert.equal(game.version,"DEV 0.14.31");
  assert.equal(st.track.parts.length,14);
  assert.equal(st.track.valid,true);
  assert.ok(elements.has("joinPiece"),"Visible join control exists");
@@ -280,5 +280,5 @@ const path=require("node:path");
  tapCrossing(201);assert.equal(st.selection,candidates[0]);
  tapCrossing(202);assert.equal(st.selection,candidates[1],
   "Segundo toque en el mismo cruce elige otra capa");
- console.log("SlotRace DEV 0.14.30 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
+ console.log("SlotRace DEV 0.14.31 puzzle table: touch-drag, unchanged neighbours, multi-piece scattering, join, undo/redo and save — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

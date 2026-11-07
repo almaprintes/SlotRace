@@ -21,6 +21,19 @@ const sceneBody=app.slice(app.indexOf("function renderScene("),
  app.indexOf("function screenToWorld("));
 assert.doesNotMatch(sceneBody,/paintElevationJoins\(/,
  "No permitir un parche de conectores por encima del puente");
+assert.doesNotMatch(sceneBody,/paintBridgeRampProfile\(ctx,part,track\)/,
+ "Los indicadores de rampa no pueden interrumpir los raíles de la pista ensamblada");
+const selectionPainter=app.slice(app.indexOf("function paintBridgeSelection("),
+ app.indexOf("function renderScene("));
+assert.doesNotMatch(selectionPainter,/TRACK_WIDTH\s*\+\s*28/,
+ "La selección del puente no debe rellenar el asfalto de amarillo");
+assert.match(selectionPainter,/strokePath\(ctx,translated\(points,offset\)/,
+ "La selección del puente solo subraya los dos bordes");
+const raisedPainter=app.slice(app.indexOf("function elevatedDeckRuns("),
+ app.indexOf("function paintOpaqueRibbon("));
+assert.match(raisedPainter,/const paintPoints=\[\.\.\.preceding,\.\.\.points,\.\.\.following\]/,
+ "Los contornos elevados se prolongan suavemente antes y después del conector");
+
 assert.equal(Object.keys(CATALOG).length,27);
 assert.equal(Object.keys(PARTS).length,27);
 assert.equal(Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&(!id.includes("_")||id.endsWith("R"))).length,16);
@@ -107,7 +120,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.30/);
+assert.match(html,/DEV 0\.14\.31/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -213,5 +226,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.30 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.31 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

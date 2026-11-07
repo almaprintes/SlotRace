@@ -19,7 +19,9 @@ const fs=require("node:fs"),path=require("node:path");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
   .replace("function paintSeam(ctx,p){",
-   "function paintSeam(ctx,p){window.__seamPositions.push(p);");
+   "function paintSeam(ctx,p){window.__seamPositions.push(p);")
+  .replace("function strokePath(ctx,points,color,width){",
+   "function strokePath(ctx,points,color,width){window.__visualStrokes.push({color,width,points});");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],dataset:{},listeners:{},style:{},attrs:{},
@@ -62,7 +64,7 @@ const fs=require("node:fs"),path=require("node:path");
  const document={getElementById:id=>elements.get(id),createElement:()=>node("piece"),
   addEventListener(){},hidden:false};
  const window={devicePixelRatio:1,innerWidth:390,innerHeight:844,
-  __seamPositions:[],
+  __seamPositions:[],__visualStrokes:[],
   matchMedia:()=>({matches:true}),setTimeout:fn=>fn(),addEventListener(){}};
  const data=new Map();
  const localStorage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};
@@ -117,6 +119,46 @@ const fs=require("node:fs"),path=require("node:path");
    label+": las carreras no muestran juntas");
  };
  checkSeams(track,"Doble óvalo");
+ // La banda visual del puente ya no comienza con una tapa en el
+ // conector: se prolonga unos milímetros sobre los tramos unidos.
+ // Su máscara física/Rayos X mantiene el recorrido original.
+ const deck=game.rendering.elevatedDeckRuns(track)[0];
+ const prevIndex=(deck.indices[0]+track.parts.length-1)%track.parts.length;
+ const nextIndex=(deck.indices.at(-1)+1)%track.parts.length;
+ assert.equal(track.elevation.profiles[prevIndex],null);
+ assert.equal(track.elevation.profiles[nextIndex],null);
+ assert.ok(deck.paintPoints.length>deck.points.length,
+  "El render solapa ambas fronteras, sin modificar la geometría");
+ assert.strictEqual(deck.paintPoints[4],deck.points[0],
+  "La primera soldadura comparte exactamente el punto de entrada");
+ assert.strictEqual(deck.paintPoints[4+deck.points.length-1],deck.points.at(-1),
+  "La segunda soldadura comparte exactamente el punto de salida");
+ assert.equal(deck.paintPoints.length,deck.points.length+8,
+  "Solape visual de cuatro muestras en cada extremo");
+ assert.ok(Math.hypot(deck.paintPoints[0].x-track.parts[prevIndex].end.x,
+  deck.paintPoints[0].y-track.parts[prevIndex].end.y)<60,
+  "El solape de entrada queda limitado al módulo vecino");
+ assert.ok(Math.hypot(deck.paintPoints.at(-1).x-track.parts[nextIndex].start.x,
+  deck.paintPoints.at(-1).y-track.parts[nextIndex].start.y)<60,
+  "El solape de salida queda limitado al módulo vecino");
+ assert.match(source,/paintOpaqueRibbon\(ctx,paintPoints,paintOffsets\)/,
+  "La capa alta utiliza la soldadura visual extendida");
+ // Ninguna banda de selección debe tapar el asfalto y fingir un
+ // corte rectangular justo donde empieza una rampa.
+ const oldMode=game.state.mode,oldCase=game.state.caseCategory;
+ const oldStart=game.state.bridgeRangeStart,oldSelection=game.state.selection;
+ game.state.mode="build";game.state.caseCategory="bridge";
+ game.state.bridgeRangeStart=recipe.bridgeParts[0];
+ game.state.selection=recipe.bridgeParts[1];
+ window.__visualStrokes.length=0;
+ game.rendering.paintBridgeSelection(ctx);
+ const golden=window.__visualStrokes.filter(s=>s.color==="#f6d374");
+ assert.equal(golden.length,2,"La selección solo resalta los dos bordes");
+ assert.ok(golden.every(s=>s.width<=4.1),"No pintar un bloque dorado sobre los carriles");
+ assert.ok(golden.every(s=>s.points.length>2),"Los bordes son rutas continuas");
+ game.state.mode=oldMode;game.state.caseCategory=oldCase;
+ game.state.bridgeRangeStart=oldStart;game.state.selection=oldSelection;
+
  const rotate=3;
  const rotated=geo.buildTrack(
   [...recipe.types.slice(rotate),...recipe.types.slice(0,rotate)],
@@ -142,6 +184,8 @@ const fs=require("node:fs"),path=require("node:path");
   source.indexOf("function screenToWorld("));
  assert.doesNotMatch(renderBody,/paintElevationJoins\(/,
   "No puede haber parches de juntas dibujados encima de otros niveles");
+ assert.doesNotMatch(renderBody,/paintBridgeRampProfile\(ctx,part,track\)/,
+  "No pintar marcas de pendiente cortadas encima de una pista ya ensamblada");
  const polygons=game.rendering.xRayDeckPolygons(track);
  assert.ok(polygons.length===1&&polygons[0].length>25);
  assert.strictEqual(game.rendering.xRayDeckPolygons(track),polygons,"Máscara cacheada");
@@ -206,5 +250,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.30: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.31: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

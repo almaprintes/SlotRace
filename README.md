@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.31 · Unión limpia de rampas y curvas
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.31
+
+- **Origen del defecto visual:** una superposición opaca del tramo elevado empezaba justo en su conector, mientras las marcas de pendiente terminaban a mitad de la pieza. El modo seleccionar puente añadía una banda amarilla con un borde recto que parecía un módulo mal conectado.
+- **Continuidad visual:** la capa pintada del puente usa ahora unos 50 mm adicionales de los tramos tangentes de suelo anterior y posterior, calculados con la geometría real de cada pieza. No cambia la trayectoria homologada, los índices de los módulos, la máscara Rayos X ni las físicas.
+- **Sin líneas decorativas truncadas:** las marcas de inclinación dejan de superponerse a circuitos ya montados. Siguen disponibles en piezas sueltas del taller.
+- **Selección más clara:** los tramos del kit se señalan mediante dos líneas finas exteriores, en lugar de colorear la carretera entera y crear una falsa frontera.
+- **Regresión:** pruebas sobre Doble óvalo, puentes, continuidad de carriles, bordes de selección y visibilidad bajo plataformas.
+- **Datos:** no se eliminan ni migran montajes, circuitos, récords o preferencias.
+
+**La prueba visual definitiva sigue siendo en Safari del iPhone.**
+
+---
+
 # SlotRace DEV 0.14.30 · Fronteras suelo–rampa sin falsas costuras
 
 **Probar en iPhone:** https://almaprintes.github.io/SlotRace/?v=0.14.30
