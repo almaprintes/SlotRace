@@ -48,7 +48,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.34");
+ assert.equal(game.version,"DEV 0.14.35");
  assert.match(html,/class="home-hero-photo"/);
  assert.match(html,/slotrace-duelo-curva\.avif/);
  assert.doesNotMatch(html,/class="hero-cars"/);
@@ -649,6 +649,64 @@ const path=require("node:path");
  const pausedPosition={...st.followCamera};
  game.camera.updateFollowCamera(.05);
  assert.deepEqual(st.followCamera,pausedPosition,"En pausa no oscila la cámara");
+ // El cambio no requiere pausa, mantiene la pieza y la velocidad,
+ // anima el coche, mueve la cámara y protege los récords de cada carril.
+ const laneBtn=elements.get("lane");
+ assert.equal(laneBtn.disabled,false,"Carril disponible incluso con carrera activa");
+ const oldLane=st.lane,oldSpeed=st.speed,oldPose=game.drivingPose();
+ st.seconds=12.345;st.raceStarted=true;
+ st.followCamera.x=oldPose.x-400;st.followCamera.y=oldPose.y-300;
+ laneBtn.listeners.click[0]();
+ assert.equal(st.run,false,"Cambiar no modifica la pausa");
+ assert.equal(st.lane,1-oldLane);
+ assert.equal(st.speed,oldSpeed,"Velocidad conservada");
+ assert.equal(st.seconds,12.345,"Cronómetro conservado");
+ assert.equal(st.raceStarted,true,"No hay salida nueva");
+ assert.equal(st.lapEligible,false,"Vuelta mixta excluida de los récords");
+ assert.equal(laneBtn.disabled,true,"No acumular transiciones simultáneas");
+ const targetPose=game.drivingPose(),firstPose=game.lanes.displayDrivingPose();
+ assert.equal(targetPose.pieceIndex,oldPose.pieceIndex,
+  "Se conserva la misma pieza en la pista");
+ assert.ok(Math.abs((targetPose.pieceT??0)-(oldPose.pieceT??0))<.002,
+  "Sin saltos de progreso longitudinal en las curvas");
+ assert.ok(Math.hypot(firstPose.x-oldPose.x,firstPose.y-oldPose.y)<.3,
+  "Comienza en el carril original sin teletransporte");
+ const delta=Math.hypot(targetPose.x-oldPose.x,targetPose.y-oldPose.y);
+ assert.ok(delta>20,"Los carriles ocupan posiciones diferentes");
+ assert.equal(game.lanes.switchLane(),false,"Bloquear doble pulsación durante la transición");
+ game.lanes.advanceLaneTransition(.24);
+ const mid=game.lanes.displayDrivingPose();
+ assert.ok(Math.hypot(mid.x-oldPose.x,mid.y-oldPose.y)>delta*.3,
+  "A mitad de transición, el coche ha empezado a desplazarse");
+ assert.ok(Math.hypot(mid.x-targetPose.x,mid.y-targetPose.y)>delta*.3,
+  "A mitad de transición, no ha llegado al otro carril");
+ const cameraBefore=st.followCamera.x;
+ game.camera.updateFollowCamera(.05);
+ assert.ok(st.followCamera.x>cameraBefore,
+  "La cámara sigue animándose al cambiar en pausa");
+ game.lanes.advanceLaneTransition(.24);
+ assert.equal(st.laneTransition,null);
+ const settled=game.lanes.displayDrivingPose();
+ assert.ok(Math.hypot(settled.x-targetPose.x,settled.y-targetPose.y)<.01,
+  "La animación termina exactamente sobre el carril nuevo");
+ const recorded=st.sessionLaps.length,lapNumber=st.lap;
+ game.completeLap();
+ assert.equal(st.sessionLaps.length,recorded,"La vuelta mixta no se registra");
+ assert.equal(st.lap,lapNumber+1);
+ assert.equal(st.lapEligible,true,"La siguiente vuelve a ser oficial");
+ st.seconds=9.15;game.completeLap();
+ assert.equal(st.sessionLaps.length,recorded+1,
+  "Después de cambiar se pueden registrar vueltas válidas");
+ elements.get("pause").listeners.click[0]();
+ assert.equal(st.run,true);
+ assert.equal(laneBtn.disabled,false,"El botón puede usarse sin pausar");
+ const priorTime=st.seconds,priorSpeed=st.speed;
+ laneBtn.listeners.click[0]();
+ assert.equal(st.lane,oldLane,"Segundo cambio durante la carrera");
+ assert.equal(st.run,true,"La conducción no se detiene");
+ assert.equal(st.seconds,priorTime,"El tiempo no se reinicia");
+ assert.equal(st.speed,priorSpeed,"La velocidad no se reinicia");
+
  game.showMenu();
  game.showHub("settings");
  elements.get("settingsCameraGeneral").listeners.click[0]();
@@ -657,5 +715,5 @@ const path=require("node:path");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
- console.log("SlotRace DEV 0.14.34: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.35: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

@@ -1,6 +1,20 @@
-# SlotRace DEV 0.14.34 — Sonido real de Scalextric
+# SlotRace DEV 0.14.35 — Cambio de carril fluido
 
-**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.34
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.35
+
+- **Un toque durante la carrera:** el botón Carril ya no exige pausar y tampoco reinicia distancia, velocidad ni cronómetro.
+- **Movimiento:** la posición del coche se interpola entre ranuras durante 0,48 s, respetando la misma pieza y su avance longitudinal. El carril físico de destino mantiene la simulación del coche durante la animación.
+- **Cámara:** el seguimiento acompaña el desplazamiento lateral; también termina la transición si se activa en pausa, sin cambiar altura ni zoom.
+- **Récords oficiales:** una vuelta que combina ambos carriles no cuenta como récord. Al cruzar meta continúa la carrera y el siguiente parcial sí es válido.
+- **Sin cambios:** geometría de piezas, puentes, constructor, rayos X y guardados.
+
+**Pendiente:** validar la sensación táctil y la cámara en el iPhone.
+
+---
+
+# SlotRace DEV 0.14.35 — Sonido real de Scalextric
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.35
 
 - Sonido real aportado por el usuario, editado a bucle de 12,2 segundos (MP3 estéreo a 160 kbps).
 - Web Audio en bucle sin cambiar el tono ni las revoluciones; volumen suave según movimiento.

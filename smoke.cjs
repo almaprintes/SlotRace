@@ -7,6 +7,15 @@ const {PARTS,RADII,GEOMETRY,RECIPES}=await import("./src/pt-precision.mjs");
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
+assert.doesNotMatch(app,/Pausa primero para cambiar de carril/,
+ "El cambio de carril no puede exigir pausa");
+assert.match(app,/laneTransition:\{from,elapsed:0,duration:LANE_CHANGE_SECONDS\}/,
+ "Cada cambio de carril empieza una transición animada");
+assert.match(app,/if\(!state\.lapEligible\|\|state\.laneTransition\)/,
+ "Las vueltas que combinan carriles no producen récords");
+assert.match(app,/const p=displayDrivingPose\(\)/,
+ "La cámara debe seguir el movimiento interpolado del coche");
+
 const groundBase=app.slice(app.indexOf("function paintGroundTrack("),
  app.indexOf("// Rayos X:"));
 assert.match(groundBase,/paintContinuousTrack\(ctx,track,editing\)/,
@@ -138,7 +147,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.34/);
+assert.match(html,/DEV 0\.14\.35/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -249,5 +258,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.34 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.35 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

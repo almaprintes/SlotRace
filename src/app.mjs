@@ -117,13 +117,13 @@ const state={
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   cameraMode:old?.cameraMode==="follow"?"follow":"general",
-  followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false},
+  followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false,settle:0},
   gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
-  lane:0,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
+  lane:0,laneTransition:null,lapEligible:true,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
@@ -840,7 +840,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;
+function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -1454,6 +1454,48 @@ function drivingPose(distance=state.distance){
  const p=positionAt(lane,state.driveDirection===-1?-distance:distance);
  return !p||state.driveDirection===1?p:{...p,h:p.h+Math.PI,curve:-(p.curve||0)};
 }
+// Dos carriles tienen longitudes diferentes. Cambiar conservando los
+// milímetros acumulados teletransportaba el coche hacia otra curva.
+// Se mantiene la pieza y el progreso longitudinal real de la guía.
+function laneDistanceAtPiece(lane,index,progress){
+ const t=Math.max(0,Math.min(1,progress||0));
+ for(let i=1;i<lane.nodes.length;i++){
+  const b=lane.nodes[i];if(b.pieceIndex!==index)continue;
+  const a=lane.nodes[i-1],from=a.pieceIndex===index?(a.pieceT||0):0;
+  const to=b.pieceT??1;
+  if(t<=to+1e-9){
+   const f=Math.max(0,Math.min(1,(t-from)/Math.max(1e-9,to-from)));
+   return lane.lengths[i-1]+(lane.lengths[i]-lane.lengths[i-1])*f;
+  }
+ }
+ return 0;
+}
+function poseOnDrivingLane(logicalLane,index,progress){
+ const lane=state.track.lanes[state.driveDirection===-1?1-logicalLane:logicalLane];
+ const distance=laneDistanceAtPiece(lane,index,progress);
+ const p=positionAt(lane,distance);
+ return !p||state.driveDirection===1?p:{...p,h:p.h+Math.PI,curve:-(p.curve||0)};
+}
+// La simulación física utiliza el carril elegido desde la pulsación;
+// solo el sprite y la cámara interpolan suavemente el desplazamiento.
+const LANE_CHANGE_SECONDS=.48;
+const smoothLaneStep=t=>{const u=Math.max(0,Math.min(1,t));return u*u*(3-2*u);};
+function displayDrivingPose(){
+ const target=drivingPose(),change=state.laneTransition;
+ if(!target||!change)return target;
+ const from=poseOnDrivingLane(change.from,target.pieceIndex,target.pieceT);
+ if(!from)return target;
+ const mix=smoothLaneStep(change.elapsed/change.duration);
+ const dh=Math.atan2(Math.sin(target.h-from.h),Math.cos(target.h-from.h));
+ return{...target,x:from.x+(target.x-from.x)*mix,
+  y:from.y+(target.y-from.y)*mix,h:from.h+dh*mix};
+}
+function advanceLaneTransition(dt){
+ const change=state.laneTransition;
+ if(!change||state.mode!=="race")return;
+ change.elapsed=Math.min(change.duration,change.elapsed+Math.max(0,dt));
+ if(change.elapsed>=change.duration)state.laneTransition=null;
+}
 function openWorkshop(){
  state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
  // El estante de piezas siempre permanece abierto y anclado a la mesa.
@@ -1595,9 +1637,35 @@ function back(){endSession("build");}
 function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  $("trigger").classList.remove("pressed");state.latest=performance.now();if(state.run)primeMotorAudio();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
-function switchLane(){if(state.run){toast("Pausa primero para cambiar de carril.");return;}state.lane=1-state.lane;resetLap();updateUI();toast("Carril "+(state.lane===0?"izquierdo":"derecho")+" · nueva tanda.");}
+function switchLane(){
+ if(state.mode!=="race"||!state.track.valid)return false;
+ if(state.laneTransition)return false;
+ if(state.penalty>0){toast("Espera a recuperar el coche antes de cambiar de carril.");return false;}
+ const current=drivingPose();if(!current)return false;
+ const from=state.lane,to=1-from;
+ const nextLane=state.track.lanes[state.driveDirection===-1?1-to:to];
+ const position=laneDistanceAtPiece(nextLane,current.pieceIndex,current.pieceT);
+ state.distance=state.driveDirection===-1?
+  (nextLane.total-position)%nextLane.total:position;
+ state.lane=to;
+ state.laneTransition={from,elapsed:0,duration:LANE_CHANGE_SECONDS};
+ if(state.raceStarted)state.lapEligible=false;
+ state.followCamera.settle=.85;
+ updateHud();
+ toast("Cambio suave al carril "+(to===0?"izquierdo":"derecho")+
+  (state.raceStarted?" · vuelta sin récord.":"."));
+ return true;
+}
 function completeLap(){
  if(state.seconds<.05)return;
+ // La vuelta que ha combinado dos carriles no genera un récord oficial.
+ // La carrera no se reinicia: al cruzar meta comienza otro parcial válido.
+ if(!state.lapEligible||state.laneTransition){
+  state.seconds=0;state.lap++;
+  state.lapEligible=!state.laneTransition;
+  toast("Vuelta mixta sin récord · siguiente vuelta válida.");
+  return;
+ }
  const v=record(),sec=state.seconds;
  const previous=[...state.sessionLaps].reverse().find(l=>l.lane===state.lane)?.seconds??null;
  const isRecord=v[state.lane]==null||sec<v[state.lane];
@@ -1943,13 +2011,18 @@ function updateHud(){
    Math.hypot(pose.x-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).x,
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
+   state.laneTransition?"CAMBIANDO DE CARRIL · TRANSICIÓN SUAVE":
    !state.run?"EN PAUSA":
+   !state.lapEligible?"VUELTA MIXTA · SIN RÉCORD":
    !state.raceStarted?"ESPERANDO SALIDA · ACELERA PARA COMENZAR":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
    "Busca el límite sin pasarte en las curvas";
  $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
- $("lane").disabled=state.run;
+ $("lane").disabled=Boolean(state.laneTransition)||state.penalty>0;
+ $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ Carril";
+ $("lane").setAttribute("aria-label","Cambiar al carril "+
+  (state.lane===0?"derecho":"izquierdo"));
  $("trigger").disabled=!state.run;
  updateTriggerDisplay();
 }
@@ -3102,7 +3175,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.34.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.35.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3110,7 +3183,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.34 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.35 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -3891,11 +3964,14 @@ function resetFollowCamera(){
  }
  state.followCamera.x=p.x;state.followCamera.y=p.y;
  state.followCamera.lookX=0;state.followCamera.lookY=0;
- state.followCamera.ready=true;
+ state.followCamera.ready=true;state.followCamera.settle=0;
 }
 function updateFollowCamera(dt){
- if(state.mode!=="race"||state.cameraMode!=="follow"||!state.run)return;
- const p=drivingPose(),f=state.followCamera;
+ if(state.mode!=="race"||state.cameraMode!=="follow")return;
+ const f=state.followCamera;
+ if(!state.run&&!state.laneTransition&&f.settle<=0)return;
+ const p=displayDrivingPose();
+ f.settle=Math.max(0,f.settle-dt);
  if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
  if(!f.ready){resetFollowCamera();return;}
  // Usamos el sentido físico del carril, nunca el giro visual del trompo.
@@ -4030,7 +4106,7 @@ function renderScene(canvas,mode){
  if(mode==="build")paintReference(ctx); // Nunca afecta al juego.
  paintGrid(ctx);
  const track=state.track,hasBridge=Boolean(track.bridge);
- const p=drivingPose(mode==="race"?state.distance:0);
+ const p=mode==="race"?displayDrivingPose():drivingPose(0);
  // Un coche que circula por la propia rampa siempre queda sobre SU
  // superficie, incluso cerca del extremo de menor altura. Sólo el coche
  // de una vía inferior independiente puede quedar bajo el puente.
@@ -4531,6 +4607,7 @@ function initEvents(){
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  simulation(dt);
+ advanceLaneTransition(dt);
  syncMotorAudio(now);
  updateFollowCamera(dt);
  if(state.mode==="build"){
@@ -4542,11 +4619,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.34",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.35",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
+ showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},
+ lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
