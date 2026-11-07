@@ -116,7 +116,9 @@ const state={
   library:initialLibrary,libraryTab:"circuits",sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
-  cameraMode:old?.cameraMode==="follow"?"follow":"general",
+  cameraMode:["general","follow","custom"].includes(old?.cameraMode)?old.cameraMode:"general",
+  followZoom:Number.isFinite(Number(old?.followZoom))?
+   Math.max(2,Math.min(30,Math.round(Number(old.followZoom)*2)/2)):5,
   followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false,settle:0},
   gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
@@ -141,7 +143,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  reference:state.reference,
  circuitName:state.circuitName,activeCircuitId:state.activeCircuitId,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
- driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode}));}
+ driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -2542,14 +2544,20 @@ function updateUI(){
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
  $("settingsXRay").textContent=state.xRayEnabled?"Activado":"Desactivado";
  $("settingsXRay").setAttribute("aria-pressed",String(state.xRayEnabled));
- for(const [id,mode] of [["settingsCameraGeneral","general"],["settingsCameraFollow","follow"]]){
+ for(const [id,mode] of [
+  ["settingsCameraGeneral","general"],["settingsCameraFollow","follow"],["settingsCameraCustom","custom"]]){
   const button=$(id),active=state.cameraMode===mode;
   button.classList.toggle("is-active",active);
   button.setAttribute("aria-pressed",String(active));
  }
- $("settingsCameraDescription").textContent=state.cameraMode==="follow"?
-  "Zoom fijo de 2×. Deja más pista por delante y sigue el coche suavemente, sin girar ni cambiar la altura.":
-  "Se muestra todo el circuito sin mover la cámara.";
+ $("settingsCameraCustomPanel").hidden=state.cameraMode!=="custom";
+ $("settingsCameraZoom").value=String(state.followZoom);
+ $("settingsCameraZoomValue").textContent=state.followZoom+"×";
+ $("settingsCameraDescription").textContent=state.cameraMode==="custom"?
+  "Seguimiento suave con aumento a medida ("+state.followZoom+"×). La orientación y la altura permanecen fijas.":
+  state.cameraMode==="follow"?
+   "Zoom fijo de 2×. Deja más pista por delante y sigue el coche suavemente, sin girar ni cambiar la altura.":
+   "Se muestra todo el circuito sin mover la cámara.";
  $("settingsGrid").setAttribute("aria-pressed",String(state.gridEnabled));
  for(const id of ["circuitName","workCircuitName"])
   if(document.activeElement!==$(id))$(id).value=state.circuitName;
@@ -3410,7 +3418,7 @@ function elevationJoins(track){
 }
 // El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
 // el puente introducía una segunda capa justo en el conector de las
-// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.41.
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.42.
 // Solo hay que repintar en cruces reales de vías NO ADYACENTES:
 // es donde la vía superior debe ocultar al coche y a los raíles inferiores.
 const crossingClipCache=new WeakMap();
@@ -3418,7 +3426,7 @@ function crossingClipPolygons(track){
  const cached=crossingClipCache.get(track);if(cached)return cached;
  const crossings=track.bridge?.crossings||[];
  if(!crossings.length){crossingClipCache.set(track,[]);return [];}
- // El fallo de DEV 0.14.41 venía de recortar la pista inferior a
+ // El fallo de DEV 0.14.42 venía de recortar la pista inferior a
  // intervalos alrededor del CRUCE DE EJES. Dos carreteras de 150 mm
  // se solapan mucho antes/después de que crucen sus ejes, y algunos
  // cruces están justo en el CONECTOR (t=0 o t=1). A ello se sumaba
@@ -4172,9 +4180,11 @@ function scheduleResize(){
   resizeQueued=false;resize();
  }));
 }
-// Cámara de carrera con altura constante. El factor 2 no cambia al
-// acelerar, frenar, derrapar, cruzar puentes ni durante la transición.
+// Las cámaras de seguimiento conservan la altura y el ángulo.
+// El aumento solo cambia desde Ajustes, no con la velocidad ni en puentes.
 const FOLLOW_ZOOM=2;
+const FOLLOW_CUSTOM_DEFAULT_ZOOM=5;
+const FOLLOW_CUSTOM_MIN_ZOOM=2,FOLLOW_CUSTOM_MAX_ZOOM=30;
 const FOLLOW_X_DEADZONE=.075; // Zona de descanso pequeña: no persigue cada vibración.
 const FOLLOW_Y_DEADZONE=.075;
 const FOLLOW_LOOKAHEAD=.20;    // Anticipación: reserva pantalla delante del coche.
@@ -4182,15 +4192,27 @@ const FOLLOW_LOOK_RESPONSE=3.2; // Cambia de dirección con calma, sin latigazos
 const FOLLOW_SAFE_EDGE=.25;    // El coche nunca entra en el 25 % exterior.
 const FOLLOW_RESPONSE=7.0;     // Seguimiento amortiguado e independiente de FPS.
 function setCameraMode(mode){
- if(mode!=="general"&&mode!=="follow")return false;
+ if(!["general","follow","custom"].includes(mode))return false;
  if(mode===state.cameraMode)return true;
  state.cameraMode=mode;
  state.followCamera.ready=false;
  save();updateUI();
- toast(mode==="follow"?
-  "Cámara de seguimiento activada · zoom fijo 2×.":
+ toast(mode==="custom"?
+  "Seguimiento a medida activado · "+state.followZoom+"×.":
+  mode==="follow"?"Cámara de seguimiento activada · zoom fijo 2×.":
   "Vista general activada · circuito completo.");
  return true;
+}
+function setFollowZoom(value){
+ const raw=Number(value);
+ const zoom=Number.isFinite(raw)?
+  Math.max(FOLLOW_CUSTOM_MIN_ZOOM,Math.min(FOLLOW_CUSTOM_MAX_ZOOM,Math.round(raw*2)/2)):
+  FOLLOW_CUSTOM_DEFAULT_ZOOM;
+ if(zoom===state.followZoom)return zoom;
+ state.followZoom=zoom;
+ state.viewDirty=true;
+ save();updateUI();
+ return zoom;
 }
 function resetFollowCamera(){
  const p=drivingPose();
@@ -4202,7 +4224,7 @@ function resetFollowCamera(){
  state.followCamera.ready=true;state.followCamera.settle=0;
 }
 function updateFollowCamera(dt){
- if(state.mode!=="race"||state.cameraMode!=="follow")return;
+ if(state.mode!=="race"||(state.cameraMode!=="follow"&&state.cameraMode!=="custom"))return;
  const f=state.followCamera;
  if(!state.run&&!state.laneTransition&&f.settle<=0)return;
  const p=displayDrivingPose();
@@ -4259,8 +4281,9 @@ function makeView(canvas,mode){
  const bw=target.right-target.left,bh=target.bottom-target.top;
  const width=portrait?bh:bw,height=portrait?bw:bh;
  const base=Math.max(.000001,Math.min((w-16)/width,(h-16)/height));
- const follow=mode==="race"&&state.cameraMode==="follow";
- const zoom=mode==="build"?state.camera.zoom:follow?FOLLOW_ZOOM:1;
+ const follow=mode==="race"&&(state.cameraMode==="follow"||state.cameraMode==="custom");
+ const zoom=mode==="build"?state.camera.zoom:follow?
+  (state.cameraMode==="custom"?state.followZoom:FOLLOW_ZOOM):1;
  const scale=base*zoom;
  const panX=mode==="build"?state.camera.panX:0,panY=mode==="build"?state.camera.panY:0;
  const centerX=follow&&state.followCamera.ready?state.followCamera.x:cx;
@@ -4770,6 +4793,8 @@ function initEvents(){
  });
  $("settingsCameraGeneral").addEventListener("click",()=>setCameraMode("general"));
  $("settingsCameraFollow").addEventListener("click",()=>setCameraMode("follow"));
+ $("settingsCameraCustom").addEventListener("click",()=>setCameraMode("custom"));
+ $("settingsCameraZoom").addEventListener("input",e=>setFollowZoom(e.target.value));
  $("menuRecipe").addEventListener("click",exportRecipe);
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
  $("deleteCircuitCancel").addEventListener("click",cancelCircuitDeletion);
@@ -4915,11 +4940,11 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.41",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.42",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},
+ showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},

@@ -1894,8 +1894,8 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .race-car-name{font-size:9px;padding:5px 7px}
 }
 
-/* DEV 0.14.3 · Selección coherente de cámaras de carrera.
-   La cámara de seguimiento conserva siempre altura y zoom 3×. */
+/* DEV 0.14.42 · Selección de cámaras y zoom ajustable.
+   El seguimiento conserva orientación y altura. */
 .camera-setting-row{flex-direction:column;align-items:stretch;gap:12px}
 .camera-setting-description{width:100%}
 .camera-mode-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%}
@@ -1907,6 +1907,17 @@ button:disabled{opacity:.35;cursor:not-allowed}
  color:#fff;border-color:#e12248;background:linear-gradient(130deg,#ee2346,#ba002b);
  box-shadow:0 4px 13px #b6003033
 }
+#settingsCameraCustom{grid-column:1/-1}
+.camera-zoom-panel{display:grid;gap:10px;padding:15px 16px 13px;border-radius:14px;
+ border:1px solid #d5dfe8;background:#f5f7fa}
+.camera-zoom-panel[hidden]{display:none}
+.camera-zoom-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.camera-zoom-heading label{font-size:13px;font-weight:850;color:#263746}
+.camera-zoom-heading output{min-width:55px;font-size:21px;font-weight:950;
+ font-variant-numeric:tabular-nums;color:#be1438;text-align:right}
+#settingsCameraZoom{width:100%;min-height:34px;accent-color:#cf1541;touch-action:pan-x;cursor:pointer}
+.camera-zoom-ticks{display:flex;justify-content:space-between;font-size:11px;font-weight:750;color:#607283}
+.camera-zoom-panel p{font-size:12px;line-height:1.45;color:#607283;margin:0}
 @media(max-width:390px){
  .camera-mode-choices{gap:7px}
  .camera-choice{font-size:12px;padding:10px 7px}
@@ -2450,7 +2461,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 }
 
 
-/* DEV 0.14.41 · Diagnóstico de cierre siempre visible y legible,
+/* DEV 0.14.42 · Diagnóstico de cierre siempre visible y legible,
    sin depender del panel antiguo #gapInfo oculto en móvil. */
 .builder-workbench #boardGapInfo[hidden]{display:none!important}
 .builder-workbench #boardGapInfo:not([hidden]){

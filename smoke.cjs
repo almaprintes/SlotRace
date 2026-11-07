@@ -247,12 +247,16 @@ for(const id of ["shopProducts","shopFeatured","shopCollectionSummary","shopTabB
 assert.match(css,/\.shop-box-visual/);
 assert.match(css,/\.shop-products-boxes/);
 assert.match(css,/\.shop-real-blueprint/);
-for(const id of ["settingsCameraGeneral","settingsCameraFollow","settingsCameraDescription"]){
+for(const id of ["settingsCameraGeneral","settingsCameraFollow","settingsCameraCustom",
+ "settingsCameraCustomPanel","settingsCameraZoom","settingsCameraZoomValue","settingsCameraDescription"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Selector de cámara "+id);
 }
 assert.match(css,/\.camera-mode-choices/);
 assert.match(css,/\.camera-choice\[aria-pressed="true"\]/);
 assert.match(app,/const FOLLOW_ZOOM=2/);
+assert.match(app,/FOLLOW_CUSTOM_MAX_ZOOM=30/);
+assert.match(app,/function setFollowZoom\(value\)/);
+assert.match(css,/\.camera-zoom-panel\[hidden\]/);
 assert.match(app,/function updateFollowCamera\(dt\)/);
 assert.match(app,/function resetFollowCamera\(\)/);
 assert.match(app,/cameraMode:state.cameraMode/);
@@ -304,5 +308,5 @@ const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-moto
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.41 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.42 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

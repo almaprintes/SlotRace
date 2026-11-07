@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.41");
+ assert.equal(game.version,"DEV 0.14.42");
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
  const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
@@ -186,7 +186,28 @@ const path=require("node:path");
   "Seguimiento multiplica exactamente por 2 el zoom general");
  assert.equal(followView.angle,standardView.angle,
   "El seguimiento mantiene la orientación y no gira con el coche");
+ elements.get("settingsCameraCustom").listeners.click[0]();
+ assert.equal(st.cameraMode,"custom");
+ assert.equal(elements.get("settingsCameraCustom").attrs["aria-pressed"],"true");
+ assert.equal(elements.get("settingsCameraCustomPanel").hidden,false);
+ assert.equal(elements.get("settingsCameraZoomValue").textContent,"5×");
+ let customView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ assert.ok(Math.abs(customView.scale/standardView.scale-5)<1e-9,
+  "El nuevo seguimiento empieza con 5×");
+ assert.equal(customView.angle,standardView.angle);
+ elements.get("settingsCameraZoom").listeners.input[0]({target:{value:"12.5"}});
+ assert.equal(st.followZoom,12.5);
+ assert.equal(elements.get("settingsCameraZoomValue").textContent,"12.5×");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).followZoom,12.5,
+  "El zoom elegido se conserva en el dispositivo");
+ customView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ assert.ok(Math.abs(customView.scale/standardView.scale-12.5)<1e-9,
+  "Se aplica el zoom seleccionado");
+ assert.equal(game.camera.setFollowZoom(100),30,"Aumento máximo de 30×");
+ assert.equal(game.camera.setFollowZoom(-2),2,"Aumento mínimo de 2×");
+ assert.equal(game.camera.setFollowZoom("no-válido"),5,"Restaurar valor predeterminado");
  elements.get("settingsCameraGeneral").listeners.click[0]();
+ assert.equal(elements.get("settingsCameraCustomPanel").hidden,true);
  assert.equal(st.cameraMode,"general");
  assert.equal(game.camera.makeView(elements.get("raceCanvas"),"race").scale,standardView.scale);
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general");
@@ -853,5 +874,5 @@ const path=require("node:path");
   "La cuadrícula se adapta al zoom en un circuito inmenso");
  assert.doesNotMatch(source,/Suelta dentro de la mesa verde/);
 
- console.log("SlotRace DEV 0.14.41: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.14.42: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
