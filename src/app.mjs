@@ -2842,37 +2842,10 @@ function elevatedDeckRuns(track){
  }
  const deck=runs.map(indices=>{
   const points=indices.flatMap((index,i)=>track.parts[index].points.slice(i?1:0));
-  // La pista base se dibuja completa, pero la cubierta se repinta en otra
-  // capa. Sus extremos rectos coincidían JUSTO con el empalme suelo/rampa,
-  // generando cortes ópticos. Prolongar sólo el trazo PINTADO unos milímetros
-  // sobre los módulos contiguos permite compartir bordes, asfalto y carriles.
-  // La geometría física, índices y máscara Rayos X siguen inalterados.
-  const n=track.parts.length,first=indices[0],last=indices.at(-1);
-  const before=first>0?first-1:track.closed?n-1:-1;
-  const after=last<n-1?last+1:track.closed?0:-1;
-  const smoothEnd=(part,atEnd)=>{
-   const spec=CATALOG[part.id];
-   const length=spec.length||spec.radius*Math.abs(spec.angle);
-   const delta=Math.min(.24,Math.min(52,length*.24)/length);
-   // Cuatro muestras analíticas reproducen la curva verdadera y su tangente.
-   return Array.from({length:4},(_,k)=>
-    positionOnPiece(part.start,part.id,
-     atEnd?1-delta+delta*k/4:delta*(k+1)/4));
-  };
-  const preceding=before>=0&&!active[before]&&
-   Math.hypot(track.parts[before].end.x-track.parts[first].start.x,
-    track.parts[before].end.y-track.parts[first].start.y)<.1?
-   smoothEnd(track.parts[before],true):[];
-  const following=after>=0&&!active[after]&&
-   Math.hypot(track.parts[last].end.x-track.parts[after].start.x,
-    track.parts[last].end.y-track.parts[after].start.y)<.1?
-   smoothEnd(track.parts[after],false):[];
-  const paintPoints=[...preceding,...points,...following];
-  const offsetsFor=path=>Object.fromEntries(
+  return{indices,points,offsets:Object.fromEntries(
    [-LANE_OFFSET,LANE_OFFSET,-LANE_OFFSET-7.6,-LANE_OFFSET+7.6,
-    LANE_OFFSET-7.6,LANE_OFFSET+7.6,-72,72].map(off=>[off,translated(path,off)]));
-  return{indices,points,paintPoints,
-   offsets:offsetsFor(points),paintOffsets:offsetsFor(paintPoints)};
+    LANE_OFFSET-7.6,LANE_OFFSET+7.6,-72,72]
+    .map(off=>[off,translated(points,off)]))};
  }).filter(run=>run.points.length>1);
  elevatedDeckCache.set(track,deck);
  return deck;
@@ -3077,10 +3050,66 @@ function elevationJoins(track){
  elevationJoinCache.set(track,joins);
  return joins;
 }
+// El circuito ya se dibuja COMPLETO en la pasada base. Repintar todo
+// el puente introducía una segunda capa justo en el conector de las
+// curvas de suelo, agravado al prolongarla 52 mm en DEV 0.14.32.
+// Solo hay que repintar en cruces reales de vías NO ADYACENTES:
+// es donde la vía superior debe ocultar al coche y a los raíles inferiores.
+const crossingClipCache=new WeakMap();
+function crossingClipPolygons(track){
+ const cached=crossingClipCache.get(track);if(cached)return cached;
+ const intervals=new Map(),profiles=track.elevation?.profiles||[];
+ for(const cross of track.bridge?.crossings||[]){
+  const part=track.parts[cross.lower],t=cross.lowerT;
+  if(!part||!Number.isFinite(t))continue;
+  if(!intervals.has(part.index))intervals.set(part.index,[]);
+  intervals.get(part.index).push(Math.max(0,Math.min(1,t)));
+ }
+ const polygons=[];
+ for(const [index,positions] of intervals){
+  const part=track.parts[index],spec=CATALOG[part.id];
+  const length=spec.length||spec.radius*Math.abs(spec.angle);
+  if(!(length>0))continue;
+  // El margen cubre la anchura del paso superior, sin usar rectángulos
+  // arbitrarios que corten o descubran las curvas del nivel inferior.
+  const margin=Math.min(.5,(TRACK_WIDTH+85)/length);
+  let from=Math.max(0,Math.min(...positions)-margin);
+  let to=Math.min(1,Math.max(...positions)+margin);
+  const previous=index>0?index-1:track.closed?track.parts.length-1:-1;
+  const next=index+1<track.parts.length?index+1:track.closed?0:-1;
+  // Nunca repintar el propio conector suelo/rampa: la pasada base ya
+  // ha dibujado una sola superficie continua en esa frontera.
+  if(previous>=0&&Boolean(profiles[previous])!==Boolean(profiles[index]))
+   from=Math.max(from,Math.min(.24,40/length));
+  if(next>=0&&Boolean(profiles[next])!==Boolean(profiles[index]))
+   to=Math.min(to,1-Math.min(.24,40/length));
+  if(to-from<.001)continue;
+  const count=Math.max(3,Math.ceil((to-from)*length/13));
+  const points=Array.from({length:count+1},(_,k)=>
+   positionOnPiece(part.start,part.id,from+(to-from)*k/count));
+  const half=TRACK_WIDTH/2+13;
+  polygons.push([...translated(points,half),...translated(points,-half).reverse()]);
+ }
+ crossingClipCache.set(track,polygons);
+ return polygons;
+}
 function paintElevatedDeck(ctx,track){
  if(!track.bridge||!track.elevation?.raisedParts?.length)return;
- for(const {paintPoints,paintOffsets} of elevatedDeckRuns(track))
-  paintOpaqueRibbon(ctx,paintPoints,paintOffsets);
+ const polygons=crossingClipPolygons(track);
+ if(!polygons.length)return;
+ ctx.save();
+ ctx.beginPath();
+ for(const polygon of polygons){
+  ctx.moveTo(polygon[0].x,polygon[0].y);
+  for(let i=1;i<polygon.length;i++)ctx.lineTo(polygon[i].x,polygon[i].y);
+  ctx.closePath();
+ }
+ ctx.clip();
+ for(const {points,offsets} of elevatedDeckRuns(track))
+  paintOpaqueRibbon(ctx,points,offsets);
+ ctx.restore();
+ // La línea de meta de una sección elevada se mantiene arriba también
+ // si coincide con un cruce; la pista base ya la pinta en otros puntos.
  if(track.elevation.profiles?.[0])paintFinishLine(ctx,track);
 }
 // Reglas de oclusión por INTERSECCIÓN. Una pasada de cada tramo elevado
@@ -4456,12 +4485,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.31",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.32",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,setCameraMode,camera:{makeView,resetFollowCamera,updateFollowCamera,FOLLOW_ZOOM},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
-rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
+rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,promoteLooseGroup,detachLooseMember},
  physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};

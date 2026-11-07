@@ -31,8 +31,20 @@ assert.match(selectionPainter,/strokePath\(ctx,translated\(points,offset\)/,
  "La selección del puente solo subraya los dos bordes");
 const raisedPainter=app.slice(app.indexOf("function elevatedDeckRuns("),
  app.indexOf("function paintOpaqueRibbon("));
-assert.match(raisedPainter,/const paintPoints=\[\.\.\.preceding,\.\.\.points,\.\.\.following\]/,
- "Los contornos elevados se prolongan suavemente antes y después del conector");
+assert.doesNotMatch(raisedPainter,/paintPoints|paintOffsets|smoothEnd/,
+ "No se prolongan las capas elevadas sobre las piezas a ras de suelo");
+assert.match(raisedPainter,/return\{indices,points,offsets:/,
+ "El camino elevado conserva exactamente el trazado de sus módulos");
+const crossingClip=app.slice(app.indexOf("function crossingClipPolygons("),
+ app.indexOf("function paintElevatedDeck("));
+assert.match(crossingClip,/track\.bridge\?\.crossings/,
+ "La oclusión utiliza únicamente cruces geométricos verificados");
+const elevatedPainter=app.slice(app.indexOf("function paintElevatedDeck("),
+ app.indexOf("// Reglas de oclusión por INTERSECCIÓN"));
+assert.match(elevatedPainter,/ctx\.clip\(\)/,
+ "La segunda capa opaca siempre debe recortarse al cruce real");
+assert.doesNotMatch(elevatedPainter,/paintOpaqueRibbon\(ctx,paintPoints,paintOffsets\)/,
+ "Prohibido repintar rampas y curva de suelo con extremos solapados");
 
 assert.equal(Object.keys(CATALOG).length,27);
 assert.equal(Object.keys(PARTS).length,27);
@@ -120,7 +132,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.31/);
+assert.match(html,/DEV 0\.14\.32/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -226,5 +238,5 @@ assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
 assert.match(app,/DIAL_STEP=5/);
 assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
-console.log("SlotRace DEV 0.14.31 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
+console.log("SlotRace DEV 0.14.32 OK: 27 variantes reconocidas (una heredada), 16 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});

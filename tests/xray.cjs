@@ -119,30 +119,36 @@ const fs=require("node:fs"),path=require("node:path");
    label+": las carreras no muestran juntas");
  };
  checkSeams(track,"Doble óvalo");
- // La banda visual del puente ya no comienza con una tapa en el
- // conector: se prolonga unos milímetros sobre los tramos unidos.
- // Su máscara física/Rayos X mantiene el recorrido original.
+ // La extensión de 52 mm de la DEV 0.14.32 se retiró porque
+ // repintaba asfalto encima de la curva de suelo junto a su rampa.
  const deck=game.rendering.elevatedDeckRuns(track)[0];
- const prevIndex=(deck.indices[0]+track.parts.length-1)%track.parts.length;
- const nextIndex=(deck.indices.at(-1)+1)%track.parts.length;
- assert.equal(track.elevation.profiles[prevIndex],null);
- assert.equal(track.elevation.profiles[nextIndex],null);
- assert.ok(deck.paintPoints.length>deck.points.length,
-  "El render solapa ambas fronteras, sin modificar la geometría");
- assert.strictEqual(deck.paintPoints[4],deck.points[0],
-  "La primera soldadura comparte exactamente el punto de entrada");
- assert.strictEqual(deck.paintPoints[4+deck.points.length-1],deck.points.at(-1),
-  "La segunda soldadura comparte exactamente el punto de salida");
- assert.equal(deck.paintPoints.length,deck.points.length+8,
-  "Solape visual de cuatro muestras en cada extremo");
- assert.ok(Math.hypot(deck.paintPoints[0].x-track.parts[prevIndex].end.x,
-  deck.paintPoints[0].y-track.parts[prevIndex].end.y)<60,
-  "El solape de entrada queda limitado al módulo vecino");
- assert.ok(Math.hypot(deck.paintPoints.at(-1).x-track.parts[nextIndex].start.x,
-  deck.paintPoints.at(-1).y-track.parts[nextIndex].start.y)<60,
-  "El solape de salida queda limitado al módulo vecino");
- assert.match(source,/paintOpaqueRibbon\(ctx,paintPoints,paintOffsets\)/,
-  "La capa alta utiliza la soldadura visual extendida");
+ assert.ok(!("paintPoints" in deck)&&!("paintOffsets" in deck),
+  "No prolongar la cubierta por el conector suelo/rampa");
+ assert.deepEqual(deck.points[0],track.parts[deck.indices[0]].points[0],
+  "La banda geométrica comienza exactamente en su pieza original");
+ assert.deepEqual(deck.points.at(-1),track.parts[deck.indices.at(-1)].points.at(-1),
+  "La banda geométrica termina exactamente en su pieza original");
+ const cover=game.rendering.crossingClipPolygons(track);
+ assert.ok(cover.length>0&&cover.every(p=>p.length>=8),
+  "Los pasos superiores se repintan solo dentro del contorno inferior cruzado");
+ assert.strictEqual(game.rendering.crossingClipPolygons(track),cover,
+  "Los clips de cruces se conservan por trazado");
+ const clipBefore=clips.length,strokeBefore=strokes.length;
+ game.rendering.paintElevatedDeck(ctx,track);
+ assert.equal(clips.length,clipBefore+1,
+  "La plataforma elevada NO se dibuja libremente en la rampa, requiere clip de cruce");
+ assert.ok(strokes.length>strokeBefore,
+  "El puente sigue ocultando la vía inferior donde hay un cruce real");
+ const noCross=geo.buildTrack(["S350","R2_45R","R2_45R","S350"],geo.START,[1,2]);
+ assert.ok(noCross.bridge&&!noCross.bridge.crossings.length,
+  "El test incluye rampas y curvas elevadas sin paso inferior");
+ assert.deepEqual(game.rendering.crossingClipPolygons(noCross),[],
+  "Sin cruces no se repinta ninguna cubierta encima de sus conectores");
+ const clipsNoCross=clips.length,strokesNoCross=strokes.length;
+ game.rendering.paintElevatedDeck(ctx,noCross);
+ assert.equal(clips.length,clipsNoCross);
+ assert.equal(strokes.length,strokesNoCross,
+  "Sin cruce real, la rampa solo se dibuja en la base continua");
  // Ninguna banda de selección debe tapar el asfalto y fingir un
  // corte rectangular justo donde empieza una rampa.
  const oldMode=game.state.mode,oldCase=game.state.caseCategory;
@@ -216,6 +222,13 @@ const fs=require("node:fs"),path=require("node:path");
   assert.ok(polygons.some(p=>inside(at,p)),
    "La curva inferior queda bajo la cubierta en t="+fraction);
  }
+ // Ninguno de los dos conectores suelo/rampa puede quedar dentro de
+ // la segunda pasada de asfalto: son exactamente los puntos denunciados.
+ for(const join of transitions){
+  const point={x:join.x,y:join.y};
+  assert.ok(!cover.some(poly=>inside(point,poly)),
+   "La cubierta del cruce no alcanza la frontera "+join.from+"→"+join.to);
+ }
  const visible=geo.positionOnPiece(track.parts[1].start,track.parts[1].id,.5);
  assert.ok(!polygons.some(poly=>inside(visible,poly)),
   "No marcar como ocultos carriles a la vista");
@@ -250,5 +263,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.31: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.32: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

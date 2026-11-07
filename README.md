@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.32 · Eliminar el doble dibujo en las uniones suelo/rampa
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.32
+
+- **Corrección de la DEV 0.14.31:** se eliminan los 52 mm de solape que agravaban la unión entre la curva a ras de suelo y la recta elevada.
+- **Una sola superficie en los conectores:** el trazado original ya dibuja asfalto, carriles y bordes continuos. No se vuelve a pintar un tramo elevado entero en los conectores.
+- **Oclusión solo en cruces reales:** el repintado de la vía superior queda recortado a las zonas inferiores verificadas por geometría. Se conservan Rayos X, coches ocultos y curvas inferiores.
+- **Pruebas de regresión:** el Doble óvalo comprueba que ninguna frontera suelo/rampa pertenezca al recorte; los tramos elevados sin cruces no se repintan. Todos los parámetros físicos y datos locales se mantienen.
+
+**Pendiente de comprobación visual en iPhone:** las dos fronteras de subida y bajada.
+
+---
+
 # SlotRace DEV 0.14.31 · Unión limpia de rampas y curvas
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.31
