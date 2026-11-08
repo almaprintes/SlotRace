@@ -2624,3 +2624,18 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:679px){
  .table-theme-technical{grid-column:1/-1;justify-content:center}
 }
+
+/* DEV 0.14.57: aviso de actualización dentro de la misma PWA.
+   Nunca borra datos ni reinicia por sorpresa durante una carrera. */
+.update-notice{position:fixed;z-index:990;bottom:calc(17px + env(safe-area-inset-bottom,0px));
+ left:50%;transform:translateX(-50%);width:min(470px,calc(100vw - 26px));
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+ padding:13px 14px;border:1px solid #7ee6d2;border-radius:16px;
+ background:#092530f5;box-shadow:0 15px 40px #0008;color:#e8fff8;
+ font-size:13px;font-weight:750;line-height:1.35;backdrop-filter:blur(12px)}
+.update-notice[hidden]{display:none!important}
+.update-notice>span{min-width:150px;flex:1}
+.update-notice-actions{display:flex;gap:7px}
+.update-notice-actions button{padding:10px 12px;min-height:42px;border-radius:10px;
+ border:1px solid #6fcbb9;background:#44d7bc;color:#06312d;font-weight:900}
+.update-notice-actions #updateLater{background:#173845;color:#d2eff1;border-color:#49747a}
