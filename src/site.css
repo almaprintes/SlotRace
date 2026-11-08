@@ -2611,3 +2611,16 @@ button:disabled{opacity:.35;cursor:not-allowed}
  .table-theme-choice{gap:6px;padding:8px;font-size:12px}
  .table-theme-swatch{width:38px;height:43px}
 }
+
+/* DEV 0.14.55 · Gris técnico: grafito con líneas de precisión en acero. */
+.swatch-technical{background:linear-gradient(135deg,#525e67,#232d36)}
+.swatch-technical:after{
+ background-image:linear-gradient(#bbc7cf6b 1px,transparent 1px),
+ linear-gradient(90deg,#bbc7cf6b 1px,transparent 1px)}
+.table-theme-technical small{color:#bdcbd4}
+@media(min-width:680px){
+ .table-theme-choices{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:679px){
+ .table-theme-technical{grid-column:1/-1;justify-content:center}
+}
