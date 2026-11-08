@@ -45,6 +45,9 @@ jobs:
       - name: Comprobar curvas elevadas, transiciones y cruces
         run: node tests/elevated-curves.cjs
 
+      - name: Comprobar pianos automáticos, continuidad y puentes
+        run: node tests/kerbs.cjs
+
       - name: Comprobar entrada realista en curvas del óvalo
         run: node tests/oval-curve-entry.cjs
 
