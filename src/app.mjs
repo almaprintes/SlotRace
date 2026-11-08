@@ -3092,6 +3092,8 @@ function paintKerbPaths(ctx,paths){
  ctx.restore();
 }
 function paintTrackKerbs(ctx,track,layer="all"){
+ // Los harnesses de física cargan app.mjs sin imports ni renderer real.
+ if(typeof buildCurveKerbs!=="function")return;
  let cached=trackKerbCache.get(track);
  if(!cached){
   const geometry=buildCurveKerbs(track.parts);
@@ -3104,6 +3106,7 @@ function paintTrackKerbs(ctx,track,layer="all"){
  paintKerbPaths(ctx,cached[layer]);
 }
 function paintLooseKerbs(ctx,parts){
+ if(typeof buildCurveKerbs!=="function")return;
  paintKerbPaths(ctx,compileKerbs(buildCurveKerbs(parts)));
 }
 // Las coordenadas del tapete virtual no tienen bordes físicos.
