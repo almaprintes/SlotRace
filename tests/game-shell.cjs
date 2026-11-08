@@ -114,6 +114,12 @@ const path=require("node:path");
  assert.equal(elements.get("goHome").hidden,true);
  assert.equal(elements.get("mainNavigation").hidden,true,
   "El menú inicial presenta dos acciones grandes sin barra redundante");
+ assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/,
+  "La barra tiene seis destinos fijos");
+ assert.match(css,/html,body\{background:#eef1f5\}/,
+  "La zona inferior hereda el fondo claro en iOS");
+ assert.match(html,/id="navRace"[^>]*aria-label="Ir a competir"/,
+  "Competir cuenta con un acceso consistente");
  assert.match(html,/id="entryGate"/);
  assert.match(html,/id="entryLogin"/);
  assert.match(html,/id="entryRegister"/);
@@ -139,11 +145,23 @@ const path=require("node:path");
   ["navStore","store"],["navMenu","menu"]]){
   elements.get(id).listeners.click[0]();
   assert.equal(st.mode,mode,"La barra común navega a "+mode);
+  if(mode==="garage")assert.equal(elements.get("mastMode").textContent,"GARAJE");
+  if(mode==="store")assert.equal(elements.get("mastMode").textContent,"TIENDA");
   assert.equal(elements.get("mainNavigation").hidden,mode==="menu");
+  if(mode!=="menu"){
+   for(const id of ["navMenu","navRace","navBuild","navLibrary","navGarage","navStore"])
+    assert.equal(elements.get(id).hidden,false,
+     "Los seis destinos son visibles desde "+mode);
+  }
  }
  elements.get("mastSettings").listeners.click[0]();
  assert.equal(st.mode,"settings","Ajustes ocupa el mismo lugar en la cabecera");
  assert.equal(elements.get("settingsScreen").hidden,false);
+ assert.equal(elements.get("goHome").hidden,true,
+  "El botón de inicio no se duplica si existe abajo");
+ assert.equal(elements.get("mastMode").textContent,"AJUSTES");
+ for(const id of ["navMenu","navRace","navBuild","navLibrary","navGarage","navStore"])
+  assert.equal(elements.get(id).hidden,false,"Ajustes mantiene los seis destinos");
  elements.get("navMenu").listeners.click[0]();
  assert.equal(st.mode,"menu");
 
@@ -156,8 +174,8 @@ const path=require("node:path");
  assert.equal(elements.get("raceScreen").hidden,true,
   "No se inicia una carrera accidentalmente");
  assert.equal(elements.get("mainNavigation").hidden,false);
- assert.equal(elements.get("navBuild").hidden,true,
-  "El piloto no ve controles de construcción en su navegación");
+ assert.equal(elements.get("navBuild").hidden,false,
+  "Construir no desaparece al entrar en modo piloto");
  assert.equal(elements.get("navRace").hidden,false);
  assert.equal(elements.get("raceStart").disabled,false,"Óvalo válido listo");
  game.showMenu();
@@ -169,8 +187,8 @@ const path=require("node:path");
   "El taller conserva la marca SlotRace");
  assert.equal(elements.get("mastWelcome").hidden,true,
   "El saludo aparece solamente en bienvenida");
- assert.equal(elements.get("navRace").hidden,true,
-  "En el taller desaparece la navegación de competición");
+ assert.equal(elements.get("navRace").hidden,false,
+  "El taller conserva Competir en la barra común");
  assert.equal(elements.get("navBuild").hidden,false);
  assert.match(html,/id="builderScroll"/);
  assert.match(html,/id="caseStraights"/);
