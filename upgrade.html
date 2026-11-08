@@ -18,7 +18,7 @@ small{display:block;color:#9bb7bf;margin-top:15px;line-height:1.5}
 <main>
 <h1>Actualizar SlotRace</h1>
 <p id="status">Comprobando la versión disponible…</p>
-<a id="updateLink" href="./index.html?v=0.15.7&fresh=manual">Abrir versión actualizada</a>
+<a id="updateLink" href="./index.html?v=0.15.8&fresh=manual">Abrir versión actualizada</a>
 <button id="retry" type="button">Comprobar de nuevo</button>
 <small>Este acceso no borra circuitos ni récords. No elimines la PWA ni los datos del sitio para actualizarla. Si abres esta página fuera de la PWA, Safari puede usar un almacenamiento distinto.</small>
 </main>
@@ -35,7 +35,7 @@ small{display:block;color:#9bb7bf;margin-top:15px;line-height:1.5}
    link.href="./index.html?v="+encodeURIComponent(data.version)+"&refresh="+nonce;
    status.textContent="Versión disponible: DEV "+data.version+". Usa el botón para abrirla con una dirección nueva.";
   }catch(_error){
-   link.href="./index.html?v=0.15.7&refresh="+nonce;
+   link.href="./index.html?v=0.15.8&refresh="+nonce;
    status.textContent="No se pudo comprobar la última versión. Puedes intentar abrirla directamente.";
   }
  }
