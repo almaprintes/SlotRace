@@ -23,7 +23,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.match(upgrade,/version\.json\?fresh=/);
  assert.match(upgrade,/index\.html\?v=/);
  assert.match(upgrade,/No elimines la PWA/);
- assert.equal(isNewerVersion("0.14.58"),true);
+ assert.equal(isNewerVersion("0.14.59"),true);
  assert.equal(isNewerVersion("0.15.0"),true);
  assert.equal(isNewerVersion("1.0.0"),true);
  assert.equal(isNewerVersion("0.14.56"),false);
