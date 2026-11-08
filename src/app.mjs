@@ -1,5 +1,6 @@
 import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -3054,6 +3055,60 @@ function cachedTrackOffset(track,offset){
   entry.offsets.set(offset,translated(track.points,offset));
  return entry.offsets.get(offset);
 }
+// Un Path2D rojo y otro blanco por circuito. Se calculan al cambiar
+// las piezas, no a cada fotograma de la carrera ni al mover la cámara.
+const trackKerbCache=new WeakMap();
+function compileKerbs(geometry){
+ const compiled={};
+ for(const color of ["red","white"]){
+  const polygons=geometry[color]||[];
+  if(typeof Path2D==="function"){
+   const path=new Path2D();
+   for(const stripe of polygons){
+    const [first,...rest]=stripe.points;
+    path.moveTo(first.x,first.y);
+    for(const point of rest)path.lineTo(point.x,point.y);
+    path.closePath();
+   }
+   compiled[color]=path;
+  }else compiled[color]=polygons;
+ }
+ return compiled;
+}
+function paintKerbPaths(ctx,paths){
+ ctx.save();ctx.globalAlpha=1;ctx.shadowBlur=0;
+ ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+ for(const color of ["red","white"]){
+  ctx.fillStyle=KERB_STYLE[color];
+  const entry=paths[color];
+  if(typeof Path2D==="function"){ctx.fill(entry);continue;}
+  for(const stripe of entry){
+   const [first,...rest]=stripe.points;
+   ctx.beginPath();ctx.moveTo(first.x,first.y);
+   for(const point of rest)ctx.lineTo(point.x,point.y);
+   ctx.closePath();ctx.fill();
+  }
+ }
+ ctx.restore();
+}
+function paintTrackKerbs(ctx,track,layer="all"){
+ // Los harnesses de física cargan app.mjs sin imports ni renderer real.
+ if(typeof buildCurveKerbs!=="function")return;
+ let cached=trackKerbCache.get(track);
+ if(!cached){
+  const geometry=buildCurveKerbs(track.parts);
+  const elevated=new Set((track.elevation?.profiles||[])
+   .flatMap((profile,i)=>profile?[i]:[]));
+  cached={all:compileKerbs(geometry),
+   upper:compileKerbs(selectCurveKerbs(geometry,elevated))};
+  trackKerbCache.set(track,cached);
+ }
+ paintKerbPaths(ctx,cached[layer]);
+}
+function paintLooseKerbs(ctx,parts){
+ if(typeof buildCurveKerbs!=="function")return;
+ paintKerbPaths(ctx,compileKerbs(buildCurveKerbs(parts)));
+}
 // Las coordenadas del tapete virtual no tienen bordes físicos.
 function visibleWorldBounds(v,padding=0){
  const pts=[[0,0],[v.w,0],[0,v.h],[v.w,v.h]].map(([x,y])=>worldFromPointer(v,x,y));
@@ -3252,6 +3307,7 @@ function paintContinuousTrack(ctx,track,editing){
   strokePath(ctx,line,PIECE_LOOK.guide,5);
  }
  for(const edge of [-72,72])strokePath(ctx,cachedTrackOffset(track,edge),PIECE_LOOK.edge,2.5);
+ paintTrackKerbs(ctx,track);
  paintX350(ctx,track);
  // En el taller conservamos las juntas ordinarias de módulos.
  // En las fronteras suelo/rampa, en cambio, la pista y los dos carriles
@@ -3610,6 +3666,8 @@ function paintElevatedDeck(ctx,track){
  ctx.clip();
  for(const {points,offsets} of elevatedDeckRuns(track))
   paintOpaqueRibbon(ctx,points,offsets);
+ // Los pianos superiores se repintan solo en el clip de cruces reales.
+ paintTrackKerbs(ctx,track,"upper");
  ctx.restore();
  // La línea de meta de una sección elevada se mantiene arriba también
  // si coincide con un cruce; la pista base ya la pinta en otros puntos.
@@ -3690,6 +3748,7 @@ function paintBridgeCrossing(ctx,track){
    strokePath(ctx,translated(upper,off),PIECE_LOOK.guide,5);
   }
   for(const off of [-72,72])strokePath(ctx,translated(upper,off),PIECE_LOOK.edge,2.5);
+  paintLooseKerbs(ctx,[elevated]);
   ctx.restore();
  }
 }
@@ -3930,6 +3989,7 @@ function paintLoose(ctx){
    strokePath(ctx,translated(points,off),PIECE_LOOK.guide,5);
   }
   for(const edge of [-72,72])strokePath(ctx,translated(points,edge),PIECE_LOOK.edge,2.5);
+  paintLooseKerbs(ctx,parts);
   // Sólo los conectores exteriores: nunca dibujar una falsa separación
   // oscura entre dos módulos magnéticamente unidos.
   paintSeam(ctx,parts[0].start);

@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.51 · Pianos de curva automáticos
+
+**Tras publicar:** https://almaprintes.github.io/SlotRace/?v=0.14.51
+
+- **Rojo y blanco, sin piezas extra:** dos bandas estrechas en los bordes de todas las curvas SR-Precision, radios R1–R4 y ambos sentidos. Las rectas se mantienen limpias.
+- **Patrón continuo:** franjas alternas cada 30 mm del arco, sin reiniciar en las uniones de curvas consecutivas del mismo sentido.
+- **Rendimiento:** geometría derivada de los puntos existentes de la pista; dos trazados `Path2D` por circuito, cacheados y reutilizados a 60 FPS.
+- **Puentes y Rayos X:** los pianos superiores se repintan únicamente dentro del recorte de cruces reales; la base y sus pianos inferiores permanecen intactos fuera del cruce.
+- **Construcción:** también aparecen en piezas sueltas y tramos unidos magnéticamente, sin cambios en colisiones, ranuras, recetas o tiempos.
+- **Pruebas:** `node tests/kerbs.cjs` más batería existente de GitHub Actions.
+
+---
+
 # SlotRace DEV 0.14.41 · Cierre flexible real inferior a 10 mm
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.41
