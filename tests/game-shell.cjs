@@ -102,14 +102,22 @@ const path=require("node:path");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
- assert.equal(elements.get("mainNavigation").hidden,false,
-  "El menú muestra navegación persistente");
+ assert.equal(elements.get("mainNavigation").hidden,true,
+  "El menú inicial presenta dos acciones grandes sin barra redundante");
+ assert.match(html,/id="entryGate"/);
+ assert.match(html,/id="entryLogin"/);
+ assert.match(html,/id="entryRegister"/);
+ assert.match(html,/id="entryGuest"/);
+ assert.match(html,/id="raceLobbyScreen"/);
+ assert.match(html,/id="raceCircuitSelect"/);
+ assert.match(html,/id="raceStart"/);
+ assert.match(css,/\.launcher-screen \.launcher-actions/);
  for(const [id,mode] of [
   ["navBuild","build"],["navLibrary","library"],["navGarage","garage"],
   ["navStore","store"],["navMenu","menu"]]){
   elements.get(id).listeners.click[0]();
   assert.equal(st.mode,mode,"La barra común navega a "+mode);
-  assert.equal(elements.get("mainNavigation").hidden,false);
+  assert.equal(elements.get("mainNavigation").hidden,mode==="menu");
  }
  elements.get("mastSettings").listeners.click[0]();
  assert.equal(st.mode,"settings","Ajustes ocupa el mismo lugar en la cabecera");
@@ -118,10 +126,26 @@ const path=require("node:path");
  assert.equal(st.mode,"menu");
 
  assert.equal(elements.get("menuRace").disabled,false,
-  "Un circuito válido guardado puede competir desde el menú");
+  "La opción Competir siempre abre el vestíbulo, incluso con pista abierta");
+ game.menuRace();
+ assert.equal(st.mode,"raceLobby","Competir abre su preparación específica");
+ assert.equal(st.flow,"race");
+ assert.equal(elements.get("raceLobbyScreen").hidden,false);
+ assert.equal(elements.get("raceScreen").hidden,true,
+  "No se inicia una carrera accidentalmente");
+ assert.equal(elements.get("mainNavigation").hidden,false);
+ assert.equal(elements.get("navBuild").hidden,true,
+  "El piloto no ve controles de construcción en su navegación");
+ assert.equal(elements.get("navRace").hidden,false);
+ assert.equal(elements.get("raceStart").disabled,false,"Óvalo válido listo");
+ game.showMenu();
  assert.equal(st.driveDirection,1,"Sentido horario predeterminado");
  game.openWorkshop();
  assert.equal(st.mode,"build");
+ assert.equal(st.flow,"build");
+ assert.equal(elements.get("navRace").hidden,true,
+  "En el taller desaparece la navegación de competición");
+ assert.equal(elements.get("navBuild").hidden,false);
  assert.match(html,/id="builderScroll"/);
  assert.match(html,/id="caseStraights"/);
  assert.match(html,/id="moveGroup"/);
