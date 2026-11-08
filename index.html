@@ -268,7 +268,19 @@
         <p>La misma identidad de Top Down RACE, con perfiles separados. Tu colección y los récords siguen guardándose aquí hasta que actives una futura copia en la nube.</p>
         <button id="settingsAccount" type="button" class="hub-back">♙ Entrar o registrar mi cuenta</button>
       </div>
-      <div class="hub-feature settings-help"><h2>Datos locales</h2><p>Los circuitos y los récords se guardan en este navegador. Iniciar sesión no los sube, restaura ni elimina.</p></div>
+      <section class="hub-feature settings-help backup-panel" aria-label="Copia de seguridad y restauración">
+        <h2>Protege tu progreso</h2>
+        <p>Antes de reinstalar la PWA, exporta una copia a <strong>Archivos</strong> o iCloud Drive. Incluye circuitos, revisiones, récords, piezas, coches, ajustes e imágenes de referencia.</p>
+        <div class="backup-actions">
+          <button id="backupExport" class="hub-back backup-primary" type="button">↓ Exportar copia</button>
+          <button id="backupVerify" class="hub-back" type="button">✓ Comprobar archivo</button>
+          <button id="backupRestore" class="hub-back backup-danger" type="button" disabled>↻ Restaurar copia comprobada</button>
+        </div>
+        <input id="backupFile" type="file" accept=".json,application/json" aria-label="Archivo de copia de seguridad de SlotRace" hidden>
+        <p id="backupStatus" role="status" aria-live="polite">No hay ninguna copia comprobada. Primero exporta y guarda el archivo fuera de la aplicación.</p>
+        <small>La copia es local. No incluye contraseñas ni sesiones de CraftRace Studio: tendrás que iniciar sesión otra vez. La restauración sustituye los datos actuales, siempre después de confirmarlo.</small>
+      </section>
+      <div class="hub-feature settings-help"><h2>Datos locales</h2><p>Iniciar sesión no guarda aún tus circuitos en la nube. No borres la PWA hasta haber exportado y comprobado la copia.</p></div>
       <button id="settingsHome" class="hub-back" type="button">‹ Volver al menú</button>
     </div>
   </section>
@@ -560,6 +572,7 @@ window.addEventListener("error",function(event){
 </script>
 <script type="module" src="./src/app.mjs?v=0.14.59"></script>
 <script type="module" src="./src/update-check.mjs?v=0.14.59"></script>
+<script type="module" src="./src/backup.mjs?v=0.14.59"></script>
 <script type="module" src="./src/account.mjs?v=0.14.59"></script>
 </body>
 </html>
