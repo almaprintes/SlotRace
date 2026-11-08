@@ -2686,7 +2686,7 @@ function updateUI(){
   garage:"GARAJE",store:"TIENDA",settings:"AJUSTES",race:"CARRERA",results:"RESULTADOS"};
  $("mastMode").textContent=labels[state.mode]||"SLOTRACE";
  // El mando de pilotaje no comparte pantalla con herramientas de montaje.
- const showMainNavigation=!["race","results","menu"].includes(state.mode);
+ const showMainNavigation=!["race","results"].includes(state.mode);
  $("mainNavigation").hidden=!showMainNavigation;
  for(const [id,mode] of [
   ["navMenu","menu"],["navRace","raceLobby"],["navBuild","build"],["navLibrary","library"],

@@ -2942,3 +2942,24 @@ html:has(body[data-screen="menu"]),body[data-screen="menu"]{
 html:has(body[data-screen="race"]),body[data-screen="race"],
 html:has(body[data-screen="results"]),body[data-screen="results"]{background:#071017}
 html:has(#accountModal:not([hidden])){background:#06121d}
+
+/* DEV 0.15.6: same footer in launcher and every hub.
+   iOS standalone black-translucent + 100dvh can leave a bottom dead strip;
+   use 100vh for the full-screen shell only in installed WebKit PWAs. */
+@media (display-mode:standalone) and (-webkit-touch-callout: none){
+ html,body{height:100vh!important;min-height:100vh!important}
+ .app{height:100vh!important;min-height:100vh!important}
+}
+.app{display:flex;flex-direction:column}
+.main-navigation{flex:0 0 auto;align-self:stretch;margin-top:auto;
+ position:relative;bottom:0;box-sizing:border-box}
+.launcher-screen .launcher-shortcuts{display:none!important}
+.launcher-screen .home-scroll{
+ overflow-y:auto!important;overflow-x:hidden!important;
+ min-height:0;max-height:100%;overscroll-behavior-y:contain!important;
+ padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;
+}
+.launcher-screen .home-hero{
+ flex:1 0 220px!important;height:auto!important;
+ min-height:220px!important;max-height:none!important;
+}

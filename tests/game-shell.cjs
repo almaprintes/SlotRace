@@ -112,8 +112,14 @@ const path=require("node:path");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
- assert.equal(elements.get("mainNavigation").hidden,true,
-  "El menú inicial presenta dos acciones grandes sin barra redundante");
+ assert.equal(elements.get("mainNavigation").hidden,false,
+  "La bienvenida comparte el mismo pie de navegación con todas las pantallas");
+ assert.equal(elements.get("navMenu").attrs["aria-current"],"page",
+  "Inicio está seleccionado en la barra común");
+ assert.match(css,/\.launcher-screen \.launcher-shortcuts\{display:none!important\}/,
+  "No mostrar accesos rápidos duplicados sobre la barra");
+ assert.match(css,/\.launcher-screen \.home-scroll\{[\s\S]*?overflow-y:auto!important/,
+  "El contenido inicial puede desplazarse entre cabecera y pie");
  assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/,
   "La barra tiene seis destinos fijos");
  assert.match(css,/html,body\{background:#eef1f5\}/,
@@ -147,7 +153,7 @@ const path=require("node:path");
   assert.equal(st.mode,mode,"La barra común navega a "+mode);
   if(mode==="garage")assert.equal(elements.get("mastMode").textContent,"GARAJE");
   if(mode==="store")assert.equal(elements.get("mastMode").textContent,"TIENDA");
-  assert.equal(elements.get("mainNavigation").hidden,mode==="menu");
+  assert.equal(elements.get("mainNavigation").hidden,false);
   if(mode!=="menu"){
    for(const id of ["navMenu","navRace","navBuild","navLibrary","navGarage","navStore"])
     assert.equal(elements.get(id).hidden,false,
