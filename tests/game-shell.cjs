@@ -99,6 +99,16 @@ const path=require("node:path");
  assert.match(html,/helix_spark_threequarter\.webp/);
  assert.equal(st.mode,"menu","Arranque en menú, sin entrar al taller");
  assert.equal(elements.get("menuScreen").hidden,false,"Menú visible al iniciar");
+ assert.equal(elements.get("mastBrand").hidden,true,
+  "En bienvenida se oculta el logo repetido del juego");
+ assert.equal(elements.get("mastWelcome").hidden,false,
+  "La cabecera de bienvenida muestra identidad del piloto");
+ assert.match(html,/id="mastAvatar"/,"Avatar de jugador visible y accesible");
+ assert.match(html,/id="mastWelcomeNick"/,"Nick personalizado sin duplicar el título del juego");
+ assert.match(css,/\.mast-welcome\[hidden\],\.mast \.brand\[hidden\]\{display:none!important\}/,
+  "Las variantes de cabecera deben respetar hidden en Safari");
+ assert.match(css,/body\[data-screen="menu"\] #mastMode\{display:none!important\}/,
+  "No desperdiciar espacio con la etiqueta INICIO en la bienvenida");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
@@ -155,6 +165,10 @@ const path=require("node:path");
  game.openWorkshop();
  assert.equal(st.mode,"build");
  assert.equal(st.flow,"build");
+ assert.equal(elements.get("mastBrand").hidden,false,
+  "El taller conserva la marca SlotRace");
+ assert.equal(elements.get("mastWelcome").hidden,true,
+  "El saludo aparece solamente en bienvenida");
  assert.equal(elements.get("navRace").hidden,true,
   "En el taller desaparece la navegación de competición");
  assert.equal(elements.get("navBuild").hidden,false);
