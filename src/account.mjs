@@ -10,7 +10,37 @@ const OAUTH_CALLBACK=new URLSearchParams(location.search).has("code");
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
 const get=id=>document.getElementById(id);
 let client=null,accountUser=null,accountNick=null,busy=false;
-const modal=get("accountModal");
+const modal=get("accountModal"),entryGate=get("entryGate"),entryStatus=get("entryStatus");
+let authTab="login",guestMode=false;
+function enterLauncher(nickname){
+ const wasGated=entryGate&&!entryGate.hidden;
+ if(entryGate)entryGate.hidden=true;
+ const greeting=get("homeGreeting");
+ if(greeting)greeting.textContent=nickname?
+  "¡Hola, "+nickname+"! ¿Competimos o construimos?":
+  "Tu pista. Tus reglas. En modo local.";
+ if(wasGated){
+  modal.hidden=true;
+  if(typeof window!=="undefined")window.slotraceLab?.showMenu?.();
+ }
+}
+function entryMessage(message){
+ if(guestMode)return;
+ if(entryGate)entryGate.hidden=false;
+ if(entryStatus)entryStatus.textContent=message;
+}
+function chooseAuthTab(tab){
+ authTab=tab==="register"?"register":"login";
+ get("accountTabLogin").setAttribute?.("aria-pressed",String(authTab==="login"));
+ get("accountTabRegister").setAttribute?.("aria-pressed",String(authTab==="register"));
+ get("accountEmailSubmit").textContent=authTab==="register"?
+  "Crear mi cuenta CraftRace Studio":"Entrar con mi cuenta";
+ get("accountSignup").hidden=authTab==="register";
+ get("accountPassword").autocomplete=authTab==="register"?
+  "new-password":"current-password";
+ get("accountModalTitle").textContent=authTab==="register"?"Crear cuenta":"Mi cuenta";
+}
+
 const stages={
  signedOut:get("accountSignedOut"),
  claim:get("accountClaim"),
@@ -53,10 +83,9 @@ async function db(){
    autoRefreshToken:true,detectSessionInUrl:true}
  });
  client.auth.onAuthStateChange((event)=>{
-  if(event==="SIGNED_IN"||event==="SIGNED_OUT"||event==="TOKEN_REFRESHED"){
-   if(!modal.hidden&&event!=="TOKEN_REFRESHED")
-    queueMicrotask(()=>{void refresh();});
-  }
+  // El arranque comprueba la sesión aunque no se abra el panel de cuenta.
+  if(event==="SIGNED_IN"||event==="SIGNED_OUT")
+   queueMicrotask(()=>{void refresh({background:true});});
  });
  return client;
 }
@@ -66,9 +95,8 @@ async function ensureSlotProfile(api,userId){
   {onConflict:"user_id",ignoreDuplicates:true});
  if(error)throw error;
 }
-async function refresh(){
- if(modal.hidden)return;
- notice("Comprobando tu cuenta…");
+async function refresh({background=false}={}){
+ if(!background)notice("Comprobando tu cuenta…");
  try{
   const api=await db();
   // Inspect local session only to avoid throwing on a first visit; authorize
@@ -78,7 +106,8 @@ async function refresh(){
   if(!sessionData?.session){
    sessionStorage.removeItem(PENDING_IDENTITY_LINK);
    accountUser=null;accountNick=null;showStage("signedOut");
-   notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
+   entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.");
+   if(!background)notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
    return;
   }
   const {data,error}=await api.auth.getUser();
@@ -86,7 +115,8 @@ async function refresh(){
   const user=data?.user;
   if(!user||user.is_anonymous){
    accountUser=null;accountNick=null;showStage("signedOut");
-   notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
+   entryMessage("Inicia sesión con una cuenta de CraftRace Studio.");
+   if(!background)notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
    return;
   }
   await verifyLinkedIdentity(api);
@@ -101,6 +131,7 @@ async function refresh(){
    if(tdr?.nick&&!get("accountNickname").value)
     get("accountNickname").value=tdr.nick;
    showStage("claim");
+   if(entryGate&&!entryGate.hidden)modal.hidden=false;
    notice("Sesión verificada. Elige tu apodo público único para CraftRace Studio.");
    return;
   }
@@ -117,8 +148,10 @@ async function refresh(){
   get("accountLinkApple").hidden=providers.has("apple");
   showStage("connected");
   notice("Cuenta conectada. Tus circuitos locales siguen en este dispositivo.");
+  enterLauncher(account.nickname);
  }catch(error){
-  notice(failure(error),true);
+  if(!guestMode)entryMessage("No se pudo comprobar la sesión. Puedes entrar, registrarte o seguir en modo local.");
+  if(!background||!modal.hidden)notice(failure(error),true);
  }
 }
 function localCircuitCount(){
@@ -133,7 +166,8 @@ async function run(action){
  try{await action();}catch(error){notice(failure(error),true);}
  finally{setBusy(false);}
 }
-async function open(){
+async function open(tab="login"){
+ chooseAuthTab(tab);
  modal.hidden=false;
  get("accountClose").focus();
  await refresh();
@@ -231,18 +265,26 @@ async function signOut(){
  const api=await db();
  const {error}=await api.auth.signOut({scope:"local"});
  if(error)throw error;
- accountUser=null;accountNick=null;showStage("signedOut");
+ guestMode=false;accountUser=null;accountNick=null;showStage("signedOut");
+ entryMessage("Sesión cerrada. Entra o crea una cuenta. Tus circuitos locales están intactos.");
  notice("Sesión cerrada. Todos tus circuitos siguen guardados en este navegador.");
 }
-get("menuAccount").addEventListener("click",()=>{void open();});
+get("entryLogin").addEventListener("click",()=>{void open("login");});
+get("entryRegister").addEventListener("click",()=>{void open("register");});
+get("entryGuest").addEventListener("click",()=>{
+ guestMode=true;modal.hidden=true;enterLauncher(null);
+});
+get("accountTabLogin").addEventListener("click",()=>chooseAuthTab("login"));
+get("accountTabRegister").addEventListener("click",()=>chooseAuthTab("register"));
+get("menuAccount").addEventListener("click",()=>{void open("login");});
 get("settingsAccount").addEventListener("click",()=>{void open();});
 get("accountClose").addEventListener("click",close);
 modal.addEventListener("click",e=>{if(e.target===modal)close();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!modal.hidden)close();});
 get("accountLoginForm").addEventListener("submit",e=>{
- e.preventDefault();void run(signInWithPassword);
+ e.preventDefault();void run(authTab==="register"?signUp:signInWithPassword);
 });
-get("accountSignup").addEventListener("click",()=>{void run(signUp);});
+get("accountSignup").addEventListener("click",()=>chooseAuthTab("register"));
 get("accountGoogle").addEventListener("click",()=>{void run(()=>social("google"));});
 get("accountApple").addEventListener("click",()=>{void run(()=>social("apple"));});
 get("accountLinkGoogle").addEventListener("click",()=>{void run(()=>linkSocial("google"));});
@@ -252,8 +294,9 @@ get("accountClaimForm").addEventListener("submit",e=>{
 });
 get("accountSignOut").addEventListener("click",()=>{void run(signOut);});
 get("accountRetry").addEventListener("click",()=>{void run(refresh);});
-// OAuth returning through GitHub Pages gets resolved even before opening settings.
+// Autologin en cada apertura; sin sesión, pantalla de acceso/registro.
+// Si el servicio falla, el constructor sigue accesible en modo local.
 if(OAUTH_CALLBACK||new URLSearchParams(location.search).has("error")){
- modal.hidden=false;void refresh();
+ modal.hidden=false;
 }
-// No Supabase dependency is loaded until the account is opened (or OAuth returns).
+void refresh({background:true});
