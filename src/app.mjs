@@ -1,7 +1,7 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.14.60";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.14.60";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.14.60";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.14.60";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.15.0";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.0";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.0";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.0";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -162,7 +162,7 @@ const state={
   followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false,settle:0},
   tableTheme:Object.hasOwn(TABLE_THEMES,old?.tableTheme)?old.tableTheme:"wine",
   gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
-  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
+  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",flow:"none",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
@@ -213,7 +213,7 @@ extendWorkBoard();
 
 const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen"),results=$("resultsScreen");
 const hubScreens={
- library:$("libraryScreen"),garage:$("garageScreen"),store:$("storeScreen"),settings:$("settingsScreen")
+ raceLobby:$("raceLobbyScreen"),library:$("libraryScreen"),garage:$("garageScreen"),store:$("storeScreen"),settings:$("settingsScreen")
 };
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
@@ -1668,6 +1668,7 @@ function advanceLaneTransition(dt){
  if(change.elapsed>=change.duration)state.laneTransition=null;
 }
 function openWorkshop(){
+ state.flow="build";
  state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
  // El estante de piezas siempre permanece abierto y anclado a la mesa.
  state.caseOpen=true;
@@ -1684,6 +1685,7 @@ function showHub(which){
  updateUI();return true;
 }
 function showMenu(){
+ state.flow="none";
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;state.mode="menu";
  state.newCircuitDirection=state.driveDirection;
@@ -1729,12 +1731,46 @@ function selectCar(id){
  save();updateUI();toast(item.name+" seleccionado para la próxima carrera.");
  return true;
 }
+// La elección de Competir abre un vestíbulo, no pisa el taller.
 function menuRace(){
- if(!state.track.valid){
-  openWorkshop();toast("Cierra primero el circuito para poder competir.");
-  return false;
+ state.flow="race";
+ return showHub("raceLobby");
+}
+function raceSelectCircuit(id){
+ if(id==="current"){updateUI();return true;}
+ const item=state.library.find(c=>c.id===id);
+ if(!item)return false;
+ const ok=loadSavedCircuit(id,{stayInLibrary:true});
+ if(ok){state.flow="race";updateUI();}
+ return ok;
+}
+function renderRaceLobby(){
+ const select=$("raceCircuitSelect"),chosen=state.activeCircuitId;
+ select.textContent="";
+ function option(id,text){
+  const node=document.createElement("option");
+  node.value=id;node.textContent=text;select.appendChild(node);
  }
- play();return true;
+ option("current","Circuito que tengo montado");
+ for(const item of state.library)
+  option(item.id,item.name+" · "+(item.snapshot?.types?.length||0)+" piezas");
+ select.value=chosen&&state.library.some(c=>c.id===chosen)?chosen:"current";
+ const valid=state.track.valid;
+ $("raceSelectedCircuit").textContent=circuitLabel();
+ $("raceSetupSummary").textContent=valid?
+  state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+
+   (state.driveDirection===1?"Horario":"Antihorario"):
+  "Circuito abierto · hay que cerrar el recorrido";
+ $("raceStart").disabled=!valid;
+ $("raceFinishTrack").hidden=valid;
+ $("raceCircuitHelp").textContent=valid?
+  "Pista lista. Tus tiempos se guardarán en este dispositivo.":
+  "Esta pista aún no es válida para competir. Termínala en el taller.";
+ for(const [id,car] of [["raceChooseGripline","gripline"],["raceChooseSpark","spark"]]){
+  const el=$(id),selected=state.selectedCar===car;
+  el.classList.toggle("is-selected",selected);
+  el.setAttribute("aria-pressed",String(selected));
+ }
 }
 function play(){
  state.triggerGesture=null;
@@ -1746,7 +1782,7 @@ function play(){
  if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
- state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
+ state.flow="race";state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
  resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
  return true;
@@ -2639,15 +2675,22 @@ function updateUI(){
  stage.hidden=state.mode!=="build";race.hidden=state.mode!=="race";
  results.hidden=state.mode!=="results";
  for(const [name,screen] of Object.entries(hubScreens))screen.hidden=state.mode!==name;
- // Barra global única: misma ubicación y mismos accesos en todas las secciones.
- const showMainNavigation=!["race","results"].includes(state.mode);
+ if(state.mode==="raceLobby")renderRaceLobby();
+ document.body?.setAttribute?.("data-flow",state.flow);
+ $("mastMode").textContent=state.flow==="race"?"PILOTO":state.flow==="build"?"CONSTRUCTOR":"INICIO";
+ // El mando de pilotaje no comparte pantalla con herramientas de montaje.
+ const showMainNavigation=!["race","results","menu"].includes(state.mode);
  $("mainNavigation").hidden=!showMainNavigation;
  for(const [id,mode] of [
-  ["navMenu","menu"],["navBuild","build"],["navLibrary","library"],
+  ["navMenu","menu"],["navRace","raceLobby"],["navBuild","build"],["navLibrary","library"],
   ["navGarage","garage"],["navStore","store"]]){
   const element=$(id),active=state.mode===mode;
   element.classList.toggle("is-active",active);
   element.setAttribute("aria-current",active?"page":"false");
+  if(id==="navRace")element.hidden=state.flow!=="race";
+  if(id==="navBuild")element.hidden=state.flow==="race";
+  if(id==="navGarage")element.hidden=state.flow==="build";
+  if(id==="navStore")element.hidden=state.flow==="race";
  }
  $("mastSettings").classList.toggle("is-active",state.mode==="settings");
  $("mastSettings").setAttribute("aria-label",state.mode==="settings"?"Ajustes abiertos":"Abrir Ajustes");
@@ -2699,10 +2742,10 @@ function updateUI(){
  $("libraryDraftRecovery").hidden=!orphan;
  $("libraryRecoverDraft").textContent=orphan?"Recuperar «"+orphan.name+"»":"Recuperar borrador anterior";
  $("goHome").hidden=state.mode==="menu";
- $("menuRace").disabled=!state.track.valid;
+ $("menuRace").disabled=false;
  $("menuRaceDetail").textContent=state.track.valid?
-  state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+(state.driveDirection===1?"Horario":"Antihorario"):
-  "Termina el circuito en el taller para poder competir";
+  "Tu pista está lista · Elige coche y compite":
+  "Elige circuito y coche · También puedes completar tu pista";
  for(const [id,direction] of [["menuClockwise",1],["menuCounter",-1]])
   $(id).setAttribute("aria-pressed",String(state.newCircuitDirection===direction));
  setLabel("workDirection",state.driveDirection===1?"Horario":"Antihorario");
@@ -5280,7 +5323,7 @@ function initEvents(){
  ])$(button).addEventListener("click",()=>showHub(section));
  // Todos los destinos comparten el mismo orden y posición.
  for(const [button,action] of [
-  ["navMenu",showMenu],["navBuild",openWorkshop],
+  ["navMenu",showMenu],["navRace",menuRace],["navBuild",openWorkshop],
   ["navLibrary",()=>showHub("library")],["navGarage",()=>showHub("garage")],
   ["navStore",()=>showHub("store")],["mastSettings",()=>showHub("settings")]
  ])$(button).addEventListener("click",action);
@@ -5392,6 +5435,16 @@ function initEvents(){
  }
   $("menuContinue").addEventListener("click",openWorkshop);
  $("menuRace").addEventListener("click",menuRace);
+ $("raceCircuitSelect").addEventListener("change",e=>raceSelectCircuit(e.target.value));
+ $("raceChooseGripline").addEventListener("click",()=>selectCar("gripline"));
+ $("raceChooseSpark").addEventListener("click",()=>selectCar("spark"));
+ $("raceStart").addEventListener("click",play);
+ $("raceFinishTrack").addEventListener("click",openWorkshop);
+ $("raceViewRecords").addEventListener("click",()=>{
+  showHub("library");setLibraryTab("records");
+ });
+ $("raceLobbySettings").addEventListener("click",()=>showHub("settings"));
+ $("raceLobbyHome").addEventListener("click",showMenu);
  $("menuNew").addEventListener("click",createNewCircuit);
  $("menuClockwise").addEventListener("click",()=>setNewCircuitDirection(1));
  $("menuCounter").addEventListener("click",()=>setNewCircuitDirection(-1));
@@ -5496,11 +5549,11 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.60",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.0",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
+ showHub,menuRace,raceSelectCircuit,renderRaceLobby,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},

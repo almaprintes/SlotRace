@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.14.60");
+ assert.equal(game.version,"DEV 0.15.0");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -102,14 +102,22 @@ const path=require("node:path");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
- assert.equal(elements.get("mainNavigation").hidden,false,
-  "El menú muestra navegación persistente");
+ assert.equal(elements.get("mainNavigation").hidden,true,
+  "El menú inicial presenta dos acciones grandes sin barra redundante");
+ assert.match(html,/id="entryGate"/);
+ assert.match(html,/id="entryLogin"/);
+ assert.match(html,/id="entryRegister"/);
+ assert.match(html,/id="entryGuest"/);
+ assert.match(html,/id="raceLobbyScreen"/);
+ assert.match(html,/id="raceCircuitSelect"/);
+ assert.match(html,/id="raceStart"/);
+ assert.match(css,/\.launcher-screen \.launcher-actions/);
  for(const [id,mode] of [
   ["navBuild","build"],["navLibrary","library"],["navGarage","garage"],
   ["navStore","store"],["navMenu","menu"]]){
   elements.get(id).listeners.click[0]();
   assert.equal(st.mode,mode,"La barra común navega a "+mode);
-  assert.equal(elements.get("mainNavigation").hidden,false);
+  assert.equal(elements.get("mainNavigation").hidden,mode==="menu");
  }
  elements.get("mastSettings").listeners.click[0]();
  assert.equal(st.mode,"settings","Ajustes ocupa el mismo lugar en la cabecera");
@@ -118,10 +126,26 @@ const path=require("node:path");
  assert.equal(st.mode,"menu");
 
  assert.equal(elements.get("menuRace").disabled,false,
-  "Un circuito válido guardado puede competir desde el menú");
+  "La opción Competir siempre abre el vestíbulo, incluso con pista abierta");
+ game.menuRace();
+ assert.equal(st.mode,"raceLobby","Competir abre su preparación específica");
+ assert.equal(st.flow,"race");
+ assert.equal(elements.get("raceLobbyScreen").hidden,false);
+ assert.equal(elements.get("raceScreen").hidden,true,
+  "No se inicia una carrera accidentalmente");
+ assert.equal(elements.get("mainNavigation").hidden,false);
+ assert.equal(elements.get("navBuild").hidden,true,
+  "El piloto no ve controles de construcción en su navegación");
+ assert.equal(elements.get("navRace").hidden,false);
+ assert.equal(elements.get("raceStart").disabled,false,"Óvalo válido listo");
+ game.showMenu();
  assert.equal(st.driveDirection,1,"Sentido horario predeterminado");
  game.openWorkshop();
  assert.equal(st.mode,"build");
+ assert.equal(st.flow,"build");
+ assert.equal(elements.get("navRace").hidden,true,
+  "En el taller desaparece la navegación de competición");
+ assert.equal(elements.get("navBuild").hidden,false);
  assert.match(html,/id="builderScroll"/);
  assert.match(html,/id="caseStraights"/);
  assert.match(html,/id="moveGroup"/);
@@ -299,7 +323,12 @@ const path=require("node:path");
  // No se puede pulsar Correr para cambiar el circuito silenciosamente
  // por un óvalo: se respeta el circuito incompleto.
  game.showMenu();
- assert.equal(elements.get("menuRace").disabled,true);
+ assert.equal(elements.get("menuRace").disabled,false,
+  "Compite abre la selección incluso con una pista incompleta");
+ assert.equal(game.menuRace(),true);
+ assert.equal(st.mode,"raceLobby","En pista abierta se ofrece completar antes de correr");
+ assert.equal(elements.get("raceStart").disabled,true);
+ assert.equal(elements.get("raceFinishTrack").hidden,false);
  assert.equal(game.openRace(),false);
  assert.equal(st.types.length,0,"No reemplazar montaje por receta de demo");
  game.openWorkshop();
@@ -316,7 +345,9 @@ const path=require("node:path");
  game.showMenu();
  assert.equal(elements.get("menuRace").disabled,false);
  elements.get("menuRace").listeners.click[0]();
- assert.equal(st.mode,"race","Menú Correr abre carrera sin taller");
+ assert.equal(st.mode,"raceLobby","Menú Competir abre la preparación");
+ elements.get("raceStart").listeners.click[0]();
+ assert.equal(st.mode,"race","La carrera comienza solo al confirmar pista y coche");
  assert.equal(elements.get("mainNavigation").hidden,true,
   "El mando no pierde espacio por la barra general durante la carrera");
  assert.equal(elements.get("raceScreen").hidden,false);
@@ -1025,5 +1056,5 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.14.60: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.15.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

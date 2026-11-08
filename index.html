@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#071017">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="SlotRace">
-  <link rel="apple-touch-icon" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.14.60">
-  <link rel="icon" type="image/png" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.14.60">
-  <link rel="manifest" href="./manifest.webmanifest?v=0.14.60">
+  <link rel="apple-touch-icon" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.0">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=0.15.0">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.14.60: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.14.60 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.14.60">
+  <meta name="description" content="SlotRace DEV 0.15.0: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.15.0 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.15.0">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -43,20 +43,34 @@
   </style>
 </head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.14.60">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.15.0">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true"><img
-      src="./assets/ui/slotrace-icon-192.png?v=0.14.60"
+      src="./assets/ui/slotrace-icon-192.png?v=0.15.0"
       alt="" width="91" height="91" decoding="async"></div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.14.60</div>
+    <div class="splash-version">DEV 0.15.0</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.14.60">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.15.0">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
+<section id="entryGate" class="entry-gate" role="region" aria-label="Acceso a CraftRace Studio">
+  <div class="entry-shell">
+    <img src="./assets/ui/slotrace-icon-192.png?v=0.15.0" class="entry-mark" alt="SlotRace" width="94" height="94">
+    <span class="entry-eyebrow">TOP DOWN RACE · CRAFTRACE STUDIO</span>
+    <h1>Tu mundo.<br><em>Dos formas de jugar.</em></h1>
+    <p id="entryStatus" role="status">Comprobando tu sesión de CraftRace Studio…</p>
+    <div class="entry-actions">
+      <button id="entryLogin" class="entry-primary" type="button">Entrar con mi cuenta <span aria-hidden="true">›</span></button>
+      <button id="entryRegister" class="entry-secondary" type="button">Crear cuenta nueva</button>
+    </div>
+    <button id="entryGuest" class="entry-guest" type="button">Continuar sin cuenta <span aria-hidden="true">›</span></button>
+    <small>La sesión se recupera automáticamente si ya has iniciado sesión. Sin conexión también puedes seguir construyendo: tus circuitos permanecen en este dispositivo.</small>
+  </div>
+</section>
 <div class="app">
   <aside id="updateNotice" class="update-notice" role="status" aria-live="polite" hidden>
     <span id="updateNoticeText">Nueva versión de SlotRace disponible</span>
@@ -67,37 +81,91 @@
   </aside>
   <header class="mast">
     <div class="brand"><div class="brand-icon" aria-hidden="true"><img
-      src="./assets/ui/slotrace-icon-192.png?v=0.14.60"
+      src="./assets/ui/slotrace-icon-192.png?v=0.15.0"
       alt="" width="41" height="41" decoding="async"></div><div>
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
     </div></div>
-    <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.14.60">DEV 0.14.60<br>LOCAL · PRUEBAS</div></div>
+    <span id="mastMode" class="mast-mode" aria-live="polite">INICIO</span>
+  <div class="mast-actions"><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.15.0">DEV 0.15.0<br>LOCAL · PRUEBAS</div></div>
   </header>
-  <section id="menuScreen" class="screen home-screen" aria-label="Menú principal de SlotRace" hidden>
+  <section id="menuScreen" class="screen home-screen launcher-screen" aria-label="Menú principal: competir o construir" hidden>
     <div class="home-scroll">
       <div class="home-hero">
         <div class="home-hero-heading">
-          <span class="home-kicker">TOP DOWN RACE PRESENTA</span>
+          <span class="home-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</span>
           <h1>Slot<span>Race</span><i>LAB</i></h1>
-          <p>Construye. Compite. Colecciona.</p>
+          <p id="homeGreeting">Tu pista. Tus reglas.</p>
         </div>
         <img class="home-hero-photo" src="./assets/ui/slotrace-duelo-curva.avif" width="900" height="507"
-          alt="Avenir Gripline lidera la curva de Scalextric por el carril interior, con Helix Spark persiguiéndolo por el carril exterior"
-          fetchpriority="high" decoding="async">
+         alt="Dos deportivos disputan una curva de SlotRace" fetchpriority="high" decoding="async">
       </div>
-      <nav class="home-actions" aria-label="Secciones principales">
-        <button id="menuRace" class="home-card is-accent is-main-action" type="button"><span class="home-card-icon" aria-hidden="true">🏁</span><span><strong>Jugar</strong><small id="menuRaceDetail">Termina el circuito para desbloquear</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuContinue" class="home-card is-main-action" type="button"><span class="home-card-icon" aria-hidden="true">⚒</span><span><strong>Construir</strong><small>Entra al taller de montaje</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuLibrary" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▣</span><span><strong>Mis circuitos</strong><small>Tus trazados, recetas y planos</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuGarage" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▰</span><span><strong>Garaje</strong><small>Tus coches y sus fichas</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuStore" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">▧</span><span><strong>Tienda</strong><small>Cajas, packs, planos y coches</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuSettings" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">⚙</span><span><strong>Ajustes</strong><small>Personaliza la experiencia</small></span><span aria-hidden="true">›</span></button>
-        <button id="menuAccount" class="home-card" type="button"><span class="home-card-icon" aria-hidden="true">♙</span><span><strong>Mi cuenta</strong><small>CraftRace Studio · Piloto y constructor</small></span><span aria-hidden="true">›</span></button>
+      <div class="launcher-intro">
+        <span>ELIGE TU EXPERIENCIA</span>
+        <h2>¿Qué hacemos hoy?</h2>
+        <p>Dos modos independientes. Cambia cuando quieras sin perder el circuito que tienes montado.</p>
+      </div>
+      <nav class="home-actions launcher-actions" aria-label="Elegir modo de juego">
+        <button id="menuRace" class="home-card is-accent is-main-action launcher-choice launcher-racing" type="button">
+          <span class="launcher-symbol" aria-hidden="true">🏁</span>
+          <span><strong>COMPETIR</strong><small id="menuRaceDetail">Elige circuito y coche. Persigue tu mejor vuelta.</small></span>
+          <span class="launcher-arrow" aria-hidden="true">›</span>
+        </button>
+        <button id="menuContinue" class="home-card is-main-action launcher-choice launcher-building" type="button">
+          <span class="launcher-symbol" aria-hidden="true">⚒</span>
+          <span><strong>CONSTRUIR</strong><small>Tu taller: montar, diseñar, elevar y guardar pistas.</small></span>
+          <span class="launcher-arrow" aria-hidden="true">›</span>
+        </button>
       </nav>
+      <div class="launcher-shortcuts" aria-label="Accesos complementarios">
+        <button id="menuLibrary" type="button">▣ <span>Mis circuitos</span></button>
+        <button id="menuGarage" type="button">▰ <span>Garaje</span></button>
+        <button id="menuStore" type="button">▧ <span>Tienda</span></button>
+        <button id="menuSettings" type="button">⚙ <span>Ajustes</span></button>
+        <button id="menuAccount" type="button">♙ <span>Mi cuenta</span></button>
+      </div>
     </div>
   </section>
-
+  <section id="raceLobbyScreen" class="screen hub-screen race-lobby-screen" hidden aria-label="Preparar competición">
+    <div class="hub-scroll race-lobby-scroll">
+      <div class="race-lobby-heading">
+        <span class="race-lobby-kicker">MODO PILOTO · CARRERA LOCAL</span>
+        <h1>Preparar carrera<span aria-hidden="true"> 🏁</span></h1>
+        <p>Escoge un trazado cerrado, selecciona tu coche y sal a buscar el límite.</p>
+      </div>
+      <div class="race-lobby-preview">
+        <img src="./assets/ui/slotrace-duelo-curva.avif" alt="Dos coches compiten en SlotRace" width="900" height="507" decoding="async">
+        <div><span>EN PISTA</span><strong id="raceSelectedCircuit">Circuito actual</strong>
+          <small id="raceSetupSummary">Comprobando el circuito…</small></div>
+      </div>
+      <section class="race-lobby-panel">
+        <h2>01 · Elige circuito</h2>
+        <label for="raceCircuitSelect">Tu colección</label>
+        <select id="raceCircuitSelect" aria-describedby="raceCircuitHelp">
+          <option value="current">Circuito que tengo montado</option>
+        </select>
+        <p id="raceCircuitHelp">También puedes completar la pista en el taller antes de competir.</p>
+      </section>
+      <section class="race-lobby-panel">
+        <h2>02 · Elige coche</h2>
+        <div class="race-lobby-cars" role="group" aria-label="Coche para competir">
+          <button id="raceChooseGripline" type="button" aria-pressed="true">
+            <img src="./assets/cars/avenir_gripline_threequarter.webp" alt="" loading="lazy"><span>Avenir <strong>Gripline</strong></span>
+          </button>
+          <button id="raceChooseSpark" type="button" aria-pressed="false">
+            <img src="./assets/cars/helix_spark_threequarter.webp" alt="" loading="lazy"><span>Helix <strong>Spark</strong></span>
+          </button>
+        </div>
+      </section>
+      <button id="raceStart" class="race-lobby-start" type="button">🏁 Empezar carrera</button>
+      <button id="raceFinishTrack" class="race-lobby-finish" type="button" hidden>⚒ Completar circuito en el taller</button>
+      <div class="race-lobby-links">
+        <button id="raceViewRecords" type="button">▤ Ver mis récords</button>
+        <button id="raceLobbySettings" type="button">⚙ Configuración</button>
+        <button id="raceLobbyHome" type="button">‹ Elegir otro modo</button>
+      </div>
+    </div>
+  </section>
   <section id="libraryScreen" class="screen hub-screen" hidden aria-label="Mis circuitos">
     <div class="hub-scroll">
       <div class="hub-heading"><span class="hub-kicker">MI COLECCIÓN</span><h1>Mis circuitos</h1><p>Guarda, recupera y comparte tus trazados.</p></div>
@@ -485,6 +553,7 @@
   </section>
   <nav id="mainNavigation" class="main-navigation" aria-label="Navegación principal de SlotRace">
   <button id="navMenu" type="button" data-main-dest="menu"><span aria-hidden="true">⌂</span><strong>Menú</strong></button>
+  <button id="navRace" type="button" data-main-dest="raceLobby"><span aria-hidden="true">🏁</span><strong>Competir</strong></button>
   <button id="navBuild" type="button" data-main-dest="build"><span aria-hidden="true">⚒</span><strong>Construir</strong></button>
   <button id="navLibrary" type="button" data-main-dest="library"><span aria-hidden="true">▣</span><strong>Circuitos</strong></button>
   <button id="navGarage" type="button" data-main-dest="garage"><span aria-hidden="true">▰</span><strong>Garaje</strong></button>
@@ -512,6 +581,10 @@
     </header>
     <p id="accountNotice" class="account-notice" role="status" aria-live="polite">El juego puede utilizarse sin registrarse.</p>
     <div id="accountSignedOut">
+      <div class="account-auth-tabs" role="group" aria-label="Entrar o registrarse">
+        <button id="accountTabLogin" type="button" aria-pressed="true">Iniciar sesión</button>
+        <button id="accountTabRegister" type="button" aria-pressed="false">Crear cuenta</button>
+      </div>
       <p class="account-hint">Una sola identidad para todos los juegos de CraftRace Studio. Entra con el mismo Google o Apple que ya vinculaste en otro juego. Si tu partida de TDR sigue siendo anónima, protégela primero en TDR.</p>
       <div class="account-social">
         <button id="accountGoogle" type="button"><span aria-hidden="true">G</span> Continuar con Google</button>
@@ -523,7 +596,7 @@
         <input id="accountEmail" type="email" autocomplete="email" inputmode="email" required placeholder="tu@email.com">
         <label for="accountPassword">Contraseña</label>
         <input id="accountPassword" type="password" autocomplete="current-password" minlength="10" maxlength="128" required placeholder="Mínimo 10 caracteres">
-        <button type="submit" class="account-primary">Entrar con mi cuenta</button>
+        <button id="accountEmailSubmit" type="submit" class="account-primary">Entrar con mi cuenta</button>
       </form>
       <button id="accountSignup" class="account-alt" type="button">Crear cuenta con este correo</button>
       <p class="account-hint">Si es tu primera vez, recibirás un correo de confirmación cuando el servidor lo requiera. Google y Apple necesitan los proveedores y las redirecciones configurados en Supabase.</p>
@@ -570,9 +643,9 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.14.60"></script>
-<script type="module" src="./src/update-check.mjs?v=0.14.60"></script>
-<script type="module" src="./src/backup.mjs?v=0.14.60"></script>
-<script type="module" src="./src/account.mjs?v=0.14.60"></script>
+<script type="module" src="./src/app.mjs?v=0.15.0"></script>
+<script type="module" src="./src/update-check.mjs?v=0.15.0"></script>
+<script type="module" src="./src/backup.mjs?v=0.15.0"></script>
+<script type="module" src="./src/account.mjs?v=0.15.0"></script>
 </body>
 </html>

@@ -1,3 +1,23 @@
+# SlotRace DEV 0.15.0 · Nuevo arranque y dos experiencias separadas
+
+**Prueba:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.0&refresh=launcher
+
+## Flujo de inicio
+1. Pantalla CraftRace Studio: cada apertura verifica en Supabase si ya existe una sesión vigente. La cuenta conectada inicia automáticamente y salta el acceso. Sin sesión, ofrece entrar con Google, Apple o correo y una pestaña real de registro; el modo local está disponible si no hay conexión.
+2. Menú de dos opciones: **Competir** o **Construir**. Configuración, mis circuitos, garaje, tienda y cuenta siguen disponibles sin recargar la página.
+3. **Competir** abre un vestíbulo con el circuito actual, la biblioteca de circuitos guardados, selección de coche y validación previa. Nunca arranca una carrera con una pista abierta: permite terminarla en el taller. Desde allí se puede entrar a récords o ajustes.
+4. **Construir** abre el taller sin diálogos intermedios; conserva la mesa activa, piezas, herramientas de edición, imágenes de referencia, puentes, perfiles y recetas.
+5. La navegación inferior es contextual (Piloto / Constructor). Durante la carrera se conserva el mando sin barra superpuesta. El regreso al menú no borra la construcción.
+
+## Integridad de datos y rendimiento
+- Ningún cambio en claves locales, exportación/importación, registros, inventario, física, cronómetro, render Canvas o caché de pistas.
+- No se crean cuentas por inferencia local: la autosesión exige una verificación real de usuario con Supabase.
+- El modo local es explícito y reversible; no vincula perfiles ni sincroniza datos a escondidas.
+- Dependencias y manifiesto versionados de forma coherente a 0.15.0. Se conservan los botones y la copia de seguridad verificable de 0.14.60.
+- Pruebas en GitHub Actions: menú, selección de modos, pantalla de carrera, cuenta global y regresiones existentes.
+
+---
+
 # SlotRace DEV 0.14.60 · Botones de copia de seguridad visibles
 
 **Abrir:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.60&refresh=backup-buttons
