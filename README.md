@@ -1,3 +1,17 @@
+# SlotRace DEV 0.15.0 · Acceso y elección de modo
+
+**Versión de prueba:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.0&refresh=two-modes
+
+- **Nueva puerta de entrada:** comprobar automáticamente la sesión existente de CraftRace Studio en el arranque. Con perfil válido y apodo, ir al menú de dos opciones; sin sesión, mostrar inicio de sesión, registro con Google/Apple/correo y alternativa local. Si Supabase no responde, el juego puede seguir usándose localmente.
+- **Menú inicial:** dos caminos principales, **COMPETIR** o **CONSTRUIR**. Ajustes, biblioteca, garaje, tienda y cuenta tienen accesos secundarios.
+- **Competir:** vestíbulo específico con circuito actual o uno de la colección, selección del coche, validación del recorrido, cronómetro y acceso a récords. El botón de carrera solo se habilita si el circuito está cerrado y es válido; si no, ofrece ir al taller a terminarlo.
+- **Construir:** abre directamente el taller original, con su mesa, piezas, imagen de referencia y herramientas, sin modificar circuitos ya guardados.
+- **Navegación contextual:** entre modos se vuelve al menú; en Carrera el mando permanece libre de herramientas de montaje.
+- **Almacenamiento inalterado:** no cambia las claves de progreso, no mueve ni sincroniza partidas, no borra ni sustituye las bibliotecas de circuitos; conserva la cuenta existente `craft_accounts` y la vinculación de Google/Apple.
+- **Diseño:** nueva portada, tarjetas de modos, selector competitivo y pantalla inicial de cuenta, aptos para iPhone/PWA y escritorio.
+
+---
+
 # SlotRace DEV 0.15.0 · Nuevo arranque y dos experiencias separadas
 
 **Prueba:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.0&refresh=launcher
