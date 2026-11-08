@@ -11,10 +11,22 @@ const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
 const get=id=>document.getElementById(id);
 let client=null,accountUser=null,accountNick=null,busy=false;
 const modal=get("accountModal"),entryGate=get("entryGate"),entryStatus=get("entryStatus");
-let authTab="login",guestMode=false;
-function enterLauncher(nickname){
+// Estado de bienvenida. Solo se permite saltar automáticamente mientras
+// está comprobándose la sesión. Una vez mostrada la elección de acceso,
+// debe permanecer fija hasta una acción explícita del jugador.
+let authTab="login",guestMode=false,entryState="checking",authIntent=OAUTH_CALLBACK;
+function showEntryButtons(show){
+ get("entryActions").hidden=!show;
+ get("entryGuest").hidden=!show;
+ entryGate.setAttribute("aria-busy",String(!show));
+}
+function enterLauncher(nickname,{userInitiated=false}={}){
+ if(guestMode&&!userInitiated)return false;
+ if(entryState==="needs-auth"&&!userInitiated&&!authIntent)return false;
  const wasGated=entryGate&&!entryGate.hidden;
+ entryState=nickname?"authenticated":"guest";
  if(entryGate)entryGate.hidden=true;
+ authIntent=false;
  const greeting=get("homeGreeting");
  if(greeting)greeting.textContent=nickname?
   "¡Hola, "+nickname+"! ¿Competimos o construimos?":
@@ -23,11 +35,14 @@ function enterLauncher(nickname){
   modal.hidden=true;
   if(typeof window!=="undefined")window.slotraceLab?.showMenu?.();
  }
+ return true;
 }
-function entryMessage(message){
- if(guestMode)return;
+function entryMessage(message,{sessionInvalid=false}={}){
+ if(guestMode||(entryState==="authenticated"&&!sessionInvalid))return;
+ entryState="needs-auth";
  if(entryGate)entryGate.hidden=false;
  if(entryStatus)entryStatus.textContent=message;
+ showEntryButtons(true);
 }
 function chooseAuthTab(tab){
  authTab=tab==="register"?"register":"login";
@@ -106,7 +121,7 @@ async function refresh({background=false}={}){
   if(!sessionData?.session){
    sessionStorage.removeItem(PENDING_IDENTITY_LINK);
    accountUser=null;accountNick=null;showStage("signedOut");
-   entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.");
+   entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.",{sessionInvalid:true});
    if(!background)notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
    return;
   }
@@ -115,7 +130,7 @@ async function refresh({background=false}={}){
   const user=data?.user;
   if(!user||user.is_anonymous){
    accountUser=null;accountNick=null;showStage("signedOut");
-   entryMessage("Inicia sesión con una cuenta de CraftRace Studio.");
+   entryMessage("Inicia sesión con una cuenta de CraftRace Studio.",{sessionInvalid:true});
    if(!background)notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
    return;
   }
@@ -174,6 +189,8 @@ async function open(tab="login"){
 }
 function close(){modal.hidden=true;}
 async function signInWithPassword(){
+ authIntent=true;
+ guestMode=false;
  const email=get("accountEmail").value.trim();
  const password=get("accountPassword").value;
  if(!email||password.length<10){notice("Introduce un correo y contraseña de al menos 10 caracteres.",true);return;}
@@ -184,6 +201,8 @@ async function signInWithPassword(){
  await refresh();
 }
 async function signUp(){
+ authIntent=true;
+ guestMode=false;
  const email=get("accountEmail").value.trim(),password=get("accountPassword").value;
  if(!get("accountEmail").checkValidity()||password.length<10){
   notice("Indica un correo válido y una contraseña de al menos 10 caracteres.",true);return;
@@ -198,6 +217,8 @@ async function signUp(){
  notice("Solicitud enviada. Comprueba tu correo y confirma la cuenta antes de entrar.");
 }
 async function social(provider){
+ authIntent=true;
+ guestMode=false;
  const api=await db();
  const {error}=await api.auth.signInWithOAuth({provider,options:{redirectTo:redirect()}});
  if(error)throw error;
@@ -241,6 +262,7 @@ async function verifyLinkedIdentity(api){
  }
 }
 async function claim(){
+ authIntent=true;
  if(!accountUser)throw new Error("Debes iniciar sesión antes de registrar el apodo.");
  const nickname=get("accountNickname").value.trim();
  if(!/^[A-Za-z0-9_-]{3,24}$/.test(nickname)){
@@ -265,14 +287,15 @@ async function signOut(){
  const api=await db();
  const {error}=await api.auth.signOut({scope:"local"});
  if(error)throw error;
- guestMode=false;accountUser=null;accountNick=null;showStage("signedOut");
+ guestMode=false;authIntent=false;entryState="needs-auth";
+ accountUser=null;accountNick=null;showStage("signedOut");
  entryMessage("Sesión cerrada. Entra o crea una cuenta. Tus circuitos locales están intactos.");
  notice("Sesión cerrada. Todos tus circuitos siguen guardados en este navegador.");
 }
 get("entryLogin").addEventListener("click",()=>{void open("login");});
 get("entryRegister").addEventListener("click",()=>{void open("register");});
 get("entryGuest").addEventListener("click",()=>{
- guestMode=true;modal.hidden=true;enterLauncher(null);
+ guestMode=true;modal.hidden=true;enterLauncher(null,{userInitiated:true});
 });
 get("accountTabLogin").addEventListener("click",()=>chooseAuthTab("login"));
 get("accountTabRegister").addEventListener("click",()=>chooseAuthTab("register"));
@@ -294,8 +317,9 @@ get("accountClaimForm").addEventListener("submit",e=>{
 });
 get("accountSignOut").addEventListener("click",()=>{void run(signOut);});
 get("accountRetry").addEventListener("click",()=>{void run(refresh);});
-// Autologin en cada apertura; sin sesión, pantalla de acceso/registro.
-// Si el servicio falla, el constructor sigue accesible en modo local.
+// Al arrancar SOLO se ve el comprobador. Los botones aparecen cuando
+// se confirma que no hay sesión. Nunca avanzar automáticamente después.
+showEntryButtons(false);
 if(OAUTH_CALLBACK||new URLSearchParams(location.search).has("error")){
  modal.hidden=false;
 }

@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const src=fs.readFileSync("src/account.mjs","utf8");
 const html=fs.readFileSync("index.html","utf8");
-const version="0.15.0";
+const version="0.15.1";
 assert.match(html,new RegExp('src/account\\.mjs\\?v='+version.replaceAll(".","\\.")));
 assert.match(src,/auth\.linkIdentity\(/,"Must link identities under existing UUID");
 assert.match(src,/user\.id!==accountUser\?\.id/,"Must verify current UUID before link");
@@ -18,8 +18,9 @@ assert.doesNotMatch(src,/localStorage\.(?:setItem|removeItem)\(["']slotrace-circ
 
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
 const nodes=new Map(ids.map(id=>[id,{
- id,hidden:false,disabled:false,textContent:"",value:"",
- listeners:{},classList:{toggle(){}},
+ id,hidden:id==="entryActions"||id==="entryGuest",disabled:false,textContent:"",value:"",
+ attrs:{},listeners:{},classList:{toggle(){}},
+ setAttribute(name,val){this.attrs[name]=String(val);},
  querySelectorAll:()=>[],focus(){},addEventListener(name,handler){
   (this.listeners[name]??=[]).push(handler);
  }
@@ -42,7 +43,8 @@ const auth={
  async getUser(){return {data:{user:mockUser},error:null}},
  onAuthStateChange(){return {data:{subscription:{unsubscribe(){}}}}},
  async linkIdentity({provider}){linked={provider,userId:mockUser.id};return{error:null}},
- async signOut(){signOutCount++;return {error:null}}
+ async signOut(){signOutCount++;return {error:null}},
+ async signInWithOAuth(){return {error:null}}
 };
 const api={
  auth,
@@ -77,9 +79,15 @@ const testSrc=src.replace("const sdk=await import(SDK);","const sdk=mockSdk;");
 assert.notEqual(src,testSrc,"Mock must replace remote SDK import");
 const construct=new Function("document","location","localStorage","sessionStorage",
  "queueMicrotask","mockSdk",testSrc+
- "\nreturn {refresh,claim,linkSocial,open,close,verifyLinkedIdentity};");
+ "\nreturn {refresh,claim,linkSocial,open,close,social,verifyLinkedIdentity};");
 const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk);
 (async()=>{
+ assert.equal(get("entryActions").hidden,true,
+  "Al primer frame no aparecen botones de login durante la comprobación");
+ assert.equal(get("entryGuest").hidden,true,
+  "Continuar sin cuenta permanece oculto hasta resolver la sesión");
+ assert.equal(get("entryGate").attrs["aria-busy"],"true",
+  "El portal informa de que sigue verificando el acceso");
  get("accountModal").hidden=false;
  await instance.refresh();
  assert.equal(get("accountConnected").hidden,false);
@@ -126,11 +134,31 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  await instance.refresh();
  assert.equal(get("entryGate").hidden,false,
   "Sin sesión se muestra la bienvenida con login / registro");
+ assert.equal(get("entryActions").hidden,false,
+  "Después de confirmar que no hay sesión aparecen ambos botones");
+ assert.equal(get("entryGuest").hidden,false,
+  "El modo local solo aparece tras concluir la comprobación");
+ assert.equal(get("entryGate").attrs["aria-busy"],"false");
  assert.equal(get("accountSignedOut").hidden,false);
+ // Incluso aunque el SDK descubra después una sesión válida, una puerta de
+ // entrada que ya mostró botones NO puede desaparecer por sí sola.
+ auth.getSession=previousGetSession;
+ await instance.refresh({background:true});
+ assert.equal(get("entryGate").hidden,false,
+  "No saltar automáticamente al menú tras haber mostrado Entrar con mi cuenta");
+ assert.equal(get("entryActions").hidden,false);
+ // Un login explícito sí puede desbloquear la entrada.
+ await instance.social("google");
+ await instance.refresh({background:true});
+ assert.equal(get("entryGate").hidden,true,
+  "Tras una acción explícita del usuario se permite entrar al launcher");
+ auth.getSession=async()=>({data:{session:null},error:null});
+ await instance.refresh({background:true});
+ // Simulación de una visita sin sesión tras cerrar sesión/recargar.
  get("entryGuest").listeners.click[0]();
  assert.equal(get("entryGate").hidden,true,
   "Sin Internet el jugador puede acceder explícitamente al modo local");
  assert.equal(JSON.parse(localStorage.getItem("slotrace-circuit-library-v1")).length,3);
  auth.getSession=previousGetSession;
- console.log("PASS CraftRace Studio: shared UUID, profile, nick claim, identity link, local saves safe");
+ console.log("PASS CraftRace Studio: auth gate stays put, explicit login, shared UUID, nick and local saves");
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.0");
+ assert.equal(game.version,"DEV 0.15.1");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -112,6 +112,18 @@ const path=require("node:path");
  assert.match(html,/id="raceCircuitSelect"/);
  assert.match(html,/id="raceStart"/);
  assert.match(css,/\.launcher-screen \.launcher-actions/);
+ assert.match(html,/id="entryActions" class="entry-actions" hidden/,
+  "El portal de acceso no puede enseñar botones durante la comprobación");
+ assert.match(html,/id="entryGuest"[^>]*hidden/,
+  "El modo local se muestra solo cuando ha terminado la verificación");
+ assert.match(css,/\.entry-gate \.entry-actions\[hidden\]/,
+  "Safari debe respetar hidden aunque .entry-actions defina display:grid");
+ assert.match(css,/\.launcher-screen \.launcher-actions \.launcher-choice\.launcher-building strong\{\s*color:#ffffff!important/,
+  "Construir: texto principal blanco incluso sobre los estilos antiguos");
+ assert.match(css,/\.launcher-screen \.launcher-actions \.launcher-choice\.launcher-building small\{\s*color:#dceaf1!important/,
+  "Construir: descripción clara en azul oscuro");
+ assert.match(css,/white-space:normal!important/,
+  "Las descripciones de tarjetas deben ocupar varias líneas en iPhone");
  for(const [id,mode] of [
   ["navBuild","build"],["navLibrary","library"],["navGarage","garage"],
   ["navStore","store"],["navMenu","menu"]]){
@@ -1056,5 +1068,5 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.15.0: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.15.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

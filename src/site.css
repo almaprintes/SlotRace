@@ -2831,3 +2831,44 @@ button:disabled{opacity:.35;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){
  .entry-gate,.launcher-choice{transition:none!important}
 }
+
+
+/* DEV 0.15.1 · Entrada estable y tarjeta Construir legible en iPhone.
+   En el primer frame solo se muestra "Comprobando sesión…". */
+.entry-gate .entry-actions[hidden],
+.entry-gate .entry-guest[hidden]{display:none!important}
+.entry-gate[aria-busy="true"] .entry-shell{cursor:progress}
+
+/* El menú anterior imponía texto oscuro y nowrap a las home-card.
+   Recuperar colores claros y permitir líneas en tarjetas de dos columnas. */
+.launcher-screen .launcher-actions .launcher-choice.launcher-building{
+ color:#f5fbff!important;
+ background:linear-gradient(145deg,#263e50,#101d29)!important;
+ border-color:#718c9e!important;
+ box-shadow:inset 0 1px 0 #ffffff17,0 10px 24px #08121c47!important;
+}
+.launcher-screen .launcher-actions .launcher-choice.launcher-building strong{
+ color:#ffffff!important;
+ opacity:1!important;
+ text-shadow:0 1px 2px #03111b75;
+}
+.launcher-screen .launcher-actions .launcher-choice.launcher-building small{
+ color:#dceaf1!important;
+ opacity:1!important;
+}
+.launcher-screen .launcher-actions .launcher-choice.launcher-building .launcher-symbol,
+.launcher-screen .launcher-actions .launcher-choice.launcher-building .launcher-arrow{
+ color:#f3fbff!important;
+ opacity:1!important;
+}
+.launcher-screen .launcher-actions .launcher-choice strong,
+.launcher-screen .launcher-actions .launcher-choice small{
+ display:block!important;
+ white-space:normal!important;
+ overflow:visible!important;
+ text-overflow:clip!important;
+ overflow-wrap:break-word;
+}
+.launcher-screen .launcher-actions .launcher-choice>span:nth-child(2){
+ width:100%;min-width:0;flex:0 1 auto;
+}
