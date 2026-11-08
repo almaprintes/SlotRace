@@ -15,7 +15,7 @@ for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginFor
  "accountSignedOut","accountClaim","accountConnected"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Falta el control de cuenta: "+id);
 }
-assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.14\.57"/);
+assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.14\.58"/);
 assert.match(account,/flowType:"pkce"/,"Los proveedores usan OAuth con PKCE");
 assert.match(account,/getUser\(\)/,"La cuenta se verifica en el servidor");
 assert.match(account,/from\("craft_accounts"\)/,"El apodo va al registro compartido");
@@ -213,7 +213,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.14\.57/);
+assert.match(html,/DEV 0\.14\.58/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -346,7 +346,9 @@ for(const fragment of ["function paintTable(","function paintTrack(","function p
 }
 assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
-assert.match(app,/DIAL_STEP=5/);
+assert.match(app,/DIAL_STEP=1/,"La rueda usa incrementos de 1%");
+assert.match(app,/DIAL_PX_PER_CLICK=1\.4/,"140 px cubren el recorrido 0–100%");
+assert.match(app,/DIAL_SOUND_INTERVAL=5/,"Sonidos cada cinco puntos porcentuales");
 assert.ok(app.includes('MOTOR_AUDIO_URL="./assets/audio/slotrace-motor-loop.mp3"'));
 assert.ok(app.includes("source.loop=true"));
 const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-motor-loop.mp3"));
