@@ -2590,7 +2590,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 
 
 /* DEV 0.14.54: selector de tapete con muestras reales del tono y retícula dorada. */
-.table-theme-setting{align-items:flex-start}
+.table-theme-setting{flex-direction:column;align-items:stretch;gap:7px}
 .table-theme-description{min-width:0}
 .table-theme-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%;margin-top:12px}
 .table-theme-choice{min-height:75px;display:flex;align-items:center;gap:10px;padding:10px;
