@@ -112,6 +112,18 @@ const path=require("node:path");
  assert.match(html,/id="raceCircuitSelect"/);
  assert.match(html,/id="raceStart"/);
  assert.match(css,/\.launcher-screen \.launcher-actions/);
+ assert.match(html,/id="entryActions" class="entry-actions" hidden/,
+  "El portal de acceso no puede enseñar botones durante la comprobación");
+ assert.match(html,/id="entryGuest"[^>]*hidden/,
+  "El modo local se muestra solo cuando ha terminado la verificación");
+ assert.match(css,/\.entry-gate \.entry-actions\[hidden\]/,
+  "Safari debe respetar hidden aunque .entry-actions defina display:grid");
+ assert.match(css,/\.launcher-screen \.launcher-actions \.launcher-choice\.launcher-building strong\{\s*color:#ffffff!important/,
+  "Construir: texto principal blanco incluso sobre los estilos antiguos");
+ assert.match(css,/\.launcher-screen \.launcher-actions \.launcher-choice\.launcher-building small\{\s*color:#dceaf1!important/,
+  "Construir: descripción clara en azul oscuro");
+ assert.match(css,/white-space:normal!important/,
+  "Las descripciones de tarjetas deben ocupar varias líneas en iPhone");
  for(const [id,mode] of [
   ["navBuild","build"],["navLibrary","library"],["navGarage","garage"],
   ["navStore","store"],["navMenu","menu"]]){
