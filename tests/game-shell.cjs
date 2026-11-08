@@ -345,7 +345,9 @@ const path=require("node:path");
  game.showMenu();
  assert.equal(elements.get("menuRace").disabled,false);
  elements.get("menuRace").listeners.click[0]();
- assert.equal(st.mode,"race","Menú Correr abre carrera sin taller");
+ assert.equal(st.mode,"raceLobby","Menú Competir abre la preparación");
+ elements.get("raceStart").listeners.click[0]();
+ assert.equal(st.mode,"race","La carrera comienza solo al confirmar pista y coche");
  assert.equal(elements.get("mainNavigation").hidden,true,
   "El mando no pierde espacio por la barra general durante la carrera");
  assert.equal(elements.get("raceScreen").hidden,false);
