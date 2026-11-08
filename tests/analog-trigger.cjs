@@ -65,7 +65,23 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.14.53");
+ assert.equal(window.slotraceLab.version,"DEV 0.14.54");
+ const theme=window.slotraceLab.workspace;
+ assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
+ assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
+ assert.equal(elements.get("settingsTableCyan").attrs["aria-pressed"],"false");
+ for(const click of elements.get("settingsTableCyan").listeners.click)click();
+ assert.equal(state.tableTheme,"cyan","El usuario puede elegir el tapete cian");
+ assert.equal(JSON.parse(data.get("slotrace-lab-10")).tableTheme,"cyan",
+  "La elección del tapete se guarda en el navegador");
+ assert.equal(elements.get("settingsTableCyan").attrs["aria-pressed"],"true");
+ assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"false");
+ for(const click of elements.get("settingsTableWine").listeners.click)click();
+ assert.equal(state.tableTheme,"wine","El usuario puede volver al acabado vino");
+ assert.equal(JSON.parse(data.get("slotrace-lab-10")).tableTheme,"wine");
+ assert.equal(theme.TABLE_THEMES.wine.grid,"#d8b77f");
+ assert.ok(theme.TABLE_THEMES.cyan.surface[0].startsWith("#"));
+
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
  assert.equal(state.run,true);
@@ -135,5 +151,5 @@ const path=require("node:path");
  assert.equal(trigger.disabled,true);
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.14.53: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.14.54: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
