@@ -323,7 +323,12 @@ const path=require("node:path");
  // No se puede pulsar Correr para cambiar el circuito silenciosamente
  // por un óvalo: se respeta el circuito incompleto.
  game.showMenu();
- assert.equal(elements.get("menuRace").disabled,true);
+ assert.equal(elements.get("menuRace").disabled,false,
+  "Compite abre la selección incluso con una pista incompleta");
+ assert.equal(game.menuRace(),true);
+ assert.equal(st.mode,"raceLobby","En pista abierta se ofrece completar antes de correr");
+ assert.equal(elements.get("raceStart").disabled,true);
+ assert.equal(elements.get("raceFinishTrack").hidden,false);
  assert.equal(game.openRace(),false);
  assert.equal(st.types.length,0,"No reemplazar montaje por receta de demo");
  game.openWorkshop();
