@@ -1110,5 +1110,21 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.15.6: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ // Nuevo circuito con intención HORARIA antes de tener su geometría.
+ const monacoFixture=JSON.parse(fs.readFileSync("tests/fixtures/monaco-slot.json","utf8"));
+ game.showMenu();
+ elements.get("menuClockwise").listeners.click[0]();
+ elements.get("menuNew").listeners.click[0]();
+ assert.equal(st.pendingDesiredDirection,1,
+  "La preferencia horaria persiste mientras construimos");
+ game.changeTypes(monacoFixture.types,"Mónaco de prueba",[],monacoFixture.origin);
+ assert.equal(st.track.closed,true);
+ assert.equal(st.driveDirection,-1,
+  "Al cerrar un circuito de montaje inverso, el motor ajusta el horario real");
+ assert.equal(st.pendingDesiredDirection,null,"La corrección ocurre solo una vez");
+ assert.equal(game.circuitPackage().directionLabel,"Horario");
+ const storedAfterClosing=JSON.parse(saved.get("slotrace-lab-10"));
+ assert.equal(storedAfterClosing.driveDirection,-1);
+ assert.equal(storedAfterClosing.pendingDesiredDirection,null);
+ console.log("SlotRace DEV 0.15.6: orientación física y recetas conservadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
