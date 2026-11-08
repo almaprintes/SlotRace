@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.54 · Tapetes vino y cian con entramado dorado
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.54
+
+- **Nuevo acabado predeterminado:** tapete vino oscuro y sobrio con retícula dorada atenuada. Las escapatorias verdes destacan claramente del fondo.
+- **Alternativa cian profundo:** segunda paleta azul cian con las mismas líneas doradas, elegible desde Ajustes → Color del tapete.
+- **Personalización persistente:** el tema se guarda en localStorage y se aplica al taller y a la mesa de carrera. No forma parte de las recetas ni afecta a otros jugadores.
+- **Gráficos de bajo coste:** la textura estática de la mesa solo se regenera al cambiar el tema o el tamaño del tablero; el motor conserva el caché anterior y no altera los pianos, escapatorias ni coches.
+- **Detalles sobrios:** los rótulos del tapete son dorado tenue, la cuadrícula es menos intrusiva y la madera de los bordes se mantiene.
+- **Regresión:** tests de cambio de tema y persistencia incorporados al harness `tests/analog-trigger.cjs`; CI de GitHub Actions sin cambios de física.
+
+---
+
 # SlotRace DEV 0.14.53 · Escapatorias integradas con el asfalto
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.53
