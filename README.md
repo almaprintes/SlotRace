@@ -1,3 +1,17 @@
+# SlotRace DEV 0.15.1 · Pantalla de acceso estable y tarjeta Construir legible
+
+**Probar:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.1&refresh=login-gate
+
+- **Entrada sin salto:** en la comprobación inicial se muestra únicamente el logo, el mensaje de sesión y el estado de carga. Login, registro y modo local están ocultos (también en CSS de Safari) hasta que se confirme ausencia de sesión o falle la conexión.
+- **Decisión permanente:** cuando aparecen los botones, la pantalla no desaparece por un evento asíncrono posterior de Supabase. Solo se permite entrar tras una acción explícita de login, registro o modo local.
+- **Sesiones existentes:** si la sesión se resuelve válida desde el primer chequeo, se abre el lanzador directamente sin mostrar botones innecesarios. Los callbacks OAuth y el registro de apodo siguen funcionando.
+- **Cierre de sesión:** vuelve a la puerta de acceso sin eliminar circuitos. Un error de red no expulsa al jugador que ya estaba autenticado.
+- **Tarjeta Construir:** título blanco, descripción azul pálido, icono y flecha de alto contraste sobre grafito; elimina el truncado heredado (`white-space:nowrap`) de ambas tarjetas en móvil.
+- **Regresión:** `tests/studio-account.cjs` comprueba el bloqueo de avance tardío y la entrada explícita; `tests/game-shell.cjs` valida el HTML inicial y las reglas de contraste/ajuste de línea.
+- **Sin cambios** en física, biblioteca de circuitos, carreras, guardado, cuenta Google, restauraciones ni recetas. Versionado coherente 0.15.1 contra caché PWA.
+
+---
+
 # SlotRace DEV 0.15.0 · Nuevo arranque y dos experiencias separadas
 
 **Prueba:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.0&refresh=launcher
