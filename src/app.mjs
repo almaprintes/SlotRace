@@ -2653,7 +2653,8 @@ function shopInstallPlan(id){
  const direction=product.direction===-1?-1:product.direction===1?1:directionFromPreference(product.types,1);
  const existing=state.library.find(c=>c.shopPlanId===id||
   (normalCircuitName(c.name)===normalCircuitName(product.name)&&
-   (c.direction===-1?-1:1)===direction&&
+   // Un Catalunya guardado con el sentido antiguo es la MISMA geometría:
+   // no duplicarlo ni invertirlo silenciosamente al volver a adquirirlo.
    c.snapshot.types.join("|")===product.types.join("|")&&
    !(c.snapshot.loose||[]).length));
  if(existing){shopCloseProduct();return loadSavedCircuit(existing.id);}
