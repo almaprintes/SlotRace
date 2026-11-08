@@ -193,7 +193,16 @@ const fs=require("node:fs"),path=require("node:path");
  assert.doesNotMatch(renderBody,/paintBridgeRampProfile\(ctx,part,track\)/,
   "No pintar marcas de pendiente cortadas encima de una pista ya ensamblada");
  const polygons=game.rendering.xRayDeckPolygons(track);
- assert.ok(polygons.length===1&&polygons[0].length>25);
+ assert.ok(polygons.length>0&&polygons.every(p=>p.length>=3),
+  "Rayos X dibuja solamente las intersecciones reales de dos vías");
+ assert.ok(polygons.every(p=>p.every(q=>Number.isFinite(q.x)&&Number.isFinite(q.y))),
+  "La geometría de cruces reales tiene coordenadas finitas");
+ assert.deepEqual(game.rendering.xRayDeckPolygons(noCross),[],
+  "Una rampa sin otro tramo cruzado NO puede tener máscara de Rayos X");
+ assert.equal(game.rendering.paintXRayOverlay(ctx,noCross,
+  geo.positionOnPiece(noCross.parts[0].start,noCross.parts[0].id,.99)),false,
+  "El coche que alcanza una rampa no se convierte en silueta");
+
  assert.strictEqual(game.rendering.xRayDeckPolygons(track),polygons,"Máscara cacheada");
  const guides=game.rendering.xRayGroundGuides(track);
  assert.ok(guides.length>0,"Hay tramos inferiores que visualizar");
@@ -201,6 +210,13 @@ const fs=require("node:fs"),path=require("node:path");
   "Los dos carriles inferiores tienen una guía discontinua");
  assert.strictEqual(game.rendering.xRayGroundGuides(track),guides,
   "Los offsets de túneles largos se calculan una vez por trazado");
+ assert.match(source,/for\(const cross of crosses\)/,
+  "Solo se usan los cruces verificados por el motor geométrico");
+ assert.match(source,/xRayIntersectQuads\(lower,upper\)/,
+  "La máscara usa la huella de la vía inferior INTERSECTADA con la superior");
+ assert.match(source,/if\(d===1\|\|\(track\.closed&&d===n-1\)\)continue/,
+  "Dos piezas adyacentes nunca generan una máscara de paso inferior");
+
  const renderSource=source.slice(source.indexOf("function renderScene("),
   source.indexOf("function screenToWorld("));
  assert.ok(renderSource.indexOf("if(state.xRayEnabled)paintXRayOverlay(")<
@@ -310,5 +326,5 @@ const fs=require("node:fs"),path=require("node:path");
  strokes.length=0;
  assert.equal(game.rendering.paintXRayOverlay(ctx,track,under),false);
  assert.equal(strokes.length,0,"Sin dibujo Rayos X cuando está desactivado");
- console.log("SlotRace DEV 0.14.50: Rayos X en Doble ovalo exacto, curvas, coche y persistencia — OK");
+ console.log("SlotRace DEV 0.14.56: Rayos X solo en cruces reales, conectores suelo/rampa limpios, curvas y coche — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});
