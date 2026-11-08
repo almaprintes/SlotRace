@@ -37,8 +37,8 @@ function enterLauncher(nickname,{userInitiated=false}={}){
  }
  return true;
 }
-function entryMessage(message){
- if(guestMode||entryState==="authenticated")return;
+function entryMessage(message,{sessionInvalid=false}={}){
+ if(guestMode||(entryState==="authenticated"&&!sessionInvalid))return;
  entryState="needs-auth";
  if(entryGate)entryGate.hidden=false;
  if(entryStatus)entryStatus.textContent=message;
@@ -121,7 +121,7 @@ async function refresh({background=false}={}){
   if(!sessionData?.session){
    sessionStorage.removeItem(PENDING_IDENTITY_LINK);
    accountUser=null;accountNick=null;showStage("signedOut");
-   entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.");
+   entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.",{sessionInvalid:true});
    if(!background)notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
    return;
   }
@@ -130,7 +130,7 @@ async function refresh({background=false}={}){
   const user=data?.user;
   if(!user||user.is_anonymous){
    accountUser=null;accountNick=null;showStage("signedOut");
-   entryMessage("Inicia sesión con una cuenta de CraftRace Studio.");
+   entryMessage("Inicia sesión con una cuenta de CraftRace Studio.",{sessionInvalid:true});
    if(!background)notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
    return;
   }
