@@ -99,8 +99,19 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  assert.equal(get("accountLocalCircuitCount").textContent,"3 circuitos guardados aquí");
  assert.equal(get("entryGate").hidden,true,
   "Un usuario con sesión verificada salta automáticamente el registro");
- assert.match(get("homeGreeting").textContent,/Juanfrikazo-dev/,
-  "El inicio reconoce el nombre real de CraftRace Studio");
+ assert.equal(get("mastWelcomeNick").textContent,"Juanfrikazo-dev",
+  "La cabecera personal muestra el apodo validado en CraftRace Studio");
+ assert.equal(get("mastAvatarInitial").textContent,"J",
+  "El avatar toma su inicial del perfil activo");
+ assert.match(get("mastAvatar").attrs["aria-label"],/Juanfrikazo-dev/,
+  "El avatar permite abrir la cuenta del piloto");
+ assert.doesNotMatch(get("homeGreeting").textContent,/Juanfrikazo-dev/,
+  "El apodo no se repite en la portada del juego");
+ assert.match(get("homeGreeting").textContent,/Diseña tu trazado/,
+  "El subtítulo de portada ahora habla de la experiencia, no del usuario");
+ get("mastAvatar").listeners.click[0]();
+ assert.equal(get("accountModal").hidden,false,
+  "El avatar abre el panel de cuenta existente");
  get("entryRegister").listeners.click[0]();
  assert.equal(get("accountEmailSubmit").textContent,"Crear mi cuenta CraftRace Studio",
   "La pantalla de registro tiene su propio botón principal");
@@ -158,6 +169,10 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  get("entryGuest").listeners.click[0]();
  assert.equal(get("entryGate").hidden,true,
   "Sin Internet el jugador puede acceder explícitamente al modo local");
+ assert.equal(get("mastWelcomeNick").textContent,"Piloto invitado",
+  "El modo local no presenta el nombre de la última cuenta conectada");
+ assert.equal(get("mastAvatarInitial").textContent,"♙",
+  "No reutilizar las iniciales del usuario anterior en modo invitado");
  assert.equal(JSON.parse(localStorage.getItem("slotrace-circuit-library-v1")).length,3);
  auth.getSession=previousGetSession;
  console.log("PASS CraftRace Studio: auth gate stays put, explicit login, shared UUID, nick and local saves");
