@@ -346,7 +346,9 @@ for(const fragment of ["function paintTable(","function paintTrack(","function p
 }
 assert.match(app,/const KEY="slotrace-lab-10"/);
 assert.match(app,/splash.classList.add\("is-done"\)/);
-assert.match(app,/DIAL_STEP=5/);
+assert.match(app,/DIAL_STEP=1/,"La rueda usa incrementos de 1%");
+assert.match(app,/DIAL_PX_PER_CLICK=1\.4/,"140 px cubren el recorrido 0–100%");
+assert.match(app,/DIAL_SOUND_INTERVAL=5/,"Sonidos cada cinco puntos porcentuales");
 assert.ok(app.includes('MOTOR_AUDIO_URL="./assets/audio/slotrace-motor-loop.mp3"'));
 assert.ok(app.includes("source.loop=true"));
 const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-motor-loop.mp3"));
