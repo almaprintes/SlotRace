@@ -15,7 +15,7 @@ for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginFor
  "accountSignedOut","accountClaim","accountConnected"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Falta el control de cuenta: "+id);
 }
-assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.14\.50"/);
+assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.14\.57"/);
 assert.match(account,/flowType:"pkce"/,"Los proveedores usan OAuth con PKCE");
 assert.match(account,/getUser\(\)/,"La cuenta se verifica en el servidor");
 assert.match(account,/from\("craft_accounts"\)/,"El apodo va al registro compartido");
