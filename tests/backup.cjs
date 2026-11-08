@@ -109,6 +109,20 @@ const fs=require("node:fs"),path=require("node:path");
  assert.match(index,/slotrace-icon-192\.png\?v=0\.14\.60/);
  assert.match(index,/rel="manifest"/);
  assert.match(css,/\.backup-actions/);
+ // Regresión visual: la regla global .hub-screen .hub-back{display:none!important}
+ // ocultó los tres controles. Nunca pueden heredar esa clase.
+ assert.match(css,/\.hub-screen \.hub-back\{display:none!important\}/);
+ for(const id of ["backupExport","backupVerify","backupRestore"]){
+  const button=index.match(new RegExp('<button[^>]*id="'+id+'"[^>]*>'));
+  assert.ok(button,"Debe existir el botón "+id);
+  assert.match(button[0],/class="[^"]*backup-action/);
+  assert.doesNotMatch(button[0],/\bhub-back\b/,
+   "No usar la clase global que oculta botones del hub");
+ }
+ assert.match(css,/\.hub-screen \.backup-actions \.backup-action\{[\s\S]*?display:block/,
+  "Los controles de respaldo se muestran en móvil");
+ assert.match(css,/\.hub-screen \.hub-feature\.backup-panel p\{color:#d6e6e8\}/,
+  "Texto legible sobre el fondo oscuro del respaldo");
  assert.ok(manifest.icons.some(icon=>icon.sizes==="192x192"));
  assert.ok(manifest.icons.some(icon=>icon.sizes==="512x512"));
  for(const filePath of ["assets/ui/slotrace-icon-192.png","assets/ui/slotrace-icon-512.webp"]){
