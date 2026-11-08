@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.52 · Escapatorias inteligentes por riesgo de curva
+
+**Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.52
+
+- **Aparecen solo cuando hay motivo para frenar:** en una R1 después de al menos 350 mm de recta consecutiva, o en una R2 después de 600 mm. R3 y R4 no se decoran. Las rectas consecutivas se acumulan.
+- **Entrada real de carrera:** se evalúa el sentido horario o antihorario elegido. Al invertirlo, se recalculan automáticamente las escapatorias sin modificar la receta.
+- **Exterior y forma natural:** una banda verde de anchura variable acompaña la entrada, el vértice y una pequeña salida de curva. Curvas R1/R2 enlazadas forman una única zona, no duplicados sobre cada pieza.
+- **Espacio libre obligatorio:** se examina la huella de todas las piezas no conectadas directamente; si una banda invade otra pista, se reduce al 70 % y, si sigue sin caber, se suprime. En zonas elevadas y rampas no se crea decoración.
+- **Ligero y compatible:** zonas precalculadas y guardadas en caché por circuito y sentido de marcha; un Path2D verde y un contorno por vista. Se dibujan bajo el plástico, las ranuras, los pianos y los puentes. No cambia físicas, coches, récords, inventario ni recetas.
+- **Regresiones:** nueva prueba `tests/smart-runoffs.cjs`, además de todas las comprobaciones existentes en GitHub Actions.
+
+---
+
 # SlotRace DEV 0.14.51 · Pianos de curva automáticos
 
 **Tras publicar:** https://almaprintes.github.io/SlotRace/?v=0.14.51
