@@ -20,7 +20,9 @@ export function buildRecipe(types,catalog,bridgeParts=[],loose=[],direction=1,ac
   items,sequence,pieces:all.length,
   connected:types.length,loose:loose.length,bridgeCount,
   direction:direction===-1?-1:1,
-  directionLabel:direction===-1?"ANTIHORARIO":"HORARIO",
+  directionLabel:typeof actualDirectionLabel==="string"?
+   actualDirectionLabel.toLocaleUpperCase("es"):
+   direction===-1?"ANTIHORARIO":"HORARIO",
   // Longitud de módulos. La distancia de carrera por carril puede
   // diferir en las curvas y se obtiene de buildTrack().lanes.
   nominalLength:all.reduce((sum,id)=>sum+(catalog[id].length||catalog[id].radius*Math.abs(catalog[id].angle||0)),0),
