@@ -28,7 +28,7 @@ const fs=require("node:fs"),path=require("node:path");
    }
   };
  }
- let painted=0;
+ let painted=0,orientedLoads=0,bitmapClosed=0,orientationOption=null;
  const context=new Proxy({canvas:{width:0,height:0}},{
   get(obj,k){
    if(k==="drawImage")return()=>{painted++};
@@ -58,9 +58,13 @@ const fs=require("node:fs"),path=require("node:path");
  const scheduled=[],raf=fn=>scheduled.push(fn);
  const keys=[...Object.keys(geo),...Object.keys(blueprint)];
  const vals=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
- new Function(...keys,"Image","FileReader","document","window","localStorage",
+ const mockBitmap=async(_file,options)=>{
+  orientedLoads++;orientationOption=options.imageOrientation;
+  return{width:600,height:1000,close(){bitmapClosed++}};
+ };
+ new Function(...keys,"Image","FileReader","createImageBitmap","document","window","localStorage",
   "performance","requestAnimationFrame","ResizeObserver","navigator","File",source)(
-  ...vals,MockImage,MockReader,document,window,localStorage,{now:()=>0},raf,
+  ...vals,MockImage,MockReader,mockBitmap,document,window,localStorage,{now:()=>0},raf,
   class{observe(){}},{},class{}
  );
  const game=window.slotraceLab,st=game.state,t=game.template;
@@ -78,6 +82,13 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(st.reference.locked,true);
  assert.equal(st.reference.visible,true);
  assert.equal(st.referenceImage.naturalWidth,1000);
+ assert.equal(orientedLoads,1,"Importa aplicando orientación EXIF");
+ assert.equal(orientationOption,"from-image");
+ assert.equal(bitmapClosed,1,"Libera memoria al terminar");
+ assert.ok(Math.abs(st.reference.width/st.reference.height-.6)<1e-6,
+  "La foto vertical queda vertical");
+ assert.equal(elements.get("templateRotateCCW90").disabled,false);
+ assert.equal(elements.get("templateRotateCW90").disabled,false);
  assert.ok(files.has("slotrace-reference-image-"+st.reference.id),
   "La imagen se almacena separada de la geometría");
  assert.equal(elements.get("templateMove").disabled,false);
@@ -95,8 +106,24 @@ const fs=require("node:fs"),path=require("node:path");
  assert.ok(Math.abs(st.reference.angle-Math.PI/4)<1e-8);
  const imageId=st.reference.id;
  assert.equal(t.templateFit(),true);
- assert.ok(Math.abs(st.reference.width*st.reference.scale-st.workBoard.width*.85)<1);
- assert.equal(st.reference.angle,0);
+ assert.ok(Math.abs(st.reference.angle-Math.PI/4)<1e-8,
+  "Ajustar a mesa nunca borra el giro existente");
+ const c=Math.abs(Math.cos(st.reference.angle)),sn=Math.abs(Math.sin(st.reference.angle));
+ assert.ok((st.reference.width*c+st.reference.height*sn)*st.reference.scale<=st.workBoard.width*.85+1);
+ assert.ok((st.reference.width*sn+st.reference.height*c)*st.reference.scale<=st.workBoard.height*.85+1);
+ const routeBefore=JSON.stringify(st.types);
+ assert.equal(t.templateRotateQuarter(-1),true);
+ assert.ok(Math.abs(st.reference.angle+Math.PI/4)<1e-8);
+ assert.equal(t.templateRotateQuarter(1),true);
+ assert.ok(Math.abs(st.reference.angle-Math.PI/4)<1e-8);
+ elements.get("templateRotateCW90").listeners.click[0]();
+ assert.ok(Math.abs(st.reference.angle-3*Math.PI/4)<1e-8,
+  "Un toque gira la foto a la derecha 90 grados");
+ assert.equal(t.templateFit(),true);
+ assert.ok(Math.abs(st.reference.angle-3*Math.PI/4)<1e-8,
+  "Ajustar mantiene la corrección");
+ assert.equal(JSON.stringify(st.types),routeBefore,
+  "Girar la foto nunca mueve el circuito");
 
  // El arrastre de imagen no mueve las piezas; al bloquear vuelve el editor.
  const trackBefore=JSON.stringify(st.types);
@@ -145,12 +172,16 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(savedCircuit.snapshot.reference.id,imageId);
  assert.equal(savedCircuit.snapshot.reference.opacity,.65);
  assert.equal(savedCircuit.snapshot.reference.locked,true);
+ assert.ok(Math.abs(savedCircuit.snapshot.reference.angle-3*Math.PI/4)<1e-8,
+  "La orientación corregida queda guardada en el circuito");
  game.createNewCircuit();
  assert.equal(st.reference,null,"Un circuito nuevo no hereda imágenes accidentalmente");
  assert.equal(game.loadSavedCircuit(cid),true);
  assert.equal(await t.loadReferenceForState(),true);
  assert.equal(st.reference.id,imageId);
  assert.ok(st.referenceImage,"Se recupera el archivo al volver a Mis circuitos");
+ assert.ok(Math.abs(st.reference.angle-3*Math.PI/4)<1e-8,
+  "La orientación se conserva al reabrir el circuito");
  assert.equal(st.templateIncludeInExport,false,
   "La exportación con foto no se activa automáticamente en el siguiente circuito");
  t.templateRemove();
