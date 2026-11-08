@@ -3581,28 +3581,117 @@ function paintGroundTrack(ctx,track,editing){
  // Después se superpone únicamente la cubierta elevada para la oclusión.
  paintContinuousTrack(ctx,track,editing);
 }
-// Rayos X: solo mostrar lo que queda realmente tapado por una cubierta.
-// La máscara usa el CONTORNO de cada plataforma completa, no pequeños
-// rectángulos de cruce ni agujeros que puedan destruir las curvas inferiores.
-const xRayClipCache=new WeakMap();
+// Rayos X SOLO en cruces verificados entre piezas no adyacentes.
+// Antes se recortaba contra TODO el trazado de las rampas elevadas.
+// Eso clasificaba el conector suelo -> rampa como un túnel y mostraba
+// medio coche turquesa aun siendo una sola pista continua.
+// La máscara es ahora la intersección real de DOS huellas de distinto
+// nivel (cross.upper / cross.lower), sin margen ni recorte artificial.
+const xRayClipCache=new WeakMap(),xRayPathCache=new WeakMap();
+function xRayPolygonArea(points){
+ let sum=0;
+ for(let i=0;i<points.length;i++){
+  const a=points[i],b=points[(i+1)%points.length];
+  sum+=a.x*b.y-b.x*a.y;
+ }
+ return sum/2;
+}
+function xRayStripQuads(points,halfWidth){
+ const result=[];
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i];
+  const nA={x:-Math.sin(a.h)*halfWidth,y:Math.cos(a.h)*halfWidth};
+  const nB={x:-Math.sin(b.h)*halfWidth,y:Math.cos(b.h)*halfWidth};
+  const poly=[
+   {x:a.x+nA.x,y:a.y+nA.y},{x:b.x+nB.x,y:b.y+nB.y},
+   {x:b.x-nB.x,y:b.y-nB.y},{x:a.x-nA.x,y:a.y-nA.y}
+  ];
+  if(xRayPolygonArea(poly)<0)poly.reverse();
+  result.push(poly);
+ }
+ return result;
+}
+// Recorte convex-convex (Sutherland–Hodgman). Trabaja sobre los pequeños
+// cuadriláteros de muestreo, incluidos los arcos y los cruces alineados.
+// El coste se paga UNA vez por circuito; en carrera solo clip(Path2D).
+function xRayIntersectQuads(subject,clipper){
+ let points=subject;
+ for(let i=0;i<clipper.length&&points.length;i++){
+  const a=clipper[i],b=clipper[(i+1)%clipper.length];
+  const side=p=>(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x);
+  const next=[];
+  let prev=points.at(-1),prevSide=side(prev);
+  for(const current of points){
+   const nowSide=side(current);
+   const inside=nowSide>=-1e-7,wasInside=prevSide>=-1e-7;
+   if(inside!==wasInside){
+    const denom=prevSide-nowSide;
+    if(Math.abs(denom)>1e-10){
+     const t=Math.max(0,Math.min(1,prevSide/denom));
+     next.push({x:prev.x+(current.x-prev.x)*t,
+      y:prev.y+(current.y-prev.y)*t});
+    }
+   }
+   if(inside)next.push(current);
+   prev=current;prevSide=nowSide;
+  }
+  points=next;
+ }
+ if(points.length<3||Math.abs(xRayPolygonArea(points))<.5)return null;
+ if(xRayPolygonArea(points)<0)points.reverse();
+ return points;
+}
 function xRayDeckPolygons(track){
  const cached=xRayClipCache.get(track);if(cached)return cached;
- const polygons=elevatedDeckRuns(track).map(run=>{
-  const left=translated(run.points,TRACK_WIDTH/2-2);
-  const right=translated(run.points,-TRACK_WIDTH/2+2).reverse();
-  return[...left,...right];
- }).filter(polygon=>polygon.length>=4);
- xRayClipCache.set(track,polygons);return polygons;
+ const crosses=track.bridge?.crossings||[];
+ const polygons=[],pairs=new Set(),quads=new Map();
+ function footprint(index){
+  if(!quads.has(index)){
+   const part=track.parts[index];
+   quads.set(index,part?xRayStripQuads(part.points,TRACK_WIDTH/2-2):[]);
+  }
+  return quads.get(index);
+ }
+ for(const cross of crosses){
+  if(!cross.clear||cross.upper===cross.lower)continue;
+  const key=cross.lower+":"+cross.upper;
+  if(pairs.has(key))continue;
+  pairs.add(key);
+  // Piezas consecutivas comparten conector: nunca hay paso inferior.
+  const d=Math.abs(cross.upper-cross.lower),n=track.parts.length;
+  if(d===1||(track.closed&&d===n-1))continue;
+  for(const lower of footprint(cross.lower))
+   for(const upper of footprint(cross.upper)){
+    const overlap=xRayIntersectQuads(lower,upper);
+    if(overlap)polygons.push(overlap);
+   }
+ }
+ xRayClipCache.set(track,polygons);
+ return polygons;
 }
 function clipXRayDeck(ctx,track){
  const polygons=xRayDeckPolygons(track);if(!polygons.length)return false;
- ctx.beginPath();
- for(const polygon of polygons){
-  ctx.moveTo(polygon[0].x,polygon[0].y);
-  for(let i=1;i<polygon.length;i++)ctx.lineTo(polygon[i].x,polygon[i].y);
-  ctx.closePath();
+ if(typeof Path2D==="function"){
+  let path=xRayPathCache.get(track);
+  if(!path){
+   path=new Path2D();
+   for(const polygon of polygons){
+    path.moveTo(polygon[0].x,polygon[0].y);
+    for(let i=1;i<polygon.length;i++)path.lineTo(polygon[i].x,polygon[i].y);
+    path.closePath();
+   }
+   xRayPathCache.set(track,path);
+  }
+  ctx.clip(path);
+ }else{
+  ctx.beginPath();
+  for(const polygon of polygons){
+   ctx.moveTo(polygon[0].x,polygon[0].y);
+   for(let i=1;i<polygon.length;i++)ctx.lineTo(polygon[i].x,polygon[i].y);
+   ctx.closePath();
+  }
+  ctx.clip();
  }
- ctx.clip();
  return true;
 }
 // Contorno de deportivo cenital, con morro afinado, pasos de rueda,
@@ -3652,10 +3741,20 @@ function paintXRaySilhouette(ctx,at){
 const xRayGroundCache=new WeakMap();
 function xRayGroundGuides(track){
  const cached=xRayGroundCache.get(track);if(cached)return cached;
+ // Incluimos vías de suelo y también rampas que REALMENTE pasan bajo
+ // otra plataforma, pero no los conectores a la propia rampa.
  const guides=groundDeckRuns(track).map(run=>({
   center:run.points,
   rails:[translated(run.points,-LANE_OFFSET),translated(run.points,LANE_OFFSET)]
  }));
+ const lowerRamps=new Set((track.bridge?.crossings||[])
+  .filter(c=>c.clear&&track.elevation?.profiles?.[c.lower])
+  .map(c=>c.lower));
+ for(const index of lowerRamps){
+  const part=track.parts[index];if(!part)continue;
+  guides.push({center:part.points,
+   rails:[translated(part.points,-LANE_OFFSET),translated(part.points,LANE_OFFSET)]});
+ }
  xRayGroundCache.set(track,guides);
  return guides;
 }
@@ -5384,7 +5483,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.55",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.56",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
