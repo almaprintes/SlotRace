@@ -2682,7 +2682,9 @@ function updateUI(){
  // y construcción recuperamos el identificador habitual del juego.
  $("mastBrand").hidden=state.mode==="menu";
  $("mastWelcome").hidden=state.mode!=="menu";
- $("mastMode").textContent=state.flow==="race"?"PILOTO":state.flow==="build"?"CONSTRUCTOR":"INICIO";
+ const labels={menu:"INICIO",raceLobby:"COMPETIR",build:"CONSTRUIR",library:"CIRCUITOS",
+  garage:"GARAJE",store:"TIENDA",settings:"AJUSTES",race:"CARRERA",results:"RESULTADOS"};
+ $("mastMode").textContent=labels[state.mode]||"SLOTRACE";
  // El mando de pilotaje no comparte pantalla con herramientas de montaje.
  const showMainNavigation=!["race","results","menu"].includes(state.mode);
  $("mainNavigation").hidden=!showMainNavigation;
@@ -2692,10 +2694,8 @@ function updateUI(){
   const element=$(id),active=state.mode===mode;
   element.classList.toggle("is-active",active);
   element.setAttribute("aria-current",active?"page":"false");
-  if(id==="navRace")element.hidden=state.flow!=="race";
-  if(id==="navBuild")element.hidden=state.flow==="race";
-  if(id==="navGarage")element.hidden=state.flow==="build";
-  if(id==="navStore")element.hidden=state.flow==="race";
+  // Los seis destinos permanecen en su sitio independientemente del flujo.
+  element.hidden=false;
  }
  $("mastSettings").classList.toggle("is-active",state.mode==="settings");
  $("mastSettings").setAttribute("aria-label",state.mode==="settings"?"Ajustes abiertos":"Abrir Ajustes");
@@ -2746,7 +2746,7 @@ function updateUI(){
  updateTemplateUI();
  $("libraryDraftRecovery").hidden=!orphan;
  $("libraryRecoverDraft").textContent=orphan?"Recuperar «"+orphan.name+"»":"Recuperar borrador anterior";
- $("goHome").hidden=state.mode==="menu";
+ $("goHome").hidden=state.mode==="menu"||showMainNavigation;
  $("menuRace").disabled=false;
  $("menuRaceDetail").textContent=state.track.valid?
   "Tu pista está lista · Elige coche y compite":

@@ -2921,3 +2921,23 @@ body[data-screen="menu"] #mastMode{display:none!important}
 html:has(body[data-screen="menu"]),body[data-screen="menu"]{
   background:#eef1f5!important;
 }
+
+/* DEV 0.15.5: six persistent, equally sized destinations in management screens.
+   Welcome has its own mode selectors; driving and results have custom controls. */
+.main-navigation{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
+ padding:6px max(5px,env(safe-area-inset-left,0px))
+ calc(7px + env(safe-area-inset-bottom,0px)) max(5px,env(safe-area-inset-right,0px));
+ background:#fff}
+.main-navigation button{min-width:0;min-height:51px;gap:4px;padding:5px 0}
+.main-navigation button svg{display:block;flex:none;width:22px;height:22px;
+ fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.main-navigation button strong{font-size:clamp(8px,2.3vw,10px);font-weight:900;letter-spacing:-.2px}
+@media(max-width:360px){.main-navigation{gap:1px;padding-left:3px;padding-right:3px}
+ .main-navigation button svg{width:20px;height:20px}
+ .main-navigation button strong{font-size:8px;letter-spacing:-.35px}}
+@media(max-height:720px){.main-navigation button{min-height:46px}}
+/* iOS paints the root behind the standalone viewport; match light menu surfaces. */
+html,body{background:#eef1f5}
+html:has(body[data-screen="race"]),body[data-screen="race"],
+html:has(body[data-screen="results"]),body[data-screen="results"]{background:#071017}
+html:has(#accountModal:not([hidden])){background:#06121d}
