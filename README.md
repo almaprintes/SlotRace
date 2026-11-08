@@ -1,3 +1,18 @@
+# SlotRace DEV 0.14.57 · Actualización fiable de la PWA en iPhone
+
+**Abrir sin reutilizar la dirección anterior:** https://almaprintes.github.io/SlotRace/upgrade.html
+
+**Entrada directa a la versión:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.57&refresh=08112026
+
+- **Problema:** Safari/iOS puede conservar el HTML de la versión anterior. La URL del módulo principal ya tenía versión, pero los módulos importados en su interior estaban referenciados sin ella.
+- **Solución desde esta versión:** index.html, CSS, app.mjs, account.mjs, track.mjs y todas las dependencias JavaScript usan la versión de despliegue para evitar mezcla de módulos antiguos y nuevos.
+- **Actualizaciones futuras:** `src/update-check.mjs` compara la versión local con `version.json` mediante peticiones con nonce y `cache: no-store` al cargar, volver a la PWA y cada 10 minutos. Muestra un aviso de actualización con botón; nunca fuerza el cierre de una partida en curso.
+- **Recuperación:** `upgrade.html` es una ruta nueva que consulta la versión vigente y dirige a una URL nueva de index.html. Si se abre en Safari y la PWA se usa en modo autónomo, el almacenamiento local puede estar separado. No borrar ni desinstalar la PWA.
+- **Datos intactos:** las consultas usan GET y el botón navega dentro de la misma aplicación. No limpia localStorage, IndexedDB, circuitos ni récords. Sin cambios en físicas, Rayos X, pianos y puente.
+- **CI:** `tests/update-check.cjs` verifica las versiones, la protección de las importaciones y la ruta de recuperación.
+
+---
+
 # SlotRace DEV 0.14.56 · Rayos X sin falsos túneles en suelo → rampa
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.56
