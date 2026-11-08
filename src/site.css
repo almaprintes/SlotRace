@@ -2946,9 +2946,11 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 /* DEV 0.15.6: same footer in launcher and every hub.
    iOS standalone black-translucent + 100dvh can leave a bottom dead strip;
    use 100vh for the full-screen shell only in installed WebKit PWAs. */
-@media (display-mode:standalone) and (-webkit-touch-callout: none){
- html,body{height:100vh!important;min-height:100vh!important}
- .app{height:100vh!important;min-height:100vh!important}
+@media (display-mode:standalone){
+ @supports (-webkit-touch-callout:none){
+  html,body{height:100vh!important;min-height:100vh!important}
+  .app{height:100vh!important;min-height:100vh!important}
+ }
 }
 .app{display:flex;flex-direction:column}
 .main-navigation{flex:0 0 auto;align-self:stretch;margin-top:auto;
