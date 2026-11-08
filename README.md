@@ -1,3 +1,15 @@
+# SlotRace DEV 0.14.55 · Nuevo tapete Gris técnico
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.55
+
+- **Tercera opción en Ajustes → Color del tapete:** Gris técnico + acero, con degradado grafito oscuro, retícula fina plateada y rotulación gris tenue. Disponible junto al vino oscuro y el cian profundo, que se conservan sin cambios.
+- **Contraste:** el nuevo color distingue con claridad las escapatorias verdes de los pianos rojos y blancos y del plástico del circuito.
+- **Sin pérdida de progreso:** la selección usa `tableTheme` en el guardado local existente, sin modificar recetas ni perfiles. El vino sigue siendo el predeterminado para quienes aún no hayan elegido tema.
+- **Rendimiento:** mantiene la textura de mesa cacheada; solo la invalida al cambiar de tema o tamaño, no en cada fotograma.
+- **Comprobación:** la prueba `tests/analog-trigger.cjs` verifica selección, estado visual, persistencia y retorno a otro tema. La batería automática general sigue activa.
+
+---
+
 # SlotRace DEV 0.14.54 · Tapetes vino y cian con entramado dorado
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.54
