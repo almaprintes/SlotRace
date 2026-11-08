@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.53 · Escapatorias integradas con el asfalto
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.53
+
+- **Adiós a las gotas verdes:** el borde interior de cada escapatoria queda ligeramente bajo el canto plástico de la pista; ya no hay una banda de color separada del asfalto.
+- **Perfil de frenada asimétrico:** la anchura crece durante la entrada, se mantiene en el vértice y desaparece progresivamente por la salida. Se extiende unos milímetros por las rectas adyacentes para evitar que parezca un objeto colocado bajo la curva.
+- **Material más creíble:** verde asfalto mate y oscuro, franja interior de transición tenue y contorno exterior sin brillo ni sombra. El patrón rojo/blanco de los pianos permanece intacto.
+- **Se adapta al espacio punto a punto:** la anchura se calcula para cada muestra y se recorta ante otras pistas; también respeta el interior de la mesa de carrera y evita invadir la madera.
+- **Coste de render controlado:** geometría precalculada y trazados Canvas `Path2D` en caché por circuito, sentido y dimensiones de la mesa. No modifica curvas, coches, físicas ni recetas.
+- **Pruebas:** `node tests/smart-runoffs.cjs` valida continuidad, perfiles, obstáculos, marco y ambos sentidos; mantiene las comprobaciones anteriores.
+
+---
+
 # SlotRace DEV 0.14.52 · Escapatorias inteligentes por riesgo de curva
 
 **Prueba:** https://almaprintes.github.io/SlotRace/?v=0.14.52
