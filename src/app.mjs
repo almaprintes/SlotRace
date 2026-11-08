@@ -9,6 +9,23 @@ const LIBRARY_KEY="slotrace-circuit-library-v1";
 const LIBRARY_REVISIONS_KEY="slotrace-circuit-versions-v1";
 const SHOP_OWNED_KEY="slotrace-shop-owned-v1";
 const SHOP_DEFAULT_OWNED=Object.freeze(["box-basic","car-gripline"]);
+const TABLE_THEMES=Object.freeze({
+ wine:Object.freeze({
+  label:"Vino oscuro + oro",surface:["#502331","#341b2a","#200f1b"],
+  grid:"#d8b77f",majorAlpha:.19,minorAlpha:.075,
+  felt:["#532637","#3a1b2b","#25121f"],
+  textureLight:"#d8b77f",textureDark:"#170a12",
+  writing:"#dfbe8d",writingAlpha:.25
+ }),
+ cyan:Object.freeze({
+  label:"Cian profundo + oro",surface:["#17677d","#10465c","#092b3e"],
+  grid:"#edca90",majorAlpha:.20,minorAlpha:.075,
+  felt:["#17647a","#10485d","#092c3d"],
+  textureLight:"#c2e6df",textureDark:"#061b2a",
+  writing:"#f2d7a8",writingAlpha:.25
+ })
+});
+const currentTableTheme=()=>TABLE_THEMES[state.tableTheme]||TABLE_THEMES.wine;
 // Receta original compartida de Catalunya Slot (60 piezas, 18,89 m).
 // Conservar orden, posición y orientación: corresponden al plano del usuario.
 const CATALUNYA_SLOT_TYPES=Object.freeze(["R3_225L","R4_225L","S600","S075","S350","S350","START350","S350","S350","S350","S350","S350","R2_45L","R2_45L","S350","S350","R2_45L","S350","S350","R2_90L","R2_90L","S350","S350","R1_90R","R1_90R","S175","S350","S350","S350","R2_90L","S350","S350","S350","R1_45R","S175","S350","R2_45R","S350","S350","R1_45R","R1_90R","S350","S350","S350","R2_90L","R2_90L","S350","S350","S350","S350","R2_45L","S350","S350","R2_90L","S350","S350","S350","R2_225R","R1_225L","S075"]);
@@ -136,6 +153,7 @@ const state={
   followZoom:Number.isFinite(Number(old?.followZoom))?
    Math.max(2,Math.min(30,Math.round(Number(old.followZoom)*2)/2)):5,
   followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false,settle:0},
+  tableTheme:Object.hasOwn(TABLE_THEMES,old?.tableTheme)?old.tableTheme:"wine",
   gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
   types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
@@ -159,6 +177,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  reference:state.reference,
  circuitName:state.circuitName,circuitCreator:state.circuitCreator,
  activeCircuitId:state.activeCircuitId,
+ tableTheme:state.tableTheme,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
 const GRID_MM=25;
@@ -2629,6 +2648,11 @@ function updateUI(){
  $("settingsMotor").textContent=state.motorEnabled?"Activado":"Desactivado";
  $("settingsMotor").setAttribute("aria-pressed",String(state.motorEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
+ for(const [id,theme] of [["settingsTableWine","wine"],["settingsTableCyan","cyan"]]){
+  const button=$(id),active=state.tableTheme===theme;
+  button.classList.toggle("is-active",active);
+  button.setAttribute("aria-pressed",String(active));
+ }
  $("settingsXRay").textContent=state.xRayEnabled?"Activado":"Desactivado";
  $("settingsXRay").setAttribute("aria-pressed",String(state.xRayEnabled));
  for(const [id,mode] of [
@@ -3189,9 +3213,10 @@ function visibleWorldBounds(v,padding=0){
 }
 function paintInfiniteWorkspace(ctx,v){
  const b=visibleWorldBounds(v,100/Math.max(v.scale,.000001));
+ const theme=currentTableTheme();
  const gradient=ctx.createLinearGradient(b.left,b.top,b.right,b.bottom);
- gradient.addColorStop(0,"#245946");gradient.addColorStop(.55,"#1f5042");
- gradient.addColorStop(1,"#153c35");
+ gradient.addColorStop(0,theme.surface[0]);gradient.addColorStop(.55,theme.surface[1]);
+ gradient.addColorStop(1,theme.surface[2]);
  ctx.fillStyle=gradient;ctx.fillRect(b.left,b.top,b.width,b.height);
 }
 function paintGrid(ctx,v,mode="build"){
@@ -3209,13 +3234,15 @@ function paintGrid(ctx,v,mode="build"){
  for(let x=Math.ceil(b.left/spacing)*spacing;x<=b.right;x+=spacing){
   const major=Math.abs(x/100-Math.round(x/100))<1e-8;
   ctx.beginPath();ctx.moveTo(x,b.top);ctx.lineTo(x,b.bottom);
-  ctx.strokeStyle="#d5ffde";ctx.globalAlpha=major?.23:.085;
+  const theme=currentTableTheme();
+  ctx.strokeStyle=theme.grid;ctx.globalAlpha=major?theme.majorAlpha:theme.minorAlpha;
   ctx.lineWidth=major?2.2:1;ctx.stroke();
  }
  for(let y=Math.ceil(b.top/spacing)*spacing;y<=b.bottom;y+=spacing){
   const major=Math.abs(y/100-Math.round(y/100))<1e-8;
   ctx.beginPath();ctx.moveTo(b.left,y);ctx.lineTo(b.right,y);
-  ctx.strokeStyle="#d5ffde";ctx.globalAlpha=major?.23:.085;
+  const theme=currentTableTheme();
+  ctx.strokeStyle=theme.grid;ctx.globalAlpha=major?theme.majorAlpha:theme.minorAlpha;
   ctx.lineWidth=major?2.2:1;ctx.stroke();
  }
  ctx.restore();
@@ -3224,6 +3251,7 @@ function paintGrid(ctx,v,mode="build"){
 // Es inmutable: generar la textura UNA vez evita hacerlo cada fotograma.
 let tableArtworkTexture=null,tableArtworkSize="";
 function drawTableArtwork(ctx,b){
+ const theme=currentTableTheme();
  ctx.save();ctx.shadowColor="#000000a0";ctx.shadowBlur=70;ctx.shadowOffsetY=22;
  const wood=ctx.createLinearGradient(0,0,TABLE.width,TABLE.height);
  wood.addColorStop(0,"#ad7443");wood.addColorStop(.45,"#6b4327");wood.addColorStop(1,"#a96c3c");
@@ -3239,23 +3267,30 @@ function drawTableArtwork(ctx,b){
  ctx.strokeStyle="#42271b";ctx.lineWidth=7;roundRect(ctx,50,50,TABLE.width-100,TABLE.height-100,48);ctx.stroke();
  ctx.shadowColor="#061e19b0";ctx.shadowBlur=23;ctx.shadowOffsetY=8;
  const felt=ctx.createLinearGradient(0,60,TABLE.width,TABLE.height-60);
- felt.addColorStop(0,"#2d765c");felt.addColorStop(.55,"#245a48");felt.addColorStop(1,"#143c36");
+ felt.addColorStop(0,theme.felt[0]);felt.addColorStop(.55,theme.felt[1]);
+ felt.addColorStop(1,theme.felt[2]);
  roundRect(ctx,62,62,TABLE.width-124,TABLE.height-124,38);ctx.fillStyle=felt;ctx.fill();
  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
  ctx.save();roundRect(ctx,62,62,TABLE.width-124,TABLE.height-124,38);ctx.clip();
- ctx.strokeStyle="#c6edd2";ctx.globalAlpha=.038;ctx.lineWidth=1.4;
+ ctx.strokeStyle=theme.grid;ctx.globalAlpha=.095;ctx.lineWidth=1.4;
  for(let x=62;x<TABLE.width-62;x+=100){ctx.beginPath();ctx.moveTo(x,62);ctx.lineTo(x,TABLE.height-62);ctx.stroke();}
  for(let y=62;y<TABLE.height-62;y+=100){ctx.beginPath();ctx.moveTo(62,y);ctx.lineTo(TABLE.width-62,y);ctx.stroke();}
  ctx.globalAlpha=.055;for(let i=0;i<1000;i++){
-  const x=70+((i*7919)%2060),y=72+((i*5171)%1295);ctx.fillStyle=i%2?"#c0f5ce":"#05180c";ctx.fillRect(x,y,2.4,2.4);
+  const x=70+((i*7919)%2060),y=72+((i*5171)%1295);ctx.fillStyle=i%2?theme.textureLight:theme.textureDark;ctx.fillRect(x,y,2.4,2.4);
  }ctx.globalAlpha=1;ctx.restore();
- ctx.font="bold 40px system-ui";ctx.fillStyle="#b5e3c1";ctx.globalAlpha=.38;ctx.textAlign="center";
+ ctx.font="bold 40px system-ui";ctx.fillStyle=theme.writing;ctx.globalAlpha=theme.writingAlpha;ctx.textAlign="center";
  ctx.fillText("SLOTRACE  •  CRAFT RACE STUDIO",TABLE.width/2,166);ctx.globalAlpha=1;
- ctx.font="24px system-ui";ctx.fillStyle="#b9d6a7";ctx.globalAlpha=.47;ctx.fillText("MESA DE MONTAJE  ·  "+Math.round(b.width/10)+" × "+Math.round(b.height/10)+" CM",TABLE.width/2,TABLE.height-119);ctx.globalAlpha=1;
+ ctx.font="24px system-ui";ctx.fillStyle=theme.writing;ctx.globalAlpha=theme.writingAlpha;ctx.fillText("MESA DE MONTAJE  ·  "+Math.round(b.width/10)+" × "+Math.round(b.height/10)+" CM",TABLE.width/2,TABLE.height-119);ctx.globalAlpha=1;
  for(const corner of [[76,76],[TABLE.width-76,76],[76,TABLE.height-76],[TABLE.width-76,TABLE.height-76]]){
   ctx.fillStyle="#503725";ctx.beginPath();ctx.arc(corner[0],corner[1],17,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle="#d4b57b";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(corner[0]-8,corner[1]);ctx.lineTo(corner[0]+8,corner[1]);ctx.stroke();
  }
+}
+function setTableTheme(theme){
+ if(!Object.hasOwn(TABLE_THEMES,theme)||state.tableTheme===theme)return;
+ state.tableTheme=theme;tableArtworkTexture=null;tableArtworkSize="";
+ state.viewDirty=true;save();updateUI();
+ toast("Tapete: "+TABLE_THEMES[theme].label);
 }
 function paintTable(ctx,v,mode){
  if(mode==="build"){paintInfiniteWorkspace(ctx,v);return;}
@@ -3264,7 +3299,7 @@ function paintTable(ctx,v,mode){
  ctx.translate(b.left,b.top);
  ctx.scale(b.width/TABLE.width,b.height/TABLE.height);
  // El rótulo de medidas también debe cambiar al abrir otro circuito.
- const key=Math.round(b.width)+"×"+Math.round(b.height);
+ const key=Math.round(b.width)+"×"+Math.round(b.height)+"·"+state.tableTheme;
  if(key!==tableArtworkSize){tableArtworkTexture=null;tableArtworkSize=key;}
  if(!tableArtworkTexture&&typeof document.createElement==="function"){
   try{
@@ -5187,6 +5222,8 @@ function initEvents(){
   state.xRayEnabled=!state.xRayEnabled;
   state.viewDirty=true;save();updateUI();
  });
+ $("settingsTableWine").addEventListener("click",()=>setTableTheme("wine"));
+ $("settingsTableCyan").addEventListener("click",()=>setTableTheme("cyan"));
  $("settingsCameraGeneral").addEventListener("click",()=>setCameraMode("general"));
  $("settingsCameraFollow").addEventListener("click",()=>setCameraMode("follow"));
  $("settingsCameraCustom").addEventListener("click",()=>setCameraMode("custom"));
@@ -5339,12 +5376,12 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.53",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.54",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
- workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
+ workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
