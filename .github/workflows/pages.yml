@@ -33,6 +33,9 @@ jobs:
       - name: Comprobar actualización PWA y evitar módulos antiguos
         run: node tests/update-check.cjs
 
+      - name: Comprobar copia segura y restauración de progreso
+        run: node tests/backup.cjs
+
       - name: Comprobar control táctil analógico
         run: node tests/analog-trigger.cjs
 
@@ -95,6 +98,9 @@ jobs:
           test -s src/track.mjs
           test -s src/blueprint.mjs
           test -s src/site.css
+          test -s assets/ui/slotrace-icon-192.png
+          test -s assets/ui/slotrace-icon-512.webp
+          test -s manifest.webmanifest
           test -s assets/cars/avenir_gripline.webp
           test -s assets/cars/avenir_gripline_threequarter.webp
           test -s assets/cars/helix_spark.webp

@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.59 · Icono oficial y copias de seguridad verificables
+
+**Abrir:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.59&refresh=iconbackup
+
+- **Icono oficial:** S roja convertida en pista de slot, coche blanco y meta sobre fondo blanco. Logo visible en cabecera y pantalla inicial. Metadatos `apple-touch-icon` y `manifest.webmanifest` para instalación PWA. Recursos PNG 192 px y WebP 512 px generados a partir de la ilustración escogida por el usuario.
+- **Protege tu progreso ANTES de eliminar la PWA:** en Ajustes → Protege tu progreso → Exportar copia. Guardar el archivo JSON en Archivos/iCloud Drive **fuera de la PWA**. Usar Comprobar archivo y seleccionar ese JSON: la app verificará su integridad (SHA-256) sin tocar los datos actuales.
+- **Contenido del respaldo:** estado del circuito activo, piezas sueltas, historial de borradores guardados, colección y revisiones de circuitos, coches y packs adquiridos, récords, ajustes, imágenes de referencia IndexedDB o fallback localStorage. Las credenciales de CraftRace Studio no se incluyen; para el inicio de sesión habrá que autenticarse de nuevo.
+- **Restauración:** desde Ajustes, comprobar JSON y pulsar Restaurar copia comprobada. Requiere confirmación, reemplaza exclusivamente los datos locales de SlotRace y recarga la aplicación. Las demás claves de localStorage no se tocan. Ante un fallo se intenta revertir tanto el progreso como las imágenes a su estado anterior.
+- **Primero prueba, luego desinstala:** después de exportar, volver a seleccionar el archivo y comprobar que aparece el resumen esperado. Conservarlo también durante la reinstalación. La restauración después de borrar la PWA requiere usar el archivo guardado; una cuenta Google no recupera por sí sola los datos locales.
+- **Pruebas CI:** `tests/backup.cjs` comprueba exportación/restauración, integridad criptográfica, exclusión de secretos y recuperación ante error de cuota, además de iconos y metadatos.
+
+---
+
 # SlotRace DEV 0.14.58 · Acelerador de precisión al 1 %
 
 **Jugar:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.58&refresh=precise
