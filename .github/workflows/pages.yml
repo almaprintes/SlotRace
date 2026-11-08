@@ -30,6 +30,9 @@ jobs:
       - name: Verificar cuenta global CraftRace Studio sin tocar partidas locales
         run: node tests/studio-account.cjs
 
+      - name: Comprobar actualización PWA y evitar módulos antiguos
+        run: node tests/update-check.cjs
+
       - name: Comprobar control táctil analógico
         run: node tests/analog-trigger.cjs
 
