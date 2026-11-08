@@ -2689,3 +2689,145 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .hub-screen .hub-feature.backup-panel>small{color:#bcd3d7}
 .hub-screen .backup-actions .backup-action:focus-visible{
  outline:3px solid #83e9da;outline-offset:3px}
+
+
+/* DEV 0.15.0 · Lanzador CraftRace Studio: cuenta → modo → interfaz.
+   Únicamente presentación y navegación; el motor de render/física no cambia. */
+.entry-gate{
+ position:fixed;z-index:1300;inset:0;overflow-y:auto;display:flex;
+ justify-content:center;align-items:center;
+ padding:calc(env(safe-area-inset-top,0px) + 24px) 18px calc(env(safe-area-inset-bottom,0px) + 24px);
+ background:radial-gradient(ellipse at 60% -15%,#4e1628 0%,#1c222d 48%,#070e16 100%);
+ color:#f7fcff;
+}
+.entry-gate[hidden]{display:none!important}
+.entry-shell{width:min(100%,450px);display:flex;flex-direction:column;
+ align-items:center;text-align:center;gap:13px}
+.entry-mark{display:block;width:94px;height:94px;object-fit:cover;
+ border-radius:23px;box-shadow:0 12px 39px #000a;border:2px solid #ffffffc9}
+.entry-eyebrow{font-size:11px;letter-spacing:2px;font-weight:900;color:#e8b9c3}
+.entry-shell h1{font-size:clamp(30px,7.5vw,46px);font-weight:1000;
+ line-height:1.05;letter-spacing:-1.9px;margin:8px 0 0;color:#fff}
+.entry-shell h1 em{font-style:normal;color:#ff5d76}
+.entry-shell p{color:#d4dce4;font-size:14px;line-height:1.5;margin:0;
+ max-width:350px}
+.entry-actions{display:grid;gap:10px;width:100%;margin-top:12px}
+.entry-actions button{min-height:56px;width:100%;border-radius:13px;padding:12px;
+ font-weight:900;font-size:16px;border:1px solid #dce6ed}
+.entry-primary{background:linear-gradient(120deg,#ec2349,#b30730);color:white!important;
+ border-color:#ff4964!important;box-shadow:0 9px 25px #c505334b}
+.entry-primary span{float:right;font-size:22px;line-height:1}
+.entry-secondary{background:#f6f8fa;color:#202c3c}
+.entry-guest{background:transparent;color:#b9dfdf;border:0;
+ padding:14px 8px;font-weight:850;text-decoration:underline;text-underline-offset:4px}
+.entry-shell small{font-size:11px;line-height:1.6;color:#aabec6;max-width:390px}
+.account-overlay{z-index:1800}
+.account-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:3px 0 16px;
+ padding:4px;border-radius:12px;background:#eaf0f4}
+.account-auth-tabs button{border:0;border-radius:9px;min-height:43px;
+ background:transparent;color:#445a69;font-weight:850}
+.account-auth-tabs button[aria-pressed="true"]{background:white;color:#b70e31;
+ box-shadow:0 2px 9px #112b3d1c}
+.mast-mode{font-size:10px;letter-spacing:1.1px;color:#9cb9c2;
+ border:1px solid #acc4c84d;border-radius:99px;padding:5px 8px;
+ margin-left:auto;font-weight:950;white-space:nowrap}
+.launcher-screen{background:linear-gradient(170deg,#f6f8fb,#eef1f5)!important}
+.launcher-screen .home-scroll{max-width:840px;height:100%;overflow-y:auto;display:flex;
+ flex-direction:column;gap:14px;padding:12px 14px calc(28px + env(safe-area-inset-bottom,0px))!important}
+.launcher-screen .home-hero{flex:none;min-height:220px!important;height:clamp(205px,33dvh,280px)!important;
+ padding:17px 16px!important;margin:0!important;background:#e8eff4}
+.launcher-screen .home-hero-heading{padding:0!important;max-width:100%}
+.launcher-screen .home-hero h1{font-size:clamp(34px,8vw,54px)!important}
+.launcher-screen .home-hero p{display:block!important;font-size:13px}
+.launcher-intro{color:#182938;display:flex;flex-direction:column;gap:5px;margin:0}
+.launcher-intro>span{font-size:10px;letter-spacing:1.8px;font-weight:950;color:#b00e30}
+.launcher-intro h2{font-size:clamp(23px,5.5vw,32px);letter-spacing:-1px;margin:0;
+ line-height:1.12;font-weight:1000}
+.launcher-intro p{font-size:12px;margin:0;color:#6a7987;line-height:1.45}
+.launcher-screen .launcher-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ grid-template-rows:none!important;gap:12px!important}
+.launcher-screen .launcher-choice{position:relative;display:flex!important;
+ flex-direction:column;justify-content:space-between;align-items:flex-start;
+ min-height:170px!important;height:auto!important;grid-column:auto!important;
+ gap:9px!important;padding:18px 15px!important;border-radius:18px!important;
+ box-shadow:0 9px 22px #1b2b3c26!important}
+.launcher-screen .launcher-racing{background:linear-gradient(150deg,#c90831,#730d2a)!important;
+ border:1px solid #fa5976!important;color:white!important}
+.launcher-screen .launcher-building{background:linear-gradient(145deg,#273c4b,#0c1d29)!important;
+ border:1px solid #527383!important;color:#eafcff!important}
+.launcher-symbol{font-size:29px;line-height:1;width:43px;height:42px;display:flex;align-items:center}
+.launcher-screen .launcher-choice>span:nth-child(2){display:flex;flex-direction:column;
+ flex:0 1 auto;gap:6px}
+.launcher-screen .launcher-choice strong{font-size:clamp(17px,3.9vw,23px);font-weight:1000;
+ letter-spacing:.2px;line-height:1.07}
+.launcher-screen .launcher-choice small{font-size:11px!important;line-height:1.4;
+ color:#f6e7eb!important;opacity:.94;display:block!important}
+.launcher-screen .launcher-building small{color:#c7d8df!important}
+.launcher-screen .launcher-choice .launcher-arrow{position:absolute;right:14px;top:15px;
+ font-size:24px;opacity:.75;color:white}
+.launcher-shortcuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:7px;margin:1px 0 0}
+.launcher-shortcuts button{min-height:63px;min-width:0;border-radius:13px;
+ padding:9px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+ border:1px solid #d7dee7;background:white;color:#304456;box-shadow:0 2px 5px #0d18260c;
+ font-size:18px;font-weight:850}
+.launcher-shortcuts button span{font-size:10px;white-space:normal;line-height:1.15}
+.race-lobby-screen{color:#152839;min-height:0}
+.race-lobby-scroll{width:100%;max-width:740px;margin:auto;overflow-y:auto;
+ padding:15px 16px calc(25px + env(safe-area-inset-bottom,0px));}
+.race-lobby-heading{padding:9px 0 14px}
+.race-lobby-kicker{color:#ba1239;font-size:10px;font-weight:950;letter-spacing:1.7px}
+.race-lobby-heading h1{margin:6px 0;font-weight:1000;font-size:clamp(29px,7vw,43px);
+ letter-spacing:-1.6px;line-height:1.05}
+.race-lobby-heading p{margin:0;font-size:13px;line-height:1.4;color:#677b88}
+.race-lobby-preview{overflow:hidden;position:relative;background:#162832;
+ border-radius:20px;border:1px solid #637786;min-height:180px;box-shadow:0 12px 24px #152b3f25}
+.race-lobby-preview img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.race-lobby-preview:after{content:"";position:absolute;inset:35% 0 0;
+ background:linear-gradient(transparent,#091823eb)}
+.race-lobby-preview>div{position:absolute;z-index:1;bottom:13px;left:17px;right:13px;
+ display:flex;flex-direction:column;gap:2px;color:white}
+.race-lobby-preview span{font-size:10px;color:#a2f3df;font-weight:950;letter-spacing:1.5px}
+.race-lobby-preview strong{font-size:22px;font-weight:950;max-width:100%;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap}
+.race-lobby-preview small{font-size:11px;color:#e1edf0}
+.race-lobby-panel{margin-top:13px;padding:17px 15px;background:white;
+ border:1px solid #dce4eb;box-shadow:0 4px 12px #132d4020;border-radius:16px}
+.race-lobby-panel h2{font-size:17px;margin:0 0 13px;font-weight:1000}
+.race-lobby-panel label{display:block;color:#576d7c;font-weight:900;font-size:12px;margin-bottom:7px}
+.race-lobby-panel select{width:100%;height:48px;padding:10px 35px 10px 12px;
+ border:1px solid #b7c8d4;background:#f5f8fb;color:#1b2b39;border-radius:11px;font-weight:800}
+.race-lobby-panel p{margin:8px 0 0;font-size:11px;color:#6b7c89;line-height:1.4}
+.race-lobby-cars{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.race-lobby-cars button{border:2px solid #dbe4eb;border-radius:13px;background:#f8fafc;
+ padding:10px 7px;color:#263a47;display:flex;flex-direction:column;gap:5px;
+ align-items:center;font-size:11px;min-height:126px}
+.race-lobby-cars img{height:72px;width:100%;object-fit:contain}
+.race-lobby-cars strong{font-size:13px}
+.race-lobby-cars button.is-selected{border-color:#d51b43;background:#fff0f3;box-shadow:0 2px 10px #d51b432a}
+.race-lobby-start{display:block;width:100%;min-height:58px;margin-top:15px;border-radius:13px;
+ border:1px solid #d61b43;background:linear-gradient(125deg,#ec2248,#b60c30);color:white;
+ font-size:17px;font-weight:1000;box-shadow:0 8px 18px #bb153c47}
+.race-lobby-start:disabled{background:#b6c4cb;color:#f5fafc;border-color:#b1bcc4;box-shadow:none}
+.race-lobby-finish{width:100%;min-height:51px;margin-top:10px;border-radius:12px;
+ border:1px solid #aac3c8;background:#e5f5f2;color:#176152;font-weight:950}
+.race-lobby-links{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.race-lobby-links button{min-height:48px;min-width:0;white-space:normal;
+ background:#fff;color:#2c4354;border:1px solid #d7e1e9;border-radius:11px;
+ font-size:11px;font-weight:850;padding:8px 5px}
+.main-navigation button[hidden]{display:none!important}
+@media(max-width:390px){
+ .launcher-screen .launcher-choice{min-height:155px!important;padding:14px 11px!important}
+ .launcher-shortcuts button span{font-size:9px}
+ .mast-mode{display:none}
+ .race-lobby-links{grid-template-columns:1fr 1fr}
+ .race-lobby-links button:last-child{grid-column:span 2}
+}
+@media(min-width:700px){
+ .launcher-screen .launcher-actions{gap:16px!important}
+ .launcher-screen .launcher-choice{min-height:190px!important}
+ .race-lobby-preview{min-height:220px}
+}
+@media(prefers-reduced-motion:reduce){
+ .entry-gate,.launcher-choice{transition:none!important}
+}
