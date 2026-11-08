@@ -1,7 +1,7 @@
 // SlotRace · receta de construcción desacoplada de la UI.
 // Orden físico original, inventario completo y orientación de marcha.
 const normal=id=>id.replace(/_(?:225|45|90)([RL])$/,(_,direction)=>"_"+direction);
-export function buildRecipe(types,catalog,bridgeParts=[],loose=[],direction=1){
+export function buildRecipe(types,catalog,bridgeParts=[],loose=[],direction=1,actualDirectionLabel=null){
  const all=[...types,...loose.map(p=>p.id)];
  const byId=new Map();
  for(const id of all){

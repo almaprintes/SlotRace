@@ -34,6 +34,31 @@ export const CATALOG=Object.freeze(Object.fromEntries(
   radiusId:s.radiusId||null,degrees:s.degrees||0
  })])
 ));
+// Sentido geométrico, independiente del orden en que se montaron las piezas.
+// El eje Y crece hacia abajo, de modo que giros positivos / derechos son horarios.
+// Un ocho tiene giro neto cero: sus lóbulos giran en direcciones opuestas.
+export function circuitWinding(types){
+ if(!Array.isArray(types)||types.length<4||types.some(id=>!CATALOG[id]))return 0;
+ const turns=types.reduce((sum,id)=>sum+(CATALOG[id].angle||0),0)/(2*Math.PI);
+ if(Math.abs(turns-1)<1e-5)return 1;
+ if(Math.abs(turns+1)<1e-5)return -1;
+ return 0;
+}
+// El campo direction histórico es el avance relativo al orden de montaje.
+// No reinterpretarlo ni invertirlo al leer las partidas o los récords antiguos.
+export function travelDirectionLabel(types,direction=1,closed=true){
+ const raw=direction===-1?-1:1;
+ if(!closed||!Array.isArray(types)||!types.length)return raw===1?"Horario":"Antihorario";
+ const winding=circuitWinding(types);
+ if(!winding)return raw===1?"Mixto · original":"Mixto · inverso";
+ return winding*raw===1?"Horario":"Antihorario";
+}
+export function directionFromPreference(types,clockwise=1){
+ return (circuitWinding(types)||1)*(clockwise===-1?-1:1);
+}
+export function preferenceFromDirection(types,direction=1){
+ return (circuitWinding(types)||1)*(direction===-1?-1:1);
+}
 export const STARTER=Object.freeze([...RECIPES.ovalR2]);
 export const FIGURE_EIGHT=Object.freeze([...RECIPES.eightR2]);
 // Carril A es la ranura INTERIOR junto a salida/meta, no "izquierda".
