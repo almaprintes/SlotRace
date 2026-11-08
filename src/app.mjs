@@ -1,6 +1,7 @@
 import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs";
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -3109,6 +3110,55 @@ function paintLooseKerbs(ctx,parts){
  if(typeof buildCurveKerbs!=="function")return;
  paintKerbPaths(ctx,compileKerbs(buildCurveKerbs(parts)));
 }
+// Dos vistas de escapatorias por circuito (horario/antihorario).
+// Se compilan una sola vez: los fotogramas solo rellenan trazados estáticos.
+const runoffGeometryCache=new WeakMap();
+function paintSmartRunoffs(ctx,track,direction){
+ // Las pruebas de control y física cargan el módulo sin renderer externo.
+ if(typeof buildSmartRunoffs!=="function")return;
+ const dir=direction===-1?-1:1;
+ let cached=runoffGeometryCache.get(track);
+ if(!cached){cached=new Map();runoffGeometryCache.set(track,cached);}
+ if(!cached.has(dir)){
+  const zones=buildSmartRunoffs(track,dir);
+  const fill=typeof Path2D==="function"?new Path2D():null;
+  const rim=typeof Path2D==="function"?new Path2D():null;
+  if(fill&&rim){
+   for(const zone of zones){
+    const [a,...rest]=zone.points;
+    fill.moveTo(a.x,a.y);
+    for(const p of rest)fill.lineTo(p.x,p.y);
+    fill.closePath();
+    const [edge,...more]=zone.outerEdge;
+    rim.moveTo(edge.x,edge.y);
+    for(const p of more)rim.lineTo(p.x,p.y);
+   }
+  }
+  cached.set(dir,{zones,fill,rim});
+ }
+ const {zones,fill,rim}=cached.get(dir);
+ if(!zones.length)return;
+ ctx.save();
+ ctx.globalAlpha=.96;
+ ctx.fillStyle=RUNOFF_STYLE.color;
+ if(fill){
+  ctx.fill(fill);
+  ctx.globalAlpha=.5;ctx.strokeStyle=RUNOFF_STYLE.border;
+  ctx.lineWidth=2;ctx.lineCap="round";ctx.lineJoin="round";
+  ctx.stroke(rim);
+ }else for(const zone of zones){
+  const [first,...rest]=zone.points;
+  ctx.beginPath();ctx.moveTo(first.x,first.y);
+  for(const p of rest)ctx.lineTo(p.x,p.y);
+  ctx.closePath();ctx.fill();
+  const [edge,...more]=zone.outerEdge;
+  ctx.beginPath();ctx.moveTo(edge.x,edge.y);
+  for(const p of more)ctx.lineTo(p.x,p.y);
+  ctx.globalAlpha=.5;ctx.strokeStyle=RUNOFF_STYLE.border;
+  ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=.96;
+ }
+ ctx.restore();
+}
 // Las coordenadas del tapete virtual no tienen bordes físicos.
 function visibleWorldBounds(v,padding=0){
  const pts=[[0,0],[v.w,0],[0,v.h],[v.w,v.h]].map(([x,y])=>worldFromPointer(v,x,y));
@@ -4745,6 +4795,9 @@ function renderScene(canvas,mode){
  if(mode==="build")paintReference(ctx); // Nunca afecta al juego.
  paintGrid(ctx,v,mode);
  const track=state.track,hasBridge=Boolean(track.bridge);
+ // La escapatoria se pinta bajo el plástico y bajo los soportes.
+ // Nunca tapa ranuras, pianos ni la plataforma superior.
+ paintSmartRunoffs(ctx,track,state.driveDirection);
  const p=mode==="race"?displayDrivingPose():drivingPose(0);
  // Un coche que circula por la propia rampa siempre queda sobre SU
  // superficie, incluso cerca del extremo de menor altura. Sólo el coche
@@ -5265,7 +5318,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.50",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.52",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
