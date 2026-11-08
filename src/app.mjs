@@ -23,6 +23,13 @@ const TABLE_THEMES=Object.freeze({
   felt:["#17647a","#10485d","#092c3d"],
   textureLight:"#c2e6df",textureDark:"#061b2a",
   writing:"#f2d7a8",writingAlpha:.25
+ }),
+ technical:Object.freeze({
+  label:"Gris técnico + acero",surface:["#515c65","#343f49","#202931"],
+  grid:"#b5c2cb",majorAlpha:.22,minorAlpha:.072,
+  felt:["#525e67","#37414a","#232d36"],
+  textureLight:"#c4cfd4",textureDark:"#131a21",
+  writing:"#c8d2d8",writingAlpha:.30
  })
 });
 const currentTableTheme=()=>TABLE_THEMES[state.tableTheme]||TABLE_THEMES.wine;
@@ -2648,7 +2655,7 @@ function updateUI(){
  $("settingsMotor").textContent=state.motorEnabled?"Activado":"Desactivado";
  $("settingsMotor").setAttribute("aria-pressed",String(state.motorEnabled));
  $("settingsGrid").textContent=state.gridEnabled?"Activada":"Desactivada";
- for(const [id,theme] of [["settingsTableWine","wine"],["settingsTableCyan","cyan"]]){
+ for(const [id,theme] of [["settingsTableWine","wine"],["settingsTableCyan","cyan"],["settingsTableTechnical","technical"]]){
   const button=$(id),active=state.tableTheme===theme;
   button.classList.toggle("is-active",active);
   button.setAttribute("aria-pressed",String(active));
@@ -5224,6 +5231,7 @@ function initEvents(){
  });
  $("settingsTableWine").addEventListener("click",()=>setTableTheme("wine"));
  $("settingsTableCyan").addEventListener("click",()=>setTableTheme("cyan"));
+ $("settingsTableTechnical").addEventListener("click",()=>setTableTheme("technical"));
  $("settingsCameraGeneral").addEventListener("click",()=>setCameraMode("general"));
  $("settingsCameraFollow").addEventListener("click",()=>setCameraMode("follow"));
  $("settingsCameraCustom").addEventListener("click",()=>setCameraMode("custom"));
@@ -5376,7 +5384,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.54",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.55",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
