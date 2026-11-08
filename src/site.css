@@ -2902,3 +2902,16 @@ body[data-screen="menu"] #mastMode{display:none!important}
  .mast-avatar{width:34px;height:34px;font-size:18px}
  .mast-welcome-label strong{font-size:13px}
 }
+
+/* CraftRace Studio · avatar de piloto (DEV 0.15.2 hotfix) */
+.mast-avatar img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.mast-avatar img[hidden],.account-avatar-thumb img[hidden]{display:none!important}
+.mast-avatar:after{z-index:1;pointer-events:none}
+.account-avatar-thumb{border-radius:50%!important;overflow:hidden;flex:none}
+.account-avatar-thumb img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.account-avatar-thumb span{display:grid;place-items:center;width:100%;height:100%}
+.account-avatar-controls{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+.account-avatar-controls button{flex:1;min-width:125px;min-height:42px;
+ padding:9px 12px;border:1px solid #c7d7e2;border-radius:10px;
+ background:#f3f8fb;color:#163950;font-size:12px;font-weight:850}
+.account-avatar-controls button:first-of-type{border-color:#64b7cf;background:#e6f7ff}
