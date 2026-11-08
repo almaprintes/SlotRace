@@ -1,0 +1,26 @@
+{
+  "id": "/SlotRace/",
+  "name": "Top Down RACE: SlotRace",
+  "short_name": "SlotRace",
+  "description": "Carreras y construcción de circuitos de slot en Top Down RACE: SlotRace.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#071017",
+  "icons": [
+    {
+      "src": "./assets/ui/slotrace-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/ui/slotrace-icon-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}
