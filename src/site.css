@@ -2660,3 +2660,21 @@ button:disabled{opacity:.35;cursor:not-allowed}
  object-fit:cover;
  border-radius:inherit;
 }
+
+
+/* DEV 0.14.59 · Copia de seguridad verificable antes de reinstalar la PWA. */
+.backup-panel{border:1px solid #547b79;background:linear-gradient(160deg,#13333c,#0c2029)}
+.backup-panel h2{color:#e4fff5}
+.backup-panel strong{color:#f4d39b}
+.backup-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+.backup-actions .hub-back{margin:0;min-width:0;width:100%;padding:11px 9px;
+ border-radius:11px;text-align:center;white-space:normal;line-height:1.25}
+.backup-actions .backup-primary{background:#3bd9ba;border-color:#83f9dd;color:#05332d}
+.backup-actions .backup-danger{grid-column:1/-1;border-color:#b28e70;color:#ffe6cf;
+ background:#3a2b2a}
+.backup-actions button:disabled{opacity:.38;cursor:not-allowed}
+#backupStatus{border-radius:10px;padding:11px 12px;background:#09232a;border:1px solid #42676b;
+ color:#d8f2ea;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.backup-panel>small{display:block;margin-top:11px;color:#b0c5cb;font-size:11px;line-height:1.5}
+@media(max-width:360px){.backup-actions{grid-template-columns:1fr}
+ .backup-actions .backup-danger{grid-column:auto}}
