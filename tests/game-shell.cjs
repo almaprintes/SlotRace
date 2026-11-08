@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.1");
+ assert.equal(game.version,"DEV 0.15.2");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -1082,5 +1082,5 @@ const path=require("node:path");
  assert.equal(st.library.length,afterCatalogue,"No crear un segundo Catalunya");
  assert.deepEqual(st.types,catalunyaPlan.types);
 
- console.log("SlotRace DEV 0.15.1: identificación de cada módulo en el plano y receta sin orden de montaje OK");
+ console.log("SlotRace DEV 0.15.2: identificación de cada módulo en el plano y receta sin orden de montaje OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
