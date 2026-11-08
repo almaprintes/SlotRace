@@ -1,3 +1,14 @@
+# SlotRace DEV 0.14.60 · Botones de copia de seguridad visibles
+
+**Abrir:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.60&refresh=backup-buttons
+
+- **Corrección del fallo de la captura iPhone:** la clase `.hub-back` era ocultada globalmente dentro de Ajustes con `display:none!important`. Los tres botones de exportar, comprobar y restaurar reutilizaban esa clase y desaparecían. Ahora tienen su estilo independiente `.backup-action` y permanecen visibles.
+- **Legibilidad:** texto de ayuda más claro en la tarjeta oscura para evitar gris oscuro sobre verde oscuro.
+- **Sin pérdidas:** no cambia las claves del guardado, las copias, la cuenta Google, los circuitos ni las físicas.
+- **Prueba de regresión:** `tests/backup.cjs` comprueba que ningún botón de copia herede `.hub-back`, que exista su regla visible y que el texto tenga contraste. Versionado integral del HTML, CSS y módulos, manifest de versión y recuperador para evitar la caché obsoleta del iPhone.
+
+---
+
 # SlotRace DEV 0.14.59 · Icono oficial y copias de seguridad verificables
 
 **Abrir:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.59&refresh=iconbackup
