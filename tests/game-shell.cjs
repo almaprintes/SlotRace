@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.6");
+ assert.equal(game.version,"DEV 0.15.7");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -1126,5 +1126,5 @@ const path=require("node:path");
  const storedAfterClosing=JSON.parse(saved.get("slotrace-lab-10"));
  assert.equal(storedAfterClosing.driveDirection,-1);
  assert.equal(storedAfterClosing.pendingDesiredDirection,null);
- console.log("SlotRace DEV 0.15.6: orientación física y recetas conservadas — OK");
+ console.log("SlotRace DEV 0.15.7: orientación física y recetas conservadas — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
