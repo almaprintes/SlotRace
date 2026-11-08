@@ -1,3 +1,17 @@
+# SlotRace DEV 0.14.58 · Acelerador de precisión al 1 %
+
+**Jugar:** https://almaprintes.github.io/SlotRace/index.html?v=0.14.58&refresh=precise
+
+- **101 niveles:** rueda táctil de 0 a 100 % en pasos de 1 %, incluidos 96 %, 97 %, 98 % y 99 %.
+- **Mismo recorrido:** ahora cada 1,4 píxeles de desplazamiento del dedo cambia un 1 %; una carrera completa de 0 a 100 % sigue necesitando aproximadamente 140 píxeles, igual que la antigua escala de 5 % por 7 píxeles.
+- **Sonidos bajo control:** un único clic direccional cada 5 puntos porcentuales cruzados. No hay cinco veces más osciladores ni ráfagas de audio entre 96 % y 99 %.
+- **Sin nuevas físicas:** se conserva la entrada proporcional de aceleración que ya admite fracciones. El coche y los récords siguen usando la misma simulación, las curvas y la misma colisión.
+- **Sin coste gráfico añadido:** los eventos táctiles ya existentes actualizan el porcentaje; no se crean elementos Canvas, texturas ni bucles adicionales.
+- **Actualización segura:** se incrementa coherentemente a 0.14.58 la versión del HTML, los módulos importados, `version.json` y el recuperador, manteniendo intacto el almacenamiento local.
+- **Pruebas:** `tests/analog-trigger.cjs` verifica 1 %, 2 %, 6 % y 96–99 %, sensibilidad, clics cada 5 %, silencio, retorno a cero y arranque de la carrera.
+
+---
+
 # SlotRace DEV 0.14.57 · Actualización fiable de la PWA en iPhone
 
 **Abrir sin reutilizar la dirección anterior:** https://almaprintes.github.io/SlotRace/upgrade.html
