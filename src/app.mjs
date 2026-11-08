@@ -1,7 +1,7 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.14.57";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.14.57";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.14.57";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.14.57";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.14.58";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.14.58";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.14.58";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.14.58";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -2147,10 +2147,14 @@ function syncMotorAudio(now=performance.now(),force=false){
  gain.cancelScheduledValues(time);
  gain.setTargetAtTime(volume,time,moving?.12:.055);
 }
-// Rueda de sintonización táctil: 20 muescas de 5% y sonido direccional.
-// El audio es generado localmente con Web Audio, sin archivos externos.
-const DIAL_STEP=5;
-const DIAL_PX_PER_CLICK=7;
+// Rueda táctil con 101 niveles (0…100 %) de 1 %.
+// Sensibilidad: 1,4 px por nivel = 140 px para recorrer el rango completo,
+// igual que los 20 antiguos clics de 5 % a 7 px. Los sonidos permanecen
+// separados 5 puntos porcentuales, sin disparar 100 osciladores.
+const DIAL_STEP=1;
+const DIAL_MAX_STEPS=100;
+const DIAL_PX_PER_CLICK=1.4;
+const DIAL_SOUND_INTERVAL=5;
 let dialAudioContext=null;
 function initDialAudio(){
  if(!state.clicksEnabled)return;
@@ -2203,11 +2207,15 @@ function setProgressGas(value){
 }
 function setDialSteps(steps){
  const from=Math.round(state.gas*100/DIAL_STEP);
- const to=Math.max(0,Math.min(20,from+steps));
+ const to=Math.max(0,Math.min(DIAL_MAX_STEPS,from+steps));
  const actual=to-from;
  if(!actual)return;
  state.gas=to*DIAL_STEP/100;
- dialSound(Math.sign(actual),actual);
+ // El audio conserva una muesca por cada 5 %. En los movimientos
+ // mínimos de 1–4 % solo cambia el motor: sin clics adicionales.
+ const soundSteps=Math.abs(
+  Math.floor(to/DIAL_SOUND_INTERVAL)-Math.floor(from/DIAL_SOUND_INTERVAL));
+ if(soundSteps)dialSound(Math.sign(actual),soundSteps);
  updateTriggerDisplay();
  updateHud();
 }
@@ -2235,7 +2243,9 @@ function triggerPointerMove(e){
  const delta=gesture.lastY-e.clientY;
  gesture.lastY=e.clientY;
  gesture.carry+=delta;
- const steps=Math.trunc(gesture.carry/DIAL_PX_PER_CLICK);
+ // Tolerancia flotante: Safari entrega coordenadas subpíxel y 1,4 no
+ // tiene representación binaria exacta. Evita perder un paso en 7 px.
+ const steps=Math.trunc((gesture.carry+Math.sign(gesture.carry)*1e-9)/DIAL_PX_PER_CLICK);
  if(!steps)return;
  gesture.carry-=steps*DIAL_PX_PER_CLICK;
  setDialSteps(steps);
@@ -5483,7 +5493,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.57",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.58",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
