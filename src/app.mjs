@@ -3114,48 +3114,69 @@ function paintLooseKerbs(ctx,parts){
 // Se compilan una sola vez: los fotogramas solo rellenan trazados estáticos.
 const runoffGeometryCache=new WeakMap();
 function paintSmartRunoffs(ctx,track,direction){
- // Las pruebas de control y física cargan el módulo sin renderer externo.
+ // Los harnesses de física cargan app.mjs sin importar los gráficos.
  if(typeof buildSmartRunoffs!=="function")return;
  const dir=direction===-1?-1:1;
+ const board=state.mode==="race"?state.workBoard:null;
+ const boardKey=board?[board.left,board.top,board.right,board.bottom].join(":"):"workshop";
  let cached=runoffGeometryCache.get(track);
- if(!cached){cached=new Map();runoffGeometryCache.set(track,cached);}
- if(!cached.has(dir)){
-  const zones=buildSmartRunoffs(track,dir);
+ if(!cached||cached.boardKey!==boardKey){
+  cached={boardKey,runs:new Map()};runoffGeometryCache.set(track,cached);
+ }
+ if(!cached.runs.has(dir)){
+  const zones=buildSmartRunoffs(track,dir,board);
   const fill=typeof Path2D==="function"?new Path2D():null;
+  const lip=typeof Path2D==="function"?new Path2D():null;
   const rim=typeof Path2D==="function"?new Path2D():null;
-  if(fill&&rim){
+  if(fill&&lip&&rim){
+   function appendPolygon(path,points){
+    const [a,...rest]=points;path.moveTo(a.x,a.y);
+    for(const p of rest)path.lineTo(p.x,p.y);
+    path.closePath();
+   }
    for(const zone of zones){
-    const [a,...rest]=zone.points;
-    fill.moveTo(a.x,a.y);
-    for(const p of rest)fill.lineTo(p.x,p.y);
-    fill.closePath();
+    appendPolygon(fill,zone.points);
+    appendPolygon(lip,zone.lipPoints);
     const [edge,...more]=zone.outerEdge;
     rim.moveTo(edge.x,edge.y);
     for(const p of more)rim.lineTo(p.x,p.y);
    }
   }
-  cached.set(dir,{zones,fill,rim});
+  cached.runs.set(dir,{zones,fill,lip,rim});
  }
- const {zones,fill,rim}=cached.get(dir);
+ const {zones,fill,lip,rim}=cached.runs.get(dir);
  if(!zones.length)return;
  ctx.save();
- ctx.globalAlpha=.96;
- ctx.fillStyle=RUNOFF_STYLE.color;
+ ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+ ctx.globalAlpha=1;ctx.fillStyle=RUNOFF_STYLE.color;
  if(fill){
   ctx.fill(fill);
-  ctx.globalAlpha=.5;ctx.strokeStyle=RUNOFF_STYLE.border;
-  ctx.lineWidth=2;ctx.lineCap="round";ctx.lineJoin="round";
+  // Borde interior con asfalto verde algo más claro: funde visualmente
+  // el piano con la escapatoria sin crear un contorno pegajoso.
+  ctx.globalAlpha=.48;ctx.fillStyle=RUNOFF_STYLE.lip;
+  ctx.fill(lip);
+  // El exterior apenas se marca, sin halo ni sombra de pegatina.
+  ctx.globalAlpha=.23;ctx.strokeStyle=RUNOFF_STYLE.border;
+  ctx.lineWidth=1.7;ctx.lineCap="round";ctx.lineJoin="round";
   ctx.stroke(rim);
- }else for(const zone of zones){
-  const [first,...rest]=zone.points;
-  ctx.beginPath();ctx.moveTo(first.x,first.y);
-  for(const p of rest)ctx.lineTo(p.x,p.y);
-  ctx.closePath();ctx.fill();
-  const [edge,...more]=zone.outerEdge;
-  ctx.beginPath();ctx.moveTo(edge.x,edge.y);
-  for(const p of more)ctx.lineTo(p.x,p.y);
-  ctx.globalAlpha=.5;ctx.strokeStyle=RUNOFF_STYLE.border;
-  ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=.96;
+ }else{
+  function fillPolygon(points,color,alpha){
+   const [a,...rest]=points;
+   ctx.beginPath();ctx.moveTo(a.x,a.y);
+   for(const p of rest)ctx.lineTo(p.x,p.y);
+   ctx.closePath();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.fill();
+  }
+  for(const zone of zones){
+   fillPolygon(zone.points,RUNOFF_STYLE.color,1);
+   fillPolygon(zone.lipPoints,RUNOFF_STYLE.lip,.48);
+   ctx.beginPath();
+   const [a,...rest]=zone.outerEdge;
+   ctx.moveTo(a.x,a.y);
+   for(const p of rest)ctx.lineTo(p.x,p.y);
+   ctx.globalAlpha=.23;ctx.strokeStyle=RUNOFF_STYLE.border;
+   ctx.lineWidth=1.7;ctx.lineCap="round";ctx.lineJoin="round";
+   ctx.stroke();
+  }
  }
  ctx.restore();
 }
@@ -5318,7 +5339,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.14.52",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.14.53",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
