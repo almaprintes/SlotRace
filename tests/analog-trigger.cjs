@@ -65,7 +65,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.14.54");
+ assert.equal(window.slotraceLab.version,"DEV 0.14.55");
  const theme=window.slotraceLab.workspace;
  assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
  assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
@@ -81,6 +81,20 @@ const path=require("node:path");
  assert.equal(JSON.parse(data.get("slotrace-lab-10")).tableTheme,"wine");
  assert.equal(theme.TABLE_THEMES.wine.grid,"#d8b77f");
  assert.ok(theme.TABLE_THEMES.cyan.surface[0].startsWith("#"));
+ assert.equal(elements.get("settingsTableTechnical").attrs["aria-pressed"],"false");
+ for(const click of elements.get("settingsTableTechnical").listeners.click)click();
+ assert.equal(state.tableTheme,"technical","Gris técnico se puede seleccionar");
+ assert.equal(JSON.parse(data.get("slotrace-lab-10")).tableTheme,"technical",
+  "El tema gris técnico se guarda en el dispositivo");
+ assert.equal(elements.get("settingsTableTechnical").attrs["aria-pressed"],"true");
+ assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"false");
+ assert.equal(elements.get("settingsTableCyan").attrs["aria-pressed"],"false");
+ assert.equal(theme.TABLE_THEMES.technical.grid,"#b5c2cb",
+  "La cuadrícula gris técnico lleva tonos de acero");
+ assert.ok(theme.TABLE_THEMES.technical.felt.every(value=>/^#[0-9a-f]{6}$/i.test(value)),
+  "Colores del tapete en hex válido");
+ for(const click of elements.get("settingsTableWine").listeners.click)click();
+ assert.equal(state.tableTheme,"wine","Volver al vino no altera la selección previa");
 
  assert.equal(state.track.valid,true);
  for(const fn of elements.get("play").listeners.click)fn();
@@ -151,5 +165,5 @@ const path=require("node:path");
  assert.equal(trigger.disabled,true);
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.14.54: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.14.55: 5% por clic, notas diferentes, mute, pulgar vertical, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
