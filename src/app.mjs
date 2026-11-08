@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.15.6";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.6";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.6";
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.6";
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.6";
@@ -71,7 +71,7 @@ const SHOP_PRODUCTS=Object.freeze([
  {id:"plan-catalunya",kind:"circuits",name:"Catalunya Slot",short:"CATALUNYA SLOT",
   kicker:"PLANO REAL",tag:"RECETA ORIGINAL",car:null,creator:"Juanfrikazo-dev",
   subtitle:"Gran trazado de 60 piezas · 18,89 m",detail:"Circuito Catalunya Slot de 60 piezas y 18,89 metros, sentido horario. Receta real aportada por su constructor, sin elevaciones.",
-  types:CATALUNYA_SLOT_TYPES,origin:CATALUNYA_SLOT_ORIGIN,direction:1,
+  types:CATALUNYA_SLOT_TYPES,origin:CATALUNYA_SLOT_ORIGIN,direction:-1,
   highlights:["60 piezas","18,89 m","Horario"],art:"catalunya"},
  {id:"car-gripline",kind:"cars",name:"Avenir Gripline",short:"GRIPLINE",
   kicker:"COCHE DE INICIO",tag:"JUGABLE",car:"gripline",
@@ -162,7 +162,11 @@ const state={
   followCamera:{x:0,y:0,lookX:0,lookY:0,ready:false,settle:0},
   tableTheme:Object.hasOwn(TABLE_THEMES,old?.tableTheme)?old.tableTheme:"wine",
   gridEnabled:old?.gridEnabled!==false,xRayEnabled:old?.xRayEnabled===true,caseOpen:old?.caseOpen!==false,viewDirty:true,caseCurveDirection:old?.caseCurveDirection==="L"?"L":"R",
-  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",flow:"none",driveDirection:old?.driveDirection===-1?-1:1,newCircuitDirection:old?.driveDirection===-1?-1:1,selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
+  types:initial,loose:initialLoose,bridgeParts:originalRaised,origin:initialOrigin,track:buildTrack(initial,initialOrigin,originalRaised),mode:"menu",flow:"none",driveDirection:old?.driveDirection===-1?-1:1,
+   newCircuitDirection:old?.pendingDesiredDirection===-1?-1:old?.pendingDesiredDirection===1?1:
+     preferenceFromDirection(initial,old?.driveDirection===-1?-1:1),
+   pendingDesiredDirection:old?.pendingDesiredDirection===-1?-1:old?.pendingDesiredDirection===1?1:null,
+   selection:-1,looseSelection:-1,selectionMode:"group",selectedGroup:null,dragLoose:-1,
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
@@ -186,7 +190,7 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  activeCircuitId:state.activeCircuitId,
  tableTheme:state.tableTheme,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
- driveDirection:state.driveDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
+ driveDirection:state.driveDirection,pendingDesiredDirection:state.pendingDesiredDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
 // Permite que el exportador capture también la última preferencia cambiada.
 if(typeof window!=="undefined")
  window.addEventListener("slotrace:flush-save",()=>save());
@@ -575,8 +579,9 @@ function loadSavedCircuit(id,{stayInLibrary=false}={}){
  state.circuitCreator=typeof item.creator==="string"?cleanCreator(item.creator):
   creatorForLegacyCircuit(item.name);
  state.driveDirection=item.direction===-1?-1:1;
- state.newCircuitDirection=state.driveDirection;
+ state.pendingDesiredDirection=null;
  restoreSnapshot(item.snapshot);resetWorkBoard();
+ state.newCircuitDirection=preferenceFromDirection(state.types,state.driveDirection);
  state.camera={panX:0,panY:0,zoom:1};state.sessionLaps=[];
  state.initialAutoFitNeeded=state.track.board.expanded;
  save();
@@ -719,7 +724,7 @@ function renderLibraryRecords(){
    panel.className="library-record-variant"+
     (entry.physics===4&&entry.currentGeometry?" is-current":"");
    const name=entry.car==="spark"?"Helix Spark":"Avenir Gripline";
-   const direction=entry.reverse?"Antihorario":"Horario";
+   const direction=travelDirectionLabel(entry.types,entry.reverse?-1:1);
    const generation=entry.physics===4?"Físicas actuales (v4)":
     entry.physics?"Físicas v"+entry.physics+" · histórico":"Físicas originales · histórico";
    panel.appendChild(libraryText("div","library-record-variant-title",
@@ -798,7 +803,7 @@ function renderLibrary(){
   name.setAttribute("aria-pressed",String(item.id===state.activeCircuitId));
   const detail=document.createElement("small");
   detail.textContent=item.snapshot.types.length+" piezas · "+
-   (item.direction===-1?"Antihorario":"Horario")+
+   travelDirectionLabel(item.snapshot.types,item.direction===-1?-1:1)+
    (item.id===state.activeCircuitId?" · EN MESA":"");
   info.appendChild(name);info.appendChild(detail);
   const button=document.createElement("button");button.className="mini";
@@ -884,7 +889,7 @@ function circuitPackage(){
  const recipe=blueprintData();
  return{format:"slotrace-recipe",version:1,geometry:"SR-PRECISION",
   name:circuitLabel(),creator:circuitCreator(),
-  direction:state.driveDirection,types:state.types.slice(),
+  direction:state.driveDirection,directionLabel:travelDirectionLabel(state.types,state.driveDirection,state.track.closed),types:state.types.slice(),
   origin:{...state.origin},bridgeParts:state.bridgeParts.slice(),
   loose:state.loose.map(p=>({...p})),
   // La foto es una ayuda local. No incorporar IDs de IndexedDB a recetas
@@ -960,6 +965,14 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  if(!sameGeometry&&!preserveBridge)
   state.bridgeParts=stablePrefix?state.bridgeParts.filter(i=>i<next.length):[];
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ // Corregir únicamente las pistas NUEVAS que solicitaron sentido horario
+ // antes de conocer su geometría. Los circuitos importados no se invierten.
+ if(!wasClosed&&state.track.closed&&state.pendingDesiredDirection!==null){
+  if(circuitWinding(state.types)){
+   state.driveDirection=directionFromPreference(state.types,state.pendingDesiredDirection);
+   state.pendingDesiredDirection=null;
+  }
+ }
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;state.run=false;resetLap();
  save();updateUI();
  if(!wasClosed&&state.track.closed){
@@ -1602,6 +1615,7 @@ function recoverDraft(){
  const d=state.draft;state.draft=null;
  state.circuitName=d.name||"";state.activeCircuitId=d.activeId||null;
  state.driveDirection=d.direction===-1?-1:1;
+ state.pendingDesiredDirection=null;
  changeTypes(d.types||[], "Construcción anterior recuperada.",d.loose||[],d.origin||START);
 }
 // Una pieza de SlotRace se recorre en sentido horario o antihorario.
@@ -1688,7 +1702,7 @@ function showMenu(){
  state.flow="none";
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;state.mode="menu";
- state.newCircuitDirection=state.driveDirection;
+ state.newCircuitDirection=state.pendingDesiredDirection??preferenceFromDirection(state.types,state.driveDirection);
  updateUI();resize();
 }
 function setNewCircuitDirection(direction){
@@ -1696,10 +1710,11 @@ function setNewCircuitDirection(direction){
 }
 function changeDriveDirection(direction){
  state.driveDirection=direction===-1?-1:1;
- state.newCircuitDirection=state.driveDirection;
+ state.pendingDesiredDirection=null;
+ state.newCircuitDirection=preferenceFromDirection(state.types,state.driveDirection);
  resetLap();state.distance=0;
  save();updateUI();
- toast("Sentido de conducción: "+(state.driveDirection===1?"horario.":"antihorario."));
+ toast("Sentido de conducción: "+travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+".");
 }
 function createNewCircuit(){
  const hadPieces=state.types.length||state.loose.length;
@@ -1710,6 +1725,7 @@ function createNewCircuit(){
  state.sessionLaps=[];
  state.reference=null;state.referenceImage=null;state.templateIncludeInExport=false;
  state.driveDirection=state.newCircuitDirection;
+ state.pendingDesiredDirection=state.newCircuitDirection;
  changeTypes([],"Nuevo circuito · elige las piezas en el maletín.",[],START);
  resetWorkBoard();state.camera={panX:0,panY:0,zoom:1};
  save();openWorkshop();
@@ -1759,7 +1775,7 @@ function renderRaceLobby(){
  $("raceSelectedCircuit").textContent=circuitLabel();
  $("raceSetupSummary").textContent=valid?
   state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+
-   (state.driveDirection===1?"Horario":"Antihorario"):
+   travelDirectionLabel(state.types,state.driveDirection,state.track.closed):
   "Circuito abierto · hay que cerrar el recorrido";
  $("raceStart").disabled=!valid;
  $("raceFinishTrack").hidden=valid;
@@ -1799,7 +1815,7 @@ function endSession(target="menu"){
 function renderSessionSummary(){
  $("resultsCircuit").textContent=state.sessionName+" · "+
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
-  (state.driveDirection===1?"Horario":"Antihorario")+
+  travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+
   " · "+(state.track.laneChangerIndex>=0?
    state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas completas";
  if(state.track.laneChangerIndex>=0){
@@ -2634,7 +2650,7 @@ function shopInstallPlan(id){
  }
  // Si la receta ya está guardada por el jugador (por importación o edición),
  // reutilizarla sin crear duplicados ni sobrescribir su circuito personal.
- const direction=product.direction===-1?-1:1;
+ const direction=product.direction===-1?-1:product.direction===1?1:directionFromPreference(product.types,1);
  const existing=state.library.find(c=>c.shopPlanId===id||
   (normalCircuitName(c.name)===normalCircuitName(product.name)&&
    (c.direction===-1?-1:1)===direction&&
@@ -2753,7 +2769,7 @@ function updateUI(){
   "Elige circuito y coche · También puedes completar tu pista";
  for(const [id,direction] of [["menuClockwise",1],["menuCounter",-1]])
   $(id).setAttribute("aria-pressed",String(state.newCircuitDirection===direction));
- setLabel("workDirection",state.driveDirection===1?"Horario":"Antihorario");
+ setLabel("workDirection",travelDirectionLabel(state.types,state.driveDirection,state.track.closed));
 
  const t=state.track;
  const looseKit=state.loose.some(p=>p.raised);
@@ -4326,7 +4342,7 @@ function paintGhost(ctx,track){
 // Exportación PNG autocontenida. La receta viaja DENTRO de la imagen
 // (no en un archivo secundario), con números de montaje y elevaciones.
 function blueprintData(){
- const recipe=buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection);
+ const recipe=buildRecipe(state.types,CATALOG,state.bridgeParts,state.loose,state.driveDirection,travelDirectionLabel(state.types,state.driveDirection,state.track.closed));
  // Los kits son accesorios de montaje, no modifican la geometría
  // longitudinal de las rectas. Aun así deben aparecer en la receta.
  const kitCount=(state.track.elevation?.runs?.length||0)+
@@ -4613,7 +4629,7 @@ function drawBlueprint(ctx,recipe,{width=1500}={}){
  }
  ctx.fillText(creatorText,x+36,headingY+234);
  ctx.textAlign="right";ctx.fillStyle="#c1f1e7";ctx.font="900 27px system-ui,sans-serif";
- ctx.fillText(recipe.direction===1?"↻ SENTIDO HORARIO":"↺ SENTIDO ANTIHORARIO",
+ ctx.fillText((recipe.directionLabel.startsWith("HORARIO")?"↻ ":recipe.directionLabel.startsWith("ANTIHORARIO")?"↺ ":"↔ ")+"SENTIDO "+recipe.directionLabel,
   width-x,headingY+51);
  ctx.fillStyle="#a1b9bc";ctx.font="600 22px system-ui,sans-serif";
  ctx.fillText("SR-PRECISION · ESCALA PROPORCIONAL",width-x,headingY+87);
