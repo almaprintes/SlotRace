@@ -2872,3 +2872,33 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .launcher-screen .launcher-actions .launcher-choice>span:nth-child(2){
  width:100%;min-width:0;flex:0 1 auto;
 }
+
+
+/* DEV 0.15.2: cabecera de bienvenida personal, sin duplicar SlotRace.
+   El juego conserva su identidad en taller, carrera y ajustes. */
+.mast-welcome{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.mast-welcome[hidden],.mast .brand[hidden]{display:none!important}
+.mast-avatar{position:relative;flex:none;display:grid;place-items:center;
+ width:43px;height:43px;padding:0;border-radius:50%;
+ background:linear-gradient(140deg,#e32350,#a40b2d);
+ border:2px solid #fff;box-shadow:0 0 0 1px #d4a2af,0 3px 9px #62233930;
+ color:#fff;font-size:23px;font-weight:1000;line-height:1}
+.mast-avatar:after{content:"";position:absolute;right:-1px;bottom:-1px;
+ width:11px;height:11px;background:#19b887;border:2px solid #fff;border-radius:50%}
+.mast-welcome-label{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.mast-welcome-label small{color:#a20d32;font-weight:950;font-size:9px;letter-spacing:1.2px}
+.mast-welcome-label strong{display:block;min-width:0;max-width:100%;
+ color:#1b2939;font-size:clamp(15px,3.8vw,21px);font-weight:950;line-height:1.08;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-screen="menu"] #mastMode{display:none!important}
+@media(max-width:440px){
+ .mast-welcome{gap:8px}
+ .mast-avatar{width:37px;height:37px;font-size:20px}
+ .mast-welcome-label strong{font-size:clamp(14px,3.7vw,18px)}
+ .mast-welcome-label small{font-size:8px}
+}
+@media(max-width:365px){
+ .mast-welcome{gap:6px}
+ .mast-avatar{width:34px;height:34px;font-size:18px}
+ .mast-welcome-label strong{font-size:13px}
+}

@@ -20,6 +20,14 @@ function showEntryButtons(show){
  get("entryGuest").hidden=!show;
  entryGate.setAttribute("aria-busy",String(!show));
 }
+function setPilotWelcome(nickname){
+ const nick=typeof nickname==="string"&&nickname.trim()?nickname.trim():null;
+ const label=get("mastWelcomeNick"),initial=get("mastAvatarInitial");
+ label.textContent=nick||"Piloto invitado";
+ initial.textContent=nick?Array.from(nick)[0].toLocaleUpperCase("es"):"♙";
+ get("mastAvatar").setAttribute("aria-label",nick?
+  "Abrir la cuenta de "+nick:"Abrir mi cuenta de CraftRace Studio");
+}
 function enterLauncher(nickname,{userInitiated=false}={}){
  if(guestMode&&!userInitiated)return false;
  if(entryState==="needs-auth"&&!userInitiated&&!authIntent)return false;
@@ -27,10 +35,11 @@ function enterLauncher(nickname,{userInitiated=false}={}){
  entryState=nickname?"authenticated":"guest";
  if(entryGate)entryGate.hidden=true;
  authIntent=false;
+ setPilotWelcome(nickname);
  const greeting=get("homeGreeting");
  if(greeting)greeting.textContent=nickname?
-  "¡Hola, "+nickname+"! ¿Competimos o construimos?":
-  "Tu pista. Tus reglas. En modo local.";
+  "Diseña tu trazado. Compite por cada milésima.":
+  "Tus circuitos permanecen en este dispositivo.";
  if(wasGated){
   modal.hidden=true;
   if(typeof window!=="undefined")window.slotraceLab?.showMenu?.();
@@ -299,6 +308,7 @@ get("entryGuest").addEventListener("click",()=>{
 });
 get("accountTabLogin").addEventListener("click",()=>chooseAuthTab("login"));
 get("accountTabRegister").addEventListener("click",()=>chooseAuthTab("register"));
+get("mastAvatar").addEventListener("click",()=>{void open("login");});
 get("menuAccount").addEventListener("click",()=>{void open("login");});
 get("settingsAccount").addEventListener("click",()=>{void open();});
 get("accountClose").addEventListener("click",close);

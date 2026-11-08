@@ -1,3 +1,17 @@
+# SlotRace DEV 0.15.2 · Bienvenida personalizada al piloto
+
+**Probar:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.2&refresh=welcome
+
+- **Cabecera tras inicio de sesión:** en el menú de bienvenida se muestra avatar circular con la inicial del apodo verificado de CraftRace Studio, «BIENVENIDO» y el apodo. Tocar el avatar abre Mi cuenta.
+- **Marca no duplicada:** el nombre SlotRace se mantiene una sola vez, en la portada visual. El subtítulo deja de repetir el apodo: «Diseña tu trazado. Compite por cada milésima».
+- **Diferencia entre pantallas:** al entrar al taller, vestíbulo de competición o carrera, la cabecera recupera el icono y nombre habituales del juego. En la bienvenida desaparece el indicador redundante «INICIO» para dar espacio al apodo.
+- **Sin cuenta:** avatar neutro y «Piloto invitado»; nunca se muestran las iniciales de un usuario anterior cuando se entra en modo local.
+- **Diseño móvil:** inicial blanca sobre círculo rojo, indicador de cuenta y apodo truncado cuando sea necesario. Los cambios se hacen solo en el DOM; no afectan a Canvas, física ni rendimiento de carrera.
+- **Tests:** `tests/studio-account.cjs` valida apodo, avatar y comportamiento de invitado; `tests/game-shell.cjs` comprueba la alternancia de cabecera entre bienvenida y taller, ocultación real mediante CSS y accesibilidad.
+- **Sin cambios de datos:** ninguna modificación a circuitos, récords, perfiles de Supabase, OAuth, copias ni ajustes guardados.
+
+---
+
 # SlotRace DEV 0.15.1 · Pantalla de acceso estable y tarjeta Construir legible
 
 **Probar:** https://almaprintes.github.io/SlotRace/index.html?v=0.15.1&refresh=login-gate

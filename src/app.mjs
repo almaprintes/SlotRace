@@ -1,7 +1,7 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.15.1";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.1";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.1";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.1";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish} from "./track.mjs?v=0.15.2";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.2";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.2";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.2";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -2677,6 +2677,11 @@ function updateUI(){
  for(const [name,screen] of Object.entries(hubScreens))screen.hidden=state.mode!==name;
  if(state.mode==="raceLobby")renderRaceLobby();
  document.body?.setAttribute?.("data-flow",state.flow);
+ document.body?.setAttribute?.("data-screen",state.mode);
+ // La cabecera de bienvenida muestra el avatar/nick; durante carreras
+ // y construcción recuperamos el identificador habitual del juego.
+ $("mastBrand").hidden=state.mode==="menu";
+ $("mastWelcome").hidden=state.mode!=="menu";
  $("mastMode").textContent=state.flow==="race"?"PILOTO":state.flow==="build"?"CONSTRUCTOR":"INICIO";
  // El mando de pilotaje no comparte pantalla con herramientas de montaje.
  const showMainNavigation=!["race","results","menu"].includes(state.mode);
@@ -5549,7 +5554,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.1",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.2",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

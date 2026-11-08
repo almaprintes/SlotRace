@@ -1,7 +1,7 @@
 // Comprobación de versiones independiente del motor, de las partidas y
 // de la caché HTML. GitHub Pages cachea respuestas; la petición usa una
 // URL única y solicita explícitamente no reutilizar una respuesta vieja.
-export const CLIENT_VERSION="0.15.1";
+export const CLIENT_VERSION="0.15.2";
 export const UPDATE_CHECK_INTERVAL_MS=10*60*1000;
 export function isNewerVersion(candidate,current=CLIENT_VERSION){
  const pattern=/^\d+\.\d+\.\d+$/;
