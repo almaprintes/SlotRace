@@ -320,6 +320,8 @@ function updateTemplateUI(){
  $("templateMove").disabled=!exists;
  $("templateVisibility").disabled=!exists;
  $("templateFit").disabled=!exists;
+ $("templateRotateCCW90").disabled=!exists;
+ $("templateRotateCW90").disabled=!exists;
  $("templateRemove").disabled=!exists;
  $("templateExport").disabled=!exists;
  for(const key of ["templateOpacity","templateScale","templateRotate"])
@@ -345,11 +347,15 @@ function openTemplatePanel(open=!state.templatePanelOpen){
 function templateFit(){
  const r=state.reference;if(!r)return false;
  pushHistory();
- r.scale=refClamp(state.workBoard.width*.85/r.width,.1,20);
+ // Ajustar la caja rotada, sin deshacer la orientación de la foto.
+ const c=Math.abs(Math.cos(r.angle)),sn=Math.abs(Math.sin(r.angle));
+ const boxW=r.width*c+r.height*sn,boxH=r.width*sn+r.height*c;
+ r.scale=refClamp(Math.min(state.workBoard.width*.85/boxW,
+  state.workBoard.height*.85/boxH),.1,20);
  r.x=(state.workBoard.left+state.workBoard.right)/2;
  r.y=(state.workBoard.top+state.workBoard.bottom)/2;
- r.angle=0;r.visible=true;
- save();updateUI();toast("Plantilla centrada. Puedes ampliarla hasta un 2000 %.");return true;
+ r.visible=true;
+ save();updateUI();toast("Plantilla centrada sin cambiar su orientación.");return true;
 }
 function templateSet(prop,value){
  const r=state.reference;if(!r)return false;
@@ -358,6 +364,18 @@ function templateSet(prop,value){
  else if(prop==="angle")r.angle=refClamp(Number(value),-180,180)*Math.PI/180;
  else return false;
  state.viewDirty=true;updateTemplateUI();return true;
+}
+function templateRotateQuarter(turn){
+ const r=state.reference;
+ if(!r||![1,-1].includes(turn))return false;
+ pushHistory();
+ let angle=Math.round(r.angle*180/Math.PI)+turn*90;
+ angle=((angle+180)%360+360)%360-180;
+ r.angle=angle*Math.PI/180;
+ state.viewDirty=true;
+ save();updateUI();
+ toast(turn<0?"Imagen girada 90° a la izquierda.":"Imagen girada 90° a la derecha.");
+ return true;
 }
 function templateToggleMove(){
  if(!state.reference)return false;
@@ -385,13 +403,22 @@ async function templateLoadFile(file){
  }
  state.templateLoading=true;updateTemplateUI();
  try{
-  const raw=await new Promise((resolve,reject)=>{
-   const reader=new FileReader();
-   reader.onload=()=>resolve(reader.result);
-   reader.onerror=()=>reject(new Error("Lectura de archivo"));
-   reader.readAsDataURL(file);
-  });
-  const img=await decodeReferenceImage(raw);
+  // Aplicar EXIF al mapa de píxeles antes de convertir a JPEG (sin metadatos).
+  // El mismo ancho/alto orientado gobierna tanto el lienzo como la plantilla.
+  let bitmap=null,img=null;
+  if(typeof createImageBitmap==="function"){
+   try{bitmap=await createImageBitmap(file,{imageOrientation:"from-image"});img=bitmap;}
+   catch(_){bitmap=null;}
+  }
+  if(!img){
+   const raw=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(new Error("Lectura de archivo"));
+    reader.readAsDataURL(file);
+   });
+   img=await decodeReferenceImage(raw);
+  }
   const nw=img.naturalWidth||img.width,nh=img.naturalHeight||img.height;
   const factor=Math.min(1,1600/Math.max(nw,nh));
   const canvas=document.createElement("canvas");
@@ -400,7 +427,8 @@ async function templateLoadFile(file){
   const ctx=canvas.getContext("2d");
   if(!ctx||typeof canvas.toDataURL!=="function")throw new Error("Compresión no disponible");
   ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  try{ctx.drawImage(img,0,0,canvas.width,canvas.height);}
+  finally{bitmap?.close?.();}
   const data=canvas.toDataURL("image/jpeg",.78);
   if(!data.startsWith("data:image/")||data.length>4_000_000)
    throw new Error("Imagen demasiado grande tras comprimir");
@@ -5443,6 +5471,8 @@ function initEvents(){
   e.target.value="";
  });
  $("templateFit").addEventListener("click",templateFit);
+ $("templateRotateCCW90").addEventListener("click",()=>templateRotateQuarter(-1));
+ $("templateRotateCW90").addEventListener("click",()=>templateRotateQuarter(1));
  $("templateMove").addEventListener("click",templateToggleMove);
  $("templateVisibility").addEventListener("click",templateToggleVisibility);
  $("templateRemove").addEventListener("click",templateRemove);
@@ -5573,7 +5603,7 @@ protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
 window.slotraceLab={version:"DEV 0.15.7",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
-  templateLoadFile,templateFit,templateSet,templateToggleMove,
+  templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
  showHub,menuRace,raceSelectCircuit,renderRaceLobby,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
