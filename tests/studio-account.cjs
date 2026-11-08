@@ -89,6 +89,16 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  assert.equal(get("accountLinkGoogle").hidden,true);
  assert.equal(get("accountLinkApple").hidden,false);
  assert.equal(get("accountLocalCircuitCount").textContent,"3 circuitos guardados aquí");
+ assert.equal(get("entryGate").hidden,true,
+  "Un usuario con sesión verificada salta automáticamente el registro");
+ assert.match(get("homeGreeting").textContent,/Juanfrikazo-dev/,
+  "El inicio reconoce el nombre real de CraftRace Studio");
+ get("entryRegister").listeners.click[0]();
+ assert.equal(get("accountEmailSubmit").textContent,"Crear mi cuenta CraftRace Studio",
+  "La pantalla de registro tiene su propio botón principal");
+ get("accountTabLogin").listeners.click[0]();
+ assert.equal(get("accountEmailSubmit").textContent,"Entrar con mi cuenta",
+  "Se puede volver al inicio de sesión sin perder datos");
  assert.equal(registeredSlot,true);
  assert.equal(localStorage.getItem("tdr2:onlineSession:v1"),"SAVED_TDR_SESSION");
 
@@ -110,5 +120,17 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  assert.equal(signOutCount,0);
  assert.equal(localStorage.getItem("tdr2:onlineSession:v1"),"SAVED_TDR_SESSION");
  assert.equal(JSON.parse(localStorage.getItem("slotrace-circuit-library-v1")).length,3);
+ // Una sesión ausente abre la pantalla de acceso, nunca borra pistas.
+ const previousGetSession=auth.getSession;
+ auth.getSession=async()=>({data:{session:null},error:null});
+ await instance.refresh();
+ assert.equal(get("entryGate").hidden,false,
+  "Sin sesión se muestra la bienvenida con login / registro");
+ assert.equal(get("accountSignedOut").hidden,false);
+ get("entryGuest").listeners.click[0]();
+ assert.equal(get("entryGate").hidden,true,
+  "Sin Internet el jugador puede acceder explícitamente al modo local");
+ assert.equal(JSON.parse(localStorage.getItem("slotrace-circuit-library-v1")).length,3);
+ auth.getSession=previousGetSession;
  console.log("PASS CraftRace Studio: shared UUID, profile, nick claim, identity link, local saves safe");
 })().catch(error=>{console.error(error);process.exitCode=1});
