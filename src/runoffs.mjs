@@ -1,6 +1,6 @@
 // Escapatorias de frenada: hombros de asfalto verde pegados al borde real.
 // Geometría inmutable por circuito/sentido, sin alterar ni física ni recetas.
-import {CATALOG,TRACK_WIDTH,TABLE} from "./track.mjs?v=0.14.57";
+import {CATALOG,TRACK_WIDTH,TABLE} from "./track.mjs?v=0.14.58";
 
 export const RUNOFF_STYLE=Object.freeze({
  // Verde asfalto apagado: sin los bordes claros que parecían pegatinas.
