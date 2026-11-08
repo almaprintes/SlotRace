@@ -1,3 +1,16 @@
+# SlotRace DEV 0.14.56 · Rayos X sin falsos túneles en suelo → rampa
+
+**Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.56
+
+- **Corrección global:** Rayos X deja de confundir el conector suelo-rampa con una vía que pasa bajo otra. No hay silueta turquesa al iniciar una subida que pertenece a la misma pista.
+- **Causa real:** anteriormente la máscara usaba la huella de todo el tramo elevado, incluyendo sus conectores, en lugar de calcular únicamente los cruces validados.
+- **Nueva máscara exacta:** se obtiene mediante la intersección de los polígonos de tramos superiores e inferiores de diferentes piezas no adyacentes y marcados como cruces de altura válidos. Soporta curvas coincidentes, túneles largos y cruces con rampas, sin recortes arbitrarios de 40 u 80 mm.
+- **Rendimiento:** la triangulación convexa y el trazado `Path2D` se generan una vez por instancia de circuito. Al dibujar cada fotograma se aplica una única máscara cacheada.
+- **Intocable:** físicas, simulación, sprite del coche, caché de pianos, puentes normales, patrones de la mesa y las recetas.
+- **Regresión:** `node tests/xray.cjs` valida que los tramos sin cruces verificados no produzcan Rayos X, así como los puentes con superposición real.
+
+---
+
 # SlotRace DEV 0.14.55 · Nuevo tapete Gris técnico
 
 **Probar:** https://almaprintes.github.io/SlotRace/?v=0.14.55
