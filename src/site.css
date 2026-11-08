@@ -2874,7 +2874,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 }
 
 
-/* DEV 0.15.4: cabecera de bienvenida personal, sin duplicar SlotRace.
+/* DEV 0.15.5: cabecera de bienvenida personal, sin duplicar SlotRace.
    El juego conserva su identidad en taller, carrera y ajustes. */
 .mast-welcome{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 .mast-welcome[hidden],.mast .brand[hidden]{display:none!important}
@@ -2903,7 +2903,7 @@ body[data-screen="menu"] #mastMode{display:none!important}
  .mast-welcome-label strong{font-size:13px}
 }
 
-/* CraftRace Studio · avatar de piloto (DEV 0.15.4 hotfix) */
+/* CraftRace Studio · avatar de piloto (DEV 0.15.5 hotfix) */
 .mast-avatar img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
 .mast-avatar img[hidden],.account-avatar-thumb img[hidden]{display:none!important}
 .mast-avatar:after{z-index:1;pointer-events:none}
@@ -2916,7 +2916,7 @@ body[data-screen="menu"] #mastMode{display:none!important}
  background:#f3f8fb;color:#163950;font-size:12px;font-weight:850}
 .account-avatar-controls button:first-of-type{border-color:#64b7cf;background:#e6f7ff}
 
-/* DEV 0.15.4 · iPhone: match the launcher color below the PWA viewport.
+/* DEV 0.15.5 · iPhone: match the launcher color below the PWA viewport.
    On iOS the root can appear beneath a 100dvh app box near the Home indicator. */
 html:has(body[data-screen="menu"]),body[data-screen="menu"]{
   background:#eef1f5!important;
