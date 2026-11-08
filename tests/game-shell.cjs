@@ -245,7 +245,8 @@ const path=require("node:path");
   /CREADOR: Juanfrikazo-dev/,"La ficha oficial identifica al autor");
  game.shopCloseProduct();
  assert.deepEqual(catalunyaPlan.types.slice(0,7),["R3_225L","R4_225L","S600","S075","S350","S350","START350"]);
- assert.equal(catalunyaPlan.direction,1);
+ assert.equal(catalunyaPlan.direction,-1,
+   "Catalunya Slot debe avanzar al revés del montaje para correr en horario");
  const catTrack=geo.buildTrack(catalunyaPlan.types,catalunyaPlan.origin);
  assert.equal(catTrack.closed,true,"Catalunya cierra geométricamente");
  assert.equal(catTrack.valid,true,"Catalunya se puede instalar");
@@ -1090,6 +1091,9 @@ const path=require("node:path");
  assert.equal(st.circuitCreator,"Juanfrikazo-dev");
  assert.equal(st.library[0].creator,"Juanfrikazo-dev");
  assert.equal(game.circuitPackage().creator,"Juanfrikazo-dev");
+ assert.equal(st.driveDirection,-1,"Nuevo Catalunya Slot se instala en sentido horario real");
+ assert.equal(game.circuitPackage().directionLabel,"Horario",
+  "El formato exportado informa del sentido físico y conserva la dirección original");
  const catalunyaPNG=game.drawBlueprint(pngCtx,game.blueprintData());
  assert.equal(catalunyaPNG.creator,"Juanfrikazo-dev");
  assert.equal(st.library.length,beforeCatalogue+1);

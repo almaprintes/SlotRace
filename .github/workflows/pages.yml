@@ -72,6 +72,9 @@ jobs:
       - name: Comprobar geometría PT-Precision y cierres exactos
         run: node tests/pt-precision.cjs
 
+      - name: Verificar sentidos físicos de Mónaco, Catalunya, Óvalo y Ocho
+        run: node tests/orientation.cjs
+
       - name: Comprobar proporcionalidad modular y diagnosticar huecos
         run: node tests/modular-closure.cjs
 
