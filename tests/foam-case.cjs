@@ -49,7 +49,7 @@ const fs=require("node:fs"),path=require("node:path");
   return ra.radius-rb.radius||deg(a)-deg(b);
  });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.15.12");
+ assert.equal(game.version,"DEV 0.15.13");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
@@ -333,5 +333,5 @@ const fs=require("node:fs"),path=require("node:path");
  assert.equal(st.selection,0,"Anterior y Siguiente recorren todo el circuito");
  assert.match(html,/id="autoClose"[^>]*>✦ Cerrar<\/button>/,
   "Cerrar es una acción visible fuera de Más");
- console.log("SlotRace DEV 0.15.12: estante y curvas R2/R3/R4 de 90 grados — OK");
+ console.log("SlotRace DEV 0.15.13: estante y curvas R2/R3/R4 de 90 grados — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
