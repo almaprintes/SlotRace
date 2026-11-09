@@ -1851,10 +1851,13 @@ function renderRaceLobby(){
   state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+
    travelDirectionLabel(state.types,state.driveDirection,state.track.closed):
   "Circuito abierto · hay que cerrar el recorrido";
+ $("raceMode").value=state.sessionMode;
+ $("raceTargetLaps").value=String(state.targetLaps);
+ $("raceTargetLapsRow").hidden=state.sessionMode!=="lap_race";
  $("raceStart").disabled=!valid;
  $("raceFinishTrack").hidden=valid;
  $("raceCircuitHelp").textContent=valid?
-  "Pista lista. Tus tiempos se guardarán en este dispositivo.":
+  "Reloj real independiente de FPS. Resultados de prueba sin homologación online.":
   "Esta pista aún no es válida para competir. Termínala en el taller.";
  for(const [id,car] of [["raceChooseGripline","gripline"],["raceChooseSpark","spark"]]){
   const el=$(id),selected=state.selectedCar===car;
@@ -1869,6 +1872,7 @@ function play(){
   return false;
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
+ state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
@@ -1889,6 +1893,7 @@ function endSession(target="menu"){
 }
 function renderSessionSummary(){
  $("resultsCircuit").textContent=state.sessionName+" · "+
+  (state.sessionMode==="practice"?"Entrenamiento":state.sessionMode==="qualifying"?"Clasificación":"Carrera por vueltas")+" · "+
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+
   " · "+(state.track.laneChangerIndex>=0?
@@ -1988,6 +1993,8 @@ function switchLane(){
 }
 function completeLap(){
  if(state.seconds<.05)return;
+ const finishTarget=()=>{if(state.sessionMode==="lap_race"&&
+  state.sessionLaps.length>=state.targetLaps)endSession();};
  if(state.track.laneChangerIndex>=0){
   const seconds=state.seconds;
   const valid=state.x350Crossings===1&&!state.laneTransition?.duration;
@@ -2009,7 +2016,7 @@ function completeLap(){
    toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
   }else toast("Dos vueltas no homologadas: revisa el cruce.");
   state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;raceClock.nextLap();state.lap++;
-  return;
+  finishTarget();return;
  }
 
  // La vuelta que ha combinado dos carriles no genera un récord oficial.
@@ -2030,6 +2037,7 @@ function completeLap(){
   toast("¡Récord personal "+laneLabel(state.lane)+"! "+format(sec)+" s");
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
  state.seconds=0;raceClock.nextLap();state.lap++;
+ finishTarget();
 }
 // Modelo de slot simplificado: masa trasera que desliza lateralmente,
 // neumáticos con fuerza de agarre y amortiguación, guía delantera retenida.
@@ -2421,6 +2429,9 @@ function updateHud(){
  const underCrossing=isBelow&&pose&&Boolean(state.track.bridge)&&
    Math.hypot(pose.x-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).x,
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
+ $("raceClockStatus").textContent=(state.sessionMode==="practice"?"ENTRENAMIENTO":
+  state.sessionMode==="qualifying"?"CLASIFICACIÓN":"CARRERA · "+state.targetLaps+" VUELTAS")+
+  (state.raceClockWarnings.length?" · ⚠ REVISAR FPS":" · RELOJ REAL");
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
    state.track.laneChangerIndex>=0?"PT/82 · "+laneLabel(state.lane).toUpperCase()+" · DOS VUELTAS":
@@ -5547,6 +5558,14 @@ function initEvents(){
  $("raceChooseGripline").addEventListener("click",()=>selectCar("gripline"));
  $("raceChooseSpark").addEventListener("click",()=>selectCar("spark"));
  $("raceStart").addEventListener("click",play);
+ $("raceMode").addEventListener("change",e=>{
+  if(!["practice","qualifying","lap_race"].includes(e.target.value))return;
+  state.sessionMode=e.target.value;save();renderRaceLobby();
+ });
+ $("raceTargetLaps").addEventListener("change",e=>{
+  const n=Number(e.target.value);if(![3,5,10,20].includes(n))return;
+  state.targetLaps=n;save();renderRaceLobby();
+ });
  $("raceFinishTrack").addEventListener("click",openWorkshop);
  $("raceViewRecords").addEventListener("click",()=>{
   showHub("library");setLibraryTab("records");
