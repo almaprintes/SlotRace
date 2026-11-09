@@ -27,6 +27,9 @@ jobs:
       - name: Comprobar geometría y prototipo
         run: node smoke.cjs
 
+      - name: Verificar reloj de competiciones y recuperación de carreras
+        run: node tests/event-timing.cjs
+
       - name: Verificar cuenta global CraftRace Studio sin tocar partidas locales
         run: node tests/studio-account.cjs
 
