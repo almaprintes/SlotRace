@@ -8,6 +8,12 @@ const KEY="slotrace-lab-10";
 const LIBRARY_KEY="slotrace-circuit-library-v1";
 const LIBRARY_REVISIONS_KEY="slotrace-circuit-versions-v1";
 const SHOP_OWNED_KEY="slotrace-shop-owned-v1";
+const RACE_REPORTS_KEY="slotrace-test-race-reports-v1";
+function readTestRaceReports(){
+ try{const entries=JSON.parse(storage(RACE_REPORTS_KEY)||"[]");
+  return Array.isArray(entries)?entries.slice(0,100):[];
+ }catch(_){return[];}
+}
 const SHOP_DEFAULT_OWNED=Object.freeze(["box-basic","car-gripline"]);
 const TABLE_THEMES=Object.freeze({
  wine:Object.freeze({
@@ -1873,6 +1879,7 @@ function play(){
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
+ state.sessionReportSaved=false;state.lastSessionReport=null;
  if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
@@ -1882,6 +1889,31 @@ function play(){
  return true;
 }
 
+function archiveTestRace(){
+ if(!state.sessionLaps.length||state.sessionReportSaved)return;
+ const clock=raceClock.summary();
+ const report={
+  schema:1,id:"trial-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9),
+  createdAt:new Date().toISOString(),
+  source:"local-unverified",status:clock.flags.length?"needs-review":"provisional",
+  circuitId:state.activeCircuitId||"local-workbench",circuitName:state.sessionName,
+  trackTypes:state.types.slice(),direction:state.driveDirection,
+  car:state.sessionCar,mode:state.sessionMode,targetLaps:state.sessionMode==="lap_race"?state.targetLaps:null,
+  timingVersion:clock.clockVersion,physicsVersion:"rear-physics-v4",
+  elapsedMs:Math.round(clock.elapsedMs),flags:clock.flags,
+  laps:state.sessionLaps.map(l=>({
+   number:l.number,lane:l.lane,lapMs:Math.round(l.seconds*1000),
+   firstMs:l.first==null?null:Math.round(l.first*1000),
+   secondMs:l.second==null?null:Math.round(l.second*1000),
+   combined:!!l.changeover
+  }))
+ };
+ // Registro acotado: historial experimental reemplazable, nunca un acta oficial.
+ const previous=readTestRaceReports();
+ const next=[report,...previous].slice(0,100);
+ const didSave=storage(RACE_REPORTS_KEY,JSON.stringify(next));
+ if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
+}
 function endSession(target="menu"){
  raceClock.pause(performance.now());state.sessionClockSummary=raceClock.summary();
  state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
@@ -1889,9 +1921,16 @@ function endSession(target="menu"){
   if(target==="build")openWorkshop();else showMenu();
   return false;
  }
+ archiveTestRace();
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
 function renderSessionSummary(){
+ const report=state.lastSessionReport;
+ $("resultsTimingAudit").textContent=report?
+  "Cronometría "+report.timingVersion+" · "+report.laps.length+
+   " resultados locales · "+(report.flags.length?report.flags.length+" avisos de rendimiento":"sin avisos de rendimiento")+
+   " · NO HOMOLOGADOS":
+  "Sesión local de prueba · NO HOMOLOGADA";
  $("resultsCircuit").textContent=state.sessionName+" · "+
   (state.sessionMode==="practice"?"Entrenamiento":state.sessionMode==="qualifying"?"Clasificación":"Carrera por vueltas")+" · "+
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
@@ -5683,7 +5722,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.8",state,raceClock,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.8",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
