@@ -209,9 +209,10 @@ if(typeof window!=="undefined")
 // Cronómetro monotónico real, independiente de dt limitado a 50 ms.
 // Resultados locales de prueba; ninguna marca se homologa sin servidor.
 const raceClock={
- active:false,running:false,elapsedMs:0,lapStartMs:0,baseMs:0,anchorMs:0,lastNowMs:null,_frameDurationMs:0,flags:[],
+ active:false,running:false,elapsedMs:0,lapStartMs:0,baseMs:0,anchorMs:0,lastNowMs:null,_frameDurationMs:0,flags:[],pauseCount:0,pausedMs:0,pausedSinceMs:null,
  reset(){this.active=false;this.running=false;this.elapsedMs=0;this.lapStartMs=0;
   this.baseMs=0;this.anchorMs=0;this.lastNowMs=null;this._frameDurationMs=0;this.flags=[];
+  this.pauseCount=0;this.pausedMs=0;this.pausedSinceMs=null;
   state.raceClockWarnings=[];},
  start(nowMs,firstStepMs=0){
   if(!Number.isFinite(nowMs))return;
@@ -262,15 +263,25 @@ const raceClock={
    state.seconds=Math.max(0,(this.elapsedMs-this.lapStartMs)/1000);
   }
  },
- pause(nowMs){if(!this.running)return;
-  this.tick(nowMs);this.baseMs=this.elapsedMs;
-  this.lastNowMs=null;this.running=false;
+ pause(nowMs,{record=true}={}){
+  if(!this.running||!Number.isFinite(nowMs))return;
+  this.tick(nowMs);if(!this.running)return;
+  this.baseMs=this.elapsedMs;this.lastNowMs=null;this.running=false;
+  if(record){this.pauseCount++;this.pausedSinceMs=nowMs;}
  },
  resume(nowMs){if(this.active&&!this.running&&Number.isFinite(nowMs)){
+  if(Number.isFinite(this.pausedSinceMs))
+   this.pausedMs+=Math.max(0,nowMs-this.pausedSinceMs);
+  this.pausedSinceMs=null;
   this.anchorMs=nowMs;this.lastNowMs=nowMs;this.running=true;
  }},
- summary(){return{elapsedMs:this.elapsedMs,flags:this.flags.map(f=>({...f})),
-  source:"local-unverified",clockVersion:"monotonic-v3"};}
+ summary(){
+  const pendingPause=!this.running&&Number.isFinite(this.pausedSinceMs)?
+   Math.max(0,performance.now()-this.pausedSinceMs):0;
+  return{elapsedMs:this.elapsedMs,flags:this.flags.map(f=>({...f})),
+   pauseCount:this.pauseCount,pausedMs:this.pausedMs+pendingPause,
+   source:"local-unverified",clockVersion:"monotonic-v3"};
+ }
 };
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
@@ -1930,7 +1941,8 @@ function archiveTestRace(){
   trackTypes:state.types.slice(),direction:state.driveDirection,
   car:state.sessionCar,mode:state.sessionMode,targetLaps:state.sessionMode==="lap_race"?state.targetLaps:null,
   timingVersion:clock.clockVersion,physicsVersion:"rear-physics-v4",
-  elapsedMs:Math.round(clock.elapsedMs),flags:clock.flags,
+  elapsedMs:Math.round(clock.elapsedMs),pauseCount:clock.pauseCount,
+  pausedMs:Math.round(clock.pausedMs),flags:clock.flags,
   laps:state.sessionLaps.map(l=>({
    number:l.number,lane:l.lane,lapMs:Math.round(l.seconds*1000),
    firstMs:l.first==null?null:Math.round(l.first*1000),
@@ -1946,7 +1958,7 @@ function archiveTestRace(){
 }
 function endSession(target="menu"){
  cancelResumeCountdown();
- raceClock.pause(performance.now());state.sessionClockSummary=raceClock.summary();
+ raceClock.pause(performance.now(),{record:false});state.sessionClockSummary=raceClock.summary();
  state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  if(!state.sessionLaps.length){
   if(target==="build")openWorkshop();else showMenu();
@@ -1960,6 +1972,9 @@ function renderSessionSummary(){
  $("resultsTimingAudit").textContent=report?
   "Cronometría "+report.timingVersion+" · "+report.laps.length+
    " resultados locales · "+(report.flags.length?report.flags.length+" avisos de rendimiento":"sin avisos de rendimiento")+
+   " · "+(report.pauseCount?
+    report.pauseCount+" pausa"+(report.pauseCount===1?"":"s")+" · "+
+    format(report.pausedMs/1000)+" s fuera de crono":"sin pausas")+
    " · NO HOMOLOGADOS":
   "Sesión local de prueba · NO HOMOLOGADA";
  $("resultsCircuit").textContent=state.sessionName+" · "+
