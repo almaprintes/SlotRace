@@ -396,7 +396,18 @@ async function claim(){
  if(error)throw error;
  if(!updated)throw new Error("Este perfil ya tiene un apodo. Comprueba tu cuenta.");
  await ensureSlotProfile(api,user.id);
- await refresh();
+ // Avatar is chosen during Studio registration, but uploaded only after
+ // nickname ownership is confirmed. Existing accounts are never overwritten.
+ const chosen=get("accountSignupAvatarFile")?.files?.[0];
+ if(chosen){
+  try{await uploadAvatar(chosen);}
+  catch(error){
+   await refresh();
+   notice("Apodo guardado. No se pudo guardar el avatar: "+failure(error),true);
+   return;
+  }
+  get("accountSignupAvatarFile").value="";
+ }else await refresh();
 }
 async function signOut(){
  const api=await db();
