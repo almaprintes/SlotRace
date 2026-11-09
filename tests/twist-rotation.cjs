@@ -6,6 +6,7 @@ const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const blueprint=await import("../src/blueprint.mjs");
+ const clockCore=await import("../src/timing-core.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"")
   .replace("function paintSeam(ctx,p){","function paintSeam(ctx,p){window.__seamLog.push(p);")
@@ -36,7 +37,7 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}}
  );
