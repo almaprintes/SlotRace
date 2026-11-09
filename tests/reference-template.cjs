@@ -6,6 +6,7 @@ const fs=require("node:fs"),path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const blueprint=await import("../src/blueprint.mjs");
+ const clockCore=await import("../src/timing-core.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
   .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -56,8 +57,8 @@ const fs=require("node:fs"),path=require("node:path");
   readAsDataURL(){this.result="data:image/png;base64,bW9jaw==";this.onload?.();}
  }
  const scheduled=[],raf=fn=>scheduled.push(fn);
- const keys=[...Object.keys(geo),...Object.keys(blueprint)];
- const vals=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)];
+ const vals=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
  const mockBitmap=async(_file,options)=>{
   orientedLoads++;orientationOption=options.imageOrientation;
   return{width:600,height:1000,close(){bitmapClosed++}};
