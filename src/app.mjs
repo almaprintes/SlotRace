@@ -227,11 +227,17 @@ const raceClock={
    this.running=false;state.run=false;state.lapEligible=false;
    state.raceClockWarnings=this.flags.slice();return;
   }
-  if(next.frameGap){
+  if(next.frameGap&&this.flags.length<100)
    this.flags.push({type:"frame-gap",milliseconds:next.deltaMs,atMs:this.elapsedMs});
-   if(state.sessionMode!=="practice")state.lapEligible=false;
+  // La física limita el paso a 50 ms. Un salto mayor deja tiempo sin simular.
+  // Nunca usarlo para interpolar meta ni conceder récords, ni entrenando.
+  if(next.deltaMs>50.5){
+   if(this.flags.length<100)
+    this.flags.push({type:"physics-time-clamp",milliseconds:next.deltaMs,
+     lostPhysicsMs:next.deltaMs-50,atMs:this.elapsedMs});
+   state.lapEligible=false;
   }
-  this._frameDurationMs=next.deltaMs;this.lastNowMs=nowMs;
+  this._frameDurationMs=Math.min(next.deltaMs,50);this.lastNowMs=nowMs;
   this.elapsedMs=next.elapsedMs;
   state.seconds=Math.max(0,(this.elapsedMs-this.lapStartMs)/1000);
   state.raceClockWarnings=this.flags.slice();
@@ -241,8 +247,9 @@ const raceClock={
   try{return interpolateCrossingElapsed(this.elapsedMs,this._frameDurationMs,
     distanceToFinish,frameTravel);}
   catch(_){
-   this.flags.push({type:"crossing-uninterpolated",atMs:this.elapsedMs});
-   if(state.sessionMode!=="practice")state.lapEligible=false;
+   if(this.flags.length<100)
+    this.flags.push({type:"crossing-uninterpolated",atMs:this.elapsedMs});
+   state.lapEligible=false;
    state.raceClockWarnings=this.flags.slice();return this.elapsedMs;
   }
  },
@@ -2055,10 +2062,11 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
   state.sessionLaps.length>=state.targetLaps)endSession();};
  if(state.track.laneChangerIndex>=0){
   const seconds=state.seconds;
-  const valid=state.x350Crossings===1&&!state.laneTransition?.duration;
+  const valid=state.x350Crossings===1&&!state.laneTransition?.duration&&state.lapEligible;
   if(state.x350FirstLap===null){
    state.x350FirstLap=valid?seconds:null;
    state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;state.x350Crossings=0;
+   state.lapEligible=true;
    toast(valid?"Primera vuelta PT/82 registrada · queda otra.":"Primera vuelta sin cambio válido.");
    return;
   }
@@ -2074,6 +2082,7 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
    toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
   }else toast("Dos vueltas no homologadas: revisa el cruce.");
   state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;
+  state.lapEligible=true;
   finishTarget();return;
  }
 

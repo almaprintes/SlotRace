@@ -59,9 +59,19 @@ const path=require("node:path");
  game.raceClock.resume(26000);
  game.raceClock.tick(31000);
  assert.equal(game.raceClock.elapsedMs,10000,"La pausa de 20 s no cuenta");
- assert.equal(game.raceClock.crossingElapsedMs(80,100),9000,
-  "Cruce al 80 % del paso entre dos fotogramas");
+ assert.equal(game.raceClock.crossingElapsedMs(80,100),9990,
+  "Un bloqueo no permite interpolar como si el coche se moviera durante 5 s");
  game.raceClock.reset();st.seconds=0;
+ // La física limita cada paso a 50 ms: el salto de 200 ms deja una vuelta ineligible.
+ st.sessionMode="practice";st.lapEligible=true;
+ game.raceClock.start(1000);game.raceClock.tick(1200);
+ assert.equal(game.raceClock.elapsedMs,200,"El reloj conserva el tiempo real");
+ assert.equal(game.raceClock.crossingElapsedMs(50,100),175,
+  "El cruce por meta solo retrocede dentro de los 50 ms simulados");
+ assert.equal(st.lapEligible,false,"Entrenamiento tampoco da récord con desfase físico");
+ assert.ok(game.raceClock.flags.some(f=>f.type==="physics-time-clamp"),
+  "El acta registra la causa de invalidación");
+ game.raceClock.reset();st.lapEligible=true;
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
