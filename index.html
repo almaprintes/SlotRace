@@ -526,6 +526,11 @@
     <div class="race-view">
       <div class="tableframe" id="raceSpace">
         <canvas id="raceCanvas" aria-label="Coche circulando por el circuito sobre la mesa"></canvas>
+        <div id="raceResumeCountdown" class="race-resume-countdown" role="status" aria-live="polite" aria-label="Cuenta atrás para continuar" hidden>
+          <small>PREPARA EL MANDO</small>
+          <strong id="raceResumeCount" aria-atomic="true">3</strong>
+          <span>El coche conserva su velocidad · el crono está parado</span>
+        </div>
       </div>
       <div class="race-hud">
         <div class="hud"><small>VUELTA</small><strong id="lap">1</strong></div>
