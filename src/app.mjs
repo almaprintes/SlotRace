@@ -181,7 +181,9 @@ const state={
   targetLaps:[3,5,10,20].includes(old?.targetLaps)?old.targetLaps:5,raceClockWarnings:[],
   lane:0,laneTransition:null,lapEligible:true,x350Armed:true,x350Crossings:0,x350FirstLap:null,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
-  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
+  gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,
+  resumeCountdownEnd:null,resumeCountdownDigit:null,resumeGoUntil:0,
+  clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
   records:old?.records&&typeof old.records==="object"?old.records:
  legacy?.records&&typeof legacy.records==="object"?legacy.records:{},
   messages:[],notice:"",noticeUntil:0,rev:0,
@@ -1085,7 +1087,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){raceClock.reset();state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
+function resetLap(){cancelResumeCountdown();raceClock.reset();state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -1786,6 +1788,7 @@ function advanceLaneTransition(dt){
  if(change.elapsed>=change.duration)state.laneTransition=null;
 }
 function openWorkshop(){
+ cancelResumeCountdown();
  state.flow="build";
  state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
  // El estante de piezas siempre permanece abierto y anclado a la mesa.
@@ -1797,12 +1800,14 @@ function openWorkshop(){
 }
 function showHub(which){
  if(!hubScreens[which])return false;
+ cancelResumeCountdown();
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;
  state.mode=which;
  updateUI();return true;
 }
 function showMenu(){
+ cancelResumeCountdown();
  state.flow="none";
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;state.mode="menu";
@@ -1896,6 +1901,7 @@ function renderRaceLobby(){
  }
 }
 function play(){
+ cancelResumeCountdown();
  state.triggerGesture=null;
  if(!state.track.valid){
   toast("El circuito todavía no está cerrado. Termina el montaje en el taller.");
@@ -1939,6 +1945,7 @@ function archiveTestRace(){
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
 function endSession(target="menu"){
+ cancelResumeCountdown();
  raceClock.pause(performance.now());state.sessionClockSummary=raceClock.summary();
  state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  if(!state.sessionLaps.length){
@@ -2028,12 +2035,64 @@ function renderSessionSummary(){
  }
 }
 function back(){endSession("build");}
+const RESUME_COUNTDOWN_MS=3000;
+const RESUME_GO_FLASH_MS=550;
+const isPreparingResume=()=>Number.isFinite(state.resumeCountdownEnd);
+function cancelResumeCountdown(){
+ state.resumeCountdownEnd=null;state.resumeCountdownDigit=null;state.resumeGoUntil=0;
+ const overlay=$("raceResumeCountdown");if(overlay)overlay.hidden=true;
+}
 function pause(){
+ if(state.mode!=="race")return;
  const now=performance.now();
- if(state.run)raceClock.pause(now);else raceClock.resume(now);
- state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
- $("trigger").classList.remove("pressed");state.latest=now;if(state.run)primeMotorAudio();updateUI();
- toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
+ if(isPreparingResume()){
+  cancelResumeCountdown();
+  state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+  $("trigger").classList.remove("pressed");
+  updateUI();toast("Cuenta atrás cancelada · seguimos en pausa.");return;
+ }
+ if(state.run){
+  raceClock.pause(now);state.run=false;cancelResumeCountdown();
+  state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+  $("trigger").classList.remove("pressed");state.latest=now;updateUI();
+  toast("Carrera en pausa · velocidad conservada.");return;
+ }
+ // Durante la preparación el coche, la física y el reloj están detenidos.
+ // El piloto puede preparar la rueda del mando sin que el coche avance.
+ state.resumeCountdownEnd=now+RESUME_COUNTDOWN_MS;
+ state.resumeCountdownDigit=null;state.resumeGoUntil=0;state.latest=now;
+ updateHud();updateResumeCountdown(now);
+ toast("Prepara el acelerador · 3, 2, 1… ¡YA!");
+}
+function updateResumeCountdown(now){
+ const overlay=$("raceResumeCountdown");
+ if(isPreparingResume()){
+  if(state.mode!=="race"){cancelResumeCountdown();return false;}
+  const remaining=state.resumeCountdownEnd-now;
+  if(remaining>0){
+   const digit=Math.max(1,Math.min(3,Math.ceil(remaining/1000)));
+   if(digit!==state.resumeCountdownDigit){
+    state.resumeCountdownDigit=digit;
+    $("raceResumeCount").textContent=String(digit);
+    updateHud();
+   }
+   overlay.hidden=false;return false;
+  }
+  state.resumeCountdownEnd=null;state.resumeCountdownDigit=null;
+  state.resumeGoUntil=now+RESUME_GO_FLASH_MS;
+  $("raceResumeCount").textContent="¡YA!";
+  overlay.hidden=false;
+  state.run=true;
+  raceClock.resume(now);
+  state.latest=now;
+  primeMotorAudio();updateHud();
+  return true; // no simular el frame que descongela el reloj
+ }
+ if(state.resumeGoUntil&&now>=state.resumeGoUntil){
+  state.resumeGoUntil=0;overlay.hidden=true;
+ }
+ return false;
+}
 function switchLane(){
  if(state.track.laneChangerIndex>=0)return false;
  if(state.mode!=="race"||!state.track.valid)return false;
@@ -2264,7 +2323,9 @@ function simulation(dt,frameNow=null){
   return;
  }
  const targetSpeed=g*DRIVE.topSpeed;
- const response=g>0?2.25:2.9;
+ // Al soltar el mando, el gas es CERO en ese mismo instante; la velocidad
+ // conserva inercia con rozamiento suave, sin frenado instantáneo.
+ const response=g>0?2.25:1.35;
  state.speed=Math.max(0,Math.min(DRIVE.maxSpeed,
   state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
  ));
@@ -2446,7 +2507,7 @@ function stopProgressGas(){
  updateHud();
 }
 function triggerPointerDown(e){
- if(!state.run||state.triggerGesture)return;
+ if((!state.run&&!isPreparingResume())||state.triggerGesture)return;
  e.preventDefault?.();
  state.triggerGesture={id:e.pointerId,lastY:e.clientY,carry:0};
  state.gas=0;updateTriggerDisplay();updateHud();
@@ -2457,7 +2518,7 @@ function triggerPointerDown(e){
 }
 function triggerPointerMove(e){
  const gesture=state.triggerGesture;
- if(!state.run||!gesture||e.pointerId!==gesture.id)return;
+ if((!state.run&&!isPreparingResume())||!gesture||e.pointerId!==gesture.id)return;
  e.preventDefault?.();
  const delta=gesture.lastY-e.clientY;
  gesture.lastY=e.clientY;
@@ -2508,20 +2569,21 @@ function updateHud(){
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
    state.track.laneChangerIndex>=0?"PT/82 · "+laneLabel(state.lane).toUpperCase()+" · DOS VUELTAS":
    state.laneTransition?"CAMBIANDO DE CARRIL · TRANSICIÓN SUAVE":
+   isPreparingResume()?"PREPARA EL MANDO · REANUDACIÓN EN "+(state.resumeCountdownDigit||3):
    !state.run?"EN PAUSA":
    !state.lapEligible?"VUELTA MIXTA · SIN RÉCORD":
    !state.raceStarted?"ESPERANDO SALIDA · ACELERA PARA COMENZAR":
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
    laneLabel(state.lane)+" · Busca el límite sin pasarte en las curvas";
- $("pause").textContent=state.run?"⏸ Pausar":"▶ Seguir";
+ $("pause").textContent=isPreparingResume()?"✕ Cancelar cuenta atrás":state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").hidden=state.track.laneChangerIndex>=0;
  $("lane").disabled=state.track.laneChangerIndex>=0||
   Boolean(state.laneTransition)||state.penalty>0;
  $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ "+laneLabel(1-state.lane);
  $("lane").setAttribute("aria-label","Cambiar de "+laneLabel(state.lane)+
   " a "+laneLabel(1-state.lane));
- $("trigger").disabled=!state.run;
+ $("trigger").disabled=!(state.run||isPreparingResume());
  updateTriggerDisplay();
 }
 
@@ -5720,11 +5782,12 @@ function initEvents(){
   if(e.code==="Escape"&&state.mode!=="menu"){
    if(state.mode==="race")endSession("menu");else showMenu();return;
   }
-  if(state.mode==="race"&&(e.code==="Space"||e.code==="ArrowUp")&&e.target.tagName!=="INPUT"){e.preventDefault();state.keyboardGas=true;}
+  if(state.mode==="race"&&(state.run||isPreparingResume())&&(e.code==="Space"||e.code==="ArrowUp")&&e.target.tagName!=="INPUT"){e.preventDefault();state.keyboardGas=true;}
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
  window.addEventListener("keyup",e=>{if(e.code==="Space"||e.code==="ArrowUp")state.keyboardGas=false;});
  const pauseBackground=()=>{const now=performance.now();
+ cancelResumeCountdown();
  state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;
  if(state.mode==="race"){raceClock.pause(now);state.run=false;}
  state.latest=now;updateHud();syncMotorAudio(now,true);};
@@ -5739,8 +5802,9 @@ function initEvents(){
 }
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
- simulation(dt,now);
- advanceLaneTransition(dt);
+ const justResumed=updateResumeCountdown(now);
+ if(!justResumed)simulation(dt,now);
+ if(state.run&&!justResumed)advanceLaneTransition(dt);
  syncMotorAudio(now);
  updateFollowCamera(dt);
  if(state.mode==="build"){
