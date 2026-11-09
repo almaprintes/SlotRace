@@ -34,7 +34,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.15.10");
+ assert.equal(game.version,"DEV 0.15.11");
  const r1Oval=["S350","S350",...Array(4).fill("R1_45R"),
   "S350","S350",...Array(4).fill("R1_45R")];
  game.openWorkshop();
@@ -89,5 +89,5 @@ const path=require("node:path");
  assert.equal(st.deslot,null);
  assert.equal(st.distance,fixedDistance);
  assert.ok(st.seconds>3);
- console.log("SlotRace DEV 0.15.10: derrape por masa y radio, salida R1 a fondo y penalización de 3 s — OK");
+ console.log("SlotRace DEV 0.15.11: derrape por masa y radio, salida R1 a fondo y penalización de 3 s — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
