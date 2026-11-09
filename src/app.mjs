@@ -1879,6 +1879,7 @@ function play(){
 }
 
 function endSession(target="menu"){
+ raceClock.pause(performance.now());state.sessionClockSummary=raceClock.summary();
  state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  if(!state.sessionLaps.length){
   if(target==="build")openWorkshop();else showMenu();
@@ -1959,8 +1960,11 @@ function renderSessionSummary(){
  }
 }
 function back(){endSession("build");}
-function pause(){state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
- $("trigger").classList.remove("pressed");state.latest=performance.now();if(state.run)primeMotorAudio();updateUI();
+function pause(){
+ const now=performance.now();
+ if(state.run)raceClock.pause(now);else raceClock.resume(now);
+ state.run=!state.run;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+ $("trigger").classList.remove("pressed");state.latest=now;if(state.run)primeMotorAudio();updateUI();
  toast(state.run?"¡Volvemos a correr!":"Carrera en pausa.");}
 function switchLane(){
  if(state.track.laneChangerIndex>=0)return false;
@@ -1989,7 +1993,7 @@ function completeLap(){
   const valid=state.x350Crossings===1&&!state.laneTransition?.duration;
   if(state.x350FirstLap===null){
    state.x350FirstLap=valid?seconds:null;
-   state.seconds=0;state.lap++;state.x350Crossings=0;
+   state.seconds=0;raceClock.nextLap();state.lap++;state.x350Crossings=0;
    toast(valid?"Primera vuelta PT/82 registrada · queda otra.":"Primera vuelta sin cambio válido.");
    return;
   }
@@ -2004,14 +2008,14 @@ function completeLap(){
    if(best){state.records[key]=total;save();}
    toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
   }else toast("Dos vueltas no homologadas: revisa el cruce.");
-  state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;state.lap++;
+  state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;raceClock.nextLap();state.lap++;
   return;
  }
 
  // La vuelta que ha combinado dos carriles no genera un récord oficial.
  // La carrera no se reinicia: al cruzar meta comienza otro parcial válido.
  if(!state.lapEligible||state.laneTransition){
-  state.seconds=0;state.lap++;
+  state.seconds=0;raceClock.nextLap();state.lap++;
   state.lapEligible=!state.laneTransition;
   toast("Vuelta mixta sin récord · siguiente vuelta válida.");
   return;
@@ -2025,7 +2029,7 @@ function completeLap(){
   v[state.lane]=sec;state.records[recKey()]=v;save();
   toast("¡Récord personal "+laneLabel(state.lane)+"! "+format(sec)+" s");
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
- state.seconds=0;state.lap++;
+ state.seconds=0;raceClock.nextLap();state.lap++;
 }
 // Modelo de slot simplificado: masa trasera que desliza lateralmente,
 // neumáticos con fuerza de agarre y amortiguación, guía delantera retenida.
@@ -2162,7 +2166,7 @@ function advanceRearDynamics(p,lane,dt){
   yawRad:Math.atan2(state.rearSlip,car.wheelbaseMM),
   limitMm,deslot:Math.abs(state.rearSlip)>=limitMm};
 }
-function simulation(dt){
+function simulation(dt,frameNow=null){
  if(!state.run||!state.track.valid)return;
  const g=state.keyboardGas?1:state.gas;
  // Salida sin semáforo: no cronometrar espera, ni pulsar el gatillo al 0%.
@@ -2170,8 +2174,14 @@ function simulation(dt){
  if(!state.raceStarted){
   if(g<=0)return;
   state.raceStarted=true;
+  if(Number.isFinite(frameNow))raceClock.start(frameNow,dt*1000);
  }
- state.seconds+=dt; // después de arrancar, también cuenta soltar gas o penalizaciones
+ // El juego ahora cronometra el tiempo REAL transcurrido. La simulación
+ // sigue usando dt para la física; los tests directos sin RAF simulan dt.
+ if(Number.isFinite(frameNow)){
+  if(!raceClock.active)raceClock.start(frameNow,dt*1000);
+  raceClock.tick(frameNow);
+ }else state.seconds+=dt;
  if(state.penalty>0){
   state.penalty=Math.max(0,state.penalty-dt);
   if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
@@ -5619,7 +5629,10 @@ function initEvents(){
   if(state.mode==="race"&&e.code==="KeyP"){pause();}
  });
  window.addEventListener("keyup",e=>{if(e.code==="Space"||e.code==="ArrowUp")state.keyboardGas=false;});
- const pauseBackground=()=>{state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;if(state.mode==="race")state.run=false;updateHud();syncMotorAudio(performance.now(),true);};
+ const pauseBackground=()=>{const now=performance.now();
+ state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;
+ if(state.mode==="race"){raceClock.pause(now);state.run=false;}
+ state.latest=now;updateHud();syncMotorAudio(now,true);};
  window.addEventListener("blur",pauseBackground);
  document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseBackground();});
  window.addEventListener("resize",scheduleResize);
@@ -5631,7 +5644,7 @@ function initEvents(){
 }
 function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
- simulation(dt);
+ simulation(dt,now);
  advanceLaneTransition(dt);
  syncMotorAudio(now);
  updateFollowCamera(dt);
