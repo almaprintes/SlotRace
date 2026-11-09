@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SlotRace · Laboratorio del cronómetro</title>
+<meta name="theme-color" content="#071820"><style>
+*{box-sizing:border-box}body{margin:0;background:#071820;color:#effdfb;font:16px system-ui,-apple-system,sans-serif}
+main{max-width:850px;margin:auto;padding:30px 18px 60px}.back{color:#74ebcc;text-decoration:none}
+h1{font-size:clamp(27px,6vw,42px);line-height:1.12;margin:22px 0 10px}.muted{color:#a1bfbe;line-height:1.55}
+.summary{background:#113033;border:1px solid #2a7069;padding:20px;border-radius:17px;margin:24px 0}
+.summary strong{display:block;font-size:24px}.summary small{color:#9cbfba}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #23514e}
+th{color:#a5c9c3}td:nth-child(2),td:nth-child(3){font-variant-numeric:tabular-nums}td:last-child{text-align:right}
+.ok{color:#72ebad}.warn{color:#ffd37a}.bad{color:#ff8686}
+.note{border-left:3px solid #75d5c5;padding-left:13px;color:#b9ccca;line-height:1.6;margin-top:26px}
+button{border:0;border-radius:12px;padding:14px 19px;background:#63e8cd;color:#082522;font-weight:800;font-size:15px;cursor:pointer}
+@media(max-width:520px){table{font-size:12px}th,td{padding:10px 4px}}
+</style></head><body><main>
+<a class="back" href="./index.html">← Volver a SlotRace</a>
+<h1>Laboratorio del cronómetro</h1>
+<p class="muted">DEV · Comparación con referencias matemáticas. No modifica carreras, récords ni datos de tu cuenta.</p>
+<div class="summary"><strong id="overall">Comprobando…</strong><small id="details">Simulación local sintética</small></div>
+<button id="rerun" type="button">Repetir las pruebas</button>
+<table><thead><tr><th>Escenario</th><th>Esperado</th><th>Medido</th><th>Resultado</th></tr></thead><tbody id="rows"></tbody></table>
+<p class="note">Un tirón de fotogramas puede conservar correctamente el tiempo real y, aun así, invalidar una vuelta de competición si la simulación no ha avanzado de forma verificable. Las pruebas del iPhone y del cruce real por meta son independientes de este laboratorio sintético.</p>
+</main><script type="module">
+import {runTimingDiagnostics} from "./src/timing-lab.mjs?v=0.15.10";
+const fmt=n=>n.toFixed(3).replace(".",",")+" ms";
+function run(){
+ const report=runTimingDiagnostics();
+ document.getElementById("overall").textContent=report.passed?"Pruebas sintéticas superadas":"Fallo de precisión";
+ document.getElementById("overall").className=report.passed?"ok":"bad";
+ document.getElementById("details").textContent=report.results.length+" escenarios · 1.000 cruces · motor "+report.version;
+ document.getElementById("rows").replaceChildren(...report.results.map(r=>{
+  const tr=document.createElement("tr");
+  const special=!!r.meaning;
+  for(const value of [r.label,special?"error 0 ms":fmt(r.expectedMs),fmt(r.measuredMs),
+   r.passed?(r.warningCount?"Preciso · revisar tirón":"CORRECTO"):"ERROR"]){
+   const td=document.createElement("td");td.textContent=value;tr.append(td);
+  }
+  tr.lastChild.className=r.passed?(r.warningCount?"warn":"ok"):"bad";return tr;
+ }));
+}
+document.getElementById("rerun").addEventListener("click",run);run();
+</script></body></html>
