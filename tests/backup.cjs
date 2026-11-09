@@ -41,7 +41,7 @@ const fs=require("node:fs"),path=require("node:path");
  const imageId="ref-example123456";
  const originalImages={[imageId]:"data:image/png;base64,iVBORw0KGgo="};
  const archive=await createBackup(original,originalImages);
- assert.equal(BACKUP_APP_VERSION,"0.15.9");
+ assert.equal(BACKUP_APP_VERSION,"0.15.10");
  assert.equal(archive.format,BACKUP_FORMAT);
  assert.equal(archive.schema,BACKUP_SCHEMA);
  const file=JSON.stringify(archive);
@@ -104,9 +104,9 @@ const fs=require("node:fs"),path=require("node:path");
  const css=fs.readFileSync(path.join(__dirname,"../src/site.css"),"utf8");
  for(const id of ["backupExport","backupVerify","backupRestore","backupFile","backupStatus"])
   assert.match(index,new RegExp('id="'+id+'"'));
- assert.match(index,/src\/backup\.mjs\?v=0\.15\.9/);
+ assert.match(index,/src\/backup\.mjs\?v=0\.15\.10/);
  assert.match(index,/rel="apple-touch-icon"/);
- assert.match(index,/slotrace-icon-192\.png\?v=0\.15\.9/);
+ assert.match(index,/slotrace-icon-192\.png\?v=0\.15\.10/);
  assert.match(index,/rel="manifest"/);
  assert.match(css,/\.backup-actions/);
  // Regresión visual: la regla global .hub-screen .hub-back{display:none!important}
@@ -131,5 +131,5 @@ const fs=require("node:fs"),path=require("node:path");
  }
  const app=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8");
  assert.match(app,/slotrace:flush-save/);
- console.log("SlotRace 0.15.9: copia firmada, privacidad, fotos, importación, reversión y nuevo icono — OK");
+ console.log("SlotRace 0.15.10: copia firmada, privacidad, fotos, importación, reversión y nuevo icono — OK");
 })().catch(error=>{console.error(error);process.exitCode=1;});
