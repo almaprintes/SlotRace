@@ -2889,7 +2889,11 @@ function updateUI(){
  $("stateDetails").textContent=t.valid?
   t.types.length+" piezas · "+(t.length/1000).toFixed(2)+" m":
   help+(t.types.length&&!t.closed?" · Hueco "+Math.round(t.gap)+" mm / "+Math.round(degrees)+"°":"");
- $("buildStatus").textContent=status;
+ // El hueco y el error angular quedan visibles sin abrir «Más».
+ $("buildStatus").textContent=status+
+  (!t.closed&&t.types.length>=4?
+   " · HUECO "+t.gap.toLocaleString("es-ES",{maximumFractionDigits:1})+
+   " mm / "+degrees.toFixed(1)+"°":"");
  $("gridToggle").textContent=state.gridEnabled?"▦ 25 mm":"▦";
  $("gridToggle").setAttribute("aria-pressed",String(state.gridEnabled));
  $("buildStatus").classList.toggle("good",t.valid);

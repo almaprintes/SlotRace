@@ -2974,3 +2974,7 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .race-target-laps{display:flex;flex-direction:column;gap:5px;margin-top:9px}
 .race-clock-status{display:block;font-size:10px;font-weight:900;letter-spacing:.5px;color:#bbfce4}
 .builder-workbench .builder-gap-button{border-color:#5fa7bf;color:#e3fffd;white-space:nowrap}
+
+/* Ocultar realmente la selección de vueltas cuando no es una carrera por vueltas. */
+#raceTargetLapsRow[hidden]{display:none!important}
+.builder-workbench #buildStatus{overflow-wrap:anywhere}
