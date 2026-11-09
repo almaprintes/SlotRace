@@ -185,6 +185,16 @@ const path=require("node:path");
  assert.ok(state.speed>0&&state.speed<12,"Con un cuarto de rueda el coche se mueve");
  assert.equal(state.raceStarted,true,"Al acelerar por primera vez empieza el cronómetro");
  assert.ok(state.seconds>0&&state.seconds<=.0161,"Solo contabiliza tiempo desde la aceleración");
+ // Ejecutar el frame de splash y después simular un móvil con 2,4 s de
+ // congelación de dibujo: la física sigue limitada a 50 ms por paso,
+ // pero el cronómetro nunca debe regalar 2,35 s.
+ const splash=callbacks.shift();splash(16);
+ const slow=callbacks.shift();now=2416;slow(now);
+ assert.ok(state.seconds>=2.415&&state.seconds<=2.417,
+  "El cronómetro marca el tiempo de pared de 2,416 s sin descontar FPS perdidos");
+ assert.equal(window.slotraceLab.raceClock.flags.at(-1).type,"frame-gap");
+ assert.match(elements.get("raceClockStatus").textContent,/REVISAR FPS/,
+  "Se advierte del salto de frames en la carrera");
  const activeTime=state.seconds;
  fire("pointerup",105,145,14);
  window.slotraceLab.physics.simulationStep(.05);
@@ -192,6 +202,16 @@ const path=require("node:path");
  for(const fn of elements.get("pause").listeners.click)fn();
  assert.equal(state.run,false);assert.equal(power(),0);
  assert.equal(trigger.disabled,true);
+ const pausedElapsed=window.slotraceLab.raceClock.elapsedMs;
+ const pausedFrame=callbacks.shift();now=4416;pausedFrame(now);
+ assert.equal(window.slotraceLab.raceClock.elapsedMs,pausedElapsed,
+  "La pausa no debe sumar dos segundos ni guardar tiempos ficticios");
+ // Reanudar no debe recuperar el tiempo anterior al botón Seguir.
+ for(const fn of elements.get("pause").listeners.click)fn();
+ assert.equal(state.run,true);
+ const resumeFrame=callbacks.shift();now=4516;resumeFrame(now);
+ assert.ok(Math.abs(window.slotraceLab.raceClock.elapsedMs-pausedElapsed-100)<1,
+  "El reloj vuelve a contar exactamente 100 ms al reanudar");
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
  console.log("SlotRace DEV 0.15.8: acelerador 1%, 140px rango total, clics cada 5%, mute, retorno y física parcial — OK");
