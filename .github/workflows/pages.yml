@@ -27,7 +27,7 @@ jobs:
       - name: Comprobar geometría y prototipo
         run: node smoke.cjs
 
-      - name: Laboratorio de precisión: FPS, pausas y cruces entre fotogramas
+      - name: "Laboratorio de precisión: FPS, pausas y cruces entre fotogramas"
         run: node tests/timing-lab.cjs
 
       - name: Verificar reloj de competiciones y recuperación de carreras
