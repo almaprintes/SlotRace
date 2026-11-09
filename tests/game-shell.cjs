@@ -62,11 +62,11 @@ const path=require("node:path");
  assert.equal(game.raceClock.elapsedMs,10000,"La pausa de 20 s no cuenta");
  assert.equal(game.raceClock.summary().pausedMs,20000,"20 s fuera del cronómetro");
  assert.equal(game.raceClock.summary().pauseCount,1,"El informe conserva el número de pausas");
+ assert.equal(game.raceClock.crossingElapsedMs(80,100),9990,
+  "Un bloqueo no permite interpolar como si el coche se moviera durante 5 s");
  game.raceClock.pause(31000,{record:false});
  assert.equal(game.raceClock.summary().pauseCount,1,
   "Finalizar sesión no inventa una pausa adicional");
- assert.equal(game.raceClock.crossingElapsedMs(80,100),9990,
-  "Un bloqueo no permite interpolar como si el coche se moviera durante 5 s");
  game.raceClock.reset();st.seconds=0;
  // La física limita cada paso a 50 ms: el salto de 200 ms deja una vuelta ineligible.
  st.sessionMode="practice";st.lapEligible=true;
