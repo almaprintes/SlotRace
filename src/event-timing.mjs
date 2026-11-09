@@ -1,3 +1,4 @@
+import {advanceElapsedMonotonic} from "./timing-core.mjs";
 // SlotRace · reloj y actas locales para futuras competiciones.
 // Ingeniería original; no contiene código de YATSS ni de SlotForge.
 // NO acredita tiempos oficiales: las marcas del cliente son verificables solo
@@ -23,13 +24,13 @@ export function advanceTiming(session,nowMs){
  const now=requireTime(nowMs),s=copy(session);
  if(s.status!=="running")return s;
  if(s.lastNowMs===null){s.lastNowMs=now;return changed(s);}
- const delta=now-s.lastNowMs;
- if(delta<0){
-  s.flags.push({type:"clock-regression",atElapsedMs:s.elapsedMs,deltaMs:delta});
+ const next=advanceElapsedMonotonic(s.elapsedMs,s.lastNowMs,now,s.stallThresholdMs);
+ if(next.regression){
+  s.flags.push({type:"clock-regression",atElapsedMs:s.elapsedMs,deltaMs:next.deltaMs});
   s.status="paused";s.lastNowMs=null;return changed(s);
  }
- s.elapsedMs+=delta;s.lastNowMs=now;
- if(delta>s.stallThresholdMs)s.flags.push({type:"frame-gap",atElapsedMs:s.elapsedMs,deltaMs:delta});
+ s.elapsedMs=next.elapsedMs;s.lastNowMs=now;
+ if(next.frameGap)s.flags.push({type:"frame-gap",atElapsedMs:s.elapsedMs,deltaMs:next.deltaMs});
  return changed(s);
 }
 export function startTiming(session,nowMs){
