@@ -647,9 +647,9 @@
           pattern="[A-Za-z0-9_-]{3,24}" autocomplete="off" autocapitalize="off"
           spellcheck="false" placeholder="Tu apodo único">
         <small>Entre 3 y 24 caracteres: letras sin tildes, números, - y _.</small>
-        <label for="accountSignupAvatarFile">Mi avatar de CraftRace Studio (opcional)</label>
-        <input id="accountSignupAvatarFile" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="accountSignupAvatarHint">
-        <small id="accountSignupAvatarHint">Selecciona una foto JPG, PNG o WebP. Se optimiza a 192 × 192 y se comparte con todos nuestros juegos. Podrás cambiarla después.</small>
+        <strong>Elige tu avatar oficial de CraftRace Studio</strong>
+        <div id="accountSignupAvatarChoices" class="studio-avatar-options" aria-label="Avatares disponibles"></div>
+        <small>Avatares seleccionados por el estudio. No se permiten fotografías propias.</small>
         <button class="account-primary" type="submit">Guardar nick y avatar</button>
       </form>
     </div>
@@ -662,9 +662,9 @@
         <small id="accountEmailDisplay"></small>
       </div></div>
       <div class="account-avatar-controls">
-        <input id="accountAvatarFile" type="file" accept="image/png,image/jpeg,image/webp" hidden aria-label="Seleccionar foto de piloto">
-        <button id="accountAvatarChange" type="button">📷 Cambiar avatar</button>
-        <button id="accountAvatarRemove" type="button" hidden>Quitar avatar</button>
+        <button id="accountAvatarChange" type="button">🎭 Elegir avatar del catálogo</button>
+        <button id="accountAvatarRemove" type="button" hidden>Usar inicial</button>
+        <div id="accountAvatarPicker" class="studio-avatar-options" hidden aria-label="Avatares del catálogo"></div>
       </div>
       <p class="account-hint">Cuenta CraftRace Studio activa y válida para tus demás juegos. Cada juego conserva sus propias partidas.</p>
       <div class="account-providers">Accesos vinculados: <strong id="accountProviderList">Comprobando…</strong></div>
