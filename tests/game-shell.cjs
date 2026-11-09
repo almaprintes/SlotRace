@@ -49,7 +49,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.9");
+ assert.equal(game.version,"DEV 0.15.10");
  // El cronómetro ya no espera a la actualización de 100 ms del HUD.
  st.seconds=9.317;game.timing.updateChronometer();
  assert.equal(elements.get("lapTime").textContent,"9,317");
@@ -1147,7 +1147,7 @@ const path=require("node:path");
  assert.equal(st.mode,"results","La carrera de 3 vueltas termina automáticamente");
  assert.match(elements.get("resultsCircuit").textContent,/Carrera por vueltas/);
  assert.equal(st.sessionLaps.length,3);
- assert.equal(st.sessionClockSummary.clockVersion,"monotonic-v2");
+ assert.equal(st.sessionClockSummary.clockVersion,"monotonic-v3");
  assert.match(elements.get("resultsTimingAudit").textContent,/NO HOMOLOGADOS/);
  const trialReports=game.raceReports();
  assert.ok(trialReports.length>=1,"Cada tanda se archiva separada de la partida");
@@ -1156,11 +1156,11 @@ const path=require("node:path");
  assert.equal(finalTrial.targetLaps,3);
  assert.equal(finalTrial.laps.length,3);
  assert.equal(finalTrial.source,"local-unverified");
- assert.equal(finalTrial.timingVersion,"monotonic-v2");
+ assert.equal(finalTrial.timingVersion,"monotonic-v3");
  game.menuRace();
  for(const fn of modes.listeners.change||[])
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.9: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.10: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
