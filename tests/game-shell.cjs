@@ -1126,5 +1126,32 @@ const path=require("node:path");
  const storedAfterClosing=JSON.parse(saved.get("slotrace-lab-10"));
  assert.equal(storedAfterClosing.driveDirection,-1);
  assert.equal(storedAfterClosing.pendingDesiredDirection,null);
- console.log("SlotRace DEV 0.15.8: orientación física y recetas conservadas — OK");
+ // El piloto puede alternar entrenamiento, clasificación o carrera cerrada.
+ game.changeTypes(geo.STARTER.slice(),"Óvalo de competición",[],geo.START);
+ game.menuRace();
+ const modes=elements.get("raceMode");
+ for(const fn of modes.listeners.change||[])
+  fn({target:{value:"lap_race"}});
+ assert.equal(st.sessionMode,"lap_race");
+ assert.equal(elements.get("raceTargetLapsRow").hidden,false);
+ for(const fn of elements.get("raceTargetLaps").listeners.change||[])
+  fn({target:{value:"3"}});
+ assert.equal(st.targetLaps,3);
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).targetLaps,3,
+  "El reglamento local de vueltas se guarda");
+ assert.equal(game.openRace(),true);
+ st.seconds=7.31;game.completeLap();
+ st.seconds=7.22;game.completeLap();
+ assert.equal(st.mode,"race","Una manga no termina antes de su última vuelta");
+ st.seconds=7.19;game.completeLap();
+ assert.equal(st.mode,"results","La carrera de 3 vueltas termina automáticamente");
+ assert.match(elements.get("resultsCircuit").textContent,/Carrera por vueltas/);
+ assert.equal(st.sessionLaps.length,3);
+ assert.equal(st.sessionClockSummary.clockVersion,"monotonic-v2");
+ game.menuRace();
+ for(const fn of modes.listeners.change||[])
+  fn({target:{value:"qualifying"}});
+ assert.equal(elements.get("raceTargetLapsRow").hidden,true);
+ assert.equal(st.sessionMode,"qualifying");
+ console.log("SlotRace DEV 0.15.8: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
