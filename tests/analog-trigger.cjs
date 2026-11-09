@@ -66,7 +66,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.15.10");
+ assert.equal(window.slotraceLab.version,"DEV 0.15.11");
  const theme=window.slotraceLab.workspace;
  assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
  assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
@@ -210,13 +210,28 @@ const path=require("node:path");
  const pausedFrame=callbacks.shift();now=4416;pausedFrame(now);
  assert.equal(window.slotraceLab.raceClock.elapsedMs,pausedElapsed,
   "La pausa no debe sumar dos segundos ni guardar tiempos ficticios");
- // Reanudar no debe recuperar el tiempo anterior al botón Seguir.
+ // Reanudar preserva la velocidad, y los 3 s de preparación quedan fuera del reloj.
+ const speedBeforeResume=state.speed,distanceBeforeResume=state.distance;
  for(const fn of elements.get("pause").listeners.click)fn();
- assert.equal(state.run,true);
- const resumeFrame=callbacks.shift();now=4516;resumeFrame(now);
+ assert.equal(state.run,false,"Seguir primero activa la cuenta atrás");
+ assert.equal(elements.get("raceResumeCount").textContent,"3");
+ const countingFrame=callbacks.shift();now=4516;countingFrame(now);
+ assert.equal(window.slotraceLab.raceClock.elapsedMs,pausedElapsed);
+ assert.equal(state.speed,speedBeforeResume);
+ assert.equal(state.distance,distanceBeforeResume);
+ // Simular que el usuario ajusta el mando sin mover el coche.
+ const prepFrame=callbacks.shift();now=6416;prepFrame(now);
+ assert.equal(elements.get("raceResumeCount").textContent,"1");
+ assert.equal(state.run,false);
+ const goFrame=callbacks.shift();now=7416;goFrame(now);
+ assert.equal(state.run,true,"Solo tras 3,2,1 vuelve a moverse");
+ assert.equal(elements.get("raceResumeCount").textContent,"¡YA!");
+ assert.equal(state.speed,speedBeforeResume,"No perder velocidad al contar");
+ assert.equal(window.slotraceLab.raceClock.elapsedMs,pausedElapsed);
+ const resumeFrame=callbacks.shift();now=7516;resumeFrame(now);
  assert.ok(Math.abs(window.slotraceLab.raceClock.elapsedMs-pausedElapsed-100)<1,
   "El reloj vuelve a contar exactamente 100 ms al reanudar");
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.15.10: acelerador 1%, 140px rango total, clics cada 5%, mute, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.15.11: acelerador 1%, 140px rango total, clics cada 5%, mute, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});

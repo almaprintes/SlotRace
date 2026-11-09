@@ -2980,3 +2980,16 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .builder-workbench #buildStatus{overflow-wrap:anywhere}
 
 .results-timing-audit{font-size:11px;line-height:1.4;font-weight:800;opacity:.8;letter-spacing:.1px}
+
+/* Reanudación de una carrera: centrada sobre la pista, sin bloquear el mando. */
+.race-resume-countdown{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:9px;pointer-events:none;text-align:center;
+ background:linear-gradient(180deg,#08171c28,#08171cb3 44%,#08171c6a);color:#f8fffa;
+ text-shadow:0 3px 17px #04161c;padding:20px}
+.race-resume-countdown[hidden]{display:none!important}
+.race-resume-countdown small{font-weight:950;letter-spacing:.14em;font-size:clamp(12px,2.9vw,16px)}
+.race-resume-countdown strong{display:block;font-size:clamp(80px,20vw,154px);font-weight:1000;
+ line-height:1;letter-spacing:-.055em;color:#84ffe0;text-shadow:0 6px 26px #003f39ba;
+ font-variant-numeric:tabular-nums}
+.race-resume-countdown span{max-width:340px;font-size:clamp(12px,2.8vw,15px);
+ font-weight:800;line-height:1.4}
