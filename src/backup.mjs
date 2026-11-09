@@ -3,7 +3,7 @@
 // No se envía ningún dato a servidores; la restauración requiere confirmación.
 export const BACKUP_FORMAT="slotrace-local-backup";
 export const BACKUP_SCHEMA=1;
-export const BACKUP_APP_VERSION="0.15.12";
+export const BACKUP_APP_VERSION="0.15.13";
 export const BACKUP_KEYS=Object.freeze([
  "slotrace-lab-10",
  "slotrace-lab-04",

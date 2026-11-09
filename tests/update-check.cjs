@@ -9,22 +9,23 @@ const fs=require("node:fs"),path=require("node:path");
  const upgrade=fs.readFileSync(path.join(__dirname,"../upgrade.html"),"utf8");
  const app=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8");
  const css=fs.readFileSync(path.join(__dirname,"../src/site.css"),"utf8");
- assert.equal(CLIENT_VERSION,"0.15.12");
+ assert.equal(CLIENT_VERSION,"0.15.13");
  assert.equal(manifest.version,CLIENT_VERSION,"El manifiesto anuncia el motor realmente desplegado");
- assert.match(app,/version:"DEV 0\.15\.12"/);
- assert.match(html,/class="splash-version">DEV 0\.15\.12/);
+ assert.match(app,/version:"DEV 0\.15\.13"/);
+ assert.match(html,/class="splash-version">DEV 0\.15\.13/);
  assert.match(html,/id="updateApply"/);
  assert.match(html,/id="updateNoticeText"/);
- assert.match(html,/update-check\.mjs\?v=0\.15\.12/);
- assert.match(html,/src\/app\.mjs\?v=0\.15\.12/);
- assert.match(html,/src\/site\.css\?v=0\.15\.12/);
- assert.match(html,/src\/account\.mjs\?v=0\.15\.12/);
+ assert.match(html,/update-check\.mjs\?v=0\.15\.13/);
+ assert.match(html,/src\/app\.mjs\?v=0\.15\.13/);
+ assert.match(html,/src\/site\.css\?v=0\.15\.13/);
+ assert.match(html,/src\/account\.mjs\?v=0\.15\.13/);
  assert.match(css,/\.update-notice\[hidden\]/);
  assert.match(upgrade,/version\.json\?fresh=/);
  assert.match(upgrade,/index\.html\?v=/);
  assert.match(upgrade,/No elimines la PWA/);
  assert.equal(isNewerVersion("0.14.61"),false);
- assert.equal(isNewerVersion("0.15.13"),true);
+ assert.equal(isNewerVersion("0.15.13"),false);
+ assert.equal(isNewerVersion("0.15.14"),true);
  assert.equal(isNewerVersion("1.0.0"),true);
  assert.equal(isNewerVersion("0.14.56"),false);
  assert.equal(isNewerVersion("0.15.9"),false);
@@ -39,10 +40,10 @@ const fs=require("node:fs"),path=require("node:path");
   const imported=[...code.matchAll(/from\s+"(\.\/[^"]+\.mjs(?:\?v=[^"]+)?)"/g)].map(m=>m[1]);
   assert.ok(imported.length>0,modulePath+" mantiene dependencias explícitas");
   for(const dependency of imported)
-   assert.ok(dependency.endsWith("?v=0.15.12"),
+   assert.ok(dependency.endsWith("?v=0.15.13"),
     modulePath+" debe cargar "+dependency+" con la misma versión");
  }
  assert.match(fs.readFileSync(path.join(__dirname,"../src/update-check.mjs"),"utf8"),
   /cache:"no-store"/,"No usar caché al consultar la versión publicada");
- console.log("SlotRace DEV 0.15.12: versión coherente, caché de módulos, recuperación y comprobación segura — OK");
+ console.log("SlotRace DEV 0.15.13: versión coherente, caché de módulos, recuperación y comprobación segura — OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

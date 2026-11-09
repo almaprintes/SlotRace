@@ -66,7 +66,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.15.12");
+ assert.equal(window.slotraceLab.version,"DEV 0.15.13");
  const theme=window.slotraceLab.workspace;
  assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
  assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
@@ -233,5 +233,5 @@ const path=require("node:path");
   "El reloj vuelve a contar exactamente 100 ms al reanudar");
  for(const fn of soundButton.listeners.click)fn();
  assert.equal(state.clicksEnabled,true);
- console.log("SlotRace DEV 0.15.12: acelerador 1%, 140px rango total, clics cada 5%, mute, retorno y física parcial — OK");
+ console.log("SlotRace DEV 0.15.13: acelerador 1%, 140px rango total, clics cada 5%, mute, retorno y física parcial — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
