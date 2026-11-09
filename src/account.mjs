@@ -35,7 +35,7 @@ function setPilotWelcome(nickname){
 }
 function setAvatarImage(imgId,letterId,url){
  const img=get(imgId),letter=get(letterId);
- if(url){img.src=url;img.hidden=false;letter.hidden=true;}
+ if(url){img.dataset.rawFallback='';img.src=url;img.hidden=false;letter.hidden=true;}
  else{img.hidden=true;img.removeAttribute?.("src");letter.hidden=false;}
 }
 async function avatarFromStudio(api,account,user){
@@ -75,6 +75,11 @@ async function renderStudioAvatarChoices(mode="account"){
    button.setAttribute("aria-label","Elegir "+avatar.label);
    button.setAttribute("aria-pressed",String(mode==="claim"?pendingAvatarId===avatar.id:false));
    const image=document.createElement("img");image.src=avatar.image_url;image.alt="";image.loading="lazy";
+   image.addEventListener("error",()=>{
+     if(image.dataset.rawFallback==="1"){image.hidden=true;button.disabled=true;return;}
+     image.dataset.rawFallback="1";
+     image.src="https://raw.githubusercontent.com/almaprintes/TopdownCraftrace/main/studio/assets/avatars/"+avatar.image_url.split("/").pop();
+   });
    const caption=document.createElement("span");caption.textContent=avatar.label;
    button.append(image,caption);
    button.addEventListener("click",()=>{
@@ -507,7 +512,13 @@ get("accountAvatarRemove").addEventListener("click",()=>{void run(async()=>{
 for(const [imgId,letterId] of [
  ["mastAvatarImage","mastAvatarInitial"],["accountAvatarImage","accountAvatarInitial"]
 ])get(imgId).addEventListener("error",()=>{
- get(imgId).hidden=true;get(letterId).hidden=false;
+ const img=get(imgId);
+ if(img.src?.startsWith(STUDIO_AVATAR_PREFIX)&&img.dataset.rawFallback!=="1"){
+   img.dataset.rawFallback="1";
+   img.src="https://raw.githubusercontent.com/almaprintes/TopdownCraftrace/main/studio/assets/avatars/"+img.src.split("/").pop();
+   return;
+ }
+ img.hidden=true;get(letterId).hidden=false;
 });
 get("accountRetry").addEventListener("click",()=>{void run(refresh);});
 // Al arrancar SOLO se ve el comprobador. Los botones aparecen cuando
