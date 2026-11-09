@@ -2576,7 +2576,7 @@ function updateHud(){
    underCrossing?"COCHE PASANDO POR DEBAJO DEL PUENTE":
    state.drift>.18?"DERRAPE CONTROLADO · MANTÉN EL GAS":
    laneLabel(state.lane)+" · Busca el límite sin pasarte en las curvas";
- $("pause").textContent=isPreparingResume()?"✕ Cancelar cuenta atrás":state.run?"⏸ Pausar":"▶ Seguir";
+ $("pause").textContent=isPreparingResume()?"✕ Cancelar":state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").hidden=state.track.laneChangerIndex>=0;
  $("lane").disabled=state.track.laneChangerIndex>=0||
   Boolean(state.laneTransition)||state.penalty>0;
