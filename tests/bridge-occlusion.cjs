@@ -5,6 +5,7 @@ const path=require("node:path");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const blueprint=await import("../src/blueprint.mjs");
+ const clockCore=await import("../src/timing-core.mjs");
  const figure=geo.buildTrack(geo.FIGURE_EIGHT);
  assert.equal(figure.closed,true);
  assert.equal(figure.valid,true);
@@ -58,7 +59,7 @@ const path=require("node:path");
  let now=0;const frames=[];
  const storage=new Map();
  const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
- const keys=[...Object.keys(geo),...Object.keys(blueprint)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:blueprint[k]);
+ const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},fn=>frames.push(fn),class{observe(){}}
  );
