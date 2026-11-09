@@ -167,7 +167,24 @@
           </button>
         </div>
       </section>
-      <button id="raceStart" class="race-lobby-start" type="button">🏁 Empezar carrera</button>
+      <section class="race-lobby-panel" aria-label="Tipo de competición">
+        <h2>03 · ¿Cómo quieres competir?</h2>
+        <label for="raceMode">Modalidad</label>
+        <select id="raceMode">
+          <option value="practice">Entrenamiento libre</option>
+          <option value="qualifying">Clasificación · mejor vuelta</option>
+          <option value="lap_race">Carrera por vueltas</option>
+        </select>
+        <div id="raceTargetLapsRow" class="race-target-laps" hidden>
+          <label for="raceTargetLaps">Finalizar tras</label>
+          <select id="raceTargetLaps">
+            <option value="3">3 vueltas</option><option value="5" selected>5 vueltas</option>
+            <option value="10">10 vueltas</option><option value="20">20 vueltas</option>
+          </select>
+        </div>
+        <small>Fase de pruebas: estos tiempos no están homologados online.</small>
+      </section>
+      <button id="raceStart" class="race-lobby-start" type="button">🏁 Empezar sesión</button>
       <button id="raceFinishTrack" class="race-lobby-finish" type="button" hidden>⚒ Completar circuito en el taller</button>
       <div class="race-lobby-links">
         <button id="raceViewRecords" type="button">▤ Ver mis récords</button>
@@ -391,6 +408,7 @@
             <span id="buildStatus" class="status" aria-live="polite">Preparando mesa…</span>
             <div class="right">
               <button id="templateToggle" class="mini builder-image-button" type="button" aria-controls="templatePanel" aria-expanded="false" aria-label="Cargar o ajustar imagen de fondo">▧ <span>Imagen</span></button>
+              <button id="measureGap" class="mini builder-gap-button" type="button" aria-label="Medir hueco entre conectores">⌖ Hueco</button>
               <button id="autoClose" class="mini builder-close-button" type="button" title="Cerrar o revisar los conectores" aria-label="Cerrar o revisar el circuito">✦ Cerrar</button>
               <button class="mini primary" id="play" type="button" aria-label="Jugar en el circuito">🏁 <span class="tool-label">Jugar</span></button>
             </div>
@@ -411,7 +429,6 @@
                 <button id="redo" class="mini" type="button">↪ Rehacer</button>
                 <button id="flip" class="mini" type="button" aria-label="Invertir curva seleccionada">⇄ Voltear curva</button>
                 <button id="curveDirection" class="mini" type="button" aria-label="Cambiar lado de las curvas disponibles" aria-pressed="false">↷ Curva derecha</button>
-                <button id="measureGap" class="mini" type="button">Medir hueco</button>
                 <button id="exportBlueprint" class="mini" type="button">Exportar plano</button>
                 <button id="bridgeKit" class="bridge-kit mini" type="button" aria-label="Elevar o bajar 65 milímetros la pieza seleccionada">
                   <span class="bridge-kit-copy"><strong>Elevar pieza</strong><small>Rectas y curvas · rampas automáticas</small></span>
@@ -514,7 +531,7 @@
         <div class="hud"><small>CRONÓMETRO</small><strong class="green" id="lapTime">0,000</strong></div>
         <div class="hud"><small>ACELERADOR</small><strong id="power">0%</strong></div>
       </div>
-      <div class="race-hint"><span id="laneIndicator" class="lane-indicator lane-a" aria-live="polite" aria-atomic="true">OCUPAS CARRIL A</span><span id="raceHint">Suelta antes de las curvas</span><small id="raceCarName" class="race-car-name">Avenir Gripline</small></div>
+      <div class="race-hint"><small id="raceClockStatus" class="race-clock-status">ENTRENAMIENTO · RELOJ REAL</small><span id="laneIndicator" class="lane-indicator lane-a" aria-live="polite" aria-atomic="true">OCUPAS CARRIL A</span><span id="raceHint">Suelta antes de las curvas</span><small id="raceCarName" class="race-car-name">Avenir Gripline</small></div>
     </div>
     <div class="race-controls">
       <div class="race-buttons">

@@ -2969,3 +2969,8 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 /* Plantilla fotográfica: corrección rápida de orientación, sin mover piezas. */
 .builder-workbench .template-rotate-actions .mini{flex:1 1 45%;background:#184550;border:1px solid #57978f;color:#ecfff6;font-weight:900}
 .builder-workbench .template-rotate-actions .mini:active{background:#277b70}
+
+/* DEV 0.15.9 — reloj de tiempo real y modalidades de prueba. */
+.race-target-laps{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.race-clock-status{display:block;font-size:10px;font-weight:900;letter-spacing:.5px;color:#bbfce4}
+.builder-workbench .builder-gap-button{border-color:#5fa7bf;color:#e3fffd;white-space:nowrap}
