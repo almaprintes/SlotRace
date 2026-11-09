@@ -50,15 +50,21 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.12");
+ assert.equal(game.version,"DEV 0.15.13");
  // Integración real: ejecuta raceClock desde app.mjs, no solo el módulo de eventos.
  game.raceClock.reset();
  game.raceClock.start(1000);
  game.raceClock.tick(6000);
  game.raceClock.pause(6000);
+ assert.equal(game.raceClock.pauseCount,1,"Una pausa real registrada");
  game.raceClock.resume(26000);
  game.raceClock.tick(31000);
  assert.equal(game.raceClock.elapsedMs,10000,"La pausa de 20 s no cuenta");
+ assert.equal(game.raceClock.summary().pausedMs,20000,"20 s fuera del cronómetro");
+ assert.equal(game.raceClock.summary().pauseCount,1,"El informe conserva el número de pausas");
+ game.raceClock.pause(31000,{record:false});
+ assert.equal(game.raceClock.summary().pauseCount,1,
+  "Finalizar sesión no inventa una pausa adicional");
  assert.equal(game.raceClock.crossingElapsedMs(80,100),9990,
   "Un bloqueo no permite interpolar como si el coche se moviera durante 5 s");
  game.raceClock.reset();st.seconds=0;
@@ -1215,5 +1221,5 @@ const path=require("node:path");
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.12: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.13: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
