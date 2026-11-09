@@ -7,6 +7,7 @@ const path=require("node:path");
 (async()=>{
  const geom=await import("../src/track.mjs");
  const blueprint=await import("../src/blueprint.mjs");
+ const clockCore=await import("../src/timing-core.mjs");
  const source=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8")
    .replace(/^import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?/gm,"");
  const html=fs.readFileSync(path.join(__dirname,"../index.html"),"utf8");
@@ -56,7 +57,7 @@ const path=require("node:path");
  };
  let now=0;const callbacks=[];
  const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geom),...Object.keys(blueprint)];const values=keys.map(k=>Object.hasOwn(geom,k)?geom[k]:blueprint[k]);
+ const keys=[...Object.keys(geom),...Object.keys(blueprint),...Object.keys(clockCore)];const values=keys.map(k=>Object.hasOwn(geom,k)?geom[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},requestAnimationFrame,class{observe(){}}
  );
