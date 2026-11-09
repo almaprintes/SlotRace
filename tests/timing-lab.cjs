@@ -17,5 +17,8 @@ const assert=require("node:assert/strict");
  assert.match(app,/advanceElapsedMonotonic\(/,"El reloj visible debe usar el mismo núcleo");
  assert.match(app,/interpolateCrossingElapsed\(/,"Meta interpolada obligatoria");
  assert.match(app,/completeLap\(raceClock\.crossingElapsedMs\(/,"Cruce real ligado al paso por meta");
+ assert.match(app,/next\.deltaMs>50\.5/,"Un frame con tiempo físico perdido invalida récords");
+ assert.match(app,/const valid=state\.x350Crossings===1[^\n]*state\.lapEligible/,
+  "También el cruce de dos carriles debe respetar la validez de la vuelta");
  console.log("SlotRace timing LAB OK: 7 grupos, 1000 cruces, 60/30/15 FPS, 1/3 s bloqueo, pausas");
 })().catch(e=>{console.error(e);process.exitCode=1});
