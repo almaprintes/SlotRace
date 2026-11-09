@@ -69,7 +69,7 @@ const fs=require("node:fs"),path=require("node:path");
   class{observe(){}},{},class{}
  );
  const game=window.slotraceLab,st=game.state,t=game.template;
- assert.equal(game.version,"DEV 0.15.11");
+ assert.equal(game.version,"DEV 0.15.12");
  assert.match(html,/<div class="right">[\s\S]*?id="templateToggle"/,
   "Imagen visible junto a Jugar y sin abrir Más");
  game.openWorkshop();
@@ -190,5 +190,5 @@ const fs=require("node:fs"),path=require("node:path");
  game.undo();
  assert.equal(st.reference.id,imageId,"Deshacer restaura la plantilla");
  assert.equal(await t.loadReferenceForState(),true);
- console.log("SlotRace DEV 0.15.11: plantilla bajo pista, tamaño 2000 %, transparencia, arrastre, bloqueo, persistencia por circuito y PNG opcional — OK");
+ console.log("SlotRace DEV 0.15.12: plantilla bajo pista, tamaño 2000 %, transparencia, arrastre, bloqueo, persistencia por circuito y PNG opcional — OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
