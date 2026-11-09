@@ -1,0 +1,27 @@
+name: SlotRace precision timing checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clock-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: "Check: new clock laboratory"
+        run: node tests/timing-lab.cjs
+      - name: "Check: future events timing"
+        run: node tests/event-timing.cjs
+      - name: "Check: game-shell integration"
+        run: node tests/game-shell.cjs
+      - name: "Check: asset version compatibility"
+        run: |
+          node smoke.cjs
+          node tests/update-check.cjs
