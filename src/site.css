@@ -3004,3 +3004,10 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  .mast .brand strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .mast .mast-actions{flex:0 0 auto}
 }
+
+/* CraftRace Studio catalog avatars: no user-upload controls. */
+.studio-avatar-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:9px;max-height:350px;overflow:auto;margin:10px 0}
+.studio-avatar-options button.studio-avatar-option{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:115px;padding:7px;border:2px solid #4d748b;border-radius:12px;background:#102d41;color:#e9faff;font-size:10px;text-align:center}
+.studio-avatar-options button.studio-avatar-option[aria-pressed="true"]{border-color:#67edcc;box-shadow:0 0 0 2px #67edcc55}
+.studio-avatar-option img{display:block;width:min(100%,78px);aspect-ratio:1/1;object-fit:cover;border-radius:9px}
+.studio-avatar-options>button span{max-width:100%;overflow-wrap:anywhere}
