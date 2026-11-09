@@ -3004,3 +3004,14 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  .mast .brand strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .mast .mast-actions{flex:0 0 auto}
 }
+
+/* DEV 0.15.12 · resultados: el título de la pantalla ya figura en el informe.
+   No permitir que la etiqueta flotante invada el logotipo en móviles. */
+body[data-screen="results"] #mastMode{display:none!important}
+@media(max-width:660px){
+ body[data-screen="race"] #mastMode{display:none!important}
+ .mast .brand{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden}
+ .mast .brand>div:last-child{min-width:0;overflow:hidden}
+ .mast .brand strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .mast .mast-actions{flex:0 0 auto}
+}
