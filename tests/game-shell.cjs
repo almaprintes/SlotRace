@@ -131,6 +131,11 @@ const path=require("node:path");
   "Las variantes de cabecera deben respetar hidden en Safari");
  assert.match(css,/body\[data-screen="menu"\] #mastMode\{display:none!important\}/,
   "No desperdiciar espacio con la etiqueta INICIO en la bienvenida");
+ // Bug iPhone 16 Pro Max: RESULTADOS se pintaba sobre el logotipo LAB.
+ assert.match(css,/@media\(max-width:760px\)\{[\s\S]*?\.mast #mastMode\{display:none!important\}/,
+  "Ocultar etiqueta redundante en el ancho móvil para evitar superposición");
+ assert.match(css,/\.mast \.brand strong\{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\}/,
+  "El logotipo tiene truncado seguro en pantallas extremadamente estrechas");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
