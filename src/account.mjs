@@ -12,6 +12,8 @@ const get=id=>document.getElementById(id);
 let client=null,accountUser=null,accountNick=null,busy=false;
 let avatarUrl=null,avatarPath=null,avatarImporting=false;
 const AVATAR_BUCKET="craft-avatars";
+const STUDIO_AVATAR_PREFIX="https://almaprintes.github.io/TopdownCraftrace/studio-assets/avatars/";
+let pendingAvatarId=null;
 const modal=get("accountModal"),entryGate=get("entryGate"),entryStatus=get("entryStatus");
 // Estado de bienvenida. Solo se permite saltar automáticamente mientras
 // está comprobándose la sesión. Una vez mostrada la elección de acceso,
@@ -36,7 +38,15 @@ function setAvatarImage(imgId,letterId,url){
  if(url){img.src=url;img.hidden=false;letter.hidden=true;}
  else{img.hidden=true;img.removeAttribute?.("src");letter.hidden=false;}
 }
-function avatarFromStudio(api,account,user){
+async function avatarFromStudio(api,account,user){
+ if(account?.avatar_id){
+  const {data,error}=await api.from("studio_avatar_catalog").select("id,image_url")
+    .eq("id",account.avatar_id).maybeSingle();
+  if(!error&&data?.id===account.avatar_id&&typeof data.image_url==="string"&&
+    data.image_url.startsWith(STUDIO_AVATAR_PREFIX)&&/^https:\/\/almaprintes\.github\.io\/TopdownCraftrace\/studio-assets\/avatars\/[a-z0-9_]+\.webp$/.test(data.image_url))
+     return data.image_url;
+ }
+
  if(account?.avatar_path?.startsWith(user.id+"/")){
   const {data}=api.storage.from(AVATAR_BUCKET).getPublicUrl(account.avatar_path);
   if(data?.publicUrl)return data.publicUrl+"?v="+encodeURIComponent(account.updated_at||"1");
@@ -46,6 +56,46 @@ function avatarFromStudio(api,account,user){
   /^https:\/\/almaprintes\.github\.io\/SlotRace\/assets\/avatars\/[A-Za-z0-9_-]+\.webp$/.test(url))
   return url;
  return null;
+}
+async function renderStudioAvatarChoices(mode="account"){
+ const target=get(mode==="claim"?"accountSignupAvatarChoices":"accountAvatarPicker");
+ if(!target)return;
+ target.replaceChildren();
+ const api=await db();
+ const {data,error}=await api.from("studio_avatar_catalog")
+  .select("id,label,image_url").eq("active",true).eq("exclusive",false).order("sort_order");
+ if(error){target.textContent="No se pudo cargar el catálogo. Revisa tu conexión.";return;}
+ const avatars=(data||[]).filter(a=>typeof a.image_url==="string"&&
+    a.image_url.startsWith(STUDIO_AVATAR_PREFIX)&&
+    /^https:\/\/almaprintes\.github\.io\/TopdownCraftrace\/studio-assets\/avatars\/[a-z0-9_]+\.webp$/.test(a.image_url));
+ if(!avatars.length){target.textContent="Próximamente habrá avatares oficiales disponibles.";return;}
+ if(mode==="claim"&&!pendingAvatarId)pendingAvatarId=avatars[0].id;
+ for(const avatar of avatars){
+   const button=document.createElement("button");button.type="button";button.className="studio-avatar-option";
+   button.setAttribute("aria-label","Elegir "+avatar.label);
+   button.setAttribute("aria-pressed",String(mode==="claim"?pendingAvatarId===avatar.id:false));
+   const image=document.createElement("img");image.src=avatar.image_url;image.alt="";image.loading="lazy";
+   const caption=document.createElement("span");caption.textContent=avatar.label;
+   button.append(image,caption);
+   button.addEventListener("click",()=>{
+     if(mode==="claim"){
+       pendingAvatarId=avatar.id;
+       for(const item of target.querySelectorAll("button"))item.setAttribute("aria-pressed",String(item===button));
+       return;
+     }
+     void run(async()=>{
+       const {data:{user},error:authError}=await api.auth.getUser();
+       if(authError||!user||user.is_anonymous||user.id!==accountUser?.id)
+         throw Error("Debes iniciar sesión para elegir avatar.");
+       const {data:updated,error:saveError}=await api.from("craft_accounts")
+        .update({avatar_id:avatar.id,updated_at:new Date().toISOString()})
+        .eq("user_id",user.id).select("avatar_id").maybeSingle();
+       if(saveError||updated?.avatar_id!==avatar.id)throw saveError||Error("No se confirmó el avatar.");
+       target.hidden=true;await refresh();notice("Avatar elegido para CraftRace Studio.",false);
+     });
+   });
+   target.append(button);
+ }
 }
 function clearAvatar(){
  avatarUrl=null;avatarPath=null;
@@ -170,7 +220,7 @@ async function refresh({background=false}={}){
   await verifyLinkedIdentity(api);
   accountUser=user;
   const {data:account,error:lookup}=await api.from("craft_accounts")
-   .select("user_id,nickname,avatar_path,avatar_url,updated_at").eq("user_id",user.id).maybeSingle();
+   .select("user_id,nickname,avatar_path,avatar_url,avatar_id,updated_at").eq("user_id",user.id).maybeSingle();
   if(lookup)throw lookup;
   if(!account||!account.nickname){
    accountNick=null;
@@ -179,15 +229,16 @@ async function refresh({background=false}={}){
    if(tdr?.nick&&!get("accountNickname").value)
     get("accountNickname").value=tdr.nick;
    showStage("claim");
+   void renderStudioAvatarChoices("claim");
    if(entryGate&&!entryGate.hidden)modal.hidden=false;
    notice("Sesión verificada. Elige tu apodo público único para CraftRace Studio.");
    return;
   }
   accountNick=account.nickname;
   avatarPath=account.avatar_path||null;
-  avatarUrl=avatarFromStudio(api,account,user);
+  avatarUrl=await avatarFromStudio(api,account,user);
   setAvatarImage("accountAvatarImage","accountAvatarInitial",avatarUrl);
-  get("accountAvatarRemove").hidden=!(account.avatar_path||account.avatar_url);
+  get("accountAvatarRemove").hidden=!account.avatar_id;
   await ensureSlotProfile(api,user.id);
   get("accountCurrentNick").textContent=account.nickname;
   get("accountEmailDisplay").textContent=user.email||"Acceso mediante proveedor";
@@ -201,7 +252,7 @@ async function refresh({background=false}={}){
   showStage("connected");
   notice("Cuenta conectada. Tus circuitos locales siguen en este dispositivo.");
   enterLauncher(account.nickname);
-  void importBundledAvatar(api,user,account);
+  // No automatic user uploads: Studio avatars are selected from the staff catalog.
  }catch(error){
   if(!guestMode)entryMessage("No se pudo comprobar la sesión. Puedes entrar, registrarte o seguir en modo local.");
   if(!background||!modal.hidden)notice(failure(error),true);
@@ -396,18 +447,17 @@ async function claim(){
  if(error)throw error;
  if(!updated)throw new Error("Este perfil ya tiene un apodo. Comprueba tu cuenta.");
  await ensureSlotProfile(api,user.id);
- // Avatar is chosen during Studio registration, but uploaded only after
- // nickname ownership is confirmed. Existing accounts are never overwritten.
- const chosen=get("accountSignupAvatarFile")?.files?.[0];
- if(chosen){
-  try{await uploadAvatar(chosen);}
-  catch(error){
-   await refresh();
-   notice("Apodo guardado. No se pudo guardar el avatar: "+failure(error),true);
-   return;
+ if(pendingAvatarId){
+  const {data:selected,error:avatarError}=await api.from("craft_accounts")
+    .update({avatar_id:pendingAvatarId,updated_at:new Date().toISOString()})
+    .eq("user_id",user.id).select("avatar_id").maybeSingle();
+  if(avatarError||selected?.avatar_id!==pendingAvatarId){
+    await refresh();
+    notice("Nick guardado, pero no se pudo registrar el avatar. Puedes elegirlo desde tu cuenta.",true);
+    return;
   }
-  get("accountSignupAvatarFile").value="";
- }else await refresh();
+ }
+ await refresh();
 }
 async function signOut(){
  const api=await db();
@@ -443,12 +493,17 @@ get("accountClaimForm").addEventListener("submit",e=>{
  e.preventDefault();void run(claim);
 });
 get("accountSignOut").addEventListener("click",()=>{void run(signOut);});
-get("accountAvatarChange").addEventListener("click",()=>get("accountAvatarFile").click());
-get("accountAvatarFile").addEventListener("change",()=>{
- const field=get("accountAvatarFile"),file=field.files?.[0];
- if(file)void run(()=>uploadAvatar(file)).finally(()=>{field.value="";});
+get("accountAvatarChange").addEventListener("click",()=>{
+ const panel=get("accountAvatarPicker");panel.hidden=!panel.hidden;
+ if(!panel.hidden)void renderStudioAvatarChoices("account");
 });
-get("accountAvatarRemove").addEventListener("click",()=>{void run(removeAvatar);});
+get("accountAvatarRemove").addEventListener("click",()=>{void run(async()=>{
+ const api=await db();const {data:{user},error:authError}=await api.auth.getUser();
+ if(authError||!user||user.id!==accountUser?.id)throw Error("Comprueba tu sesión.");
+ const {error}=await api.from("craft_accounts").update({avatar_id:null,updated_at:new Date().toISOString()}).eq("user_id",user.id);
+ if(error)throw error;
+ await refresh();notice("Avatar oficial retirado de tu perfil.");
+});});
 for(const [imgId,letterId] of [
  ["mastAvatarImage","mastAvatarInitial"],["accountAvatarImage","accountAvatarInitial"]
 ])get(imgId).addEventListener("error",()=>{
