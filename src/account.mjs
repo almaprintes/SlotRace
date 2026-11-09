@@ -13,7 +13,7 @@ let client=null,accountUser=null,accountNick=null,busy=false;
 let avatarUrl=null,avatarPath=null,avatarImporting=false;
 const AVATAR_BUCKET="craft-avatars";
 const STUDIO_AVATAR_PREFIX="https://almaprintes.github.io/TopdownCraftrace/studio-assets/avatars/";
-let pendingAvatarId=null;
+let pendingAvatarId=null,selectedAvatarId=null;
 const modal=get("accountModal"),entryGate=get("entryGate"),entryStatus=get("entryStatus");
 // Estado de bienvenida. Solo se permite saltar automáticamente mientras
 // está comprobándose la sesión. Una vez mostrada la elección de acceso,
@@ -63,9 +63,9 @@ async function renderStudioAvatarChoices(mode="account"){
  target.replaceChildren();
  const api=await db();
  const {data,error}=await api.from("studio_avatar_catalog")
-  .select("id,label,image_url").eq("active",true).eq("exclusive",false).order("sort_order");
+  .select("id,label,image_url,exclusive,owner_user_id").eq("active",true).order("sort_order");
  if(error){target.textContent="No se pudo cargar el catálogo. Revisa tu conexión.";return;}
- const avatars=(data||[]).filter(a=>typeof a.image_url==="string"&&
+ const avatars=(data||[]).filter(a=>(a.exclusive!==true||a.owner_user_id===accountUser?.id)&&typeof a.image_url==="string"&&
     a.image_url.startsWith(STUDIO_AVATAR_PREFIX)&&
     /^https:\/\/almaprintes\.github\.io\/TopdownCraftrace\/studio-assets\/avatars\/[a-z0-9_]+\.webp$/.test(a.image_url));
  if(!avatars.length){target.textContent="Próximamente habrá avatares oficiales disponibles.";return;}
@@ -73,7 +73,7 @@ async function renderStudioAvatarChoices(mode="account"){
  for(const avatar of avatars){
    const button=document.createElement("button");button.type="button";button.className="studio-avatar-option";
    button.setAttribute("aria-label","Elegir "+avatar.label);
-   button.setAttribute("aria-pressed",String(mode==="claim"?pendingAvatarId===avatar.id:false));
+   button.setAttribute("aria-pressed",String(mode==="claim"?pendingAvatarId===avatar.id:selectedAvatarId===avatar.id));
    const image=document.createElement("img");image.src=avatar.image_url;image.alt="";image.loading="lazy";
    image.addEventListener("error",()=>{
      if(image.dataset.rawFallback==="1"){image.hidden=true;button.disabled=true;return;}
@@ -96,7 +96,7 @@ async function renderStudioAvatarChoices(mode="account"){
         .update({avatar_id:avatar.id,updated_at:new Date().toISOString()})
         .eq("user_id",user.id).select("avatar_id").maybeSingle();
        if(saveError||updated?.avatar_id!==avatar.id)throw saveError||Error("No se confirmó el avatar.");
-       target.hidden=true;await refresh();notice("Avatar elegido para CraftRace Studio.",false);
+       selectedAvatarId=avatar.id;target.hidden=true;await refresh();notice("Avatar elegido para CraftRace Studio.",false);
      });
    });
    target.append(button);
@@ -208,7 +208,7 @@ async function refresh({background=false}={}){
   if(sessionError)throw sessionError;
   if(!sessionData?.session){
    sessionStorage.removeItem(PENDING_IDENTITY_LINK);
-   accountUser=null;accountNick=null;clearAvatar();showStage("signedOut");
+   accountUser=null;accountNick=null;selectedAvatarId=null;clearAvatar();showStage("signedOut");
    entryMessage("No hay una sesión activa. Entra o crea tu cuenta para empezar.",{sessionInvalid:true});
    if(!background)notice("Entra con tu cuenta CraftRace Studio o regístrate sin perder tu partida local.");
    return;
@@ -217,7 +217,7 @@ async function refresh({background=false}={}){
   if(error)throw error;
   const user=data?.user;
   if(!user||user.is_anonymous){
-   accountUser=null;accountNick=null;clearAvatar();showStage("signedOut");
+   accountUser=null;accountNick=null;selectedAvatarId=null;clearAvatar();showStage("signedOut");
    entryMessage("Inicia sesión con una cuenta de CraftRace Studio.",{sessionInvalid:true});
    if(!background)notice("Entra con la misma cuenta que utilizas en Top Down RACE, o crea una nueva.");
    return;
@@ -241,7 +241,7 @@ async function refresh({background=false}={}){
   }
   accountNick=account.nickname;
   avatarPath=account.avatar_path||null;
-  avatarUrl=await avatarFromStudio(api,account,user);
+  avatarUrl=await avatarFromStudio(api,account,user);selectedAvatarId=account.avatar_id||null;
   setAvatarImage("accountAvatarImage","accountAvatarInitial",avatarUrl);
   get("accountAvatarRemove").hidden=!account.avatar_id;
   await ensureSlotProfile(api,user.id);
@@ -469,7 +469,7 @@ async function signOut(){
  const {error}=await api.auth.signOut({scope:"local"});
  if(error)throw error;
  guestMode=false;authIntent=false;entryState="needs-auth";
- accountUser=null;accountNick=null;clearAvatar();showStage("signedOut");
+ accountUser=null;accountNick=null;selectedAvatarId=null;clearAvatar();showStage("signedOut");
  entryMessage("Sesión cerrada. Entra o crea una cuenta. Tus circuitos locales están intactos.");
  notice("Sesión cerrada. Todos tus circuitos siguen guardados en este navegador.");
 }
