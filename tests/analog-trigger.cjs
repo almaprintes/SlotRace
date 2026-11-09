@@ -193,7 +193,10 @@ const path=require("node:path");
  const slow=callbacks.shift();now=2416;slow(now);
  assert.ok(state.seconds>=2.415&&state.seconds<=2.417,
   "El cronómetro marca el tiempo de pared de 2,416 s sin descontar FPS perdidos");
- assert.equal(window.slotraceLab.raceClock.flags.at(-1).type,"frame-gap");
+ assert.ok(window.slotraceLab.raceClock.flags.some(f=>f.type==="frame-gap"),
+  "El tirón superior a 500 ms sigue auditándose");
+ assert.equal(window.slotraceLab.raceClock.flags.at(-1).type,"physics-time-clamp",
+  "El desfase entre física y reloj también queda auditado");
  assert.match(elements.get("raceClockStatus").textContent,/REVISAR FPS/,
   "Se advierte del salto de frames en la carrera");
  const activeTime=state.seconds;
