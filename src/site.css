@@ -2978,3 +2978,5 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 /* Ocultar realmente la selección de vueltas cuando no es una carrera por vueltas. */
 #raceTargetLapsRow[hidden]{display:none!important}
 .builder-workbench #buildStatus{overflow-wrap:anywhere}
+
+.results-timing-audit{font-size:11px;line-height:1.4;font-weight:800;opacity:.8;letter-spacing:.1px}

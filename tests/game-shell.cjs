@@ -1148,6 +1148,15 @@ const path=require("node:path");
  assert.match(elements.get("resultsCircuit").textContent,/Carrera por vueltas/);
  assert.equal(st.sessionLaps.length,3);
  assert.equal(st.sessionClockSummary.clockVersion,"monotonic-v2");
+ assert.match(elements.get("resultsTimingAudit").textContent,/NO HOMOLOGADOS/);
+ const trialReports=game.raceReports();
+ assert.ok(trialReports.length>=1,"Cada tanda se archiva separada de la partida");
+ const finalTrial=trialReports[0];
+ assert.equal(finalTrial.mode,"lap_race");
+ assert.equal(finalTrial.targetLaps,3);
+ assert.equal(finalTrial.laps.length,3);
+ assert.equal(finalTrial.source,"local-unverified");
+ assert.equal(finalTrial.timingVersion,"monotonic-v2");
  game.menuRace();
  for(const fn of modes.listeners.change||[])
   fn({target:{value:"qualifying"}});
