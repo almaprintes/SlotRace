@@ -2993,3 +2993,14 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  font-variant-numeric:tabular-nums}
 .race-resume-countdown span{max-width:340px;font-size:clamp(12px,2.8vw,15px);
  font-weight:800;line-height:1.4}
+
+/* Mobile masthead: the section label must never overlap SlotRace LAB.
+   The active screen already has its own heading; preserve menu, settings
+   and build ID while allowing the logo text to shrink safely. */
+@media(max-width:760px){
+ .mast #mastMode{display:none!important}
+ .mast .brand{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden}
+ .mast .brand>div:last-child{min-width:0;overflow:hidden}
+ .mast .brand strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .mast .mast-actions{flex:0 0 auto}
+}

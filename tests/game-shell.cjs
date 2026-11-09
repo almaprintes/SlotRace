@@ -50,7 +50,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.11");
+ assert.equal(game.version,"DEV 0.15.12");
  // Integración real: ejecuta raceClock desde app.mjs, no solo el módulo de eventos.
  game.raceClock.reset();
  game.raceClock.start(1000);
@@ -131,6 +131,11 @@ const path=require("node:path");
   "Las variantes de cabecera deben respetar hidden en Safari");
  assert.match(css,/body\[data-screen="menu"\] #mastMode\{display:none!important\}/,
   "No desperdiciar espacio con la etiqueta INICIO en la bienvenida");
+ // Bug iPhone 16 Pro Max: RESULTADOS se pintaba sobre el logotipo LAB.
+ assert.match(css,/@media\(max-width:760px\)\{[\s\S]*?\.mast #mastMode\{display:none!important\}/,
+  "Ocultar etiqueta redundante en el ancho móvil para evitar superposición");
+ assert.match(css,/\.mast \.brand strong\{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\}/,
+  "El logotipo tiene truncado seguro en pantallas extremadamente estrechas");
  assert.equal(elements.get("buildScreen").hidden,true);
  assert.equal(elements.get("raceScreen").hidden,true);
  assert.equal(elements.get("goHome").hidden,true);
@@ -1210,5 +1215,5 @@ const path=require("node:path");
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.11: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.12: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
