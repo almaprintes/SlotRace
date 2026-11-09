@@ -647,7 +647,10 @@
           pattern="[A-Za-z0-9_-]{3,24}" autocomplete="off" autocapitalize="off"
           spellcheck="false" placeholder="Tu apodo único">
         <small>Entre 3 y 24 caracteres: letras sin tildes, números, - y _.</small>
-        <button class="account-primary" type="submit">Registrar mi nombre</button>
+        <label for="accountSignupAvatarFile">Mi avatar de CraftRace Studio (opcional)</label>
+        <input id="accountSignupAvatarFile" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="accountSignupAvatarHint">
+        <small id="accountSignupAvatarHint">Selecciona una foto JPG, PNG o WebP. Se optimiza a 192 × 192 y se comparte con todos nuestros juegos. Podrás cambiarla después.</small>
+        <button class="account-primary" type="submit">Guardar nick y avatar</button>
       </form>
     </div>
     <div id="accountConnected" hidden>
