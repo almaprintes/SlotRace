@@ -170,6 +170,8 @@ const state={
   history:[],redo:[],draft:old?.draft&&Array.isArray(old.draft.types)?old.draft:
  Array.isArray(old?.draft)&&allowed(old.draft)?{types:old.draft,loose:[]}:
  legacyDraft,
+  sessionMode:["practice","qualifying","lap_race"].includes(old?.sessionMode)?old.sessionMode:"practice",
+  targetLaps:[3,5,10,20].includes(old?.targetLaps)?old.targetLaps:5,raceClockWarnings:[],
   lane:0,laneTransition:null,lapEligible:true,x350Armed:true,x350Crossings:0,x350FirstLap:null,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,clicksEnabled:old?.clicksEnabled!==false,motorEnabled:old?.motorEnabled!==false,
@@ -190,10 +192,54 @@ function save(){storage(KEY,JSON.stringify({types:state.types,loose:state.loose,
  activeCircuitId:state.activeCircuitId,
  tableTheme:state.tableTheme,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
- driveDirection:state.driveDirection,pendingDesiredDirection:state.pendingDesiredDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom}));}
+ driveDirection:state.driveDirection,pendingDesiredDirection:state.pendingDesiredDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom,
+  sessionMode:state.sessionMode,targetLaps:state.targetLaps}));}
 // Permite que el exportador capture también la última preferencia cambiada.
 if(typeof window!=="undefined")
  window.addEventListener("slotrace:flush-save",()=>save());
+// Cronómetro monotónico real, independiente de dt limitado a 50 ms.
+// Resultados locales de prueba; ninguna marca se homologa sin servidor.
+const raceClock={
+ active:false,running:false,elapsedMs:0,lapStartMs:0,baseMs:0,anchorMs:0,lastNowMs:null,flags:[],
+ reset(){this.active=false;this.running=false;this.elapsedMs=0;this.lapStartMs=0;
+  this.baseMs=0;this.anchorMs=0;this.lastNowMs=null;this.flags=[];
+  state.raceClockWarnings=[];},
+ start(nowMs,firstStepMs=0){
+  if(!Number.isFinite(nowMs))return;
+  if(!this.active){this.reset();this.active=true;
+   this.anchorMs=nowMs-Math.max(0,firstStepMs);
+   this.lastNowMs=this.anchorMs;
+  }else{this.anchorMs=nowMs;this.lastNowMs=nowMs;}
+  this.running=true;
+ },
+ tick(nowMs){
+  if(!this.running||!Number.isFinite(nowMs))return;
+  if(nowMs<this.lastNowMs){
+   this.flags.push({type:"clock-regression",atMs:this.elapsedMs});
+   this.running=false;state.run=false;state.lapEligible=false;
+   state.raceClockWarnings=this.flags.slice();return;
+  }
+  const frameGapMs=nowMs-this.lastNowMs;
+  if(frameGapMs>500){
+   this.flags.push({type:"frame-gap",milliseconds:frameGapMs,atMs:this.elapsedMs});
+   if(state.sessionMode!=="practice")state.lapEligible=false;
+  }
+  this.lastNowMs=nowMs;
+  this.elapsedMs=this.baseMs+Math.max(0,nowMs-this.anchorMs);
+  state.seconds=Math.max(0,(this.elapsedMs-this.lapStartMs)/1000);
+  state.raceClockWarnings=this.flags.slice();
+ },
+ nextLap(){if(this.active){this.lapStartMs=this.elapsedMs;state.seconds=0;}},
+ pause(nowMs){if(!this.running)return;
+  this.tick(nowMs);this.baseMs=this.elapsedMs;
+  this.lastNowMs=null;this.running=false;
+ },
+ resume(nowMs){if(this.active&&!this.running&&Number.isFinite(nowMs)){
+  this.anchorMs=nowMs;this.lastNowMs=nowMs;this.running=true;
+ }},
+ summary(){return{elapsedMs:this.elapsedMs,flags:this.flags.map(f=>({...f})),
+  source:"local-unverified",clockVersion:"monotonic-v2"};}
+};
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
 const coordinate=v=>state.gridEnabled?gridSnap(v):v;
@@ -1009,7 +1055,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
+function resetLap(){raceClock.reset();state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -5601,7 +5647,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.8",state,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.8",state,raceClock,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
