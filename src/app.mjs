@@ -1,7 +1,8 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.9";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.9";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.9";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.9";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.10";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.10";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.10";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.10";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.10";
 const $=id=>document.getElementById(id);
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -206,9 +207,9 @@ if(typeof window!=="undefined")
 // Cronómetro monotónico real, independiente de dt limitado a 50 ms.
 // Resultados locales de prueba; ninguna marca se homologa sin servidor.
 const raceClock={
- active:false,running:false,elapsedMs:0,lapStartMs:0,baseMs:0,anchorMs:0,lastNowMs:null,flags:[],
+ active:false,running:false,elapsedMs:0,lapStartMs:0,baseMs:0,anchorMs:0,lastNowMs:null,_frameDurationMs:0,flags:[],
  reset(){this.active=false;this.running=false;this.elapsedMs=0;this.lapStartMs=0;
-  this.baseMs=0;this.anchorMs=0;this.lastNowMs=null;this.flags=[];
+  this.baseMs=0;this.anchorMs=0;this.lastNowMs=null;this._frameDurationMs=0;this.flags=[];
   state.raceClockWarnings=[];},
  start(nowMs,firstStepMs=0){
   if(!Number.isFinite(nowMs))return;
@@ -220,22 +221,38 @@ const raceClock={
  },
  tick(nowMs){
   if(!this.running||!Number.isFinite(nowMs))return;
-  if(nowMs<this.lastNowMs){
+  const next=advanceElapsedMonotonic(this.elapsedMs,this.lastNowMs,nowMs,500);
+  if(next.regression){
    this.flags.push({type:"clock-regression",atMs:this.elapsedMs});
    this.running=false;state.run=false;state.lapEligible=false;
    state.raceClockWarnings=this.flags.slice();return;
   }
-  const frameGapMs=nowMs-this.lastNowMs;
-  if(frameGapMs>500){
-   this.flags.push({type:"frame-gap",milliseconds:frameGapMs,atMs:this.elapsedMs});
+  if(next.frameGap){
+   this.flags.push({type:"frame-gap",milliseconds:next.deltaMs,atMs:this.elapsedMs});
    if(state.sessionMode!=="practice")state.lapEligible=false;
   }
-  this.lastNowMs=nowMs;
-  this.elapsedMs=this.baseMs+Math.max(0,nowMs-this.anchorMs);
+  this._frameDurationMs=next.deltaMs;this.lastNowMs=nowMs;
+  this.elapsedMs=next.elapsedMs;
   state.seconds=Math.max(0,(this.elapsedMs-this.lapStartMs)/1000);
   state.raceClockWarnings=this.flags.slice();
  },
- nextLap(){if(this.active){this.lapStartMs=this.elapsedMs;state.seconds=0;}},
+ crossingElapsedMs(distanceToFinish,frameTravel){
+  if(!this.active||!this.running)return this.elapsedMs;
+  try{return interpolateCrossingElapsed(this.elapsedMs,this._frameDurationMs,
+    distanceToFinish,frameTravel);}
+  catch(_){
+   this.flags.push({type:"crossing-uninterpolated",atMs:this.elapsedMs});
+   if(state.sessionMode!=="practice")state.lapEligible=false;
+   state.raceClockWarnings=this.flags.slice();return this.elapsedMs;
+  }
+ },
+ nextLap(crossingElapsedMs=this.elapsedMs){
+  if(this.active){
+   this.lapStartMs=Math.min(this.elapsedMs,
+     Math.max(this.lapStartMs,Number.isFinite(crossingElapsedMs)?crossingElapsedMs:this.elapsedMs));
+   state.seconds=Math.max(0,(this.elapsedMs-this.lapStartMs)/1000);
+  }
+ },
  pause(nowMs){if(!this.running)return;
   this.tick(nowMs);this.baseMs=this.elapsedMs;
   this.lastNowMs=null;this.running=false;
@@ -244,7 +261,7 @@ const raceClock={
   this.anchorMs=nowMs;this.lastNowMs=nowMs;this.running=true;
  }},
  summary(){return{elapsedMs:this.elapsedMs,flags:this.flags.map(f=>({...f})),
-  source:"local-unverified",clockVersion:"monotonic-v2"};}
+  source:"local-unverified",clockVersion:"monotonic-v3"};}
 };
 const GRID_MM=25;
 const gridSnap=v=>Math.round(v/GRID_MM)*GRID_MM;
@@ -2030,7 +2047,9 @@ function switchLane(){
   (state.raceStarted?" · vuelta sin récord.":"."));
  return true;
 }
-function completeLap(){
+function completeLap(crossingElapsedMs=raceClock.elapsedMs){
+ if(raceClock.active&&Number.isFinite(crossingElapsedMs))
+  state.seconds=Math.max(0,(crossingElapsedMs-raceClock.lapStartMs)/1000);
  if(state.seconds<.05)return;
  const finishTarget=()=>{if(state.sessionMode==="lap_race"&&
   state.sessionLaps.length>=state.targetLaps)endSession();};
@@ -2039,7 +2058,7 @@ function completeLap(){
   const valid=state.x350Crossings===1&&!state.laneTransition?.duration;
   if(state.x350FirstLap===null){
    state.x350FirstLap=valid?seconds:null;
-   state.seconds=0;raceClock.nextLap();state.lap++;state.x350Crossings=0;
+   state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;state.x350Crossings=0;
    toast(valid?"Primera vuelta PT/82 registrada · queda otra.":"Primera vuelta sin cambio válido.");
    return;
   }
@@ -2054,14 +2073,14 @@ function completeLap(){
    if(best){state.records[key]=total;save();}
    toast((best?"¡Récord PT/82! ":"Dos vueltas PT/82 · ")+format(total)+" s");
   }else toast("Dos vueltas no homologadas: revisa el cruce.");
-  state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;raceClock.nextLap();state.lap++;
+  state.x350FirstLap=null;state.x350Crossings=0;state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;
   finishTarget();return;
  }
 
  // La vuelta que ha combinado dos carriles no genera un récord oficial.
  // La carrera no se reinicia: al cruzar meta comienza otro parcial válido.
  if(!state.lapEligible||state.laneTransition){
-  state.seconds=0;raceClock.nextLap();state.lap++;
+  state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;
   state.lapEligible=!state.laneTransition;
   toast("Vuelta mixta sin récord · siguiente vuelta válida.");
   return;
@@ -2075,7 +2094,7 @@ function completeLap(){
   v[state.lane]=sec;state.records[recKey()]=v;save();
   toast("¡Récord personal "+laneLabel(state.lane)+"! "+format(sec)+" s");
  }else toast("Vuelta "+state.lap+" · "+format(sec)+" s");
- state.seconds=0;raceClock.nextLap();state.lap++;
+ state.seconds=0;raceClock.nextLap(crossingElapsedMs);state.lap++;
  finishTarget();
 }
 // Modelo de slot simplificado: masa trasera que desliza lateralmente,
@@ -2273,18 +2292,23 @@ function simulation(dt,frameNow=null){
    state.lane=target;state.x350Armed=false;state.x350Crossings++;
    const beyond=Math.max(0,travel-remaining);
    state.distance=(driveEntry+beyond)%nextLane.total;
-   if(driveEntry+beyond>=nextLane.total)completeLap();
+   if(driveEntry+beyond>=nextLane.total)
+    completeLap(raceClock.crossingElapsedMs(remaining+nextLane.total-driveEntry,travel));
    // La PT/82 conmuta físicamente de ranura en este mismo paso de
    // simulación: el HUD debe anunciar el carril destino sin retraso.
    updateHud();
   }else{
+   const distanceToFinish=lane.total-state.distance;
    state.distance+=travel;
-   if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
+   if(state.distance>=lane.total){state.distance%=lane.total;
+    completeLap(raceClock.crossingElapsedMs(distanceToFinish,travel));}
   }
   if(drivingPose()?.pieceIndex!==idx)state.x350Armed=true;
  }else{
-  state.distance+=travel;
-  if(state.distance>=lane.total){state.distance%=lane.total;completeLap();}
+  const distanceToFinish=lane.total-state.distance;
+   state.distance+=travel;
+   if(state.distance>=lane.total){state.distance%=lane.total;
+    completeLap(raceClock.crossingElapsedMs(distanceToFinish,travel));}
  }
 }
 
@@ -5722,7 +5746,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.9",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.10",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
