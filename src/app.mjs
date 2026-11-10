@@ -6,7 +6,7 @@ import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
-let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletLoading=false;
+let playerEconomy=null,playerEconomyKey=null,playerMode=false;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
 function savePlayerEconomy(){
  if(!playerEconomyKey||!playerEconomy)return;
@@ -20,8 +20,7 @@ function availablePlayerPiece(id){
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
  el.hidden=!playerMode;
- if(!playerMode)return;
- if(!playerEconomy){$("playerEconomyBalance").textContent="Conexión pendiente";$("playerEconomyBuy").disabled=true;return;}
+ if(!playerMode||!playerEconomy)return;
  $("playerEconomyBalance").textContent=playerEconomy.credits+" CR";
  const select=$("playerEconomyPiece");
  if(!select.options.length){
@@ -35,11 +34,10 @@ function economyPanel(){
  const id=select.value,total=playerEconomy.pieces[id]||0;
  const placed=usedPieces().filter(x=>x===id).length;
  $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed);
- $("playerEconomyBuy").disabled=playerWalletLoading||!playerEconomy.serverBacked||playerEconomy.credits<(PRICE_BY_PIECE[select.value]||Infinity);
+ $("playerEconomyBuy").disabled=playerEconomy.credits<(PRICE_BY_PIECE[select.value]||Infinity);
 }
 window.addEventListener("slotrace:mode",event=>{
- const {userId,mode,client}=event.detail||{};
- playerEconomyClient=client||null;
+ const {userId,mode}=event.detail||{};
  playerMode=mode==="player"&&Boolean(userId);
  playerEconomyKey=playerMode?"slotrace-economy-preview-v1:"+userId:null;
  if(playerMode){
@@ -47,21 +45,8 @@ window.addEventListener("slotrace:mode",event=>{
   catch(_){playerEconomy=initialPlayerEconomy();}
  }else playerEconomy=null;
  economyPanel();
- if(playerMode&&playerEconomyClient){playerEconomy=null;economyPanel();void loadServerWallet(userId);}
  if(typeof updateUI==="function")updateUI();
 });
-async function loadServerWallet(userId){
- playerWalletLoading=true;
- try{
-  const {data,error}=await playerEconomyClient.rpc("slotrace_get_wallet");
-  if(error)throw error;
-  if(!playerMode||playerEconomyKey!=="slotrace-economy-preview-v1:"+userId)return;
-  playerEconomy={...(playerEconomy||{}),credits:data.credits,pieces:data.pieces,serverBacked:true};
-  economyPanel();updateUI();
- }catch(e){toast("No se pudo conectar la economía segura: "+e.message);playerEconomy=null;economyPanel();}
- finally{playerWalletLoading=false;}
-}
-
 
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
@@ -2019,7 +2004,7 @@ function archiveTestRace(){
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
 function awardLocalRaceCredits(){
- if(!playerMode||!playerEconomy||playerEconomy.serverBacked||!state.lastSessionReport)return;
+ if(!playerMode||!playerEconomy||!state.lastSessionReport)return;
  const report=state.lastSessionReport;
  // Only a completed, two-leg, fixed-lane lap race counts in this DEV preview.
  if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
@@ -5770,15 +5755,8 @@ function initEvents(){
  $("playerEconomyPiece").addEventListener("change",economyPanel);
  $("playerEconomyBuy").addEventListener("click",()=>{
   if(!playerMode||!playerEconomy)return;
-  if(!playerEconomyClient||!playerEconomy.serverBacked||playerWalletLoading)return;
-  playerWalletLoading=true;economyPanel();
-  try{
-   const {data,error}=await playerEconomyClient.rpc("slotrace_buy_piece",{p_piece:$("playerEconomyPiece").value,p_request:crypto.randomUUID()});
-   if(error)throw error;
-   playerEconomy={...playerEconomy,credits:data.credits,pieces:data.pieces,serverBacked:true};
-   economyPanel();updateUI();toast("Compra guardada en Supabase.");
-  }catch(e){toast(e.message||"Compra rechazada.");}
-  finally{playerWalletLoading=false;economyPanel();}
+  try{playerEconomy=buyPiece(playerEconomy,$("playerEconomyPiece").value);savePlayerEconomy();economyPanel();updateUI();toast("Pieza comprada con créditos de prueba.");}
+  catch(e){toast(e.message||"Compra rechazada.");}
  });
  $("resultsAgain").addEventListener("click",()=>{
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
