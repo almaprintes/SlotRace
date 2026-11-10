@@ -3,7 +3,49 @@ import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.13";
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.13";
+import {initialPlayerEconomy,buyPiece} from "./player-economy.mjs";
+import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
+let playerEconomy=null,playerEconomyKey=null,playerMode=false;
+const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
+function savePlayerEconomy(){
+ if(!playerEconomyKey||!playerEconomy)return;
+ try{localStorage.setItem(playerEconomyKey,JSON.stringify(playerEconomy));}catch(_){toast("No se pudo guardar el inventario.");}
+}
+function availablePlayerPiece(id){
+ if(!playerMode)return Infinity;
+ if(!playerEconomy)return 0;
+ return Math.max(0,(playerEconomy.pieces[id]||0)-usedPieces().filter(x=>x===id).length);
+}
+function economyPanel(){
+ const el=$("playerEconomyPanel");if(!el)return;
+ el.hidden=!playerMode;
+ if(!playerMode||!playerEconomy)return;
+ $("playerEconomyBalance").textContent=playerEconomy.credits+" CR";
+ const select=$("playerEconomyPiece");
+ if(!select.options.length){
+  for(const [id,price] of Object.entries(PRICE_BY_PIECE)){
+   if(!CATALOG[id]||CATALOG[id].legacy)continue;
+   const option=document.createElement("option");option.value=id;
+   option.textContent=CATALOG[id].name+" · "+price+" CR";
+   select.append(option);
+  }
+ }
+ $("playerEconomyStock").textContent="Disponibles: "+availablePlayerPiece(select.value)+" · Total: "+(playerEconomy.pieces[select.value]||0);
+ $("playerEconomyBuy").disabled=playerEconomy.credits<(PRICE_BY_PIECE[select.value]||Infinity);
+}
+window.addEventListener("slotrace:mode",event=>{
+ const {userId,mode}=event.detail||{};
+ playerMode=mode==="player"&&Boolean(userId);
+ playerEconomyKey=playerMode?"slotrace-economy-preview-v1:"+userId:null;
+ if(playerMode){
+  try{playerEconomy=JSON.parse(localStorage.getItem(playerEconomyKey))||initialPlayerEconomy();}
+  catch(_){playerEconomy=initialPlayerEconomy();}
+ }else playerEconomy=null;
+ economyPanel();
+ if(typeof updateUI==="function")updateUI();
+});
+
 const storage=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
 const KEY="slotrace-lab-10";
 const LIBRARY_KEY="slotrace-circuit-library-v1";
@@ -1105,6 +1147,7 @@ function undo(){if(!state.history.length){toast("No hay movimientos que deshacer
 function redo(){if(!state.redo.length){toast("No hay movimientos que rehacer.");return;}
  state.history.push(snapshot());restoreSnapshot(state.redo.pop());}
 function addLoose(id,x,y,h=0){
+ if(availablePlayerPiece(id)<1){toast("Inventario agotado. Compra más piezas en Tienda.");return false;}
  if(!allowed([...state.types,...state.loose.map(p=>p.id),id])){toast("Solo puedes utilizar una PT/82 por circuito.");return false;}
  if(!Number.isFinite(x)||!Number.isFinite(y))return false;
  const point=gridXY(x,y);
@@ -1484,6 +1527,7 @@ const presetLabel=id=>id.slice(0,2)+" · 90°";
 let lastCaseAppend=null;
 function inventoryAction(id){
  const chosen=pocketPartId(id);
+ if(availablePlayerPiece(chosen)<1){toast("No tienes esta pieza. Consíguela en Tienda → Economía.");return false;}
  if(!CATALOG[chosen])return false;
  if(freeStock([...state.types,...state.loose.map(p=>p.id)],chosen)<=0){
   toast("No quedan piezas de este tipo (PT/82: máximo una).");return false;
@@ -2821,6 +2865,7 @@ function shopSelectCategory(kind){
 }
 function renderShop(){
  if(state.mode!=="store")return;
+ economyPanel();
  const category=state.shopCategory;
  for(const [key,meta] of Object.entries(SHOP_CATEGORIES)){
   const tab=$(meta.button),active=key===category;
@@ -3122,14 +3167,14 @@ function updateUI(){
    "ELEVACIÓN MARCADA · TRAMO MAGNÉTICO DE "+members.length+" PIEZAS":
    "ELEVACIÓN MARCADA · PIEZA AÚN SUELTA";
  }
- $("caseCount").textContent=UNLIMITED_DEVELOPMENT_STOCK?
+ $("caseCount").textContent=playerMode?"INVENTARIO JUGADOR · "+used+" piezas colocadas":UNLIMITED_DEVELOPMENT_STOCK?
   "∞ piezas disponibles · "+used+" en la mesa":
   (total-used)+" de "+total+" piezas en sus huecos";
  const cards=$("pieces").querySelectorAll("[data-piece]");
  for(const el of cards){
   const id=el.dataset.piece,parts=shelfParts(id),chosen=pocketPartId(id);
   const inventory=[...state.types,...state.loose.map(p=>p.id)];
-  const free=Math.min(...parts.map(part=>freeStock(inventory,part)));
+  const free=Math.min(...parts.map(part=>Math.min(freeStock(inventory,part),availablePlayerPiece(part))));
   const unlimited=free===Infinity;
   el.querySelector(".qty").textContent=unlimited?"∞":"×"+free;
   const badge=el.querySelector(".pocket-stock");
@@ -3341,7 +3386,7 @@ function palette(){
   grip.addEventListener("pointerdown",e=>{
    e.preventDefault?.();e.stopPropagation?.();
    if(state.dragging||shelfParts(id).some(part=>
-      freeStock([...state.types,...state.loose.map(p=>p.id)],part)<1))return;
+      freeStock([...state.types,...state.loose.map(p=>p.id)],part)<1||availablePlayerPiece(part)<1))return;
    tapPointer=null;suppressNextClick=true;
    state.dragging={id,pointerId:e.pointerId,x:e.clientX,y:e.clientY,
     originX:e.clientX,originY:e.clientY,active:false};
@@ -5687,6 +5732,12 @@ function initEvents(){
  });
  $("resultsBack").addEventListener("click",openWorkshop);
  $("resultsHome").addEventListener("click",showMenu);
+ $("playerEconomyPiece").addEventListener("change",economyPanel);
+ $("playerEconomyBuy").addEventListener("click",()=>{
+  if(!playerMode||!playerEconomy)return;
+  try{playerEconomy=buyPiece(playerEconomy,$("playerEconomyPiece").value);savePlayerEconomy();economyPanel();updateUI();toast("Pieza comprada con créditos de prueba.");}
+  catch(e){toast(e.message||"Compra rechazada.");}
+ });
  $("resultsAgain").addEventListener("click",()=>{
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
    const nextLane=1-state.lane;
