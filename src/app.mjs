@@ -3,7 +3,7 @@ import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.13";
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.13";
-import {initialPlayerEconomy,buyPiece} from "./player-economy.mjs";
+import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false;
@@ -31,7 +31,9 @@ function economyPanel(){
    select.append(option);
   }
  }
- $("playerEconomyStock").textContent="Disponibles: "+availablePlayerPiece(select.value)+" · Total: "+(playerEconomy.pieces[select.value]||0);
+ const id=select.value,total=playerEconomy.pieces[id]||0;
+ const placed=usedPieces().filter(x=>x===id).length;
+ $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed);
  $("playerEconomyBuy").disabled=playerEconomy.credits<(PRICE_BY_PIECE[select.value]||Infinity);
 }
 window.addEventListener("slotrace:mode",event=>{
@@ -2001,6 +2003,23 @@ function archiveTestRace(){
  const didSave=storage(RACE_REPORTS_KEY,JSON.stringify(next));
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
+function awardLocalRaceCredits(){
+ if(!playerMode||!playerEconomy||!state.lastSessionReport)return;
+ const report=state.lastSessionReport;
+ // Only a completed, two-leg, fixed-lane lap race counts in this DEV preview.
+ if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
+    state.twoLegPhase!==2||report.laps.length!==state.targetLaps*2)return;
+ const a=report.laps.filter(l=>l.lane===laneAIndex()).length;
+ const b=report.laps.length-a;
+ if(a!==state.targetLaps||b!==state.targetLaps)return;
+ const id="race:"+report.id;
+ if((playerEconomy.transactions||[]).includes(id))return;
+ const earned=raceReward({valid:true});
+ playerEconomy={...playerEconomy,credits:playerEconomy.credits+earned,
+  transactions:[...(playerEconomy.transactions||[]),id].slice(-250)};
+ savePlayerEconomy();economyPanel();
+ toast("¡Carrera completa! +"+earned+" CR de prueba.");
+}
 function endSession(target="menu"){
  cancelResumeCountdown();
  raceClock.pause(performance.now(),{record:false});state.sessionClockSummary=raceClock.summary();
@@ -2009,7 +2028,7 @@ function endSession(target="menu"){
   if(target==="build")openWorkshop();else showMenu();
   return false;
  }
- if(state.sessionMode!=="lap_race"||state.twoLegPhase===2||state.track.laneChangerIndex>=0)archiveTestRace();
+ if(state.sessionMode!=="lap_race"||state.twoLegPhase===2||state.track.laneChangerIndex>=0){archiveTestRace();awardLocalRaceCredits();}
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
 function renderSessionSummary(){
