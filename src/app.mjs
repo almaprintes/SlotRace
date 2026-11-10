@@ -1912,6 +1912,7 @@ function renderRaceLobby(){
  }
 }
 function play(){
+ state.twoLegPhase=1;
  cancelResumeCountdown();
  state.triggerGesture=null;
  if(!state.track.valid){
@@ -1964,10 +1965,12 @@ function endSession(target="menu"){
   if(target==="build")openWorkshop();else showMenu();
   return false;
  }
- archiveTestRace();
+ if(state.sessionMode!=="lap_race"||state.twoLegPhase===2||state.track.laneChangerIndex>=0)archiveTestRace();
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
 function renderSessionSummary(){
+ const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
+ $("resultsAgain").textContent=pendingSecond?"🏁 Segunda manga · "+laneLabel(1-state.lane):"🏁 Otra sesión";
  const report=state.lastSessionReport;
  $("resultsTimingAudit").textContent=report?
   "Cronometría "+report.timingVersion+" · "+report.laps.length+
@@ -2109,6 +2112,7 @@ function updateResumeCountdown(now){
  return false;
 }
 function switchLane(){
+ if(state.sessionMode==="lap_race"&&state.twoLegPhase===1)return false;
  if(state.track.laneChangerIndex>=0)return false;
  if(state.mode!=="race"||!state.track.valid)return false;
  if(state.laneTransition)return false;
@@ -2133,7 +2137,7 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
   state.seconds=Math.max(0,(crossingElapsedMs-raceClock.lapStartMs)/1000);
  if(state.seconds<.05)return;
  const finishTarget=()=>{if(state.sessionMode==="lap_race"&&
-  state.sessionLaps.length>=state.targetLaps)endSession();};
+  state.sessionLaps.length>=(state.twoLegPhase===2?state.targetLaps*2:state.targetLaps))endSession();};
  if(state.track.laneChangerIndex>=0){
   const seconds=state.seconds;
   const valid=state.x350Crossings===1&&!state.laneTransition?.duration&&state.lapEligible;
@@ -5679,7 +5683,16 @@ function initEvents(){
  });
  $("resultsBack").addEventListener("click",openWorkshop);
  $("resultsHome").addEventListener("click",showMenu);
- $("resultsAgain").addEventListener("click",play);
+ $("resultsAgain").addEventListener("click",()=>{
+  if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
+   const nextLane=1-state.lane;
+   resetLap();state.lane=nextLane;state.twoLegPhase=2;state.sessionReportSaved=false;
+   state.run=true;state.mode="race";state.flow="race";state.latest=performance.now();
+   state.gas=0;state.buttonGas=false;state.keyboardGas=false;
+   resetFollowCamera();updateUI();resize();
+   toast("Segunda manga · "+laneLabel(nextLane)+" · mismo coche y "+state.targetLaps+" vueltas.");
+  }else play();
+ });
  $("menuExport").addEventListener("click",exportBlueprint);
  $("exportBlueprint").addEventListener("click",exportBlueprint);
  $("templateToggle").addEventListener("click",()=>openTemplatePanel());
