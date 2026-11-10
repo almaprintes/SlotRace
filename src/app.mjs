@@ -1970,7 +1970,9 @@ function endSession(target="menu"){
 }
 function renderSessionSummary(){
  const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
+ $("resultsTimingAudit").dataset.phase=pendingSecond?"intermediate":"final";
  $("resultsAgain").textContent=pendingSecond?"🏁 Segunda manga · "+laneLabel(1-state.lane):"🏁 Otra sesión";
+ $("resultsAgain").setAttribute("aria-label",pendingSecond?"Continuar competición en el carril contrario":"Comenzar otra sesión");
  const report=state.lastSessionReport;
  $("resultsTimingAudit").textContent=report?
   "Cronometría "+report.timingVersion+" · "+report.laps.length+
@@ -2101,7 +2103,8 @@ function updateResumeCountdown(now){
   $("raceResumeCount").textContent="¡YA!";
   overlay.hidden=false;
   state.run=true;
-  raceClock.resume(now);
+  // A fresh second leg has no active clock until the first throttle input.
+  if(state.raceStarted)raceClock.resume(now);
   state.latest=now;
   primeMotorAudio();updateHud();
   return true; // no simular el frame que descongela el reloj
@@ -2583,6 +2586,7 @@ function updateHud(){
      pose.y-positionOnPiece(state.track.parts[0].start,state.track.parts[0].id,.5).y)<165;
  $("raceClockStatus").textContent=(state.sessionMode==="practice"?"ENTRENAMIENTO":
   state.sessionMode==="qualifying"?"CLASIFICACIÓN":"CARRERA · "+state.targetLaps+" VUELTAS")+
+  (state.sessionMode==="lap_race"&&state.track.laneChangerIndex<0?" · MANGA "+(state.twoLegPhase||1)+"/2":"")+
   (state.raceClockWarnings.length?" · ⚠ REVISAR FPS":" · RELOJ REAL");
  $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
@@ -2597,7 +2601,7 @@ function updateHud(){
    laneLabel(state.lane)+" · Busca el límite sin pasarte en las curvas";
  $("pause").textContent=isPreparingResume()?"✕ Cancelar":state.run?"⏸ Pausar":"▶ Seguir";
  $("lane").hidden=state.track.laneChangerIndex>=0;
- $("lane").disabled=state.track.laneChangerIndex>=0||
+ $("lane").disabled=state.track.laneChangerIndex>=0||state.sessionMode==="lap_race"||
   Boolean(state.laneTransition)||state.penalty>0;
  $("lane").textContent=state.laneTransition?"⇄ Cambiando…":"⇄ "+laneLabel(1-state.lane);
  $("lane").setAttribute("aria-label","Cambiar de "+laneLabel(state.lane)+
@@ -5687,10 +5691,14 @@ function initEvents(){
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
    const nextLane=1-state.lane;
    resetLap();state.lane=nextLane;state.twoLegPhase=2;state.sessionReportSaved=false;
-   state.run=true;state.mode="race";state.flow="race";state.latest=performance.now();
+   state.run=false;state.mode="race";state.flow="race";state.latest=performance.now();
    state.gas=0;state.buttonGas=false;state.keyboardGas=false;
    resetFollowCamera();updateUI();resize();
-   toast("Segunda manga · "+laneLabel(nextLane)+" · mismo coche y "+state.targetLaps+" vueltas.");
+   // Keep car still and clock stopped until the countdown and first acceleration.
+   state.resumeCountdownEnd=performance.now()+RESUME_COUNTDOWN_MS;
+   state.resumeCountdownDigit=null;state.resumeGoUntil=0;
+   updateResumeCountdown(performance.now());
+   toast("Segunda manga · "+laneLabel(nextLane)+" · 3, 2, 1… ¡YA!");
   }else play();
  });
  $("menuExport").addEventListener("click",exportBlueprint);
