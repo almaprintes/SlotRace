@@ -2845,7 +2845,7 @@ function shopArtwork(product){
 function shopCardMarkup(product,compact=false){
  const owned=shopOwned(product.id),soon=Boolean(product.soon);
  const badge=soon?"PRÓXIMAMENTE":owned?"EN TU COLECCIÓN":product.tag;
- const button=soon?"Ver avance":owned?"Ver contenido":compact?"Ver ficha":"Añadir gratis";
+ const button=soon?"Ver avance":owned?"Ver contenido":compact?"Ver ficha":playerMode?"Ver ficha":"Añadir gratis";
  return '<article class="shop-card '+(product.kind==="boxes"?"shop-card-box ":"shop-card-small ")+
   (compact?"is-compact ":"")+'" data-kind="'+product.kind+'">'+
   '<div class="shop-card-art">'+shopArtwork(product)+'</div>'+
@@ -2853,7 +2853,7 @@ function shopCardMarkup(product,compact=false){
   '<h3>'+product.name+'</h3><p>'+product.subtitle+'</p>'+
   '<div class="shop-highlights">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
   '</div><div class="shop-card-action"><span class="shop-card-price">'+
-  (owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":"GRATIS · DEV")+'</span>'+
+  (owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":playerMode?"SOLO DEV":"GRATIS · DEV")+'</span>'+
   '<button type="button" data-shop-product="'+product.id+'" aria-label="Ver '+product.name+'">'+
   button+' <span aria-hidden="true">›</span></button></div></article>';
 }
@@ -2915,7 +2915,7 @@ function shopOpenProduct(id){
   '<p class="shop-modal-honesty">Modo pruebas: sin cargos ni compras reales. Las piezas físicas continúan en modo ilimitado.</p>';
  $("shopModalPrimary").disabled=soon;
  $("shopModalPrimary").textContent=soon?"Próximamente":!owned?
-  "Añadir gratis a mi colección":product.kind==="circuits"?
+  (playerMode?"No disponible en modo jugador":"Añadir gratis a mi colección"):product.kind==="circuits"?
   "Guardar plano y montar":product.kind==="boxes"?
   "Ver planos de la caja":product.kind==="cars"&&product.id==="car-gripline"?
   "Elegir y jugar":"Ver mi colección";
@@ -2929,6 +2929,7 @@ function shopCloseProduct(){
  return true;
 }
 function shopAcquire(id){
+ if(playerMode){toast("La colección gratuita DEV no está disponible en modo jugador. Usa la compra de piezas con créditos.");return false;}
  const product=shopProduct(id);
  if(!product||product.soon)return false;
  if(shopOwned(id)){renderShop();return true;}
