@@ -3011,3 +3011,26 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .studio-avatar-options button.studio-avatar-option[aria-pressed="true"]{border-color:#67edcc;box-shadow:0 0 0 2px #67edcc55}
 .studio-avatar-option img{display:block;width:min(100%,78px);aspect-ratio:1/1;object-fit:cover;border-radius:9px}
 .studio-avatar-options>button span{max-width:100%;overflow-wrap:anywhere}
+
+/* DEV 0.15.22 — visible stock badge in compact builder shelf.
+   Earlier compact layout deliberately hid .qty; restore it above the preview. */
+.builder-workbench #pieceCase .foam-pocket .qty{
+ display:block!important;
+ position:absolute!important;
+ top:3px!important;left:4px!important;right:auto!important;
+ z-index:6!important;
+ min-width:26px;
+ padding:3px 6px!important;
+ border-radius:7px!important;
+ background:#d6fff0!important;
+ color:#064e3b!important;
+ border:1px solid #65cba7!important;
+ font-size:12px!important;
+ line-height:1.2!important;
+ font-weight:950!important;
+ text-align:center!important;
+ pointer-events:none;
+}
+.builder-workbench #pieceCase .foam-pocket.empty .qty{
+ background:#ffe1e1!important;color:#9b1c1c!important;border-color:#e7a1a1!important;
+}
