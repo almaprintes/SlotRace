@@ -2112,7 +2112,7 @@ function updateResumeCountdown(now){
  return false;
 }
 function switchLane(){
- if(state.sessionMode==="lap_race"&&state.twoLegPhase===1)return false;
+ if(state.sessionMode==="lap_race")return false;
  if(state.track.laneChangerIndex>=0)return false;
  if(state.mode!=="race"||!state.track.valid)return false;
  if(state.laneTransition)return false;
