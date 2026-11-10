@@ -24,7 +24,7 @@ async function refresh(){
   host.hidden=false;
   window.dispatchEvent(new CustomEvent("slotrace:mode",{detail:{userId:user.id,mode,developer}}));
   for(const b of buttons){b.hidden=!modes.includes(b.dataset.gameMode);b.setAttribute("aria-pressed",String(mode===b.dataset.gameMode));}
-  status.textContent=developer?"Cuenta de desarrollador verificada. Selector de vista previo; el inventario limitado aún no está conectado.":"Cuenta de jugador verificada. La economía limitada aún está en desarrollo.";
+  status.textContent=developer?"Cuenta de desarrollador verificada. Elige piezas ilimitadas o inventario limitado de prueba.":"Cuenta de jugador verificada. Inventario limitado de prueba activo.";
   for(const b of buttons)b.onclick=()=>{if(!modes.includes(b.dataset.gameMode))return;localStorage.setItem(key,b.dataset.gameMode);void refresh();};
  }catch(e){host.hidden=true;status.textContent="Inicia sesión para consultar los modos disponibles.";}
 }
