@@ -47,7 +47,7 @@ window.addEventListener("slotrace:mode",event=>{
   catch(_){playerEconomy=initialPlayerEconomy();}
  }else playerEconomy=null;
  economyPanel();
- if(playerMode&&playerEconomyClient)void loadServerWallet(userId);
+ if(playerMode&&playerEconomyClient){playerEconomy=null;economyPanel();void loadServerWallet(userId);}
  if(typeof updateUI==="function")updateUI();
 });
 async function loadServerWallet(userId){
@@ -56,7 +56,7 @@ async function loadServerWallet(userId){
   const {data,error}=await playerEconomyClient.rpc("slotrace_get_wallet");
   if(error)throw error;
   if(!playerMode||playerEconomyKey!=="slotrace-economy-preview-v1:"+userId)return;
-  playerEconomy={...playerEconomy,credits:data.credits,pieces:data.pieces,serverBacked:true};
+  playerEconomy={...(playerEconomy||{}),credits:data.credits,pieces:data.pieces,serverBacked:true};
   economyPanel();updateUI();
  }catch(e){toast("No se pudo conectar la economía segura: "+e.message);playerEconomy=null;economyPanel();}
  finally{playerWalletLoading=false;}
