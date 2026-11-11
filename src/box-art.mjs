@@ -10,7 +10,7 @@ export function renderSlotRaceBoxArt(box,{carImage="",blueprint=""}={}){
   ', '+pieces+' piezas, coche y plano">'+
   '<div class="sr-package__lid"></div><div class="sr-package__spine"></div>'+
   '<div class="sr-package__front">'+
-  '<div class="sr-package__header"><span class="sr-package__emblem">S</span>'+
+  '<div class="sr-package__header"><span class="sr-package__emblem"><img src="./assets/ui/slotrace-icon-192.png" alt="" loading="eager"></span>'+
   '<span class="sr-package__brand"><strong class="sr-package__wordmark">SlotRace</strong><small>TOP DOWN RACE · CRAFTRACE STUDIO</small></span>'+
   '<span class="sr-package__series">SR / '+esc(box.contentsVersion||1)+'</span></div>'+
   '<div class="sr-package__edition">'+esc(box.kicker||"COLECCIÓN")+'</div>'+
