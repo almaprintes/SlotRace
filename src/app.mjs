@@ -2046,7 +2046,7 @@ function awardLocalRaceCredits(){
 function endSession(target="menu"){
  cancelResumeCountdown();
  raceClock.pause(performance.now(),{record:false});state.sessionClockSummary=raceClock.summary();
- state.run=false;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+ state.run=false;state.gas=0;state.gamepadGas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
  if(!state.sessionLaps.length){
   if(target==="build")openWorkshop();else showMenu();
   return false;
@@ -2153,7 +2153,7 @@ function pause(){
  const now=performance.now();
  if(isPreparingResume()){
   cancelResumeCountdown();
-  state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
+  state.gas=0;state.gamepadGas=0;state.buttonGas=false;state.keyboardGas=false;state.triggerGesture=null;
   $("trigger").classList.remove("pressed");
   updateUI();toast("Cuenta atrás cancelada · seguimos en pausa.");return;
  }
@@ -2410,7 +2410,7 @@ function advanceRearDynamics(p,lane,dt){
 }
 function simulation(dt,frameNow=null){
  if(!state.run||!state.track.valid)return;
- const g=state.keyboardGas?1:state.gas;
+ const g=state.keyboardGas?1:Math.max(state.gas,state.gamepadGas||0);
  // Salida sin semáforo: no cronometrar espera, ni pulsar el gatillo al 0%.
  // El primer gas real abre la salida una sola vez por tanda/carril.
  if(!state.raceStarted){
@@ -2579,8 +2579,33 @@ function dialSound(direction,count){
   }catch(err){break;}
  }
 }
+// DualShock 4 / DualSense: progressive R2 throttle via Gamepad API.
+const gamepadInput={index:null,gas:0,optionsDown:false,connected:false};
+function clearGamepadInput(){
+ gamepadInput.index=null;gamepadInput.gas=0;gamepadInput.optionsDown=false;gamepadInput.connected=false;
+ state.gamepadGas=0;
+}
+function pollGamepad(){
+ const pads=typeof navigator.getGamepads==="function"?navigator.getGamepads():[];
+ const pad=Array.from(pads||[]).find(p=>p&&p.connected&&p.mapping==="standard")||
+  Array.from(pads||[]).find(p=>p&&p.connected&&/wireless controller|dualsense|dualshock|playstation/i.test(p.id));
+ if(!pad){if(gamepadInput.connected)clearGamepadInput();return;}
+ gamepadInput.connected=true;gamepadInput.index=pad.index;
+ // Standard mapping: R2 is button 7, Options is button 9.
+ const trigger=pad.buttons?.[7];
+ let gas=trigger?Number(trigger.value??(trigger.pressed?1:0)):0;
+ if(!Number.isFinite(gas))gas=0;
+ gas=gas<0.04?0:Math.max(0,Math.min(1,(gas-0.04)/0.96));
+ const options=Boolean(pad.buttons?.[9]?.pressed);
+ if(state.mode==="race"){
+  state.gamepadGas=(state.run||isPreparingResume())?gas:0;
+  if(options&&!gamepadInput.optionsDown)pause();
+ }else state.gamepadGas=0;
+ gamepadInput.optionsDown=options;
+ gamepadInput.gas=gas;
+}
 function updateTriggerDisplay(){
- const percent=Math.round((state.keyboardGas?1:state.gas)*100);
+ const percent=Math.round((state.keyboardGas?1:Math.max(state.gas,state.gamepadGas||0))*100);
  $("triggerFill").style.height=percent+"%";
  $("triggerValue").textContent=percent+"%";
  $("trigger").setAttribute("data-power",String(percent));
@@ -2645,7 +2670,7 @@ function triggerPointerEnd(e){
 function updateHud(){
  $("lap").textContent=state.lap;
  $("lapTime").textContent=format(state.seconds);
- $("power").textContent=Math.round(state.keyboardGas?100:state.gas*100)+"%";
+ $("power").textContent=Math.round(state.keyboardGas?100:Math.max(state.gas,state.gamepadGas||0)*100)+"%";
  $("speed").textContent=Math.round(state.speed/10)+" cm/s";
  const v=record(),a=laneAIndex();
  const laneBadge=$("laneIndicator"),letter=laneLetter(state.lane);
@@ -5931,8 +5956,9 @@ function initEvents(){
  state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;
  if(state.mode==="race"){raceClock.pause(now);state.run=false;}
  state.latest=now;updateHud();syncMotorAudio(now,true);};
- window.addEventListener("blur",pauseBackground);
- document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseBackground();});
+ window.addEventListener("blur",()=>{clearGamepadInput();pauseBackground();});
+ window.addEventListener("gamepaddisconnected",e=>{if(e.gamepad?.index===gamepadInput.index){clearGamepadInput();pauseBackground();toast("Mando desconectado · carrera en pausa.");}});
+ document.addEventListener("visibilitychange",()=>{if(document.hidden){clearGamepadInput();pauseBackground();}});
  window.addEventListener("resize",scheduleResize);
  if(window.visualViewport)window.visualViewport.addEventListener("resize",scheduleResize);
  if(typeof ResizeObserver!=="undefined"){
@@ -5941,6 +5967,7 @@ function initEvents(){
  }
 }
 function loop(now){
+ pollGamepad();
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  const justResumed=updateResumeCountdown(now);
  if(!justResumed)simulation(dt,now);
