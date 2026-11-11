@@ -5,6 +5,7 @@ import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.13";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
+import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
@@ -2863,13 +2864,10 @@ function shopBlueprintSvg(types,name="circuito",origin=START){
 function shopArtwork(product){
  const car=product.car?'<img loading="lazy" src="'+shopCarImage(product.car)+
   '" alt="'+product.name+'" class="shop-car-image">':"";
- if(product.kind==="boxes")return '<div class="shop-box-visual shop-art-'+product.art+'">'+
-  '<div class="shop-box-spine"></div><div class="shop-box-top"></div>'+
-  '<div class="shop-box-face"><span class="shop-box-logo">Slot<span>Race</span> LAB ▨</span>'+
-  '<span class="shop-box-name">'+product.short+'</span>'+
-  '<span class="shop-box-sub">COLECCIÓN DE CIRCUITOS</span>'+car+
-  '<div class="shop-box-track">'+shopBlueprintSvg(shopProduct(product.plans?.[0])?.types,product.short)+'</div>'+
-  '<span class="shop-box-foot">PISTAS · COCHES · PLANOS</span></div></div>';
+ if(product.kind==="boxes")return renderSlotRaceBoxArt(product,{
+  carImage:product.car?shopCarImage(product.car):"",
+  blueprint:shopBlueprintSvg(shopProduct(product.plans?.[0])?.types,product.short)
+ });
  if(product.kind==="cars")return '<div class="shop-car-visual">'+car+'</div>';
  if(product.kind==="circuits"){
   if(product.types)return '<div class="shop-blueprint-art'+
