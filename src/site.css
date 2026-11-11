@@ -3070,3 +3070,6 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .shop-modal-art .sr-package{height:100%;width:min(100%,460px);max-width:460px;min-height:0}
 .shop-modal-art .sr-package__car{bottom:0}
 @media(max-width:480px){.shop-modal-art:has(.sr-package){height:245px}.sr-package__brand{font-size:7px}.sr-package__title{font-size:clamp(12px,3vw,18px)}}
+
+/* Box Studio CTA: never use globally hidden .hub-back class. */
+.hub-screen .box-studio-open{display:block!important;margin-top:16px;padding:14px 18px;background:#d50038;color:white!important;border-radius:12px;text-align:center;text-decoration:none;font-weight:850;box-shadow:0 4px 12px #b9003030}
