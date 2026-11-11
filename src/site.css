@@ -3056,3 +3056,17 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .sr-package__car{position:absolute;z-index:2;left:-7%;bottom:-12%;width:72%;height:125%;object-fit:contain;filter:drop-shadow(0 6px 5px #180a1999)}
 .sr-package__footer{position:absolute;z-index:4;bottom:3%;left:5%;right:5%;display:flex;justify-content:space-between;gap:4px;border-top:1px solid #ffffff91;padding-top:3%;font-size:clamp(5px,1vw,8px);font-weight:950;letter-spacing:.04em;color:#fff;white-space:nowrap}
 .shop-modal-art .sr-package{height:100%;min-height:220px;max-width:340px;margin:auto}
+
+
+/* Packaging art v2: printed racetrack graphic, not a white paper card. */
+.sr-package__front{background:radial-gradient(ellipse at 70% 80%,#d83c55 0%,var(--pkg-accent) 38%,var(--pkg-dark) 100%)}
+.sr-package--rally .sr-package__front{background:radial-gradient(ellipse at 70% 80%,#f9a043 0%,#da582a 42%,#53162c 100%)}
+.sr-package__scene{inset:48% 2% 12% 2%;overflow:visible}
+.sr-package__track{right:-2%;top:-40%;width:80%;height:145%;padding:0;background:transparent;border:0;border-radius:0;transform:rotate(-9deg);box-shadow:none;overflow:visible;opacity:.8;filter:drop-shadow(0 5px 2px #210a2050)}
+.sr-package__track svg{width:100%;height:100%;overflow:visible;filter:contrast(1.15) brightness(.94)}
+.sr-package__car{left:-3%;bottom:-4%;width:66%;height:108%;object-fit:contain;filter:drop-shadow(0 5px 6px #16091dbb)}
+.sr-package__front:after{content:"";position:absolute;inset:48% 0 12%;pointer-events:none;background:linear-gradient(0deg,#26051622,transparent 55%);z-index:2}
+.shop-modal-art:has(.sr-package){height:clamp(220px,57vw,330px);background:linear-gradient(135deg,#6b091d,#f52a52);padding:12px 6px;overflow:hidden}
+.shop-modal-art .sr-package{height:100%;width:min(100%,460px);max-width:460px;min-height:0}
+.shop-modal-art .sr-package__car{bottom:0}
+@media(max-width:480px){.shop-modal-art:has(.sr-package){height:245px}.sr-package__brand{font-size:7px}.sr-package__title{font-size:clamp(12px,3vw,18px)}}
