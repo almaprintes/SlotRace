@@ -72,7 +72,7 @@ async function purchaseStorePiece(id,quantity=1){
   }
   if(failed)toast("Se completaron "+completed+" de "+quantity+" compras. No se cobraron las restantes: "+failed.message);
  }catch(error){toast("Compra interrumpida: "+error.message);}
- finally{playerWalletBusy=false;economyPanel();}
+ finally{playerWalletBusy=false;economyPanel();if(completed){const card=document.querySelector('[data-piece-card="'+id+'"]');card?.classList.add("piece-acquired");}}
 }
 window.addEventListener("slotrace:mode",event=>{
  const {userId,mode,client}=event.detail||{};
