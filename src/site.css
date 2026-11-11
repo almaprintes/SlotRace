@@ -3097,3 +3097,8 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 /* Official SlotRace icon on collectible boxes. */
 .sr-package__emblem{display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent!important;color:transparent!important;padding:0!important}
 .sr-package__emblem img{display:block;width:100%;height:100%;object-fit:contain;border-radius:18%}
+
+/* Packaging masthead uses the same wordmark and LAB badge as the PWA. */
+.sr-package__wordmark{font-style:italic;font-weight:1000;letter-spacing:-.045em;display:flex;align-items:center;gap:clamp(3px,.6vw,7px);text-shadow:none}
+.sr-package__wordmark em{display:inline-block;font-style:italic;font-weight:950;font-size:.38em;letter-spacing:-.02em;line-height:1.2;background:#d00036;color:#fff;padding:.18em .32em;border-radius:.15em;vertical-align:middle;white-space:nowrap}
+.sr-package__brand small{letter-spacing:.07em}
