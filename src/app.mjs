@@ -2886,6 +2886,20 @@ function shopBlueprintSvg(types,name="circuito",origin=START){
  return svg;
 }
 
+function shopPackPrice(product){
+ if(product.kind!=="packs"||!Object.keys(product.pieces||{}).length)return null;
+ const entries=Object.entries(product.pieces);
+ if(entries.some(([id,qty])=>!Number.isFinite(PRICE_BY_PIECE[id])||!Number.isInteger(qty)||qty<=0))return null;
+ return entries.reduce((sum,[id,qty])=>sum+PRICE_BY_PIECE[id]*qty,0);
+}
+function shopPackPiecesArtwork(product){
+ const entries=Object.entries(product.pieces||{});
+ if(!entries.length)return '<div class="shop-blueprint-pending"><strong>Kit técnico</strong><small>Componentes y precio pendientes de catalogar</small></div>';
+ return '<div class="shop-pack-pieces" style="display:grid;grid-template-columns:repeat('+Math.min(entries.length,2)+',minmax(0,1fr));gap:8px;padding:12px;background:#e8eef3;height:100%;box-sizing:border-box">'+
+  entries.map(([id,qty])=>'<div style="min-width:0;background:#fff;border-radius:12px;padding:8px;text-align:center">'+
+   shopBlueprintSvg([id],CATALOG[id]?.name||id)+
+   '<strong style="display:block;color:#1c2b38;font-size:12px">'+qty+' × '+(CATALOG[id]?.name||id)+'</strong></div>').join("")+'</div>';
+}
 function shopArtwork(product){
  const car=product.car?'<img loading="lazy" src="'+shopCarImage(product.car)+
   '" alt="'+product.name+'" class="shop-car-image">':"";
@@ -2894,6 +2908,7 @@ function shopArtwork(product){
   blueprint:shopBlueprintSvg(shopProduct(product.plans?.[0])?.types,product.short)
  });
  if(product.kind==="cars")return '<div class="shop-car-visual">'+car+'</div>';
+ if(product.kind==="packs")return shopPackPiecesArtwork(product);
  if(product.kind==="circuits"){
   if(product.types)return '<div class="shop-blueprint-art'+
    (product.id==="plan-catalunya"?" is-catalunya":"")+'">'+
@@ -2917,7 +2932,7 @@ function shopCardMarkup(product,compact=false){
   '<h3>'+product.name+'</h3><p>'+product.subtitle+'</p>'+
   '<div class="shop-highlights">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
   '</div><div class="shop-card-action"><span class="shop-card-price">'+
-  (owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":playerMode?"SOLO DEV":"GRATIS · DEV")+'</span>'+
+  (product.kind==="packs"?(shopPackPrice(product)===null?"SIN PRECIO":shopPackPrice(product)+" CR · "+(playerMode?"PIEZAS INDIVIDUALES":"DEV")):owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":playerMode?"SOLO DEV":"GRATIS · DEV")+'</span>'+
   '<button type="button" data-shop-product="'+product.id+'" aria-label="Ver '+product.name+'">'+
   button+' <span aria-hidden="true">›</span></button></div></article>';
 }
@@ -2971,7 +2986,8 @@ function shopOpenProduct(id){
  $("shopModalContent").innerHTML=
   '<div class="shop-modal-art">'+shopArtwork(product)+'</div>'+
   '<span class="shop-eyebrow">'+product.kicker+'</span>'+
-  '<h2>'+product.name+'</h2><p>'+product.detail+'</p>'+
+  '<h2>'+product.name+'</h2><p>'+product.detail+'</p>'+ 
+  (product.kind==='packs'?'<p class="shop-bridge-note">'+(shopPackPrice(product)===null?'Precio pendiente de definir': 'Valor de sus piezas: '+shopPackPrice(product)+' CR. Compra cada pieza desde el selector de créditos; el pack completo todavía no tiene compra atómica.')+'</p>':'')+
   (product.creator?'<p class="shop-creator">CREADOR: '+product.creator+'</p>':"")+
   '<div class="shop-modal-tags">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
   groups+(boxCheck?'<p class="shop-bridge-note">'+(boxCheck.valid?
@@ -2984,7 +3000,7 @@ function shopOpenProduct(id){
   '<p class="shop-modal-honesty">Modo pruebas: sin cargos ni compras reales. Las piezas físicas continúan en modo ilimitado.</p>';
  $("shopModalPrimary").disabled=soon;
  $("shopModalPrimary").textContent=soon?"Próximamente":!owned?
-  (playerMode?"No disponible en modo jugador":"Añadir gratis a mi colección"):product.kind==="circuits"?
+  (playerMode?(product.kind==="packs"?"Comprar piezas por separado":"No disponible en modo jugador"):"Añadir gratis a mi colección"):product.kind==="circuits"?
   "Guardar plano y montar":product.kind==="boxes"?
   "Ver planos de la caja":product.kind==="cars"&&product.id==="car-gripline"?
   "Elegir y jugar":"Ver mi colección";
@@ -2998,7 +3014,7 @@ function shopCloseProduct(){
  return true;
 }
 function shopAcquire(id){
- if(playerMode){toast("La colección gratuita DEV no está disponible en modo jugador. Usa la compra de piezas con créditos.");return false;}
+ if(playerMode){if(shopProduct(id)?.kind==="packs"){shopCloseProduct();$("playerEconomyPanel")?.scrollIntoView?.({behavior:"smooth",block:"center"});toast("Selecciona las piezas del pack y cómpralas con créditos; el cobro del pack completo aún no está disponible.");return true;}toast("La colección gratuita DEV no está disponible en modo jugador. Usa la compra de piezas con créditos.");return false;}
  const product=shopProduct(id);
  if(!product||product.soon)return false;
  if(shopOwned(id)){renderShop();return true;}
