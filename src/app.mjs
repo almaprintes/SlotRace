@@ -8,6 +8,11 @@ import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
+// Existing DEV circuits are previews, not purchases. Their parts do not
+// consume the new server wallet until a player explicitly starts a new build.
+let playerBuildInventoryActive=false;
+const countedPlayerPieces=()=>playerBuildInventoryActive?usedPieces():[];
+
 function savePlayerEconomy(){
  if(!playerEconomyKey||!playerEconomy)return;
  try{localStorage.setItem(playerEconomyKey,JSON.stringify(playerEconomy));}catch(_){toast("No se pudo guardar el inventario.");}
@@ -15,7 +20,7 @@ function savePlayerEconomy(){
 function availablePlayerPiece(id){
  if(!playerMode)return Infinity;
  if(!playerEconomy)return 0;
- return Math.max(0,(playerEconomy.pieces[id]||0)-usedPieces().filter(x=>x===id).length);
+ return Math.max(0,(playerEconomy.pieces[id]||0)-countedPlayerPieces().filter(x=>x===id).length);
 }
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
@@ -33,20 +38,18 @@ function economyPanel(){
   }
  }
  const id=select.value,total=playerEconomy.pieces[id]||0;
- const placed=usedPieces().filter(x=>x===id).length;
- $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed);
- $("playerEconomyBuy").disabled=playerWalletBusy||!playerEconomy.serverBacked||playerEconomy.credits<(PRICE_BY_PIECE[select.value]||Infinity);
+ const placed=countedPlayerPieces().filter(x=>x===id).length;
+ $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed)+(playerBuildInventoryActive?"":" · Circuito DEV excluido");
+ $("playerEconomyBuy").disabled=playerWalletBusy||!playerEconomy.serverBacked||playerEconomy.credits<(PRICE_BY_PIECE[select.value]??Infinity);
 }
 window.addEventListener("slotrace:mode",event=>{
  const {userId,mode,client}=event.detail||{};
  const revision=++playerModeRevision;
  playerEconomyClient=client||null;
  playerMode=mode==="player"&&Boolean(userId);
+ playerBuildInventoryActive=false;
  playerEconomyKey=playerMode?"slotrace-economy-preview-v1:"+userId:null;
- if(playerMode){
-  try{playerEconomy=JSON.parse(localStorage.getItem(playerEconomyKey))||initialPlayerEconomy();}
-  catch(_){playerEconomy=initialPlayerEconomy();}
- }else playerEconomy=null;
+ if(!playerMode)playerEconomy=null;
  if(playerMode){playerEconomy=null;if(playerEconomyClient)void loadVerifiedWallet(userId,revision);}
  economyPanel();
  if(typeof updateUI==="function")updateUI();
