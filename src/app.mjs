@@ -5845,7 +5845,7 @@ function initEvents(){
  });
  $("resultsBack").addEventListener("click",openWorkshop);
  $("resultsHome").addEventListener("click",showMenu);
- $("playerEconomyPiece").addEventListener("change",economyPanel);
+ // El catálogo visual sustituye al antiguo selector de piezas.
  $("playerPieceCatalog").addEventListener("click",event=>{
   const step=event.target.closest("[data-piece-step]");
   if(step&&!step.disabled){
