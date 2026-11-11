@@ -3034,3 +3034,25 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .builder-workbench #pieceCase .foam-pocket.empty .qty{
  background:#ffe1e1!important;color:#9b1c1c!important;border-color:#e7a1a1!important;
 }
+
+
+/* SlotRace box art system v1: same dieline, hierarchy and composition for all editions. */
+.sr-package{--pkg-accent:#fa234d;--pkg-dark:#53091b;position:relative;width:100%;height:100%;min-height:165px;filter:drop-shadow(0 12px 10px #0b172e66);isolation:isolate;font-family:system-ui,-apple-system,sans-serif}
+.sr-package--rally{--pkg-accent:#f77b32;--pkg-dark:#521525}
+.sr-package__lid{position:absolute;z-index:0;left:4%;right:9%;top:0;height:18%;transform:skewX(-25deg);background:linear-gradient(145deg,#ffb6bd,var(--pkg-accent) 50%,var(--pkg-dark));border:1px solid #ffffffa6}
+.sr-package__spine{position:absolute;z-index:0;right:0;top:12%;bottom:3%;width:13%;transform:skewY(-9deg);background:linear-gradient(90deg,var(--pkg-dark),#210d1d);border:1px solid #ffffff55}
+.sr-package__front{position:absolute;z-index:1;left:0;right:9%;top:9%;bottom:3%;overflow:hidden;border:1px solid #ffdee4b3;border-radius:3px;background:radial-gradient(ellipse at 72% 63%,#fa3e66 0%,var(--pkg-accent) 31%,var(--pkg-dark) 100%);box-shadow:inset 0 0 0 3px #ffffff1c}
+.sr-package__front:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(125deg,transparent 0 25px,#ffffff09 26px 27px);pointer-events:none}
+.sr-package__header{position:absolute;z-index:4;left:5%;right:4%;top:5%;height:17%;display:flex;align-items:center;gap:4%;color:white}
+.sr-package__emblem{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:6px;background:white;color:#c30031;font-weight:1000;font-style:italic;font-size:20px}
+.sr-package__brand{font-size:clamp(6px,1.5vw,10px);font-weight:950;letter-spacing:.07em;line-height:1.05;white-space:nowrap}
+.sr-package__brand small{display:block;font-size:.7em;letter-spacing:.12em;opacity:.86;margin-top:3px}
+.sr-package__series{margin-left:auto;font-size:clamp(6px,1vw,9px);font-weight:850;white-space:nowrap}
+.sr-package__edition{position:absolute;z-index:4;top:25%;left:5%;font-size:clamp(6px,1.1vw,9px);font-weight:900;letter-spacing:.16em;color:#ffe1d6}
+.sr-package__title{position:absolute;z-index:4;top:33%;left:5%;right:4%;font-size:clamp(12px,2.7vw,23px);font-style:italic;font-weight:1000;color:white;line-height:1.1;text-shadow:0 2px 4px #200b2580;overflow-wrap:anywhere}
+.sr-package__scene{position:absolute;inset:50% 3% 12% 3%}
+.sr-package__track{position:absolute;z-index:1;right:0;top:-17%;width:66%;height:110%;padding:3%;background:linear-gradient(140deg,#f8f9fb,#c7d0d9);border:2px solid #ffffffd0;border-radius:5px;transform:rotate(-5deg);box-shadow:0 3px 10px #210d1b99;overflow:hidden}
+.sr-package__track svg{width:100%;height:100%;display:block}
+.sr-package__car{position:absolute;z-index:2;left:-7%;bottom:-12%;width:72%;height:125%;object-fit:contain;filter:drop-shadow(0 6px 5px #180a1999)}
+.sr-package__footer{position:absolute;z-index:4;bottom:3%;left:5%;right:5%;display:flex;justify-content:space-between;gap:4px;border-top:1px solid #ffffff91;padding-top:3%;font-size:clamp(5px,1vw,8px);font-weight:950;letter-spacing:.04em;color:#fff;white-space:nowrap}
+.shop-modal-art .sr-package{height:100%;min-height:220px;max-width:340px;margin:auto}
