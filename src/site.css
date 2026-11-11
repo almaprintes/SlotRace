@@ -3093,3 +3093,7 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .sr-package__brand small{margin:0;font-size:clamp(5px,.8vw,9px);letter-spacing:.09em;white-space:nowrap}
 .sr-package__series{align-self:flex-start;padding-top:3%;flex:none}
 @media(max-width:480px){.sr-package__header{gap:clamp(8px,2vw,12px)}.sr-package__emblem{width:clamp(25px,6vw,32px);height:clamp(25px,6vw,32px);font-size:clamp(21px,5vw,27px)}.sr-package__wordmark{font-size:clamp(18px,4.7vw,26px)}.sr-package__brand small{font-size:clamp(4px,1vw,6px)}}
+
+/* Official SlotRace icon on collectible boxes. */
+.sr-package__emblem{display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent!important;color:transparent!important;padding:0!important}
+.sr-package__emblem img{display:block;width:100%;height:100%;object-fit:contain;border-radius:18%}
