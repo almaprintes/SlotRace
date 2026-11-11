@@ -24,28 +24,39 @@ function availablePlayerPiece(id){
  if(!playerEconomy)return 0;
  return Math.max(0,(playerEconomy.pieces[id]||0)-countedPlayerPieces().filter(x=>x===id).length);
 }
+let playerPieceSelected=null;
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
- el.hidden=!playerMode;
- if(!playerMode)return;
- if(!playerEconomy){$("playerEconomyBalance").textContent="Conectando…";$("playerEconomyStock").textContent="Esperando inventario del servidor";$("playerEconomyBuy").disabled=true;return;}
- $("playerEconomyBalance").textContent=playerEconomy.credits+" CR";
- const select=$("playerEconomyPiece");
- if(!select.options.length){
-  for(const [id,price] of Object.entries(PRICE_BY_PIECE)){
-   if(!CATALOG[id]||CATALOG[id].legacy)continue;
-   const option=document.createElement("option");option.value=id;
-   option.textContent=CATALOG[id].name+" · "+price+" CR";
-   select.append(option);
-  }
- }
- const id=select.value,total=playerEconomy.pieces[id]||0;
- const placed=countedPlayerPieces().filter(x=>x===id).length;
- $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed)+(playerBuildInventoryActive?"":" · Circuito DEV excluido");
- const cost=PRICE_BY_PIECE[select.value];
- const canBuy=Boolean(playerEconomy.serverBacked)&&!playerWalletBusy&&Number.isFinite(cost)&&playerEconomy.credits>=cost;
- $("playerEconomyBuy").disabled=!canBuy;
- $("playerEconomyBuy").textContent=playerWalletBusy?"Procesando…":!playerEconomy.serverBacked?"Sin conexión con Supabase":!Number.isFinite(cost)?"Selecciona una pieza":playerEconomy.credits<cost?"Créditos insuficientes":"Comprar 1 pieza · "+cost+" CR";
+ el.hidden=!playerMode;if(!playerMode)return;
+ const wallet=playerEconomy?.serverBacked?playerEconomy:null;
+ $("playerEconomyBalance").textContent=wallet?wallet.credits+" CR":"Sin conexión";
+ const grid=$("playerPieceCatalog");
+ if(!grid)return;
+ grid.innerHTML=Object.entries(PRICE_BY_PIECE).filter(([id])=>CATALOG[id]&&!CATALOG[id].legacy).map(([id,price])=>{
+  const total=wallet?.pieces?.[id]||0,used=countedPlayerPieces().filter(x=>x===id).length;
+  const selected=playerPieceSelected===id;
+  return '<button type="button" class="shop-piece-product'+(selected?' is-selected':'')+'" data-buy-piece="'+id+'" aria-pressed="'+selected+'"'+(!wallet||playerWalletBusy||wallet.credits<price?' disabled':'')+'>'+
+   '<span class="shop-piece-visual">'+shopBlueprintSvg([id],CATALOG[id].name)+'</span>'+
+   '<strong>'+CATALOG[id].name+'</strong><span class="shop-piece-price">'+price+' CR</span>'+
+   '<small>En propiedad: '+total+' · Libres: '+Math.max(0,total-used)+'</small></button>';
+ }).join("");
+ $("playerEconomyStock").textContent=wallet?"Inventario confirmado por Supabase · "+Object.values(wallet.pieces).reduce((a,b)=>a+(Number(b)||0),0)+" piezas en propiedad":"Conecta la cuenta para consultar saldo e inventario.";
+}
+async function purchaseStorePiece(id){
+ if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||playerWalletBusy){toast("La cartera de Supabase no está disponible.");return;}
+ const price=PRICE_BY_PIECE[id];if(!Number.isFinite(price)||!CATALOG[id])return;
+ if(playerEconomy.credits<price){toast("Créditos insuficientes.");return;}
+ const before=playerEconomy.pieces[id]||0,creditsBefore=playerEconomy.credits,revision=playerModeRevision;
+ playerPieceSelected=id;playerWalletBusy=true;economyPanel();
+ try{
+  const {data,error}=await playerEconomyClient.rpc("slotrace_buy_piece",{p_piece:id,p_request:crypto.randomUUID()});
+  if(error)throw error;
+  if(revision!==playerModeRevision||!playerMode)return;
+  playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
+  const gained=(data.pieces[id]||0)-before,spent=creditsBefore-data.credits;
+  economyPanel();toast("Compra confirmada: +"+gained+" "+CATALOG[id].name+" · -"+spent+" CR · Ahora tienes "+(data.pieces[id]||0));
+ }catch(error){toast("Compra no realizada: "+error.message);}
+ finally{playerWalletBusy=false;economyPanel();}
 }
 window.addEventListener("slotrace:mode",event=>{
  const {userId,mode,client}=event.detail||{};
@@ -5819,18 +5830,13 @@ function initEvents(){
  $("resultsBack").addEventListener("click",openWorkshop);
  $("resultsHome").addEventListener("click",showMenu);
  $("playerEconomyPiece").addEventListener("change",economyPanel);
- $("playerEconomyBuy").addEventListener("click",async()=>{
-  if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||playerWalletBusy){toast("La cartera de Supabase no está lista.");return;}
-  const revision=playerModeRevision;
-  playerWalletBusy=true;economyPanel();
-  try{
-   const {data,error}=await playerEconomyClient.rpc("slotrace_buy_piece",{p_piece:$("playerEconomyPiece").value,p_request:crypto.randomUUID()});
-   if(error)throw error;
-   if(revision!==playerModeRevision||!playerMode)return;
-   playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
-   updateUI();toast("Compra guardada en Supabase.");
-  }catch(error){toast("Compra no realizada: "+error.message);}
-  finally{playerWalletBusy=false;economyPanel();}
+ $("playerPieceCatalog").addEventListener("click",event=>{
+  const button=event.target.closest("[data-buy-piece]");
+  if(!button||button.disabled)return;
+  const id=button.dataset.buyPiece;
+  const price=PRICE_BY_PIECE[id];
+  if(!confirm("Comprar 1 × "+CATALOG[id].name+" por "+price+" CR?"))return;
+  void purchaseStorePiece(id);
  });
  $("resultsAgain").addEventListener("click",()=>{
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
