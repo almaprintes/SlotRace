@@ -25,6 +25,7 @@ function availablePlayerPiece(id){
  return Math.max(0,(playerEconomy.pieces[id]||0)-countedPlayerPieces().filter(x=>x===id).length);
 }
 let playerPieceSelected=null;
+const playerPieceQuantities=new Map();
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
  el.hidden=!playerMode;if(!playerMode)return;
@@ -35,27 +36,42 @@ function economyPanel(){
  grid.innerHTML=Object.entries(PRICE_BY_PIECE).filter(([id])=>CATALOG[id]&&!CATALOG[id].legacy).map(([id,price])=>{
   const total=wallet?.pieces?.[id]||0,used=countedPlayerPieces().filter(x=>x===id).length;
   const selected=playerPieceSelected===id;
-  return '<button type="button" class="shop-piece-product'+(selected?' is-selected':'')+'" data-buy-piece="'+id+'" aria-pressed="'+selected+'"'+(!wallet||playerWalletBusy||wallet.credits<price?' disabled':'')+'>'+
+  const quantity=playerPieceQuantities.get(id)||1;
+  return '<div class="shop-piece-product'+(selected?' is-selected':'')+'" data-piece-card="'+id+'">'+
    '<span class="shop-piece-visual">'+shopBlueprintSvg([id],CATALOG[id].name)+'</span>'+
    '<strong>'+CATALOG[id].name+'</strong><span class="shop-piece-price">'+price+' CR</span>'+
-   '<small>En propiedad: '+total+' · Libres: '+Math.max(0,total-used)+'</small></button>';
+   '<small>En propiedad: <b>'+total+'</b> · Libres: '+Math.max(0,total-used)+'</small>'+ 
+   '<div class="shop-piece-controls"><button type="button" data-piece-step="-1" data-piece-id="'+id+'" aria-label="Reducir cantidad"'+(playerWalletBusy?' disabled':'')+'>−</button><output>'+quantity+'</output><button type="button" data-piece-step="1" data-piece-id="'+id+'" aria-label="Aumentar cantidad"'+(playerWalletBusy?' disabled':'')+'>+</button></div>'+ 
+   '<button type="button" class="shop-piece-purchase" data-buy-piece="'+id+'"'+(!wallet||playerWalletBusy||wallet.credits<price*quantity?' disabled':'')+'>Comprar '+quantity+' · '+(price*quantity)+' CR</button></div>';
  }).join("");
  $("playerEconomyStock").textContent=wallet?"Inventario confirmado por Supabase · "+Object.values(wallet.pieces).reduce((a,b)=>a+(Number(b)||0),0)+" piezas en propiedad":"Conecta la cuenta para consultar saldo e inventario.";
 }
-async function purchaseStorePiece(id){
+async function purchaseStorePiece(id,quantity=1){
  if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||playerWalletBusy){toast("La cartera de Supabase no está disponible.");return;}
- const price=PRICE_BY_PIECE[id];if(!Number.isFinite(price)||!CATALOG[id])return;
- if(playerEconomy.credits<price){toast("Créditos insuficientes.");return;}
+ const price=PRICE_BY_PIECE[id];if(!Number.isFinite(price)||!CATALOG[id]||!Number.isInteger(quantity)||quantity<1||quantity>20)return;
+ if(playerEconomy.credits<price*quantity){toast("Créditos insuficientes.");return;}
  const before=playerEconomy.pieces[id]||0,creditsBefore=playerEconomy.credits,revision=playerModeRevision;
+ let completed=0,failed=null;
  playerPieceSelected=id;playerWalletBusy=true;economyPanel();
  try{
-  const {data,error}=await playerEconomyClient.rpc("slotrace_buy_piece",{p_piece:id,p_request:crypto.randomUUID()});
-  if(error)throw error;
+  // La API actual solo compra una pieza por operación. Cada petición lleva ID
+  // único; ante un error se detiene, sin afirmar que el lote fue atómico.
+  for(let i=0;i<quantity;i++){
+   const {data,error}=await playerEconomyClient.rpc("slotrace_buy_piece",{p_piece:id,p_request:crypto.randomUUID()});
+   if(error){failed=error;break;}
+   if(revision!==playerModeRevision||!playerMode)return;
+   playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
+   completed++;economyPanel();
+  }
   if(revision!==playerModeRevision||!playerMode)return;
-  playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
-  const gained=(data.pieces[id]||0)-before,spent=creditsBefore-data.credits;
-  economyPanel();toast("Compra confirmada: +"+gained+" "+CATALOG[id].name+" · -"+spent+" CR · Ahora tienes "+(data.pieces[id]||0));
- }catch(error){toast("Compra no realizada: "+error.message);}
+  const gained=(playerEconomy.pieces[id]||0)-before,spent=creditsBefore-playerEconomy.credits;
+  if(completed){
+   const card=document.querySelector('[data-piece-card="'+id+'"]');
+   if(card){card.classList.remove("piece-acquired");void card.offsetWidth;card.classList.add("piece-acquired");}
+   toast((failed?"Compra parcial":"Compra confirmada")+": +"+gained+" "+CATALOG[id].name+" · -"+spent+" CR · En propiedad: "+(playerEconomy.pieces[id]||0));
+  }
+  if(failed)toast("Se completaron "+completed+" de "+quantity+" compras. No se cobraron las restantes: "+failed.message);
+ }catch(error){toast("Compra interrumpida: "+error.message);}
  finally{playerWalletBusy=false;economyPanel();}
 }
 window.addEventListener("slotrace:mode",event=>{
@@ -5831,12 +5847,18 @@ function initEvents(){
  $("resultsHome").addEventListener("click",showMenu);
  $("playerEconomyPiece").addEventListener("change",economyPanel);
  $("playerPieceCatalog").addEventListener("click",event=>{
+  const step=event.target.closest("[data-piece-step]");
+  if(step&&!step.disabled){
+   const id=step.dataset.pieceId;
+   const qty=Math.max(1,Math.min(20,(playerPieceQuantities.get(id)||1)+Number(step.dataset.pieceStep)));
+   playerPieceQuantities.set(id,qty);economyPanel();return;
+  }
   const button=event.target.closest("[data-buy-piece]");
   if(!button||button.disabled)return;
-  const id=button.dataset.buyPiece;
-  const price=PRICE_BY_PIECE[id];
-  if(!confirm("Comprar 1 × "+CATALOG[id].name+" por "+price+" CR?"))return;
-  void purchaseStorePiece(id);
+  const id=button.dataset.buyPiece,quantity=playerPieceQuantities.get(id)||1;
+  const price=PRICE_BY_PIECE[id]*quantity;
+  if(!confirm("Comprar "+quantity+" × "+CATALOG[id].name+" por "+price+" CR? Las compras se procesan una a una y podrían completarse parcialmente."))return;
+  void purchaseStorePiece(id,quantity);
  });
  $("resultsAgain").addEventListener("click",()=>{
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
