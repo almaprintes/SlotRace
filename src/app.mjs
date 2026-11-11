@@ -40,7 +40,10 @@ function economyPanel(){
  const id=select.value,total=playerEconomy.pieces[id]||0;
  const placed=countedPlayerPieces().filter(x=>x===id).length;
  $("playerEconomyStock").textContent="En propiedad: "+total+" · Colocadas: "+placed+" · Libres: "+Math.max(0,total-placed)+(playerBuildInventoryActive?"":" · Circuito DEV excluido");
- $("playerEconomyBuy").disabled=playerWalletBusy||!playerEconomy.serverBacked||playerEconomy.credits<(PRICE_BY_PIECE[select.value]??Infinity);
+ const cost=PRICE_BY_PIECE[select.value];
+ const canBuy=Boolean(playerEconomy.serverBacked)&&!playerWalletBusy&&Number.isFinite(cost)&&playerEconomy.credits>=cost;
+ $("playerEconomyBuy").disabled=!canBuy;
+ $("playerEconomyBuy").textContent=playerWalletBusy?"Procesando…":!playerEconomy.serverBacked?"Sin conexión con Supabase":!Number.isFinite(cost)?"Selecciona una pieza":playerEconomy.credits<cost?"Créditos insuficientes":"Comprar 1 pieza · "+cost+" CR";
 }
 window.addEventListener("slotrace:mode",event=>{
  const {userId,mode,client}=event.detail||{};
@@ -5770,7 +5773,7 @@ function initEvents(){
  $("resultsHome").addEventListener("click",showMenu);
  $("playerEconomyPiece").addEventListener("change",economyPanel);
  $("playerEconomyBuy").addEventListener("click",async()=>{
-  if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||playerWalletBusy)return;
+  if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||playerWalletBusy){toast("La cartera de Supabase no está lista.");return;}
   const revision=playerModeRevision;
   playerWalletBusy=true;economyPanel();
   try{
