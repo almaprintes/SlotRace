@@ -4,6 +4,7 @@ import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.13
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.13";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
+import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
@@ -108,16 +109,18 @@ const currentTableTheme=()=>TABLE_THEMES[state.tableTheme]||TABLE_THEMES.wine;
 const CATALUNYA_SLOT_TYPES=Object.freeze(["R3_225L","R4_225L","S600","S075","S350","S350","START350","S350","S350","S350","S350","S350","R2_45L","R2_45L","S350","S350","R2_45L","S350","S350","R2_90L","R2_90L","S350","S350","R1_90R","R1_90R","S175","S350","S350","S350","R2_90L","S350","S350","S350","R1_45R","S175","S350","R2_45R","S350","S350","R1_45R","R1_90R","S350","S350","S350","R2_90L","R2_90L","S350","S350","S350","S350","R2_45L","S350","S350","R2_90L","S350","S350","S350","R2_225R","R1_225L","S075"]);
 const CATALUNYA_SLOT_ORIGIN=Object.freeze({x:-774.9121317783404,y:-621.1758796080073,h:Math.PI/2});
 const SHOP_PRODUCTS=Object.freeze([
- {id:"box-basic",kind:"boxes",name:"Caja básica SR-Precision",short:"SR-PRECISION",
+ createSlotRaceBox({id:"box-basic",name:"Caja básica SR-Precision",short:"SR-PRECISION",
   kicker:"SET DE INICIACIÓN",tag:"TU CAJA",car:"gripline",
-  subtitle:"La primera caja de tu colección",detail:"Un set inicial con el Avenir Gripline y el trazado ovalado SR-Precision.",
-  pieces:{S350:4,R2_45R:8},plans:["plan-oval"],cars:["car-gripline"],
-  highlights:["Avenir Gripline","12 piezas","Plano Óvalo SR"],art:"red"},
- {id:"box-rally",kind:"boxes",name:"Open Rally Box",short:"OPEN RALLY",
+  subtitle:"Tu primera caja para construir y competir",
+  detail:"Incluye Avenir Gripline, la pieza real de salida/meta, pistas y el plano del óvalo. Sin mandos.",
+  pieces:{S350:3,START350:1,R2_45R:8},plans:["plan-oval"],
+  highlights:["Avenir Gripline","12 piezas · salida/meta","Plano Óvalo SR"],art:"red"}),
+ createSlotRaceBox({id:"box-rally",name:"Open Rally Box",short:"OPEN RALLY",
   kicker:"EDICIÓN ESPECIAL",tag:"NOVEDAD",car:"spark",
-  subtitle:"Curvas, cruce y un nuevo coche",detail:"Caja temática con Helix Spark, un trazado en ocho y un kit de puente virtual.",
-  pieces:{S600:2,R2_45R:6,R2_45L:6},plans:["plan-eight"],cars:["car-spark"],
-  highlights:["Helix Spark","14 piezas","Ocho con puente"],art:"scarlet"},
+  subtitle:"Curvas, cruce y un nuevo coche",
+  detail:"Caja temática con Helix Spark, trazado en ocho y kit de puente virtual. Sin mandos.",
+  pieces:{S600:2,R2_45R:6,R2_45L:6},plans:["plan-eight"],
+  highlights:["Helix Spark","14 piezas","Ocho con puente"],art:"scarlet"}),
  {id:"pack-curves",kind:"packs",name:"Pack de curvas",short:"CURVAS R2",
   kicker:"AMPLIACIÓN DE PISTAS",tag:"PACK",car:null,
   subtitle:"Más posibilidades de trazado",detail:"Ocho curvas R2 de 45° para nuevas configuraciones.",
@@ -133,7 +136,7 @@ const SHOP_PRODUCTS=Object.freeze([
  {id:"plan-oval",kind:"circuits",name:"Óvalo SR-Precision",short:"ÓVALO SR",
   kicker:"PLANO OFICIAL",tag:"RECETA REAL",car:null,
   subtitle:"El circuito para empezar",detail:"Trazado ovalado de doce piezas, validado con el motor geométrico del juego.",
-  types:STARTER,highlights:["12 piezas","2 carriles","Cierre validado"],art:"oval"},
+  types:STARTER.map((id,i)=>i===0?"START350":id),highlights:["12 piezas","Salida/meta real","Cierre validado"],art:"oval"},
  {id:"plan-eight",kind:"circuits",name:"Ocho con puente",short:"OCHO SR",
   kicker:"PLANO OFICIAL",tag:"RECETA REAL",car:null,
   subtitle:"Un cruce elevado con dos lóbulos",detail:"Un ocho de catorce piezas con puente automático, validado por la geometría de SlotRace.",
@@ -2939,6 +2942,8 @@ function shopOpenProduct(id){
    '▤ '+plan.name+' <span>Ver plano ›</span></button>';
  }).join("");
  const pieces=shopPiecesText(product);
+ const boxPlan=product.kind==="boxes"?shopProduct(product.plans?.[0]):null;
+ const boxCheck=boxPlan?validateBoxRecipe(product,boxPlan):null;
  const groups=pieces.length?'<h3>Piezas incluidas</h3><ul>'+pieces.map(x=>'<li>'+x+'</li>').join("")+'</ul>':"";
  $("shopModalContent").innerHTML=
   '<div class="shop-modal-art">'+shopArtwork(product)+'</div>'+
@@ -2946,7 +2951,10 @@ function shopOpenProduct(id){
   '<h2>'+product.name+'</h2><p>'+product.detail+'</p>'+
   (product.creator?'<p class="shop-creator">CREADOR: '+product.creator+'</p>':"")+
   '<div class="shop-modal-tags">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
-  groups+(product.bridge?'<p class="shop-bridge-note">Incluye kit puente 65 mm.</p>':"")+
+  groups+(boxCheck?'<p class="shop-bridge-note">'+(boxCheck.valid?
+  "✓ El contenido permite montar el plano incluido. Sin mandos.":
+  "⚠ El plano necesita piezas adicionales: "+boxCheck.missing.join(", "))+'</p>':"")+
+  (product.bridge?'<p class="shop-bridge-note">Incluye kit puente 65 mm.</p>':"")+
   (includes?'<h3>Planos incluidos</h3><div class="shop-modal-plans">'+includes+'</div>':"")+
   (product.types?'<p class="shop-bridge-note">Receta comprobada: '+product.types.length+
    ' piezas. Puedes guardarla y montarla desde Mis circuitos.</p>':"")+
