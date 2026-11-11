@@ -3084,3 +3084,12 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .sr-package__title{top:38%;font-size:clamp(11px,2.25vw,21px)}
 .sr-package__scene{inset:53% 2% 12% 2%}
 @media(max-width:480px){.sr-package__wordmark{font-size:clamp(19px,5vw,28px)}.sr-package__brand small{font-size:5px}.sr-package__edition{top:31%}.sr-package__title{top:39%}.sr-package__scene{inset:53% 2% 12% 2%}}
+
+/* Packaging identity v3: cohesive logo lockup, aligned and spaced. */
+.sr-package__header{left:5%;right:5%;top:5%;height:21%;gap:clamp(9px,2.2vw,18px);align-items:center}
+.sr-package__emblem{width:clamp(27px,5.3vw,50px);height:clamp(27px,5.3vw,50px);font-size:clamp(22px,4vw,40px);border-radius:20%;box-shadow:0 2px 6px #400c2640}
+.sr-package__brand{display:flex;flex-direction:column;justify-content:center;gap:clamp(3px,.6vw,6px);min-width:0;flex:1}
+.sr-package__wordmark{font-size:clamp(18px,4vw,42px);line-height:1;letter-spacing:-.065em;white-space:nowrap}
+.sr-package__brand small{margin:0;font-size:clamp(5px,.8vw,9px);letter-spacing:.09em;white-space:nowrap}
+.sr-package__series{align-self:flex-start;padding-top:3%;flex:none}
+@media(max-width:480px){.sr-package__header{gap:clamp(8px,2vw,12px)}.sr-package__emblem{width:clamp(25px,6vw,32px);height:clamp(25px,6vw,32px);font-size:clamp(21px,5vw,27px)}.sr-package__wordmark{font-size:clamp(18px,4.7vw,26px)}.sr-package__brand small{font-size:clamp(4px,1vw,6px)}}
