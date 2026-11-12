@@ -72,8 +72,24 @@ const {chromium}=require("playwright-core");
   game.changeTypes([...game.STARTER],"Prueba de cierre sin meta",[],game.state.origin);
   if(!document.getElementById("closureGuideButton"))
    throw Error("El taller no muestra Ayúdame a cerrarlo");
-  document.getElementById("closureGuideButton").click();
  });
+ // Antes la llamada JS al botón funcionaba aunque estuviera TAPADO.
+ // Exigir que se pueda pulsar desde un dedo en la pantalla del iPhone.
+ const guideButton=page.locator("#closureGuideButton");
+ const guideBox=await guideButton.boundingBox();
+ const hit=await page.evaluate(()=>{
+  const b=document.getElementById("closureGuideButton");
+  const r=b.getBoundingClientRect();
+  const x=r.x+r.width/2,y=r.y+r.height/2;
+  const h=document.elementFromPoint(x,y);
+  return{rect:{x:r.x,y:r.y,w:r.width,h:r.height},top:h?.id||h?.tagName,
+   tappable:h===b||b.contains(h),visible:getComputedStyle(b).visibility!=="hidden"};
+ });
+ console.log("CLOSURE BUTTON VISIBILITY",JSON.stringify(hit));
+ assert.ok(guideBox&&guideBox.width>120&&guideBox.height>=35,"Asistente ocupa un botón grande");
+ assert.ok(hit.tappable,"El botón no puede quedar detrás de la pista o el estante");
+ assert.ok(hit.rect.y>=0&&hit.rect.y+hit.rect.h<=852,"El botón debe caber en pantalla de iPhone");
+ await guideButton.click({timeout:5000});
  await page.waitForFunction(()=>
   !document.getElementById("closureGuideApply").disabled,{timeout:15000});
  const beforeClosure=await page.evaluate(()=>{
