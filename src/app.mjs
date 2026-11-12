@@ -4702,6 +4702,21 @@ function paintLoose(ctx){
   }
   for(const edge of [-72,72])strokePath(ctx,translated(points,edge),PIECE_LOOK.edge,2.5);
   paintLooseKerbs(ctx,parts);
+  // El cruce PT/82 también debe verse en piezas sueltas y grupos magnéticos.
+  // Dibujar después de las ranuras ordinarias para que el intercambio
+  // de carriles sea visible incluso antes de iniciar el montaje.
+  for(const part of parts){
+   if(part.id!=="X350")continue;
+   ctx.save();
+   strokePath(ctx,part.points,PIECE_LOOK.inner,TRACK_WIDTH-31);
+   for(const off of [-LANE_OFFSET,LANE_OFFSET]){
+    strokePath(ctx,xSwitchPoints(part,off),PIECE_LOOK.groove,11);
+    strokePath(ctx,xSwitchPoints(part,off-7.6),PIECE_LOOK.metalA,2.2);
+    strokePath(ctx,xSwitchPoints(part,off+7.6),PIECE_LOOK.metalB,2.2);
+    strokePath(ctx,xSwitchPoints(part,off),PIECE_LOOK.guide,5);
+   }
+   ctx.restore();
+  }
   // Sólo los conectores exteriores: nunca dibujar una falsa separación
   // oscura entre dos módulos magnéticamente unidos.
   paintSeam(ctx,parts[0].start);
