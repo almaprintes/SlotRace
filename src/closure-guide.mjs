@@ -1,3 +1,4 @@
+import {findBidirectionalClosure} from "./closure-tail.mjs";
 // Propuestas de cierre: geometría validada y presupuesto antes de tocar la mesa.
 // El optimizador prioriza montar con piezas disponibles; el catálogo sólo
 // representa posibilidades, nunca compras automáticas.
@@ -52,17 +53,21 @@ export function proposeClosures({
  const candidates=[];
  const signatures=new Set();
  const trySolution=(accept,tag)=>{
-  const result=solve(seed,{origin,raisedParts,maxStates,maxReplace:3,maxAdd,accept});
+  const result=tag==="bidirectional"?
+   findBidirectionalClosure(seed,{origin,raisedParts,build,catalog,available,prices,maxAppend:6,maxTailReplace:3}):
+   solve(seed,{origin,raisedParts,maxStates,maxReplace:3,maxAdd,accept});
   if(!result?.ok)return result;
   const candidate=result.types;
-  const geometry=build(candidate,origin,raisedParts);
+  if(!accept(candidate))return{ok:false,reason:"La solución no cumple las piezas disponibles."};
+  const candidateRaised=result.raisedParts??raisedParts;
+  const geometry=build(candidate,origin,candidateRaised);
   if(!geometry.valid||!eligible(candidate))return{ok:false,reason:"La propuesta no supera la comprobación de conectores y alturas."};
   const budget=closureBudget(types,candidate,available,prices);
   const signature=candidate.join("|");
   if(!signatures.has(signature)){
    signatures.add(signature);
    candidates.push({
-    types:candidate,origin:{...origin},raisedParts:[...raisedParts],
+    types:candidate,origin:{...origin},raisedParts:[...candidateRaised],
     geometry,changes:diffCount(types,candidate),added:result.added||0,
     replaced:result.replaced||0,tag,...budget
    });
@@ -71,8 +76,13 @@ export function proposeClosures({
  };
  const enough=candidate=>eligible(candidate)&&closureBudget(types,candidate,available,prices).missingCount===0;
  let first=null;
- if(available!==null)first=trySolution(enough,"owned");
- const second=trySolution(eligible,"catalog");
+ if(available!==null)first=trySolution(enough,"bidirectional");
+ if(!candidates.length)first=trySolution(eligible,"bidirectional");
+ // Sólo si el cálculo por ambos extremos no dio resultado, ejecutar
+ // el motor antiguo de sustituciones y composición modular.
+ let second=null;
+ if(!candidates.length&&available!==null)second=trySolution(enough,"owned");
+ if(!candidates.length)second=trySolution(eligible,"catalog");
  if(!candidates.length){
   return{ok:false,reason:second?.reason||first?.reason||
    "No se encontró un cierre válido dentro del límite de búsqueda. El circuito no se modificó.",
