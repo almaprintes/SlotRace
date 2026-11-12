@@ -32,7 +32,7 @@ const diffCount=(a,b)=>{
  return changed+Math.abs(a.length-b.length);
 };
 export function proposeClosures({
- types,origin,raisedParts=[],available=null,prices,build,solve,
+ types,origin,raisedParts=[],available=null,prices,catalog=null,build,solve,
  maxStates=30000,maxAdd=5
 }){
  if(!Array.isArray(types)||types.length<3)
@@ -54,7 +54,7 @@ export function proposeClosures({
  const signatures=new Set();
  const trySolution=(accept,tag)=>{
   const result=tag==="bidirectional"?
-   findBidirectionalClosure(seed,{origin,raisedParts,build,catalog,available,prices,maxAppend:6,maxTailReplace:3}):
+   (catalog?findBidirectionalClosure(seed,{origin,raisedParts,build,catalog,available,prices,accept,maxAppend:6,maxTailReplace:3}):null):
    solve(seed,{origin,raisedParts,maxStates,maxReplace:3,maxAdd,accept});
   if(!result?.ok)return result;
   const candidate=result.types;
