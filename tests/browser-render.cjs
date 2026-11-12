@@ -23,7 +23,8 @@ const {chromium}=require("playwright-core");
    const index=types.indexOf("S350");
    if(index<0)throw Error("No existe recta para instalar meta");
    types[index]="START350";
-   game.changeTypes(types,"Prueba visual de circuito",[],game.state.origin);
+   game.state.types=types;
+   game.state.track=game.buildTrack(types,game.state.origin);
   }
   return game.openRace();
  });
