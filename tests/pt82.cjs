@@ -47,5 +47,41 @@ const assert=require("node:assert/strict");
   "En sentido contrario se respawnea después de la X en dirección de marcha");
  assert.equal(g.pt82Collision(g.buildTrack(original),a,b),false,
   "Los circuitos sin PT/82 conservan su física");
+ // La recuperación real de IA no debe dejar coches dentro de la X.
+ // Se comprueba la posición física (no sólo una distancia sumada a ciegas).
+ const recovery=g.carsBeyondCollision(t,1,
+  {lane:0,pose:{pieceIndex:pos,pieceT:.48}},
+  {lane:1,pose:{pieceIndex:pos,pieceT:.52}});
+ assert.ok(recovery,"La geometría calcula ambas recolocaciones");
+ assert.equal(recovery.obstaclePieceIndex,pos);
+ const physicalPose=(result,dir)=>{
+  const lane=t.lanes[dir===-1?1-result.lane:result.lane];
+  return g.positionAt(lane,dir===-1?-result.distance:result.distance);
+ };
+ const aAfter=physicalPose(recovery.player,1),bAfter=physicalPose(recovery.rival,1);
+ assert.notEqual(aAfter.pieceIndex,pos,"Jugador fuera de la pieza conflictiva");
+ assert.notEqual(bAfter.pieceIndex,pos,"IA fuera de la pieza conflictiva");
+ assert.ok(Math.hypot(aAfter.x-bAfter.x,aAfter.y-bAfter.y)>35,
+  "La IA no se superpone al jugador nada más recuperar");
+ const reverseRecovery=g.carsBeyondCollision(t,-1,
+  {lane:0,pose:{pieceIndex:pos,pieceT:.52}},
+  {lane:1,pose:{pieceIndex:pos,pieceT:.48}});
+ assert.notEqual(physicalPose(reverseRecovery.player,-1).pieceIndex,pos,
+  "En marcha inversa el jugador reaparece detrás del extremo correcto");
+ assert.notEqual(physicalPose(reverseRecovery.rival,-1).pieceIndex,pos,
+  "La IA respeta el otro sentido de marcha");
+ const sameLane=g.carsBeyondCollision(t,1,
+  {lane:0,pose:{pieceIndex:pos,pieceT:.5}},
+  {lane:0,pose:{pieceIndex:pos,pieceT:.5}});
+ assert.equal(sameLane.rival.lane,1,
+  "Al terminar el cambio, los coches recuperan carriles diferentes");
+ const plain=g.buildTrack(original);
+ const plainRecovery=g.carsBeyondCollision(plain,1,
+  {lane:0,pose:{pieceIndex:1,pieceT:.5}},
+  {lane:0,pose:{pieceIndex:1,pieceT:.5}});
+ assert.equal(plainRecovery.obstaclePieceIndex,null);
+ assert.ok((plainRecovery.rival.distance-plainRecovery.player.distance+plain.lanes[0].total)%plain.lanes[0].total>=320,
+  "Fuera de la X conservan vía y se escalonan tras el obstáculo");
+ assert.equal(plainRecovery.rival.lane,0);
  console.log("PT/82: construcción, límite de una unidad, cruce y colisión doble OK");
 })().catch(err=>{console.error(err);process.exitCode=1});
