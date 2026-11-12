@@ -24,14 +24,15 @@ const {chromium}=require("playwright-core");
  console.log("BEFORE OPEN RACE");
  const started=await page.evaluate(()=>{
   const game=window.slotraceLab;
-  const types=[...game.state.types];
-  if(!types.includes("START350")){
-   const index=types.indexOf("S350");
-   if(index<0)throw Error("No existe recta para instalar meta");
-   types[index]="START350";
-   game.state.types=types;
-   game.state.track=game.buildTrack(types,game.state.origin);
-  }
+  // La receta inicial del proyecto puede contener piezas legacy.
+  // Para esta prueba usamos el óvalo geométrico estable con salida/meta.
+  const types=[...game.STARTER];
+  const index=types.indexOf("S350");
+  if(index<0)throw Error("El óvalo de pruebas no tiene recta 350");
+  types[index]="START350";
+  game.state.types=types;
+  game.state.track=game.buildTrack(types,game.state.origin);
+  if(!game.state.track.valid)throw Error("La geometría de test no cierra");
   return game.openRace();
  });
  console.log("PLAY RESULT",started);
