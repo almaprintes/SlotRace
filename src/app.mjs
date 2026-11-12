@@ -1856,7 +1856,7 @@ function renderClosureGuide(){
  const cantApply=p.missingCount>0||(playerMode&&!playerEconomy?.serverBacked);
  summary.textContent=p.missingCount?
   "Cierre geométrico encontrado. Necesitas "+p.missingCount+" pieza(s) adicional(es).":
-  "Cierre geométrico válido · "+p.types.length+" piezas · "+(p.geometry.length/1000).toFixed(2)+" km de guía total.";
+  "Cierre geométrico válido · "+p.types.length+" piezas · "+(p.geometry.length/1000).toFixed(2)+" m de recorrido.";
  preview.innerHTML=shopBlueprintSvg(p.types,"Cierre calculado",p.origin);
  const changed=p.changes;
  details.innerHTML=
