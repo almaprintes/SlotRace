@@ -1083,6 +1083,44 @@ const path=require("node:path");
  const crossover=game.lanes.displayDrivingPose();
  assert.equal(crossover.pieceIndex,ptIndex);
  assert.ok(Number.isFinite(crossover.x)&&Number.isFinite(crossover.y));
+ // Integración IA: al cruzar PT/82, el sprite debe seguir la misma curva
+ // transversal que el coche humano, sin salto lateral instantáneo.
+ const ai=game.ai.state,oldDir=st.driveDirection,oldDistance=st.distance;
+ const ptTrack=st.track,ptPart=ptTrack.parts[ptIndex];
+ const partCentre=geo.positionOnPiece(ptPart.start,ptPart.id,.5);
+ for(const direction of [1,-1]){
+  st.driveDirection=direction;st.distance=ptTrack.lanes[0].total/2;
+  ai.active=true;ai.enabled=true;ai.lane=0;ai.laneTransition=null;
+  ai.penalty=0;ai.collisionCooldown=0;ai.awaitingSeparation=false;
+  ai.speed=600;ai.armed=true;
+  const physical=direction===-1?1:0;
+  const startLane=ptTrack.lanes[physical];
+  const entry=game.lanes.laneDistanceAtPiece(startLane,ptIndex,direction===1?0:1);
+  const forward=direction===1?entry:(startLane.total-entry)%startLane.total;
+  ai.distance=(forward-6+startLane.total)%startLane.total;
+  const before=game.ai.pose();
+  game.ai.advance(.03);
+  const after=game.ai.pose();
+  assert.equal(ai.lane,1,"La IA debe conmutar su guía al entrar desde "+direction);
+  assert.equal(ai.laneTransition?.physical,true,"La IA mantiene transición física en PT/82");
+  assert.ok(Math.hypot(after.x-before.x,after.y-before.y)<45,
+   "Nada de salto lateral instantáneo de la IA al entrar");
+  const newPhysical=direction===-1?0:1;
+  const nextLane=ptTrack.lanes[newPhysical];
+  const middle=game.lanes.laneDistanceAtPiece(nextLane,ptIndex,.5);
+  ai.distance=direction===1?middle:(nextLane.total-middle)%nextLane.total;
+  const crossing=game.ai.pose();
+  assert.ok(Math.hypot(crossing.x-partCentre.x,crossing.y-partCentre.y)<5,
+   "En mitad de la X el coche IA pisa el centro exacto del cruce");
+  const end=game.lanes.laneDistanceAtPiece(nextLane,ptIndex,direction===1?1:0);
+  ai.distance=direction===1?(end+30)%nextLane.total:
+   ((nextLane.total-end)%nextLane.total+30)%nextLane.total;
+  game.ai.advance(.01);
+  assert.equal(ai.laneTransition,null,"Tras salir, IA limpia su transición");
+  assert.equal(ai.armed,true,"La IA queda preparada para la siguiente vuelta");
+ }
+ ai.active=false;ai.enabled=false;ai.laneTransition=null;
+ st.driveDirection=oldDir;st.distance=oldDistance;
  st.seconds=10.125;st.laneTransition=null;st.x350Crossings=1;
  game.completeLap();
  assert.equal(st.x350FirstLap,10.125);
