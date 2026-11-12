@@ -2288,11 +2288,16 @@ function play(){
   toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
- resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;aiTest.laneTransition=null;aiTest.deslot=null;aiTest.bump=null;
+ resetLap();
+ // Tradicional: la primera manga comienza en A; la IA ocupa el otro
+ // carril físico incluso si la orientación del circuito es inversa.
+ if(state.sessionMode==="lap_race"||state.track.laneChangerIndex>=0)
+  state.lane=laneAIndex();
+ aiTest.active=aiTest.enabled;
+ resetAiForOpponentLane();
  state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
- if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
  state.run=true;state.penalty=0;state.deslot=null;state.bump=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.flow="race";state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
@@ -2719,6 +2724,17 @@ function advanceRearDynamics(p,lane,dt){
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
 const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null};
+// Arranque y cambio de manga comparten esta única regla.
+// El rival SIEMPRE ocupa el carril contrario al jugador; la guía física
+// se resuelve después con driveDirection, también en sentido inverso.
+function resetAiForOpponentLane(){
+ aiTest.lane=1-state.lane;
+ aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.lap=0;
+ aiTest.armed=true;aiTest.laneTransition=null;
+ aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;
+ aiTest.deslot=null;aiTest.bump=null;aiTest.collisions=0;
+ return aiTest.lane;
+}
 function aiTestPose(){
  if(!aiTest.active||!state.track.valid)return null;
  const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
@@ -6322,8 +6338,12 @@ function initEvents(){
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
    const nextLane=1-state.lane;
    resetLap();state.lane=nextLane;state.twoLegPhase=2;state.sessionReportSaved=false;
+   // La IA también cambia de manga. Sin este reinicio seguía en la
+   // guía anterior y acababa compartiendo carril con el jugador.
+   aiTest.active=aiTest.enabled;
+   resetAiForOpponentLane();
    state.run=false;state.mode="race";state.flow="race";state.latest=performance.now();
-   state.gas=0;state.buttonGas=false;state.keyboardGas=false;
+   state.gas=0;state.gamepadGas=0;state.buttonGas=false;state.keyboardGas=false;
    resetFollowCamera();updateUI();resize();
    // Keep car still and clock stopped until the countdown and first acceleration.
    state.resumeCountdownEnd=performance.now()+RESUME_COUNTDOWN_MS;
@@ -6510,7 +6530,7 @@ window.slotraceLab={version:"DEV 0.15.62",state,raceClock,raceReports:readTestRa
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,openClosureGuide,applyClosureGuide,closeClosureGuide,closureGuideSource,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
- ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
+ ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,resetForOpponentLane:resetAiForOpponentLane,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
