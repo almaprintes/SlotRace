@@ -2031,7 +2031,7 @@ function play(){
   toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
- resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;
+ resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;
  state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
@@ -2461,7 +2461,7 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,collisions:0};
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,collisions:0,collisionCooldown:0,awaitingSeparation:false};
 function aiTestPose(){
  if(!aiTest.active||!state.track.valid)return null;
  const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
@@ -2471,6 +2471,7 @@ function aiTestPose(){
 }
 function advanceAiTest(dt){
  if(!aiTest.active||!state.run||!state.raceStarted||state.mode!=="race")return;
+ if(aiTest.collisionCooldown>0)aiTest.collisionCooldown=Math.max(0,aiTest.collisionCooldown-dt);
  if(aiTest.penalty>0){aiTest.penalty=Math.max(0,aiTest.penalty-dt);return;}
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
  const pose=aiTestPose();
@@ -2495,19 +2496,37 @@ function advanceAiTest(dt){
  const rival=aiTestPose(),player=displayDrivingPose();
  if(!rival||!player)return;
  const separation=Math.hypot(rival.x-player.x,rival.y-player.y);
- if(separation<35&&state.penalty<=0){
+ // Re-armar sólo cuando los dos coches estén realmente separados.
+ if(aiTest.awaitingSeparation&&separation>CAR_LENGTH_MM*1.6)
+  aiTest.awaitingSeparation=false;
+ if(separation<35&&state.penalty<=0&&aiTest.collisionCooldown===0&&!aiTest.awaitingSeparation){
   aiTest.collisions++;aiTest.penalty=3;aiTest.speed=0;
   state.penalty=3;state.speed=0;
   state.deslot={pose:{...player},elapsed:0,turn:player.curve||1};
-  toast("💥 Colisión con IA · ambos coches penalizados 3 s.");
+  // Recuperación: recolocar AMBOS coches por delante del punto de impacto.
+  // No incrementar vueltas: este traslado es una penalización, no recorrido válido.
+  const playerLane=state.track.lanes[drivingLaneIndex()];
+  const rivalLane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
+  const clearance=Math.max(180,CAR_LENGTH_MM*2.5);
+  state.distance=(state.distance+clearance)%playerLane.total;
+  aiTest.distance=(aiTest.distance+clearance*1.8)%rivalLane.total;
+  aiTest.collisionCooldown=4;
+  aiTest.awaitingSeparation=true;
+  state.lapEligible=false;
+  toast("💥 Colisión con IA · ambos recolocados · +3 s.");
  }
 }
 function paintAiTest(ctx){
  const p=aiTestPose();if(!p)return;
  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h+Math.PI/2);
- ctx.shadowColor="#0009";ctx.shadowBlur=8;
- ctx.fillStyle="#f6c52d";roundRect(ctx,-CAR_WIDTH_MM/2,-CAR_LENGTH_MM/2,CAR_WIDTH_MM,CAR_LENGTH_MM,9);ctx.fill();
- ctx.shadowBlur=0;ctx.fillStyle="#142c40";ctx.fillRect(-CAR_WIDTH_MM*.3,-CAR_LENGTH_MM*.18,CAR_WIDTH_MM*.6,CAR_LENGTH_MM*.36);
+ const rivalModel=state.selectedCar==="spark"?"gripline":"spark";
+ const sprite=carImages[rivalModel];
+ if(sprite&&sprite.complete&&sprite.naturalWidth>0)
+  ctx.drawImage(sprite,-CAR_WIDTH_MM/2,-CAR_LENGTH_MM/2,CAR_WIDTH_MM,CAR_LENGTH_MM);
+ else{
+  ctx.fillStyle="#f6c52d";
+  roundRect(ctx,-CAR_WIDTH_MM/2,-CAR_LENGTH_MM/2,CAR_WIDTH_MM,CAR_LENGTH_MM,9);ctx.fill();
+ }
  ctx.restore();
 }
 function simulation(dt,frameNow=null){
