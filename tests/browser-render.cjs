@@ -62,6 +62,66 @@ const {chromium}=require("playwright-core");
  console.log("RENDER",JSON.stringify(result));
  stage="captura de pantalla";
  await page.screenshot({path:"/tmp/slotrace-render.png",fullPage:true});
+ // Regresión de mangas: al cambiar el jugador de A a B, la IA debe
+ // ocupar A. Comprobar los DOS sentidos de carrera en el navegador real.
+ stage="comprobando intercambio de mangas con IA";
+ const heatSwaps=await page.evaluate(()=>{
+  const game=window.slotraceLab,st=game.state,ai=game.ai.state;
+  const results=[];
+  for(const direction of [1,-1]){
+   game.showMenu();
+   st.driveDirection=direction;
+   st.sessionMode="lap_race";
+   st.targetLaps=2;
+   ai.enabled=true;
+   if(!game.openRace())throw Error("No se pudo iniciar manga 1");
+   const physical=logical=>direction===-1?1-logical:logical;
+   const first={player:st.lane,rival:ai.lane,
+    playerPhysical:physical(st.lane),rivalPhysical:physical(ai.lane)};
+   if(first.player===first.rival||first.playerPhysical===first.rivalPhysical)
+    throw Error("Manga 1 comienza con ambos coches en la misma guía");
+   // Simular dos vueltas completas sin tocar tiempos ni recompensas.
+   st.sessionLaps=[
+    {number:1,lane:st.lane,seconds:7.1,record:false},
+    {number:2,lane:st.lane,seconds:7.2,record:false}
+   ];
+   st.raceStarted=true;
+   st.distance=250;
+   ai.distance=340;ai.speed=600;ai.penalty=3;
+   ai.collisionCooldown=2;ai.awaitingSeparation=true;
+   ai.laneTransition={from:1-ai.lane,pieceIndex:0,physical:true};
+   ai.deslot={elapsed:.2,duration:3};
+   game.endSession();
+   if(st.mode!=="results")throw Error("La primera manga no llegó a resultados");
+   document.getElementById("resultsAgain").click();
+   const second={player:st.lane,rival:ai.lane,
+    playerPhysical:physical(st.lane),rivalPhysical:physical(ai.lane),
+    playerDistance:st.distance,rivalDistance:ai.distance,
+    rivalSpeed:ai.speed,rivalPenalty:ai.penalty,
+    collisionCooldown:ai.collisionCooldown,
+    awaitingSeparation:ai.awaitingSeparation,
+    rivalTransition:ai.laneTransition,
+    deslot:ai.deslot,phase:st.twoLegPhase,
+    laps:st.sessionLaps.length,mode:st.mode,
+    aiActive:ai.active,raceStarted:st.raceStarted,
+    resumeCountdown:st.resumeCountdownEnd!==null};
+   if(second.player!==first.rival||second.rival!==first.player)
+    throw Error("La segunda manga debe intercambiar las dos guías");
+   if(second.playerPhysical===second.rivalPhysical)
+    throw Error("Los coches siguen superpuestos tras el intercambio");
+   if(second.rivalDistance!==0||second.rivalSpeed!==0||second.rivalPenalty!==0||
+    second.collisionCooldown!==0||second.awaitingSeparation||
+    second.rivalTransition||second.deslot)
+    throw Error("La IA arrastra velocidad, posición o choque de la manga anterior");
+   if(second.phase!==2||second.laps!==2||second.mode!=="race"||
+    !second.aiActive||second.raceStarted||!second.resumeCountdown)
+    throw Error("Manga dos debe preservar resultados y esperar nueva salida");
+   results.push({direction,first,second});
+  }
+  return results;
+ });
+ console.log("AI HEAT SWAP",JSON.stringify(heatSwaps));
+ assert.equal(heatSwaps.length,2);
  // La herramienta debe funcionar en el taller real y aplicar sólo tras
  // confirmación: circuito cerrado de demostración pero sin pieza de meta.
  stage="probando asistente de cierre";
