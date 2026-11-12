@@ -2000,6 +2000,24 @@ function raceSelectCircuit(id){
  if(ok){state.flow="race";updateUI();}
  return ok;
 }
+// La vista integrada en otro navegador no comparte necesariamente el
+// almacenamiento de la PWA. No reemplazar construcciones personales.
+function canMountRaceDemo(){
+ return !oldValid&&!state.library.length&&!state.activeCircuitId&&
+  !state.loose.length&&state.types.length===FIGURE_EIGHT.length&&
+  state.types.every((id,i)=>id===FIGURE_EIGHT[i]);
+}
+function mountRaceDemo(){
+ if(!canMountRaceDemo())return false;
+ const types=STARTER.map((id,i)=>i===0?"START350":id);
+ state.circuitName="Óvalo de prueba";
+ state.circuitCreator="";state.activeCircuitId=null;
+ if(!changeTypes(types,"Óvalo listo para probar con salida/meta.",[],START))
+  return false;
+ state.flow="race";updateUI();
+ toast("Óvalo completo montado. Ya puedes empezar la sesión.");
+ return true;
+}
 function renderRaceLobby(){
  const select=$("raceCircuitSelect"),chosen=state.activeCircuitId;
  select.textContent="";
@@ -2022,10 +2040,15 @@ function renderRaceLobby(){
  $("raceTargetLaps").value=String(state.targetLaps);
  $("raceTargetLapsRow").hidden=state.sessionMode!=="lap_race";
  $("raceStart").disabled=!valid;
+ $("raceDemoOval").hidden=valid||!canMountRaceDemo();
  $("raceFinishTrack").hidden=valid;
  $("raceCircuitHelp").textContent=valid?
   "Reloj real independiente de FPS. Resultados de prueba sin homologación online.":
-  "Esta pista aún no es válida para competir. Termínala en el taller.";
+  canMountRaceDemo()?
+   "Este navegador no tiene un circuito listo. Puedes probar el óvalo; la PWA instalada puede guardar sus circuitos por separado.":
+   state.track.valid?
+    "Este circuito necesita una SALIDA / META. Añádela en el taller para competir.":
+    "Este circuito no está cerrado. Termínalo en el taller para competir.";
  for(const [id,car] of [["raceChooseGripline","gripline"],["raceChooseSpark","spark"]]){
   const el=$(id),selected=state.selectedCar===car;
   el.classList.toggle("is-selected",selected);
@@ -6114,6 +6137,7 @@ function initEvents(){
  $("raceChooseGripline").addEventListener("click",()=>selectCar("gripline"));
  $("raceChooseSpark").addEventListener("click",()=>selectCar("spark"));
  $("raceStart").addEventListener("click",play);
+ $("raceDemoOval").addEventListener("click",mountRaceDemo);
  $("raceMode").addEventListener("change",e=>{
   if(!["practice","qualifying","lap_race"].includes(e.target.value))return;
   state.sessionMode=e.target.value;save();renderRaceLobby();
@@ -6250,7 +6274,7 @@ window.slotraceLab={version:"DEV 0.15.56",state,raceClock,raceReports:readTestRa
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,menuRace,raceSelectCircuit,renderRaceLobby,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer,pauseRace:pause,advanceResumeCountdown:updateResumeCountdown},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
+ showHub,menuRace,raceSelectCircuit,renderRaceLobby,canMountRaceDemo,mountRaceDemo,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer,pauseRace:pause,advanceResumeCountdown:updateResumeCountdown},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
