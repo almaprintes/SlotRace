@@ -24,15 +24,17 @@ const {chromium}=require("playwright-core");
  console.log("BEFORE OPEN RACE");
  const started=await page.evaluate(()=>{
   const game=window.slotraceLab;
-  // La receta inicial del proyecto puede contener piezas legacy.
-  // Para esta prueba usamos el óvalo geométrico estable con salida/meta.
-  const types=[...game.STARTER];
-  const index=types.indexOf("S350");
-  if(index<0)throw Error("El óvalo de pruebas no tiene recta 350");
-  types[index]="START350";
-  game.state.types=types;
-  game.state.track=game.buildTrack(types,game.state.origin);
-  if(!game.state.track.valid)throw Error("La geometría de test no cierra");
+  game.menuRace();
+  if(!game.canMountRaceDemo())throw Error("El navegador limpio debe ofrecer un óvalo de demostración");
+  const demo=document.getElementById("raceDemoOval");
+  if(demo.hidden)throw Error("No aparece el botón para montar el óvalo");
+  if(!document.getElementById("raceStart").disabled)
+   throw Error("No debe habilitarse un circuito sin meta");
+  demo.click();
+  if(!game.state.track.valid||game.state.types.filter(t=>t==="START350").length!==1)
+   throw Error("El óvalo de prueba debe estar cerrado y tener meta");
+  if(document.getElementById("raceStart").disabled)
+   throw Error("El botón jugar debe activarse después de montar la pista válida");
   return game.openRace();
  });
  console.log("PLAY RESULT",started);
