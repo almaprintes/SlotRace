@@ -1,4 +1,4 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.13";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.13";
 import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.13";
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.13";
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
@@ -2499,21 +2499,33 @@ function advanceAiTest(dt){
  // Re-armar sólo cuando los dos coches estén realmente separados.
  if(aiTest.awaitingSeparation&&separation>CAR_LENGTH_MM*1.6)
   aiTest.awaitingSeparation=false;
- if(separation<35&&state.penalty<=0&&aiTest.collisionCooldown===0&&!aiTest.awaitingSeparation){
+ if(separation<35&&carTrackLevel(state.track,rival)===carTrackLevel(state.track,player)&&
+  state.penalty<=0&&aiTest.collisionCooldown===0&&!aiTest.awaitingSeparation){
   aiTest.collisions++;aiTest.penalty=3;aiTest.speed=0;
   state.penalty=3;state.speed=0;
   state.deslot={pose:{...player},elapsed:0,turn:player.curve||1};
-  // Recuperación: recolocar AMBOS coches por delante del punto de impacto.
-  // No incrementar vueltas: este traslado es una penalización, no recorrido válido.
-  const playerLane=state.track.lanes[drivingLaneIndex()];
-  const rivalLane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
-  const clearance=Math.max(180,CAR_LENGTH_MM*2.5);
-  state.distance=(state.distance+clearance)%playerLane.total;
-  aiTest.distance=(aiTest.distance+clearance*1.8)%rivalLane.total;
+  // Situar ambos vehículos DESPUÉS de toda la pieza conflictiva, con
+  // distancia longitudinal suficiente incluso si comparten la misma vía.
+  // El salto no suma vueltas, parciales ni distancia de carrera válida.
+  const recovery=carsBeyondCollision(state.track,state.driveDirection,
+   {lane:state.lane,pose:player},{lane:aiTest.lane,pose:rival},
+   {carLength:CAR_LENGTH_MM});
+  if(recovery){
+   state.lane=recovery.player.lane;
+   state.distance=recovery.player.distance;
+   aiTest.lane=recovery.rival.lane;
+   aiTest.distance=recovery.rival.distance;
+   state.laneTransition=null;
+   state.x350Armed=false;aiTest.armed=false;
+   state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
+   state.drift=0;state.driftDirection=0;state.gripDebt=0;
+   state.cornerDistance=0;state.cornerDirection=0;
+   state.followCamera.settle=.85;
+  }
   aiTest.collisionCooldown=4;
   aiTest.awaitingSeparation=true;
   state.lapEligible=false;
-  toast("💥 Colisión con IA · ambos recolocados · +3 s.");
+  toast("💥 Colisión con IA · regreso después del obstáculo · +3 s.");
  }
 }
 function paintAiTest(ctx){
