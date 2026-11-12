@@ -1,0 +1,26 @@
+name: SlotRace · pintura real en navegador
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: slotrace-browser-render
+  cancel-in-progress: true
+jobs:
+  browser-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar Chrome y Playwright
+        run: |
+          which google-chrome || which chromium || which chromium-browser
+          npm install --no-save --no-audit --no-fund playwright-core@1.56.1
+      - name: Iniciar servidor local
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/slotrace-server.log 2>&1 &
+          sleep 2
+      - name: Verificar pintura y recoger errores reales de JavaScript
+        run: node tests/browser-render.cjs
