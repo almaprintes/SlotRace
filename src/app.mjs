@@ -1872,9 +1872,12 @@ function renderClosureGuide(){
  }
  const fmt=list=>guidePiecesText(list);
  const cantApply=p.missingCount>0||(playerMode&&!playerEconomy?.serverBacked);
- summary.textContent=p.missingCount?
-  "Cierre geométrico encontrado. Necesitas "+p.missingCount+" pieza(s) adicional(es).":
-  "Cierre geométrico válido · "+p.types.length+" piezas · "+(p.geometry.length/1000).toFixed(2)+" m de recorrido.";
+ const targetName=context.source.kind==="loose"?
+  "Tramo magnético ("+context.source.types.length+" piezas)":
+  "Tramo principal ("+context.source.types.length+" piezas)";
+ summary.textContent=targetName+" · "+(p.missingCount?
+  "cierre calculado, faltan "+p.missingCount+" pieza(s).":
+  "cierre válido de "+p.types.length+" piezas y "+(p.geometry.length/1000).toFixed(2)+" m.");
  preview.innerHTML=shopBlueprintSvg(p.types,"Cierre calculado",p.origin);
  const changed=p.changes;
  const displaced=context.source.kind==="loose"?
@@ -1947,7 +1950,6 @@ function applyClosureGuide(){
  if(!buildTrack(p.types,p.origin,p.raisedParts).valid){
   toast("El circuito no supera la validación final. No se aplicó nada.");return false;
  }
- const allPieces=[...p.types,...state.loose.map(piece=>piece.id)];
  if(c.source.kind==="loose"){
   // Retirar ÚNICAMENTE las piezas del grupo resuelto, nunca borrar todos
   // los sueltos. Si había otro tramo principal, preservarlo como grupo
@@ -1957,7 +1959,8 @@ function applyClosureGuide(){
    group.indices.length!==c.source.indices.length){
    toast("El grupo ha cambiado. Vuelve a calcular el cierre.");return false;
   }
-  const keep=state.loose.filter((_,i)=>!new Set(c.source.indices).has(i))
+  const selectedIndices=new Set(c.source.indices);
+  const keep=state.loose.filter((_,i)=>!selectedIndices.has(i))
    .map(part=>({...part}));
   const formerMain=state.types.length?state.track.parts.map((part,i)=>({
    id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
