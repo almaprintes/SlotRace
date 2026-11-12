@@ -5,6 +5,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 (async()=>{
  const geo=await import("../src/track.mjs");
+ const contact=await import("../src/rear-contact.mjs");
  const src=fs.readFileSync("src/app.mjs","utf8");
  function section(from,to){
   const a=src.indexOf(from),b=src.indexOf(to,a+from.length);
@@ -18,6 +19,7 @@ const fs=require("node:fs");
   section("const aiTest={","function paintAiTest(")
  ].join("\n");
  const make=new Function("state","positionAt","CAR_LENGTH_MM","DRIVE","carTrackLevel","carsBeyondCollision","toast",
+  "forwardGap","rearContact","followTarget","reentrySafe","REAR_CONTACT",
   physics+"\nfunction displayDrivingPose(){return{x:-100000,y:-100000}}\n"+
   "return{ai:aiTest,pose:aiTestPose,advance:advanceAiTest,at:laneDistanceAtPiece};");
  const types=[...geo.STARTER],idx=types.indexOf("S350");
@@ -29,7 +31,8 @@ const fs=require("node:fs");
  const mm=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
  for(const direction of [1,-1]){
   const state={track,driveDirection:direction,run:true,raceStarted:true,mode:"race",penalty:0};
-  const engine=make(state,geo.positionAt,98,{topSpeed:1150},()=>0,()=>null,()=>{});
+  const engine=make(state,geo.positionAt,98,{topSpeed:1150},()=>0,()=>null,()=>{},
+   contact.forwardGap,contact.rearContact,contact.followTarget,contact.reentrySafe,contact.REAR_CONTACT);
   const ai=engine.ai;
   ai.active=true;ai.lane=0;ai.speed=580;ai.armed=true;
   const previousPhysical=direction===1?0:1;
