@@ -4,6 +4,7 @@ const assert=require("node:assert/strict");
  const geo=await import("../src/track.mjs");
  const {PRICE_BY_PIECE}=await import("../src/economy-catalog.mjs");
  const {proposeClosures,closureBudget}=await import("../src/closure-guide.mjs");
+ const {findBidirectionalClosure}=await import("../src/closure-tail.mjs");
  const options={origin:geo.START,raisedParts:[],prices:PRICE_BY_PIECE,
   build:geo.buildTrack,solve:geo.findLegalClosure,maxStates:10000,maxAdd:3};
  const original=geo.STARTER.slice();
@@ -40,6 +41,29 @@ const assert=require("node:assert/strict");
  assert.equal(unknown.ok,false);
  const duplicates=proposeClosures({...options,types:["START350","S350","START350","R2_45R"],available:null});
  assert.equal(duplicates.ok,false);
+ // Once piezas de un óvalo ampliado, con cinco piezas de cierre
+ // faltantes: el motor antiguo se agotaba antes de encontrar estos encajes.
+ const long=[];
+ for(const [i,id] of geo.STARTER.entries()){
+  if(i===0)long.push("START350");
+  else if((i===1||i===6||i===7)&&id==="S350")long.push("S175","S175");
+  else if(i===2&&id==="R2_45R")long.push("R2_225R","R2_225R");
+  else long.push(id);
+ }
+ assert.equal(long.length,16);
+ assert.ok(geo.buildTrack(long).valid,"Receta ampliada usada como referencia real");
+ const eleven=long.slice(0,11);
+ const pair=findBidirectionalClosure(eleven,{
+  origin:geo.START,raisedParts:[],build:geo.buildTrack,catalog:geo.CATALOG,
+  prices:PRICE_BY_PIECE,maxAppend:6,maxTailReplace:3
+ });
+ assert.ok(pair.ok,"El nuevo motor debe poder cerrar un trazado de 11 piezas");
+ assert.ok(geo.buildTrack(pair.types,geo.START,pair.raisedParts).valid);
+ assert.deepEqual(pair.types.slice(0,11),eleven,"No altera las once piezas montadas");
+ assert.equal(pair.types.filter(id=>id==="START350").length,1);
+ const guided=proposeClosures({...options,types:eleven,catalog:geo.CATALOG,available:null});
+ assert.ok(guided.ok,"El asistente debe activar Aplicar para un cierre complejo");
+ assert.ok(guided.selected.geometry.valid);
  const pt=closed.slice();pt[1]="X350";const ptOpen=pt.slice(0,-1);
  const crossing=proposeClosures({...options,types:ptOpen,available:null});
  if(crossing.ok)assert.equal(crossing.selected.types.filter(x=>x==="X350").length,1,
