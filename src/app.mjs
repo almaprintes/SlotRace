@@ -8,6 +8,7 @@ import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.57";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.57";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -1803,6 +1804,157 @@ function closeExactly(){
   finally{updateUI();}
  });
 }
+
+// Asistente de cierre: analiza, enseña un plano y pide confirmación.
+let closureGuideState=null,closureGuideBusy=false;
+function closureGuideSource(){
+ if(state.types.length>=3){
+  return{kind:"main",types:state.types.slice(),origin:{...state.origin},
+   raisedParts:[...state.bridgeParts]};
+ }
+ if(state.types.length)return{reason:"Conecta primero al menos tres piezas en el tramo principal."};
+ const groups=openGroups();
+ if(groups.length!==1||groups[0].index==null)
+  return{reason:"Une primero los tramos sueltos en un único recorrido."};
+ const group=looseGroup(groups[0].index);
+ if(!group||group.indices.length!==state.loose.length||group.parts.length<3)
+  return{reason:"Conecta al menos tres piezas de un mismo tramo antes de pedir un cierre."};
+ return{kind:"loose",types:group.parts.map(p=>p.id),origin:{...group.start},
+  raisedParts:group.parts.flatMap((p,i)=>p.raised?[i]:[])};
+}
+function closureGuideFingerprint(){
+ return JSON.stringify({types:state.types,loose:state.loose,origin:state.origin,
+  bridgeParts:state.bridgeParts,mode:playerMode,credits:playerEconomy?.credits??null});
+}
+function closeClosureGuide(){
+ $("closureGuideModal").hidden=true;closureGuideState=null;
+ return true;
+}
+function guidePiecesText(items){
+ return items.length?items.map(item=>item.qty+" × "+(CATALOG[item.id]?.name||item.id)).join(" · "):"Ninguna";
+}
+function renderClosureGuide(){
+ const context=closureGuideState;
+ const summary=$("closureGuideSummary"),details=$("closureGuideDetails");
+ const preview=$("closureGuidePreview"),notice=$("closureGuideNotice");
+ const apply=$("closureGuideApply"),shop=$("closureGuideShop");
+ preview.innerHTML="";details.innerHTML="";apply.disabled=true;shop.hidden=true;
+ if(!context)return;
+ if(context.reason){
+  summary.textContent=context.reason;notice.textContent="No se ha modificado el circuito.";
+  return;
+ }
+ const result=context.result,p=result?.selected;
+ if(!result?.ok||!p){
+  summary.textContent=result?.reason||"No se ha encontrado ningún cierre válido.";
+  notice.textContent=result?.limited?
+   "Se ha alcanzado el límite de combinaciones. No se ha forzado ningún conector.":
+   "Prueba a orientar mejor los extremos o conectar algún tramo antes de repetir la búsqueda.";
+  return;
+ }
+ const fmt=list=>guidePiecesText(list);
+ const cantApply=p.missingCount>0||(playerMode&&!playerEconomy?.serverBacked);
+ summary.textContent=p.missingCount?
+  "Cierre geométrico encontrado. Necesitas "+p.missingCount+" pieza(s) adicional(es).":
+  "Cierre geométrico válido · "+p.types.length+" piezas · "+(p.geometry.length/1000).toFixed(2)+" km de guía total.";
+ preview.innerHTML=shopBlueprintSvg(p.types,"Cierre calculado",p.origin);
+ const changed=p.changes;
+ details.innerHTML=
+  '<div class="closure-guide-section"><strong>Qué cambia</strong>'+
+  '<div>'+changed+' módulo(s) respecto al recorrido actual.</div>'+
+  '<div>Se incorporan: '+fmt(p.add)+'</div>'+
+  '<div>Se devuelven al inventario: '+fmt(p.returnParts)+'</div></div>'+
+  '<div class="closure-guide-section"><strong>Material necesario</strong>'+
+  '<div>Por comprar: '+fmt(p.missing)+'</div>'+
+  '<div>Coste de faltantes: '+(p.price===null?"Sin precio en catálogo":p.price+" CR")+'</div>'+
+  '<div>Valor orientativo de las piezas incorporadas: '+p.referenceValue+' CR</div></div>';
+ if(playerMode&&!playerEconomy?.serverBacked){
+  notice.textContent="No se ha verificado el inventario de Supabase. Conéctate antes de aplicar el cierre.";
+ }else if(cantApply){
+  notice.textContent="El plano está validado, pero no se aplicará hasta adquirir las piezas que faltan. No se harán compras automáticas.";
+ }else{
+  notice.textContent=playerMode?
+   "Tienes las piezas necesarias. Aplicar cambiará el circuito, sin gastar créditos; podrás deshacer.":
+   "Modo DEV: piezas ilimitadas. El coste mostrado es orientativo; aplicar no compra nada. Podrás deshacer.";
+  apply.disabled=false;
+ }
+ shop.hidden=!playerMode||!(p.missingCount>0||!playerEconomy?.serverBacked);
+}
+function openClosureGuide(){
+ if(closureGuideBusy)return false;
+ const source=closureGuideSource(),fingerprint=closureGuideFingerprint();
+ closureGuideState={source,fingerprint,reason:null,result:null};
+ $("closureGuideModal").hidden=false;
+ $("closureGuideSummary").textContent="Buscando un cierre geométricamente válido…";
+ $("closureGuideDetails").textContent="Se comprobarán las piezas, el inventario y los cruces antes de proponerte un resultado.";
+ $("closureGuidePreview").innerHTML="";
+ $("closureGuideApply").disabled=true;$("closureGuideShop").hidden=true;
+ if(source.reason){closureGuideState.reason=source.reason;renderClosureGuide();return false;}
+ if(state.track.valid&&source.kind==="main"&&hasUniqueStartFinish()){
+  closureGuideState.reason="El circuito ya está cerrado y tiene salida/meta. No necesita asistencia.";
+  renderClosureGuide();return true;
+ }
+ closureGuideBusy=true;$("closureGuideButton").disabled=true;
+ requestAnimationFrame(()=>{
+  try{
+   if(!closureGuideState||closureGuideState.fingerprint!==fingerprint)return;
+   const available=playerMode&&playerEconomy?.serverBacked?
+    Object.fromEntries(Object.keys(CATALOG).map(id=>[id,availablePlayerPiece(id)])):null;
+   const result=proposeClosures({
+    ...source,available,prices:PRICE_BY_PIECE,
+    build:buildTrack,solve:findLegalClosure,maxStates:30000,maxAdd:5
+   });
+   if(closureGuideState)closureGuideState.result=result;
+  }catch(error){
+   if(closureGuideState)closureGuideState.reason="No se pudo completar el cálculo. Tu pista permanece intacta.";
+  }finally{
+   closureGuideBusy=false;$("closureGuideButton").disabled=false;
+   if(closureGuideState)renderClosureGuide();
+  }
+ });
+ return true;
+}
+function applyClosureGuide(){
+ const c=closureGuideState,p=c?.result?.selected;
+ if(!p||!c||c.fingerprint!==closureGuideFingerprint()){
+  toast("El inventario o la pista ha cambiado. Calcula el cierre nuevamente.");return false;
+ }
+ if(playerMode&&!playerEconomy?.serverBacked){toast("Inventario no verificado.");return false;}
+ const budget=closureBudgetForCurrent(c.source,p.types);
+ if(budget.missingCount>0){toast("Faltan piezas; consulta la tienda.");return false;}
+ if(!buildTrack(p.types,p.origin,p.raisedParts).valid){
+  toast("El circuito no supera la validación final. No se aplicó nada.");return false;
+ }
+ if(c.source.kind==="loose"){
+  pushHistory();
+  state.types=p.types.slice();state.loose=[];
+  state.origin={...p.origin};state.bridgeParts=[...p.raisedParts];
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+  alignStartFinishPiece();extendWorkBoard();
+  state.selection=0;state.looseSelection=-1;
+  state.selectedGroup="main";state.selectionMode="group";state.run=false;
+  resetLap();save();updateUI();
+ }else{
+  const ok=changeTypes(p.types,"Cierre asistido aplicado. Puedes deshacer.",state.loose,
+   state.origin,{preserveBridge:true});
+  if(!ok)return false;
+ }
+ closeClosureGuide();
+ toast("✓ ¡Circuito cerrado! Salida/meta verificada. Puedes deshacer el cambio.");
+ return true;
+}
+function closureBudgetForCurrent(source,types){
+ const available=playerMode&&playerEconomy?.serverBacked?
+  Object.fromEntries(Object.keys(CATALOG).map(id=>[id,availablePlayerPiece(id)])):null;
+ return closureBudget(source.types,types,available,PRICE_BY_PIECE);
+}
+function openClosureGuideShop(){
+ closeClosureGuide();
+ state.shopCategory="pieces";
+ showHub("store");
+ toast("Consulta las piezas faltantes y vuelve al taller para repetir el cálculo.");
+}
+
 function removeSelected(){
  if(state.selectionMode!=="piece"){toast("Toca otra vez la pieza concreta que quieres quitar.");return;}
  if(state.looseSelection>=0){
@@ -3460,6 +3612,9 @@ function updateUI(){
   (state.types.length<2&&state.loose.length<2);
  $("autoClose").textContent=state.track.valid?"✓ Cerrado":
   state.track.closed?"⚠ Revisar":"✦ Cerrar";
+ $("closureGuideButton").disabled=closureGuideBusy||
+  (state.track.valid&&hasUniqueStartFinish())||
+  (state.types.length<3&&state.loose.length<3);
  $("measureGap").disabled=state.types.length===0&&state.loose.length<2;
  $("undo").disabled=!state.history.length;
  $("redo").disabled=!state.redo.length;
@@ -6197,6 +6352,10 @@ function initEvents(){
   toast(state.gridEnabled?"Retícula de 25 mm activada.":"Retícula desactivada.");
  });
  $("autoClose").addEventListener("click",closeExactly);
+ $("closureGuideButton").addEventListener("click",openClosureGuide);
+ $("closureGuideCancel").addEventListener("click",closeClosureGuide);
+ $("closureGuideApply").addEventListener("click",applyClosureGuide);
+ $("closureGuideShop").addEventListener("click",openClosureGuideShop);
  $("zoomIn").addEventListener("click",()=>{state.camera.zoom=Math.min(BUILDER_MAX_ZOOM,state.camera.zoom*1.25);state.viewDirty=true;});
  $("zoomOut").addEventListener("click",()=>{state.camera.zoom=Math.max(BUILDER_MIN_ZOOM,state.camera.zoom/1.25);state.viewDirty=true;});
  $("zoomFit").addEventListener("click",fitWorkspace);
@@ -6278,7 +6437,7 @@ window.slotraceLab={version:"DEV 0.15.57",state,raceClock,raceReports:readTestRa
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
-puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
+puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,openClosureGuide,applyClosureGuide,closeClosureGuide,closureGuideSource,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
  ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
