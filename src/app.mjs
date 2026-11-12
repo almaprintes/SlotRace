@@ -7,6 +7,7 @@ import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
+import {duelSummary} from "./race-results.mjs";
 import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.62";
 import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.62";
 const $=id=>document.getElementById(id);
@@ -254,7 +255,7 @@ const state={
   reference:validReference(old?.reference),referenceImage:null,
   templatePanelOpen:false,templateIncludeInExport:false,templateLoading:false,
   activeCircuitId:initialLibrary.some(c=>c.id===old?.activeCircuitId)?old.activeCircuitId:null,
-  library:initialLibrary,libraryTab:"circuits",sessionLaps:[],sessionName:"",caseCategory:"straight",casePage:0,
+  library:initialLibrary,libraryTab:"circuits",sessionLaps:[],playerHeatComplete:false,sessionName:"",caseCategory:"straight",casePage:0,
   shopOwned:readShopOwned(),shopCategory:"boxes",shopSelectedId:null,shopCollectionExpanded:false,
   selectedCar:old?.selectedCar==="spark"?"spark":"gripline",sessionCar:"gripline",
   cameraMode:["general","follow","custom"].includes(old?.cameraMode)?old.cameraMode:"general",
@@ -2295,7 +2296,8 @@ function play(){
   state.lane=laneAIndex();
  aiTest.active=aiTest.enabled;
  resetAiForOpponentLane();
- state.sessionLaps=[];state.sessionName=circuitLabel();
+ state.sessionLaps=[];state.playerHeatComplete=false;aiTest.sessionLaps=[];
+ state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
  state.sessionCar=state.selectedCar;
@@ -2306,6 +2308,32 @@ function play(){
  return true;
 }
 
+function isDuelRace(){
+ return aiTest.active&&state.sessionMode==="lap_race"&&
+  state.track.laneChangerIndex<0;
+}
+function maybeFinishDuelHeat(){
+ if(!isDuelRace()||!state.playerHeatComplete||!aiTest.heatComplete||
+  state.mode!=="race")return false;
+ endSession();
+ return true;
+}
+function recordAiFinish(crossingElapsedMs){
+ if(!isDuelRace()||aiTest.heatComplete)return false;
+ const time=Math.max(0,(crossingElapsedMs-aiTest.lastCrossingMs)/1000);
+ if(!Number.isFinite(time)||time<.05)return false;
+ aiTest.heatLapCount++;
+ aiTest.lap=aiTest.heatLapCount;
+ aiTest.sessionLaps.push({heat:state.twoLegPhase||1,
+  number:aiTest.heatLapCount,lane:aiTest.lane,seconds:time});
+ aiTest.lastCrossingMs=crossingElapsedMs;
+ if(aiTest.heatLapCount>=state.targetLaps){
+  aiTest.heatComplete=true;aiTest.speed=0;aiTest.distance=0;
+  toast("IA completa la manga "+(state.twoLegPhase||1)+".");
+  maybeFinishDuelHeat();
+ }
+ return true;
+}
 function archiveTestRace(){
  if(!state.sessionLaps.length||state.sessionReportSaved)return;
  const clock=raceClock.summary();
@@ -2538,8 +2566,15 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
  if(raceClock.active&&Number.isFinite(crossingElapsedMs))
   state.seconds=Math.max(0,(crossingElapsedMs-raceClock.lapStartMs)/1000);
  if(state.seconds<.05)return;
- const finishTarget=()=>{if(state.sessionMode==="lap_race"&&
-  state.sessionLaps.length>=(state.twoLegPhase===2?state.targetLaps*2:state.targetLaps))endSession();};
+ const finishTarget=()=>{
+  if(state.sessionMode!=="lap_race")return;
+  const expected=state.targetLaps*(state.twoLegPhase===2?2:1);
+  if(state.sessionLaps.length<expected)return;
+  if(aiTest.active&&state.track.laneChangerIndex<0){
+   state.playerHeatComplete=true;state.speed=0;
+   maybeFinishDuelHeat();
+  }else endSession();
+ };
  if(state.track.laneChangerIndex>=0){
   const seconds=state.seconds;
   const valid=state.x350Crossings===1&&!state.laneTransition?.duration&&state.lapEligible;
@@ -2578,7 +2613,7 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
  const previous=[...state.sessionLaps].reverse().find(l=>l.lane===state.lane)?.seconds??null;
  const isRecord=v[state.lane]==null||sec<v[state.lane];
  state.sessionLaps.push({number:state.sessionLaps.length+1,lane:state.lane,
-  seconds:sec,previous,record:isRecord});
+  heat:state.twoLegPhase||1,seconds:sec,previous,record:isRecord});
  if(isRecord){
   v[state.lane]=sec;state.records[recKey()]=v;save();
   toast("¡Récord personal "+laneLabel(state.lane)+"! "+format(sec)+" s");
@@ -2723,7 +2758,7 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null};
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[]};
 // Arranque y cambio de manga comparten esta única regla.
 // El rival SIEMPRE ocupa el carril contrario al jugador; la guía física
 // se resuelve después con driveDirection, también en sentido inverso.
@@ -2733,6 +2768,7 @@ function resetAiForOpponentLane(){
  aiTest.armed=true;aiTest.laneTransition=null;
  aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;
  aiTest.deslot=null;aiTest.bump=null;aiTest.collisions=0;
+ aiTest.heatComplete=false;aiTest.heatLapCount=0;aiTest.lastCrossingMs=0;
  return aiTest.lane;
 }
 function aiTestPose(){
@@ -6338,6 +6374,7 @@ function initEvents(){
   if(state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps){
    const nextLane=1-state.lane;
    resetLap();state.lane=nextLane;state.twoLegPhase=2;state.sessionReportSaved=false;
+   state.playerHeatComplete=false;
    // La IA también cambia de manga. Sin este reinicio seguía en la
    // guía anterior y acababa compartiendo carril con el jugador.
    aiTest.active=aiTest.enabled;
