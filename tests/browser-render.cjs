@@ -62,6 +62,43 @@ const {chromium}=require("playwright-core");
  console.log("RENDER",JSON.stringify(result));
  stage="captura de pantalla";
  await page.screenshot({path:"/tmp/slotrace-render.png",fullPage:true});
+ // La herramienta debe funcionar en el taller real y aplicar sólo tras
+ // confirmación: circuito cerrado de demostración pero sin pieza de meta.
+ stage="probando asistente de cierre";
+ await page.evaluate(()=>{
+  const game=window.slotraceLab;
+  game.showMenu();
+  game.openWorkshop();
+  game.changeTypes([...game.STARTER],"Prueba de cierre sin meta",[],game.state.origin);
+  if(!document.getElementById("closureGuideButton"))
+   throw Error("El taller no muestra Ayúdame a cerrarlo");
+  document.getElementById("closureGuideButton").click();
+ });
+ await page.waitForFunction(()=>
+  !document.getElementById("closureGuideApply").disabled,{timeout:15000});
+ const beforeClosure=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  return{modalOpen:!document.getElementById("closureGuideModal").hidden,
+   hasMeta:g.state.types.includes("START350"),
+   preview:document.querySelector("#closureGuidePreview svg")!==null,
+   summary:document.getElementById("closureGuideSummary").textContent,
+   detail:document.getElementById("closureGuideDetails").textContent};
+ });
+ console.log("CLOSURE PREVIEW",JSON.stringify(beforeClosure));
+ assert.equal(beforeClosure.modalOpen,true);
+ assert.equal(beforeClosure.hasMeta,false,"No se modifica el circuito antes de confirmar");
+ assert.ok(beforeClosure.preview,"La propuesta presenta un plano real");
+ const afterClosure=await page.evaluate(()=>{
+  document.getElementById("closureGuideApply").click();
+  const game=window.slotraceLab;
+  return{valid:game.state.track.valid,
+   finish:game.state.types.filter(x=>x==="START350").length,
+   modalHidden:document.getElementById("closureGuideModal").hidden};
+ });
+ console.log("CLOSURE APPLY",JSON.stringify(afterClosure));
+ assert.equal(afterClosure.valid,true,"El cierre propuesto encaja");
+ assert.equal(afterClosure.finish,1,"El cierre incorpora salida/meta");
+ assert.equal(afterClosure.modalHidden,true,"Cierra el asistente al aplicar");
  stage="cerrando navegador";
  await browser.close();
  clearTimeout(watchdog);
