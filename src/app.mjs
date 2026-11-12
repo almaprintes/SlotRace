@@ -1269,7 +1269,7 @@ function alignStartFinishPiece(){
  state.bridgeParts=state.bridgeParts.map(i=>(i-index+total)%total).sort((a,b)=>a-b);
  state.origin={x:origin.x,y:origin.y,h:origin.h};
  if(state.selection>=0)state.selection=(state.selection-index+total)%total;
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);
 }
 function closeLooseLoop(index,{history=true}={}){
  if(state.types.length)return false;
