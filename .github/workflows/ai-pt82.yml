@@ -29,3 +29,5 @@ jobs:
         run: node tests/rear-contact.cjs
       - name: Validar impactos en el motor real y adelantamiento tras salida
         run: node tests/rear-impact-runtime.cjs
+      - name: Calcular cierres con piezas propias y presupuesto
+        run: node tests/closure-guide.cjs
