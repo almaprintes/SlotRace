@@ -421,6 +421,36 @@ export function pt82ResolveCollision(track,a,b){
  };
  return[reset(a),reset(b)];
 }
+// Recuperación geométrica para carreras IA: la penalización termina después
+// de la pieza conflictiva, nunca en mitad del cruce o delante del obstáculo.
+// Se devuelve distancia sobre la guía real en sentido de carrera.
+export function carsBeyondCollision(track,direction,player,rival,{carLength=98}={}){
+ if(!track?.valid||!player?.pose||!rival?.pose)return null;
+ const dir=direction===-1?-1:1,changeIndex=track.laneChangerIndex??-1;
+ const isChange=changeIndex>=0&&
+  (player.pose.pieceIndex===changeIndex||rival.pose.pieceIndex===changeIndex);
+ const playerIndex=isChange?changeIndex:player.pose.pieceIndex;
+ const rivalIndex=isChange?changeIndex:rival.pose.pieceIndex;
+ if(playerIndex<0||rivalIndex<0||!track.parts[playerIndex]||!track.parts[rivalIndex])return null;
+ const playerLane=player.lane;
+ // Al salir de la PT/82 cada coche ocupa una guía distinta. Si uno
+ // todavía no había completado el cambio al chocar, resolvemos aquí.
+ const rivalLane=isChange&&rival.lane===playerLane?1-playerLane:rival.lane;
+ if(![0,1].includes(playerLane)||![0,1].includes(rivalLane))return null;
+ const clearance=Math.max(165,carLength*1.8);
+ const stagger=Math.max(320,carLength*3.3);
+ const after=(logicalLane,index,advance)=>{
+  const lane=track.lanes[dir===-1?1-logicalLane:logicalLane];
+  const end=pt82PieceDistance(lane,index,dir===1?1:0);
+  const forward=dir===1?end:(lane.total-end)%lane.total;
+  return(forward+advance)%lane.total;
+ };
+ return{
+  obstaclePieceIndex:isChange?changeIndex:null,
+  player:{lane:playerLane,distance:after(playerLane,playerIndex,clearance)},
+  rival:{lane:rivalLane,distance:after(rivalLane,rivalIndex,clearance+stagger)}
+ };
+}
 export function countPieces(types){
   return Object.fromEntries(Object.keys(CATALOG).map(id=>[id,types.filter(t=>t===id).length]));
 }
