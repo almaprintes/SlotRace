@@ -7,6 +7,7 @@ import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
+import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -271,7 +272,7 @@ const state={
  legacyDraft,
   sessionMode:["practice","qualifying","lap_race"].includes(old?.sessionMode)?old.sessionMode:"practice",
   targetLaps:[3,5,10,20].includes(old?.targetLaps)?old.targetLaps:5,raceClockWarnings:[],
-  lane:0,laneTransition:null,lapEligible:true,x350Armed:true,x350Crossings:0,x350FirstLap:null,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
+  lane:0,laneTransition:null,bump:null,lapEligible:true,x350Armed:true,x350Crossings:0,x350FirstLap:null,run:false,raceStarted:false,lap:1,seconds:0,speed:0,distance:0,penalty:0,
   drift:0,driftDirection:0,rearSlip:0,rearSlipVelocity:0,rearStress:0,deslot:null,cornerDistance:0,gripDebt:0,cornerDirection:0,
   gas:0,buttonGas:false,keyboardGas:false,triggerGesture:null,
   resumeCountdownEnd:null,resumeCountdownDigit:null,resumeGoUntil:0,
@@ -1190,7 +1191,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  }else if(msg)toast(msg);
  return true;
 }
-function resetLap(){cancelResumeCountdown();raceClock.reset();state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
+function resetLap(){cancelResumeCountdown();raceClock.reset();state.lap=1;state.seconds=0;state.raceStarted=false;state.speed=0;state.distance=0;state.penalty=0;state.gas=0;state.drift=0;state.driftDirection=0;state.deslot=null;state.cornerDistance=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDirection=0;state.buttonGas=false;state.keyboardGas=false;state.laneTransition=null;state.bump=null;state.lapEligible=true;state.x350Armed=true;state.x350Crossings=0;state.x350FirstLap=null;
  state.triggerGesture=null;$("trigger").classList.remove("pressed");}
 function undo(){if(!state.history.length){toast("No hay movimientos que deshacer.");return;}
  state.redo.push(snapshot());restoreSnapshot(state.history.pop());}
@@ -2041,13 +2042,13 @@ function play(){
   toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
- resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;aiTest.laneTransition=null;
+ resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;aiTest.laneTransition=null;aiTest.deslot=null;aiTest.bump=null;
  state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
  if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
  state.sessionCar=state.selectedCar;
- state.run=true;state.penalty=0;state.deslot=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
+ state.run=true;state.penalty=0;state.deslot=null;state.bump=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.flow="race";state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
  resetFollowCamera();
  toast("¡"+CAR_MODELS[state.selectedCar].name+" listo! Acelera para iniciar el cronómetro.");
@@ -2471,7 +2472,7 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false};
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null};
 function aiTestPose(){
  if(!aiTest.active||!state.track.valid)return null;
  const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
@@ -2484,11 +2485,32 @@ function aiTestPose(){
 function advanceAiTest(dt){
  if(!aiTest.active||!state.run||!state.raceStarted||state.mode!=="race")return;
  if(aiTest.collisionCooldown>0)aiTest.collisionCooldown=Math.max(0,aiTest.collisionCooldown-dt);
- if(aiTest.penalty>0){aiTest.penalty=Math.max(0,aiTest.penalty-dt);return;}
+ if(aiTest.penalty>0){
+  aiTest.penalty=Math.max(0,aiTest.penalty-dt);
+  if(aiTest.deslot){
+   aiTest.deslot.elapsed=Math.min(aiTest.deslot.duration||3,aiTest.deslot.elapsed+dt);
+   if(aiTest.penalty===0){
+    // La guía queda vacía mientras el piloto está fuera de pista.
+    // Si otro coche lo ha adelantado, no reaparecer encima de él.
+    const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
+    if(!state.deslot&&state.lane===aiTest.lane&&!reentrySafe(
+     aiTest.distance,state.distance,lane.total))aiTest.penalty=.05;
+    else{aiTest.deslot=null;aiTest.collisionCooldown=Math.max(.8,aiTest.collisionCooldown);}
+   }
+  }
+  return;
+ }
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
  const pose=aiTestPose();
- const target=DRIVE.topSpeed*(pose&&pose.curve?0.42:0.74);
- aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-2.1*dt));
+ let target=DRIVE.topSpeed*(pose&&pose.curve?0.42:0.74);
+ if(!state.deslot&&state.lane===aiTest.lane){
+  const gap=forwardGap(aiTest.distance,state.distance,lane.total);
+  // IA tradicional: no atraviesa al rival ni cambia de carril para adelantar.
+  // Si este se sale en una curva, deja de bloquear y se puede superar.
+  target=followTarget(gap,state.speed,target);
+ }
+ const response=target<aiTest.speed?9:2.1;
+ aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-response*dt));
  const travel=aiTest.speed*dt;
  const idx=state.track.laneChangerIndex;
  if(idx>=0){
@@ -2510,27 +2532,65 @@ function advanceAiTest(dt){
   }
  }else aiTest.distance=(aiTest.distance+travel)%lane.total;
  const rival=aiTestPose(),player=displayDrivingPose();
- if(!rival||!player)return;
+ if(!rival||!player||state.deslot||aiTest.deslot)return;
  const separation=Math.hypot(rival.x-player.x,rival.y-player.y);
- // Re-armar sólo cuando los dos coches estén realmente separados.
- if(aiTest.awaitingSeparation&&separation>CAR_LENGTH_MM*1.6)
+ if(aiTest.awaitingSeparation&&separation>CAR_LENGTH_MM*1.65)
   aiTest.awaitingSeparation=false;
- if(separation<35&&carTrackLevel(state.track,rival)===carTrackLevel(state.track,player)&&
-  state.penalty<=0&&aiTest.collisionCooldown===0&&!aiTest.awaitingSeparation){
+ if(state.penalty>0||aiTest.collisionCooldown>0||aiTest.awaitingSeparation||
+  carTrackLevel(state.track,rival)!==carTrackLevel(state.track,player))return;
+ if(aiTest.lane===state.lane&&separation<CAR_LENGTH_MM){
+  const hit=rearContact({
+   aiDistance:aiTest.distance,playerDistance:state.distance,total:lane.total,
+   aiSpeed:aiTest.speed,playerSpeed:state.speed,carLength:CAR_LENGTH_MM
+  });
+  if(!hit)return;
+  if(hit.severity==="glance")return; // Un roce muy suave no modifica la carrera.
+  aiTest.collisions++;aiTest.awaitingSeparation=true;aiTest.collisionCooldown=.5;
+  if(hit.severity==="bump"){
+   // Frenazo del que alcanza, ligera desaceleración y culeo del alcanzado.
+   if(hit.rear==="ai"){
+    aiTest.speed*=.23;state.speed*=.91;
+    state.bump={elapsed:0,duration:.65,angle:(player.curve||1)*.28};
+    aiTest.bump={elapsed:0,duration:.45,angle:-(rival.curve||1)*.12};
+   }else{
+    state.speed*=.23;aiTest.speed*=.91;
+    aiTest.bump={elapsed:0,duration:.65,angle:(rival.curve||1)*.28};
+    state.bump={elapsed:0,duration:.45,angle:-(player.curve||1)*.12};
+   }
+   toast("Toque por alcance · frenada y culeo, sin salida de pista.");
+   return;
+  }
+  // Golpe agresivo: ambos fuera. Culpa y sanción superiores para el de atrás.
+  const playerPenalty=hit.rear==="player"?
+   REAR_CONTACT.severeRearPenalty:REAR_CONTACT.severeFrontPenalty;
+  const aiPenalty=hit.rear==="ai"?
+   REAR_CONTACT.severeRearPenalty:REAR_CONTACT.severeFrontPenalty;
+  state.penalty=playerPenalty;aiTest.penalty=aiPenalty;
+  state.speed=0;aiTest.speed=0;
+  state.bump=null;aiTest.bump=null;
+  state.deslot={pose:{...player},elapsed:0,turn:player.curve||1,duration:playerPenalty};
+  aiTest.deslot={pose:{...rival},elapsed:0,turn:rival.curve||-1,duration:aiPenalty};
+  state.drift=0;state.gripDebt=0;state.rearSlip=0;
+  state.rearSlipVelocity=0;state.rearStress=0;
+  state.lapEligible=false;
+  toast("💥 Alcance fuerte · ambos fuera · "+(hit.rear==="ai"?"IA":"jugador")+
+   " responsable: "+REAR_CONTACT.severeRearPenalty+" s.");
+  return;
+ }
+ // El cruce entre guías diferentes (PT/82) no es un alcance posterior.
+ if(separation<35&&state.track.laneChangerIndex>=0&&
+  player.pieceIndex===state.track.laneChangerIndex&&
+  rival.pieceIndex===state.track.laneChangerIndex){
   aiTest.collisions++;aiTest.penalty=3;aiTest.speed=0;
   state.penalty=3;state.speed=0;
-  state.deslot={pose:{...player},elapsed:0,turn:player.curve||1};
-  // Situar ambos vehículos DESPUÉS de toda la pieza conflictiva, con
-  // distancia longitudinal suficiente incluso si comparten la misma vía.
-  // El salto no suma vueltas, parciales ni distancia de carrera válida.
+  state.deslot={pose:{...player},elapsed:0,turn:player.curve||1,duration:3};
+  aiTest.deslot={pose:{...rival},elapsed:0,turn:rival.curve||-1,duration:3};
   const recovery=carsBeyondCollision(state.track,state.driveDirection,
    {lane:state.lane,pose:player},{lane:aiTest.lane,pose:rival},
    {carLength:CAR_LENGTH_MM});
   if(recovery){
-   state.lane=recovery.player.lane;
-   state.distance=recovery.player.distance;
-   aiTest.lane=recovery.rival.lane;
-   aiTest.distance=recovery.rival.distance;
+   state.lane=recovery.player.lane;state.distance=recovery.player.distance;
+   aiTest.lane=recovery.rival.lane;aiTest.distance=recovery.rival.distance;
    state.laneTransition=null;aiTest.laneTransition=null;
    state.x350Armed=false;aiTest.armed=false;
    state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
@@ -2538,15 +2598,15 @@ function advanceAiTest(dt){
    state.cornerDistance=0;state.cornerDirection=0;
    state.followCamera.settle=.85;
   }
-  aiTest.collisionCooldown=4;
-  aiTest.awaitingSeparation=true;
+  aiTest.collisionCooldown=4;aiTest.awaitingSeparation=true;
   state.lapEligible=false;
-  toast("💥 Colisión con IA · regreso después del obstáculo · +3 s.");
+  toast("💥 Cruce PT/82 · ambos recolocados · +3 s.");
  }
 }
 function paintAiTest(ctx){
  const p=aiTestPose();if(!p)return;
- ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h+Math.PI/2);
+ const visual=collisionVisualPose(p,aiTest.deslot,aiTest.bump);
+ ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h+Math.PI/2);
  const rivalModel=state.selectedCar==="spark"?"gripline":"spark";
  const sprite=carImages[rivalModel];
  if(sprite&&sprite.complete&&sprite.naturalWidth>0)
@@ -2576,7 +2636,12 @@ function simulation(dt,frameNow=null){
  if(state.penalty>0){
   state.penalty=Math.max(0,state.penalty-dt);
   if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
-  if(state.penalty===0){state.deslot=null;state.drift=0;}
+  if(state.penalty===0){
+   const lane=state.track.lanes[drivingLaneIndex()];
+   if(state.deslot&&aiTest.active&&!aiTest.deslot&&state.lane===aiTest.lane&&
+    !reentrySafe(state.distance,aiTest.distance,lane.total))state.penalty=.05;
+   else{state.deslot=null;state.drift=0;}
+  }
   return;
  }
  const targetSpeed=g*DRIVE.topSpeed;
@@ -2600,7 +2665,7 @@ function simulation(dt,frameNow=null){
   state.cornerDistance>=DRIVE.minCurveDistance&&rear.deslot){
   state.speed=0;state.penalty=3;
   state.drift=0;state.gripDebt=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
-  state.deslot={pose:{...p},elapsed:0,turn:p.curve||1};
+  state.deslot={pose:{...p},elapsed:0,turn:p.curve||1,duration:3};
   toast("¡Desencarrilado! La trasera perdió el agarre · +3 s.");return;
  }
  // Una PT/82 conmuta en el conector de entrada; el recorrido visible en
@@ -4650,28 +4715,31 @@ function paintTrack(ctx,track,editing,layer="all"){
 // Deslizamiento visual sin alterar la ranura física ni el cronómetro.
 // Para un trompo de 3 segundos, el coche se aparta, gira y vuelve a su
 // posición original: la vuelta sigue siendo válida.
+function bumpAngle(bump){
+ if(!bump)return 0;
+ const u=Math.max(0,Math.min(1,bump.elapsed/bump.duration));
+ return bump.angle*Math.sin(Math.PI*u)*(1-u*.4);
+}
+function collisionVisualPose(at,deslot,bump){
+ if(deslot){
+  const t=Math.min(3,deslot.elapsed*3/(deslot.duration||3)),side=deslot.turn||1;
+  const out=t<.7?t/.7:t<1.75?1:Math.max(0,(3-t)/1.25);
+  const spin=t<1.4?Math.PI*4*(t/1.4):Math.PI*4;
+  const nx=-Math.sin(at.h),ny=Math.cos(at.h);
+  return{...at,x:at.x-side*nx*85*out,y:at.y-side*ny*85*out,
+   h:at.h+side*spin,smoke:Math.max(0,1-t/2.5),spin:1};
+ }
+ const yaw=bumpAngle(bump),front=CAR_LENGTH_MM*.40,heading=at.h+yaw;
+ return{...at,x:at.x+front*(Math.cos(at.h)-Math.cos(heading)),
+  y:at.y+front*(Math.sin(at.h)-Math.sin(heading)),h:heading,smoke:0,spin:0};
+}
 function visualCarPose(at){
  if(state.mode!=="race")return {...at,smoke:0,spin:0};
- if(state.deslot){
-  const d=state.deslot,t=d.elapsed;
-  const side=d.turn||1;
-  const out=t<.7?t/.7:t<1.75?1:Math.max(0,(3-t)/1.25);
-  const turn=t<1.4?Math.PI*4*(t/1.4):Math.PI*4;
-  const normalX=-Math.sin(at.h),normalY=Math.cos(at.h);
-  return{...at,
-   x:at.x-side*normalX*85*out,
-   y:at.y-side*normalY*85*out,
-   h:at.h+side*turn,
-   smoke:Math.max(0,1-t/2.5),spin:1};
- }
+ if(state.deslot)return collisionVisualPose(at,state.deslot,null);
  const slip=state.rearSlip||0,car=carDynamics();
- // El coche gira alrededor de su guía delantera, sin sacarla de la ranura.
- // Amplificación exclusivamente VISUAL: la cola se abre aproximadamente
- // el doble, conservando exactamente el mismo deslizamiento físico.
- // atan2 asegura una evolución continua al pasar de curva a recta.
- const yaw=Math.atan2(slip,car.wheelbaseMM)*2.4;
- const frontOffset=CAR_LENGTH_MM*.40;
- const heading=at.h+yaw;
+ // La guía delantera permanece en la ranura mientras culea la trasera.
+ const yaw=Math.atan2(slip,car.wheelbaseMM)*2.4+bumpAngle(state.bump);
+ const frontOffset=CAR_LENGTH_MM*.40,heading=at.h+yaw;
  return{...at,
   x:at.x+frontOffset*(Math.cos(at.h)-Math.cos(heading)),
   y:at.y+frontOffset*(Math.sin(at.h)-Math.sin(heading)),
@@ -6157,7 +6225,13 @@ function loop(now){
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  const justResumed=updateResumeCountdown(now);
  if(!justResumed){simulation(dt,now);advanceAiTest(dt);}
- if(state.run&&!justResumed)advanceLaneTransition(dt);
+ if(state.run&&!justResumed){
+  advanceLaneTransition(dt);
+  for(const bumper of [state.bump,aiTest.bump])
+   if(bumper)bumper.elapsed=Math.min(bumper.duration,bumper.elapsed+dt);
+  if(state.bump?.elapsed>=state.bump.duration)state.bump=null;
+  if(aiTest.bump?.elapsed>=aiTest.bump.duration)aiTest.bump=null;
+ }
  syncMotorAudio(now);
  updateFollowCamera(dt);
  if(state.mode==="build"){
@@ -6182,7 +6256,7 @@ window.slotraceLab={version:"DEV 0.15.54",state,raceClock,raceReports:readTestRa
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
- ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,physicalSwitchPose},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
+ ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
