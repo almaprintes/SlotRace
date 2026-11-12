@@ -33,3 +33,5 @@ jobs:
         run: node tests/closure-guide.cjs
       - name: Comprobar cierre flexible 0,4 mm en OchoA
         run: node tests/flex-close.cjs
+      - name: Comparar tiempos y declarar ganador de dos mangas
+        run: node tests/duel-results.cjs
