@@ -2071,7 +2071,7 @@ function archiveTestRace(){
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
 async function awardLocalRaceCredits(){
- if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
+ if(aiTest.enabled||!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
  const report=state.lastSessionReport;
  if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
     state.twoLegPhase!==2||report.laps.length!==state.targetLaps*2)return;
@@ -2474,7 +2474,7 @@ function advanceAiTest(dt){
  if(aiTest.penalty>0){aiTest.penalty=Math.max(0,aiTest.penalty-dt);return;}
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
  const pose=aiTestPose();
- const target=DRIVE.topSpeed*(pose?.curve?.42:.74);
+ const target=DRIVE.topSpeed*(pose&&pose.curve?0.42:0.74);
  aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-2.1*dt));
  const travel=aiTest.speed*dt;
  const idx=state.track.laneChangerIndex;
