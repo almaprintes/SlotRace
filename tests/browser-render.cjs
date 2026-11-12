@@ -16,7 +16,17 @@ const {chromium}=require("playwright-core");
    pieces:window.slotraceLab.state.types.length,
    mode:window.slotraceLab.state.mode}));
  console.log("INITIAL",JSON.stringify(initial));
- const started=await page.evaluate(()=>window.slotraceLab.openRace());
+ const started=await page.evaluate(()=>{
+  const game=window.slotraceLab;
+  const types=[...game.state.types];
+  if(!types.includes("START350")){
+   const index=types.indexOf("S350");
+   if(index<0)throw Error("No existe recta para instalar meta");
+   types[index]="START350";
+   game.changeTypes(types,"Prueba visual de circuito",[],game.state.origin);
+  }
+  return game.openRace();
+ });
  console.log("PLAY RESULT",started);
  await page.waitForTimeout(800);
  const result=await page.evaluate(()=>{
