@@ -2933,7 +2933,7 @@ function shopPackPiecesArtwork(product){
  if(!entries.length)return '<div class="shop-blueprint-pending"><strong>Kit técnico</strong><small>Componentes y precio pendientes de catalogar</small></div>';
  return '<div class="shop-pack-pieces" style="display:grid;grid-template-columns:repeat('+Math.min(entries.length,2)+',minmax(0,1fr));gap:8px;padding:12px;background:#e8eef3;height:100%;box-sizing:border-box">'+
   entries.map(([id,qty])=>'<div style="min-width:0;background:#fff;border-radius:12px;padding:8px;text-align:center">'+
-   shopBlueprintSvg([id],CATALOG[id]?.name||id)+
+   foamSlotSVG(id)+
    '<strong style="display:block;color:#1c2b38;font-size:12px">'+qty+' × '+(CATALOG[id]?.name||id)+'</strong></div>').join("")+'</div>';
 }
 function shopArtwork(product){
@@ -2947,7 +2947,7 @@ function shopArtwork(product){
  if(product.kind==="packs")return shopPackPiecesArtwork(product);
  if(product.kind==="circuits"){
   if(product.types)return '<div class="shop-blueprint-art'+
-   (product.id==="plan-catalunya"?" is-catalunya":"")+'">'+
+   ""+'">'+
    shopBlueprintSvg(product.types,product.name,product.origin||START)+
    '<span class="shop-plan-caption">'+product.types.length+' PIEZAS · PLANO REAL</span></div>';
   return '<div class="shop-blueprint-pending" aria-label="Plano pendiente de diseño">'+
@@ -2968,7 +2968,7 @@ function shopCardMarkup(product,compact=false){
   '<h3>'+product.name+'</h3><p>'+product.subtitle+'</p>'+
   '<div class="shop-highlights">'+product.highlights.map(x=>'<span>'+x+'</span>').join("")+'</div>'+
   '</div><div class="shop-card-action"><span class="shop-card-price">'+
-  (product.kind==="packs"?(shopPackPrice(product)===null?"SIN PRECIO":shopPackPrice(product)+" CR · "+(playerMode?"PIEZAS INDIVIDUALES":"DEV")):owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":playerMode?"SOLO DEV":"GRATIS · DEV")+'</span>'+
+  (product.kind==="packs"?(shopPackPrice(product)===null?"SIN PRECIO":shopPackPrice(product)+" CR · VALOR DE PIEZAS"):product.kind==="circuits"?(owned?"✓ PLANO GUARDADO":"PLANO DISPONIBLE"):owned?"✓ EN COLECCIÓN":soon?"EN DESARROLLO":playerMode?"SOLO DEV":"GRATIS · DEV")+'</span>'+
   '<button type="button" data-shop-product="'+product.id+'" aria-label="Ver '+product.name+'">'+
   button+' <span aria-hidden="true">›</span></button></div></article>';
 }
