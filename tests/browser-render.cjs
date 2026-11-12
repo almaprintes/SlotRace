@@ -99,6 +99,19 @@ const {chromium}=require("playwright-core");
  assert.equal(afterClosure.valid,true,"El cierre propuesto encaja");
  assert.equal(afterClosure.finish,1,"El cierre incorpora salida/meta");
  assert.equal(afterClosure.modalHidden,true,"Cierra el asistente al aplicar");
+ // La acción es reversible y nunca se confunde con guardar en la nube.
+ const undoRedo=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  g.undo();
+  const withoutMeta=g.state.types.filter(x=>x==="START350").length===0;
+  g.redo();
+  return{withoutMeta,restored:g.state.types.filter(x=>x==="START350").length===1,
+   valid:g.state.track.valid};
+ });
+ assert.equal(undoRedo.withoutMeta,true,"Deshacer recupera el montaje previo");
+ assert.equal(undoRedo.restored,true,"Rehacer vuelve a aplicar la propuesta");
+ assert.equal(undoRedo.valid,true,"La geometría sigue válida tras rehacer");
+ console.log("CLOSURE UNDO/REDO",JSON.stringify(undoRedo));
  stage="cerrando navegador";
  await browser.close();
  clearTimeout(watchdog);
