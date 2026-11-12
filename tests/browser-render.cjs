@@ -158,6 +158,44 @@ const {chromium}=require("playwright-core");
  assert.equal(undoRedo.restored,true,"Rehacer vuelve a aplicar la propuesta");
  assert.equal(undoRedo.valid,true,"La geometría sigue válida tras rehacer");
  console.log("CLOSURE UNDO/REDO",JSON.stringify(undoRedo));
+ // Un ocho en construcción suele estar en la mesa como UN GRUPO MAGNÉTICO,
+ // todavía sin convertir al tramo principal. Validar ese flujo real.
+ stage="probando un ocho abierto de once piezas";
+ const beforeEight=await page.evaluate(()=>{
+  const g=window.slotraceLab,ids=g.FIGURE_EIGHT.slice(0,11);
+  const track=g.buildTrack(ids,{x:750,y:325,h:0});
+  const origin={x:750,y:325,h:0};
+  g.state.origin=origin;g.state.types=[];g.state.bridgeParts=[];
+  g.state.track=g.buildTrack([],origin);
+  g.state.loose=track.parts.map((part,i)=>({
+   id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+   magnetGroup:"magnet-browser-eight",magnetOrder:i,raised:i===7
+  }));
+  g.updateUI();
+  const source=g.puzzle.closureGuideSource();
+  if(source.kind!=="loose"||source.types.length!==11)
+   throw Error("Las once piezas deben reconocerse como un tramo magnético");
+  g.puzzle.openClosureGuide();
+  return{before:ids.length,loose:g.state.loose.length,kind:source.kind};
+ });
+ await page.waitForFunction(()=>{
+  const d=document.getElementById("closureGuideApply");
+  return !d.disabled||/No se encontró|agotó|No se pudo/.test(
+   document.getElementById("closureGuideSummary").textContent);
+ },{timeout:15000});
+ const resultEight=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  const summary=document.getElementById("closureGuideSummary").textContent;
+  const enabled=!document.getElementById("closureGuideApply").disabled;
+  if(enabled)document.getElementById("closureGuideApply").click();
+  return{summary,enabled,valid:g.state.track.valid,loose:g.state.loose.length,
+   count:g.state.types.length,meta:g.state.types.filter(t=>t==="START350").length};
+ });
+ console.log("ELEVEN-PIECE EIGHT",JSON.stringify({beforeEight,resultEight}));
+ assert.ok(resultEight.enabled,"El ocho con 11 piezas debe presentar Aplicar");
+ assert.ok(resultEight.valid,"El cierre del ocho debe ser válido en la mesa");
+ assert.equal(resultEight.loose,0,"Las piezas magnéticas quedan integradas al cerrar");
+ assert.equal(resultEight.meta,1);
  stage="cerrando navegador";
  await browser.close();
  clearTimeout(watchdog);
