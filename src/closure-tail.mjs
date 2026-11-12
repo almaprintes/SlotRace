@@ -71,10 +71,10 @@ function getPieceIds(catalog,seed,available,prices){
    return as-bs||(prices[a]??999)-(prices[b]??999)||a.localeCompare(b);
   });
 }
-function checkOne(prefix,suffix,sourceFinish,origin,raisedParts,build,stats){
+function checkOne(prefix,suffix,origin,raisedParts,build,accept,stats){
  const next=[...prefix,...suffix];
  if(next.filter(x=>x==="START350").length!==1)return null;
- if(next.length<4)return null;
+ if(next.length<4||!accept(next))return null;
  if(stats.checked++>=1200)return null;
  const valid=validateCandidate(next,origin,raisedParts,build);
  if(!valid)return null;
@@ -85,7 +85,7 @@ function checkOne(prefix,suffix,sourceFinish,origin,raisedParts,build,stats){
 // permanece intacto. Hasta 6 piezas añadidas se exploran con MITM (3 + 3).
 export function findBidirectionalClosure(types,{
  origin,raisedParts=[],build,catalog,available=null,prices={},
- maxAppend=6,maxTailReplace=3,maxGenerated=250000
+ accept=()=>true,maxAppend=6,maxTailReplace=3,maxGenerated=250000
 }={}){
  if(!Array.isArray(types)||types.length<4||!origin||!catalog||!build)
   return{ok:false,reason:"No hay suficientes conectores para calcular el cierre."};
@@ -114,8 +114,8 @@ export function findBidirectionalClosure(types,{
       if(Math.hypot(from.pose.x-to.pose.x,from.pose.y-to.pose.y)>=10||
        Math.abs(turn(from.pose.h-to.pose.h))>Math.PI/180)continue;
       const suffix=[...from.seq,...to.seq.slice().reverse()];
-      const result=checkOne(prefix,suffix,types.includes("START350"),origin,
-       raisedParts,build,stats);
+      const result=checkOne(prefix,suffix,origin,
+       raisedParts,build,accept,stats);
       if(result)return{...result,replaced:replace,added:count,
        diagnostics:{generated:stats.generated,checked:stats.checked,method:"bidirectional"}};
       if(stats.checked>=1200){stats.limited=true;break;}
