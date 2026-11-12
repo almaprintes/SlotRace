@@ -6229,8 +6229,8 @@ function loop(now){
   advanceLaneTransition(dt);
   for(const bumper of [state.bump,aiTest.bump])
    if(bumper)bumper.elapsed=Math.min(bumper.duration,bumper.elapsed+dt);
-  if(state.bump?.elapsed>=state.bump.duration)state.bump=null;
-  if(aiTest.bump?.elapsed>=aiTest.bump.duration)aiTest.bump=null;
+  if(state.bump&&state.bump.elapsed>=state.bump.duration)state.bump=null;
+  if(aiTest.bump&&aiTest.bump.elapsed>=aiTest.bump.duration)aiTest.bump=null;
  }
  syncMotorAudio(now);
  updateFollowCamera(dt);
