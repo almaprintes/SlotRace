@@ -354,6 +354,6 @@ assert.ok(app.includes("source.loop=true"));
 const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-motor-loop.mp3"));
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
-assert.match(app,/const g=state.keyboardGas\?1:state.gas;/);
+assert.match(app,/const g=state.keyboardGas\?1:Math\.max\(state\.gas,state\.gamepadGas\|\|0\);/);
 console.log("SlotRace DEV 0.14.51 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
