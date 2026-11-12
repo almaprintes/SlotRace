@@ -2781,7 +2781,8 @@ function aiTestPose(){
  return change?.physical?physicalSwitchPose(target,change.from,change.pieceIndex):target;
 }
 function advanceAiTest(dt){
- if(!aiTest.active||!state.run||!state.raceStarted||state.mode!=="race")return;
+ if(!aiTest.active||!state.run||!state.raceStarted||
+  state.mode!=="race"||aiTest.heatComplete)return;
  if(aiTest.collisionCooldown>0)aiTest.collisionCooldown=Math.max(0,aiTest.collisionCooldown-dt);
  if(aiTest.penalty>0){
   aiTest.penalty=Math.max(0,aiTest.penalty-dt);
@@ -2828,7 +2829,19 @@ function advanceAiTest(dt){
   if(aiTestPose()?.pieceIndex!==idx){
    aiTest.armed=true;aiTest.laneTransition=null;
   }
- }else aiTest.distance=(aiTest.distance+travel)%lane.total;
+ }else{
+  // Cronometraje independiente de la IA sobre su propia guía.
+  // Interpolamos el cruce en milisegundos del mismo reloj monotónico.
+  const toFinish=lane.total-aiTest.distance;
+  aiTest.distance=(aiTest.distance+travel)%lane.total;
+  if(travel>=toFinish&&isDuelRace()){
+   const cross=raceClock.active?
+    raceClock.crossingElapsedMs(toFinish,travel):
+    raceClock.elapsedMs;
+   recordAiFinish(cross);
+   if(aiTest.heatComplete)return;
+  }
+ }
  const rival=aiTestPose(),player=displayDrivingPose();
  if(!rival||!player||state.deslot||aiTest.deslot)return;
  const separation=Math.hypot(rival.x-player.x,rival.y-player.y);
@@ -2931,6 +2944,9 @@ function simulation(dt,frameNow=null){
   if(!raceClock.active)raceClock.start(frameNow,dt*1000);
   raceClock.tick(frameNow);
  }else state.seconds+=dt;
+ // Al completar su número de vueltas, el jugador espera en meta mientras
+ // la IA termina las suyas; el reloj no se detiene prematuramente.
+ if(isDuelRace()&&state.playerHeatComplete)return;
  if(state.penalty>0){
   state.penalty=Math.max(0,state.penalty-dt);
   if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
@@ -3211,7 +3227,9 @@ function updateHud(){
   state.sessionMode==="qualifying"?"CLASIFICACIÓN":"CARRERA · "+state.targetLaps+" VUELTAS")+
   (state.sessionMode==="lap_race"&&state.track.laneChangerIndex<0?" · MANGA "+(state.twoLegPhase||1)+"/2":"")+
   (state.raceClockWarnings.length?" · ⚠ REVISAR FPS":" · RELOJ REAL");
- $("raceHint").textContent=state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
+ $("raceHint").textContent=isDuelRace()&&state.playerHeatComplete?
+   "MANGA TERMINADA · ESPERANDO A QUE TERMINE LA IA":
+   state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
    state.track.laneChangerIndex>=0?"PT/82 · "+laneLabel(state.lane).toUpperCase()+" · DOS VUELTAS":
    state.laneTransition?"CAMBIANDO DE CARRIL · TRANSICIÓN SUAVE":
