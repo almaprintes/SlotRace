@@ -83,7 +83,11 @@ const {chromium}=require("playwright-core");
   const x=r.x+r.width/2,y=r.y+r.height/2;
   const h=document.elementFromPoint(x,y);
   return{rect:{x:r.x,y:r.y,w:r.width,h:r.height},top:h?.id||h?.tagName,
-   tappable:h===b||b.contains(h),visible:getComputedStyle(b).visibility!=="hidden"};
+   tappable:h===b||b.contains(h),visible:getComputedStyle(b).visibility!=="hidden",
+   hitMarkup:h?.outerHTML?.slice(0,350),
+   hitAncestors:h?Array.from((function*(n){let k=0;while(n&&k++<6){yield n;n=n.parentElement}})(h)).map(x=>x.id||x.className?.toString().slice(0,90)||x.tagName):[],
+   guideAncestors:Array.from((function*(n){let k=0;while(n&&k++<6){yield n;n=n.parentElement}})(b)).map(x=>x.id||x.className?.toString().slice(0,90)||x.tagName)
+   };
  });
  console.log("CLOSURE BUTTON VISIBILITY",JSON.stringify(hit));
  assert.ok(guideBox&&guideBox.width>120&&guideBox.height>=35,"Asistente ocupa un botón grande");
