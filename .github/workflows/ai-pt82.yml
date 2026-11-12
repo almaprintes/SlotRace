@@ -1,0 +1,27 @@
+name: SlotRace · IA y PT82
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: slotrace-ia-pt82
+  cancel-in-progress: true
+
+jobs:
+  revisar-ia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar SlotRace
+        uses: actions/checkout@v4
+      - name: Verificar geometría PT82 y recuperación
+        run: node tests/pt82.cjs
+      - name: Verificar IA, animación y sentido horario y antihorario
+        run: node tests/game-shell.cjs
