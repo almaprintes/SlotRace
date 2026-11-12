@@ -1300,11 +1300,13 @@ function closeLooseLoop(index,{history=true}={}){
  state.selectedGroup="main";state.selectionMode="group";
  state.selection=0;state.looseSelection=-1;state.dragLoose=-1;
  save();updateUI();
- toast(track.valid?
-  (track.forcedClosure?
-   "¡Cierre flexible! Ajustados "+track.gap.toFixed(1)+" mm en todo el circuito.":
-   "¡Clac doble! Los dos extremos encajan: circuito cerrado."):
-  "Extremos unidos, pero falta resolver el cruce o la posición del puente.");
+ toast(!state.track.valid?
+  "Extremos acoplados, pero el cruce necesita separación de altura. Revisa el puente.":
+  !state.types.includes("START350")?
+   "¡Conectores acoplados! El circuito está cerrado. Falta la pieza SALIDA / META para jugar.":
+   state.track.forcedClosure?
+    "¡Cierre flexible válido! Ajuste distribuido de "+track.gap.toFixed(1)+" mm. Ya puedes jugar.":
+    "¡Clac doble! Circuito cerrado, acoplado y listo para jugar.");
  return true;
 }
 function wouldCloseOnJoin(moving,target,side,reversed){
