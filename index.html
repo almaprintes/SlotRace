@@ -466,6 +466,9 @@
               <button class="mini primary" id="play" type="button" aria-label="Jugar en el circuito">🏁 <span class="tool-label">Jugar</span></button>
             </div>
           </div>
+          <div class="closure-guide-strip">
+            <button id="closureGuideButton" type="button" aria-haspopup="dialog" aria-controls="closureGuideModal">🧩 Ayúdame a cerrarlo</button>
+          </div>
           <div class="panel-line" id="builderSelectionTools">
             <span id="selected" class="selector" aria-live="polite">Toca una pieza para seleccionarla</span>
             <div class="buttons" role="group" aria-label="Herramientas principales de montaje">
@@ -733,6 +736,22 @@
     <p class="account-hint account-footnote">Sin compras, sin subir circuitos y sin sustituir ninguna partida. Los datos de cada juego permanecen separados.</p>
   </section>
 </div>
+  <section id="closureGuideModal" class="closure-guide-modal" role="dialog" aria-modal="true" aria-labelledby="closureGuideTitle" hidden>
+    <div class="closure-guide-panel">
+      <div class="closure-guide-heading"><div>
+        <small>SR-PRECISION · CÁLCULO GEOMÉTRICO</small>
+        <h2 id="closureGuideTitle">Ayúdame a cerrarlo</h2>
+      </div><button id="closureGuideCancel" type="button" aria-label="Cerrar asistente">✕</button></div>
+      <p id="closureGuideSummary" role="status">Calculando el mejor encaje posible…</p>
+      <div id="closureGuidePreview" class="closure-guide-preview" aria-label="Vista previa del cierre propuesto"></div>
+      <div id="closureGuideDetails" class="closure-guide-details"></div>
+      <p id="closureGuideNotice" class="closure-guide-notice">No se modificará ningún circuito ni se comprarán piezas sin tu intervención.</p>
+      <div class="closure-guide-actions">
+        <button id="closureGuideApply" type="button" disabled>✓ Aplicar este cierre</button>
+        <button id="closureGuideShop" type="button" hidden>🛒 Ver piezas en la tienda</button>
+      </div>
+    </div>
+  </section>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
 <script>
