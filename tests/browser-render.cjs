@@ -93,9 +93,32 @@ const {chromium}=require("playwright-core");
    };
  });
  console.log("CLOSURE BUTTON VISIBILITY",JSON.stringify(hit));
- assert.ok(guideBox&&guideBox.width>120&&guideBox.height>=35,"Asistente ocupa un botón grande");
+ assert.ok(guideBox&&guideBox.width>=40&&guideBox.height>=44,"Asistente tiene área táctil segura");
  assert.ok(hit.tappable,"El botón no puede quedar detrás de la pista o el estante");
  assert.ok(hit.rect.y>=0&&hit.rect.y+hit.rect.h<=852,"El botón debe caber en pantalla de iPhone");
+ // La barra compacta no debe abarcar dos filas ni tapar la pista;
+ // todos los botones han de recibir un toque real, sin overlays.
+ const actionIds=["templateToggle","measureGap","autoClose","closureGuideButton","play"];
+ for(const width of [393,360]){
+  await page.setViewportSize({width,height:852});
+  const layout=await page.evaluate(ids=>ids.map(id=>{
+   const b=document.getElementById(id),r=b.getBoundingClientRect(),
+    x=r.x+r.width/2,y=r.y+r.height/2,top=document.elementFromPoint(x,y);
+   return{id,x:r.x,y:r.y,w:r.width,h:r.height,
+    tappable:top===b||b.contains(top)};
+  }),actionIds);
+  console.log("COMPACT BAR",width,JSON.stringify(layout));
+  assert.ok(layout.every(b=>b.tappable),"Cada control debe recibir toques en iPhone de "+width);
+  assert.ok(layout.every(b=>b.h>=44&&b.h<=46),"Los controles deben tener alto compacto 44 px");
+  assert.ok(Math.max(...layout.map(b=>b.y))-Math.min(...layout.map(b=>b.y))<2,
+   "Las cinco acciones deben estar en UNA sola fila");
+  assert.ok(layout.every(b=>b.x>=0&&b.x+b.w<=width),
+   "Los cinco botones tienen que caber en pantalla");
+  assert.ok(layout[0].x<layout[1].x&&layout[1].x<layout[2].x&&
+   layout[2].x<layout[3].x&&layout[3].x<layout[4].x,
+   "Orden Imagen, Hueco, Cerrar, Ayuda y Jugar");
+ }
+ await page.setViewportSize({width:393,height:852});
  await guideButton.click({timeout:5000});
  await page.waitForFunction(()=>
   !document.getElementById("closureGuideApply").disabled,{timeout:15000});
