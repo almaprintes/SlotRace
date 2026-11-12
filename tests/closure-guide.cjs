@@ -64,6 +64,22 @@ const assert=require("node:assert/strict");
  const guided=proposeClosures({...options,types:eleven,catalog:geo.CATALOG,available:null});
  assert.ok(guided.ok,"El asistente debe activar Aplicar para un cierre complejo");
  assert.ok(guided.selected.geometry.valid);
+ // Ocho de 11 piezas con puente real y sin meta: una recta S600
+ // se sustituye por START350 + S175 + S075 (600 mm exactos).
+ const openEight=geo.FIGURE_EIGHT.slice(0,11);
+ const expandedEight=["START350","S175","S075",...geo.FIGURE_EIGHT.slice(1)];
+ const finishedEight=geo.buildTrack(expandedEight,geo.START,[9]);
+ assert.ok(finishedEight.valid,"Ocho de referencia con puente y salida/meta válido");
+ const eightSolution=proposeClosures({
+  ...options,types:openEight,raisedParts:[7],
+  catalog:geo.CATALOG,available:null
+ });
+ assert.ok(eightSolution.ok,"El asistente resuelve un ocho de once piezas");
+ assert.equal(eightSolution.selected.types.filter(x=>x==="START350").length,1);
+ assert.equal(eightSolution.selected.types.filter(x=>x==="S600").length,1);
+ assert.ok(eightSolution.selected.geometry.valid);
+ assert.ok(eightSolution.selected.raisedParts.includes(9),
+  "Mantiene las elevaciones aunque se subdivida una recta anterior");
  const pt=closed.slice();pt[1]="X350";const ptOpen=pt.slice(0,-1);
  const crossing=proposeClosures({...options,types:ptOpen,available:null});
  if(crossing.ok)assert.equal(crossing.selected.types.filter(x=>x==="X350").length,1,
