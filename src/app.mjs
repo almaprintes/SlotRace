@@ -1162,7 +1162,7 @@ function pushHistory(){
  clearGapDiagnostic();
  state.history.push(snapshot());if(state.history.length>45)state.history.shift();state.redo=[];
 }
-function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserveBridge=false}={}){
+function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserveBridge=false,bridgeParts=null}={}){
  if(!allowed([...next,...loose.map(p=>p.id)])){toast("Solo se admite una PT/82 por circuito; revisa el inventario.");return false;}
  const wasClosed=state.track.closed;
  pushHistory();
@@ -1173,7 +1173,8 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
   .every((id,i)=>id===state.types[i]);
  state.bridgeRangeStart=null;state.lastTapHit=null;
  state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
- if(!sameGeometry&&!preserveBridge)
+ if(bridgeParts!==null)state.bridgeParts=[...bridgeParts];
+ else if(!sameGeometry&&!preserveBridge)
   state.bridgeParts=stablePrefix?state.bridgeParts.filter(i=>i<next.length):[];
  state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
  // Corregir únicamente las pistas NUEVAS que solicitaron sentido horario
@@ -1901,7 +1902,7 @@ function openClosureGuide(){
    const available=playerMode&&playerEconomy?.serverBacked?
     Object.fromEntries(Object.keys(CATALOG).map(id=>[id,availablePlayerPiece(id)])):null;
    const result=proposeClosures({
-    ...source,available,prices:PRICE_BY_PIECE,
+    ...source,available,prices:PRICE_BY_PIECE,catalog:CATALOG,
     build:buildTrack,solve:findLegalClosure,maxStates:30000,maxAdd:5
    });
    if(closureGuideState)closureGuideState.result=result;
@@ -1936,7 +1937,7 @@ function applyClosureGuide(){
   resetLap();save();updateUI();
  }else{
   const ok=changeTypes(p.types,"Cierre asistido aplicado. Puedes deshacer.",state.loose,
-   state.origin,{preserveBridge:true});
+   state.origin,{preserveBridge:true,bridgeParts:p.raisedParts});
   if(!ok)return false;
  }
  closeClosureGuide();
