@@ -196,6 +196,51 @@ const {chromium}=require("playwright-core");
  assert.ok(resultEight.valid,"El cierre del ocho debe ser válido en la mesa");
  assert.equal(resultEight.loose,0,"Las piezas magnéticas quedan integradas al cerrar");
  assert.equal(resultEight.meta,1);
+ // Regresión OchoA: había un tramo principal invisible y 14 piezas
+ // magnéticas visibles. El asistente cerraba el principal y dejaba las
+ // catorce sin acoplar, aunque mostrase "circuito cerrado".
+ stage="OchoA: tramo principal adicional y catorce piezas sin acoplar";
+ const beforeMixed=await page.evaluate(()=>{
+  const g=window.slotraceLab,origin={x:750,y:325,h:0};
+  const groups=g.FIGURE_EIGHT,track=g.buildTrack(groups,origin);
+  g.state.origin=origin;g.state.types=["S350","S350","R2_45R"];
+  g.state.bridgeParts=[];
+  g.state.track=g.buildTrack(g.state.types,origin);
+  g.state.loose=track.parts.map((part,i)=>({
+   id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+   magnetGroup:"magnet-ochoa-14",magnetOrder:i,raised:i===7
+  }));
+  g.state.looseSelection=-1;g.state.selection=-1;g.state.selectedGroup=null;
+  g.openWorkshop();
+  const picked=g.puzzle.closureGuideSource();
+  if(picked.kind!=="loose"||picked.types.length!==14)
+   throw Error("Debe priorizar las 14 piezas visibles, no las 3 del tramo principal");
+  g.puzzle.openClosureGuide();
+  return{kind:picked.kind,loose:g.state.loose.length,main:g.state.types.length};
+ });
+ await page.waitForFunction(()=>!document.getElementById("closureGuideApply").disabled,
+  {timeout:15000});
+ const resultMixed=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  const before=g.state.loose.length;
+  const ok=g.puzzle.applyClosureGuide();
+  return{ok,before,valid:g.state.track.valid,meta:g.state.types.filter(x=>x==="START350").length,
+   loose:g.state.loose.length,types:g.state.types.length,
+   oldMainPreserved:g.state.loose.some(p=>p.magnetGroup?.startsWith("magnet-previous-")),
+   buttonEnabled:!document.getElementById("play").disabled};
+ });
+ console.log("OCHOA MIXED GROUPS",JSON.stringify({beforeMixed,resultMixed}));
+ assert.equal(resultMixed.ok,true,"El botón debe aplicar el cierre al grupo correcto");
+ assert.ok(resultMixed.valid&&resultMixed.buttonEnabled,"Jugar debe activarse");
+ assert.equal(resultMixed.meta,1,"Una sola salida y meta");
+ assert.equal(resultMixed.loose,3,"Sólo las tres piezas del otro tramo siguen sueltas");
+ assert.ok(resultMixed.oldMainPreserved,"No borrar el trazado antiguo al cerrar OchoA");
+ await page.evaluate(()=>window.slotraceLab.undo());
+ const restored=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  return{main:g.state.types.length,loose:g.state.loose.length};
+ });
+ assert.deepEqual(restored,{main:3,loose:14},"Un deshacer restaura las 14 piezas originales");
  stage="cerrando navegador";
  await browser.close();
  clearTimeout(watchdog);
