@@ -2000,12 +2000,12 @@ function renderRaceLobby(){
  for(const item of state.library)
   option(item.id,item.name+" · "+(item.snapshot?.types?.length||0)+" piezas");
  select.value=chosen&&state.library.some(c=>c.id===chosen)?chosen:"current";
- const valid=state.track.valid;
+ const valid=raceTrackReady();
  $("raceSelectedCircuit").textContent=circuitLabel();
  $("raceSetupSummary").textContent=valid?
   state.types.length+" piezas · "+(state.track.length/1000).toFixed(2)+" m · "+
    travelDirectionLabel(state.types,state.driveDirection,state.track.closed):
-  "Circuito abierto · hay que cerrar el recorrido";
+  state.track.valid?"Falta una pieza SALIDA / META (obligatoria)":"Circuito abierto · hay que cerrar el recorrido";
  $("raceMode").value=state.sessionMode;
  $("raceTargetLaps").value=String(state.targetLaps);
  $("raceTargetLapsRow").hidden=state.sessionMode!=="lap_race";
@@ -2020,12 +2020,14 @@ function renderRaceLobby(){
   el.setAttribute("aria-pressed",String(selected));
  }
 }
+function hasUniqueStartFinish(){return state.types.filter(id=>id==="START350").length===1;}
+function raceTrackReady(){return state.track.valid&&hasUniqueStartFinish();}
 function play(){
  state.twoLegPhase=1;
  cancelResumeCountdown();
  state.triggerGesture=null;
- if(!state.track.valid){
-  toast("El circuito todavía no está cerrado. Termina el montaje en el taller.");
+ if(!raceTrackReady()){
+  toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
  resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
@@ -3237,7 +3239,7 @@ function updateUI(){
  $("buildStatus").classList.toggle("good",t.valid);
  $("buildStatus").classList.toggle("warn",!t.valid);
  setLabel("play","Jugar");
- $("play").disabled=!t.valid;
+ $("play").disabled=!t.valid||!hasUniqueStartFinish();
  $("restore").hidden=!state.draft;
  $("pieceCase").classList.toggle("case-open",state.caseOpen);
  $("caseInterior").hidden=!state.caseOpen;
@@ -4048,8 +4050,8 @@ function groundDeckRuns(track){
  groundDeckCache.set(track,runs);return runs;
 }
 function paintFinishLine(ctx,track){
- if(!track.closed||!track.parts.length)return;
- const p=track.parts[0].start;
+ if(!track.closed||track.types.filter(id=>id==="START350").length!==1)return;
+ const p=track.parts[track.types.indexOf("START350")].start;
  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h);
  for(let k=-2;k<=2;k++)for(let j=0;j<8;j++){
   ctx.fillStyle=(k+j)%2?"#fff6e8":"#171a1c";
@@ -4061,8 +4063,8 @@ function paintFinishLine(ctx,track){
 // La etiqueta procede de la posición FÍSICA en salida/meta; no gira
 // con el sentido de conducción ni altera ningún tiempo de vuelta.
 function finishLaneMarkings(track){
- if(!track?.closed||!track.parts?.length)return [];
- const first=track.parts[0],spec=CATALOG[first.id];
+ if(!track?.closed||track.types.filter(id=>id==="START350").length!==1)return [];
+ const first=track.parts[track.types.indexOf("START350")],spec=CATALOG[first.id];
  const length=spec.length||spec.radius*Math.abs(spec.angle);
  const pose=positionOnPiece(first.start,first.id,Math.min(.56,70/length));
  const inner=laneAIndex(track.types,1);
