@@ -1246,17 +1246,28 @@ function reversedPartId(id){
 // Validación doble: unir un extremo sólo cierra un circuito si el
 // extremo contrario también coincide. No confundir piezas que se rozan
 // con un lazo matemáticamente conectado.
+// El imán y el medidor deben obedecer la MISMA tolerancia física.
+// Antes se exigían 0,00001 mm entre piezas intermedias, aunque la UI
+// admitía hasta 10 mm / 1°. Un solo redondeo dejaba "14 sin acoplar".
 function loopFromLooseGroup(index){
  const group=looseGroup(index);
  if(!group||group.indices.length<4)return null;
+ const toleranceMm=10,toleranceRad=Math.PI/180;
  for(let k=1;k<group.parts.length;k++){
   const prev=group.parts[k-1],cur=group.parts[k];
   const end=positionOnPiece(prev,prev.id,1);
-  if(connectorDistance(end,cur)>1e-5||
-     Math.abs(angleDiff(end.h,cur.h))>1e-7)return null;
+  if(connectorDistance(end,cur)>=toleranceMm||
+     Math.abs(angleDiff(end.h,cur.h))>toleranceRad)return null;
  }
+ const last=group.parts.at(-1);
+ const terminal=positionOnPiece(last,last.id,1);
+ if(connectorDistance(terminal,group.start)>=toleranceMm||
+    Math.abs(angleDiff(terminal.h,group.start.h))>toleranceRad)return null;
  const raised=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
+ // El catálogo construye una guía continua; cualquier tolerancia de
+ // ensamblaje se distribuye por el circuito, no se deforma una pieza.
  const track=buildTrack(group.parts.map(p=>p.id),group.start,raised);
+ if(!track.closed)return null;
  return{group,track};
 }
 // Mantener la pieza física START350 como índice cero: el cronómetro,
