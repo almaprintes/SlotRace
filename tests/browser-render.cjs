@@ -116,7 +116,41 @@ const {chromium}=require("playwright-core");
    if(second.phase!==2||second.laps!==2||second.mode!=="race"||
     !second.aiActive||second.raceStarted||!second.resumeCountdown)
     throw Error("Manga dos debe preservar resultados y esperar nueva salida");
-   results.push({direction,first,second});
+   // La IA cruza la meta con su guía física, registrando una
+   // vuelta propia y no el tiempo del coche del jugador.
+   st.run=true;st.raceStarted=true;
+   const physicalAi=direction===-1?1-ai.lane:ai.lane;
+   const rivalLane=st.track.lanes[physicalAi];
+   ai.distance=rivalLane.total-4;ai.speed=950;ai.penalty=0;
+   game.raceClock.active=true;game.raceClock.running=true;
+   game.raceClock.elapsedMs=5000;game.raceClock._frameDurationMs=25;
+   game.ai.advance(.025);
+   if(ai.sessionLaps.length!==1||ai.sessionLaps[0].heat!==2||
+    ai.sessionLaps[0].number!==1||!Number.isFinite(ai.sessionLaps[0].seconds))
+    throw Error("La IA debe registrar su propia vuelta interpolada en manga 2");
+   const capturedLap={...ai.sessionLaps[0]};
+   // Simulación de un duelo completo para verificar la clasificación:
+   // el piloto gana por tiempo acumulado y la IA aparece en la tabla.
+   st.sessionLaps.push(
+    {heat:2,number:3,lane:st.lane,seconds:8.1},
+    {heat:2,number:4,lane:st.lane,seconds:8.2}
+   );
+   ai.sessionLaps=[
+    {heat:1,number:1,lane:first.rival,seconds:7.5},
+    {heat:1,number:2,lane:first.rival,seconds:7.8},
+    {heat:2,number:1,lane:second.rival,seconds:8.5},
+    {heat:2,number:2,lane:second.rival,seconds:8.7}
+   ];
+   game.endSession();
+   const headline=document.querySelector("#resultsStats .duel-headline");
+   const headlineText=headline?.textContent||"";
+   const scoreText=document.getElementById("resultsStats").textContent;
+   const lapText=document.getElementById("resultsLaps").textContent;
+   if(!headlineText.includes("HAS GANADO")||
+      !scoreText.includes("IA")||!scoreText.includes("30,600")||
+      !lapText.includes("Manga 2")||!lapText.includes("IA:"))
+    throw Error("No se muestra el ganador ni los tiempos de IA: "+scoreText.slice(0,300));
+   results.push({direction,first,second,capturedLap,headline:headlineText});
   }
   return results;
  });
