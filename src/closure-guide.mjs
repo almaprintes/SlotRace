@@ -42,9 +42,20 @@ export function proposeClosures({
  // La salida/meta tiene longitud 350 mm. Si ya existe una recta
  // equivalente, intercambiarla no altera ni desplaza los conectores.
  const seed=[...types];
+ let searchRaised=[...raisedParts];
  if(!metaCount){
   const straight=seed.indexOf("S350");
   if(straight>=0)seed[straight]="START350";
+  else{
+   // En los ochos predomina S600: convertir UNA recta no elevada en
+   // tres módulos de igual longitud que incluyen salida/meta, sin
+   // mover un solo conector ni desmontar el trazado ya construido.
+   const long=seed.findIndex((id,i)=>id==="S600"&&!searchRaised.includes(i));
+   if(long>=0){
+    seed.splice(long,1,"START350","S175","S075");
+    searchRaised=searchRaised.map(i=>i>long?i+2:i);
+   }
+  }
  }
  const sourceChanger=types.filter(id=>id==="X350").length;
  const eligible=candidate=>candidate.filter(id=>id==="START350").length===1&&
@@ -54,12 +65,12 @@ export function proposeClosures({
  const signatures=new Set();
  const trySolution=(accept,tag)=>{
   const result=tag==="bidirectional"?
-   (catalog?findBidirectionalClosure(seed,{origin,raisedParts,build,catalog,available,prices,accept,maxAppend:6,maxTailReplace:3}):null):
-   solve(seed,{origin,raisedParts,maxStates,maxReplace:3,maxAdd,accept});
+   (catalog?findBidirectionalClosure(seed,{origin,raisedParts:searchRaised,build,catalog,available,prices,accept,maxAppend:6,maxTailReplace:3}):null):
+   solve(seed,{origin,raisedParts:searchRaised,maxStates,maxReplace:3,maxAdd,accept});
   if(!result?.ok)return result;
   const candidate=result.types;
   if(!accept(candidate))return{ok:false,reason:"La solución no cumple las piezas disponibles."};
-  const candidateRaised=result.raisedParts??raisedParts;
+  const candidateRaised=result.raisedParts??searchRaised;
   const geometry=build(candidate,origin,candidateRaised);
   if(!geometry.valid||!eligible(candidate))return{ok:false,reason:"La propuesta no supera la comprobación de conectores y alturas."};
   const budget=closureBudget(types,candidate,available,prices);
