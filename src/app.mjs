@@ -1788,7 +1788,7 @@ function closeExactly(){
   return;
  }
  if(state.types.length<2){toast("Coloca primero varias piezas.");return;}
- $("autoClose").disabled=true;$("autoClose").textContent="Buscando…";
+ $("autoClose").disabled=true;setLabel("autoClose","Buscando…");
  requestAnimationFrame(()=>{
   try{
    const result=findLegalClosure(state.types,{maxReplace:3,maxAdd:5,maxStates:90000,origin:state.origin,raisedParts:state.bridgeParts});
@@ -3610,8 +3610,8 @@ function updateUI(){
  $("moveGroup").disabled=!state.selectedGroup;
  $("autoClose").disabled=state.track.valid||
   (state.types.length<2&&state.loose.length<2);
- $("autoClose").textContent=state.track.valid?"✓ Cerrado":
-  state.track.closed?"⚠ Revisar":"✦ Cerrar";
+ setLabel("autoClose",state.track.valid?"✓ Cerrado":
+  state.track.closed?"⚠ Revisar":"Cerrar");
  $("closureGuideButton").disabled=closureGuideBusy||
   (state.track.valid&&hasUniqueStartFinish())||
   (state.types.length<3&&state.loose.length<3);
