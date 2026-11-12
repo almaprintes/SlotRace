@@ -649,7 +649,7 @@ function restoreSnapshot(shot){
  state.reference=validReference(shot.reference);
  state.referenceImage=null;state.templateIncludeInExport=false;
  loadReferenceForState();
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
  clearGapDiagnostic();
  state.selection=-1;state.looseSelection=-1;state.selectionMode="group";state.selectedGroup=null;resetLap();save();updateUI();
 }
@@ -1173,7 +1173,7 @@ function changeTypes(next,msg,loose=state.loose,newOrigin=state.origin,{preserve
  state.types=next.slice();state.loose=loose.map(p=>({...p}));state.origin={...newOrigin};
  if(!sameGeometry&&!preserveBridge)
   state.bridgeParts=stablePrefix?state.bridgeParts.filter(i=>i<next.length):[];
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
  // Corregir únicamente las pistas NUEVAS que solicitaron sentido horario
  // antes de conocer su geometría. Los circuitos importados no se invierten.
  if(!wasClosed&&state.track.closed&&state.pendingDesiredDirection!==null){
@@ -1256,6 +1256,21 @@ function loopFromLooseGroup(index){
  const track=buildTrack(group.parts.map(p=>p.id),group.start,raised);
  return{group,track};
 }
+// Mantener la pieza física START350 como índice cero: el cronómetro,
+ // la bandera y las letras A/B usan todos el mismo origen.
+function alignStartFinishPiece(){
+ if(!state.track?.closed)return;
+ const index=state.types.indexOf("START350");
+ if(index<=0)return;
+ const total=state.types.length;
+ const origin=state.track.parts[index]?.start;
+ if(!origin)return;
+ state.types=[...state.types.slice(index),...state.types.slice(0,index)];
+ state.bridgeParts=state.bridgeParts.map(i=>(i-index+total)%total).sort((a,b)=>a-b);
+ state.origin={x:origin.x,y:origin.y,h:origin.h};
+ if(state.selection>=0)state.selection=(state.selection-index+total)%total;
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
+}
 function closeLooseLoop(index,{history=true}={}){
  if(state.types.length)return false;
  const candidate=loopFromLooseGroup(index);
@@ -1266,7 +1281,7 @@ function closeLooseLoop(index,{history=true}={}){
  state.bridgeParts=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
  state.origin={...group.start};
  for(const i of [...group.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
  extendWorkBoard();
  state.selectedGroup="main";state.selectionMode="group";
  state.selection=0;state.looseSelection=-1;state.dragLoose=-1;
@@ -1376,7 +1391,7 @@ function snapLoose(index,{force=false,history=true}={}){
    state.origin={x:moved[0].x,y:moved[0].y,h:moved[0].h};
   }
   for(const i of [...source.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
-  state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
   state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
  }else{
   const target=looseGroup(magnet.index);
@@ -1415,7 +1430,7 @@ function detachConnected(index,{history=true}={}){
   }
  }
  state.loose.push(...pieces);
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
  state.selection=-1;state.looseSelection=first;state.selectionMode=detachedKey?"group":"piece";
  state.selectedGroup=detachedKey||"single-"+first;
  state.run=false;save();updateUI();return first;
@@ -1440,7 +1455,7 @@ function promoteLooseGroup(index){
  pushHistory();state.origin={...group.start};state.types=group.parts.map(p=>p.id);
  state.bridgeParts=group.parts.flatMap((p,i)=>p.raised?[i]:[]);
  for(const i of [...group.indices].sort((a,b)=>b-a))state.loose.splice(i,1);
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);extendWorkBoard();
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();extendWorkBoard();
  state.selectedGroup="main";state.selectionMode="group";state.selection=0;state.looseSelection=-1;
  save();updateUI();toast("¡Tramo fijado! Puedes seguir ampliándolo.");return true;
 }
@@ -1471,7 +1486,7 @@ function installBridgeKit(){
    [...new Set([...state.bridgeParts,mainIndex])].sort((a,b)=>a-b):
    state.bridgeParts.filter(i=>i!==mainIndex);
  }
- state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+ state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
  save();updateUI();
  const issue=state.track.elevation?.errors?.[0];
  toast(!enabled?"Elevación retirada de esta pieza.":
@@ -1755,7 +1770,7 @@ function closeExactly(){
    if(balanced.ok&&!balanced.unchanged){
     pushHistory();
     state.types=balanced.types;state.origin={...group.start};state.bridgeParts=raised;
-    state.loose=[];state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+    state.loose=[];state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
     extendWorkBoard();state.selectedGroup="main";state.selectionMode="group";
     state.selection=0;state.looseSelection=-1;save();updateUI();
     toast("Cerrado compensando rectas: "+balanced.changes.map(c=>
@@ -5573,7 +5588,7 @@ function rotateGestureToSteps(g,steps){
  if(g.target==="main"){
   const p=rotatePoint(g.originalOrigin,c,sn,g.pivot);
   state.origin={x:p.x,y:p.y,h:g.originalOrigin.h+angle};
-  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
  }else for(const original of g.originalPieces){
   const p=rotatePoint(original,c,sn,g.pivot),item=state.loose[original.i];
   if(!item)continue;
@@ -5675,7 +5690,7 @@ function canvasPointerMove(e){
    y:coordinate(p.startOrigin.y+to.y-p.originWorld.y),
    h:p.startOrigin.h
   };
-  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+  state.track=buildTrack(state.types,state.origin,state.bridgeParts);alignStartFinishPiece();
   extendWorkBoard();
   state.viewDirty=true;return;
  }
