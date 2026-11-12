@@ -28,9 +28,10 @@ let playerPieceSelected=null;
 const playerPieceQuantities=new Map();
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
- el.hidden=!playerMode;if(!playerMode)return;
+ el.hidden=!playerMode;if(!playerMode){const headerBalance=$("mastCredits");if(headerBalance)headerBalance.hidden=true;return;}
  const wallet=playerEconomy?.serverBacked?playerEconomy:null;
  $("playerEconomyBalance").textContent=wallet?wallet.credits+" CR":"Sin conexión";
+ const headerBalance=$("mastCredits");if(headerBalance){headerBalance.hidden=!playerMode;headerBalance.textContent=wallet?"🪙 "+wallet.credits+" CR":"🪙 — CR";headerBalance.title=wallet?"Saldo verificado por Supabase":"Esperando saldo de Supabase";}
  const grid=$("playerPieceCatalog");
  if(!grid)return;
  grid.innerHTML=Object.entries(PRICE_BY_PIECE).filter(([id])=>CATALOG[id]&&!CATALOG[id].legacy).map(([id,price])=>{
@@ -38,7 +39,7 @@ function economyPanel(){
   const selected=playerPieceSelected===id;
   const quantity=playerPieceQuantities.get(id)||1;
   return '<div class="shop-piece-product'+(selected?' is-selected':'')+'" data-piece-card="'+id+'">'+
-   '<span class="shop-piece-visual">'+shopBlueprintSvg([id],CATALOG[id].name)+'</span>'+
+   '<span class="shop-piece-visual">'+foamSlotSVG(id)+'</span>'+
    '<strong>'+CATALOG[id].name+'</strong><span class="shop-piece-price">'+price+' CR</span>'+
    '<small>En propiedad: <b>'+total+'</b> · Libres: '+Math.max(0,total-used)+'</small>'+ 
    '<div class="shop-piece-controls"><button type="button" data-piece-step="-1" data-piece-id="'+id+'" aria-label="Reducir cantidad"'+(playerWalletBusy?' disabled':'')+'>−</button><output>'+quantity+'</output><button type="button" data-piece-step="1" data-piece-id="'+id+'" aria-label="Aumentar cantidad"'+(playerWalletBusy?' disabled':'')+'>+</button></div>'+ 
