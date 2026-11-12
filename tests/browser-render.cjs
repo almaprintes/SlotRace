@@ -241,6 +241,42 @@ const {chromium}=require("playwright-core");
   return{main:g.state.types.length,loose:g.state.loose.length};
  });
  assert.deepEqual(restored,{main:3,loose:14},"Un deshacer restaura las 14 piezas originales");
+ // Regresión reproducida en el iPhone: 14 módulos magnéticos con
+ // desviación final 0,4 mm y ángulo 0° (medidor: ALINEADO).
+ // El antiguo cierre rechazaba una holgura INTERNA de 0,4 mm, porque
+ // comprobaba juntas con una tolerancia absurda de 0,00001 mm.
+ stage="cerrar OchoA con 0,4 mm";
+ const flex=await page.evaluate(()=>{
+  const g=window.slotraceLab,origin={x:750,y:325,h:0};
+  const track=g.buildTrack(g.FIGURE_EIGHT,origin);
+  const parts=track.parts.map((part,i)=>({
+   id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+   magnetGroup:"ochoa-flex",magnetOrder:i,raised:i===7
+  }));
+  parts[parts.length-1].x+=.4;
+  g.state.types=[];g.state.loose=parts;
+  g.state.origin=origin;g.state.bridgeParts=[];
+  g.state.track=g.buildTrack([],origin);
+  g.state.selection=-1;g.state.looseSelection=-1;g.state.selectedGroup=null;
+  g.openWorkshop();
+  g.puzzle.measureOpenGap();
+  const measured=document.getElementById("boardGapInfo").textContent;
+  const closed=g.puzzle.closeExactly();
+  return{measured,closed,valid:g.state.track.valid,main:g.state.types.length,
+   loose:g.state.loose.length,closedTrack:g.state.track.closed};
+ });
+ console.log("OCHOA FLEX 0.4 MM",JSON.stringify(flex));
+ assert.match(flex.measured,/ALINEADO/,"El medidor reconoce la tolerancia de 0,4 mm");
+ assert.equal(flex.closed,true,"Cerrar debe aceptar el mismo rango que Medir Hueco");
+ assert.ok(flex.closedTrack&&flex.valid,"La pista resultante está cerrada y es válida");
+ assert.equal(flex.loose,0,"Las 14 piezas deben quedar acopladas");
+ assert.equal(flex.main,14,"No se pierde ninguna pieza");
+ await page.evaluate(()=>window.slotraceLab.undo());
+ const afterFlexUndo=await page.evaluate(()=>{
+  const g=window.slotraceLab;
+  return{main:g.state.types.length,loose:g.state.loose.length};
+ });
+ assert.deepEqual(afterFlexUndo,{main:0,loose:14},"Deshacer conserva la pista previa");
  stage="cerrando navegador";
  await browser.close();
  clearTimeout(watchdog);
