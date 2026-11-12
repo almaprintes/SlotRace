@@ -28,7 +28,7 @@ let playerPieceSelected=null;
 const playerPieceQuantities=new Map();
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
- el.hidden=!playerMode;if(!playerMode){const headerBalance=$("mastCredits");if(headerBalance)headerBalance.hidden=true;return;}
+ el.hidden=!playerMode||state.shopCategory!=="pieces";if(!playerMode){const headerBalance=$("mastCredits");if(headerBalance)headerBalance.hidden=true;return;}
  const wallet=playerEconomy?.serverBacked?playerEconomy:null;
  $("playerEconomyBalance").textContent=wallet?wallet.credits+" CR":"Sin conexión";
  const headerBalance=$("mastCredits");if(headerBalance){headerBalance.hidden=!playerMode;headerBalance.textContent=wallet?"🪙 "+wallet.credits+" CR":"🪙 — CR";headerBalance.title=wallet?"Saldo verificado por Supabase":"Esperando saldo de Supabase";}
@@ -185,6 +185,7 @@ const SHOP_PRODUCTS=Object.freeze([
   highlights:["Conducción disponible","Sprite cenital original"],art:"car"}
 ]);
 const SHOP_CATEGORIES=Object.freeze({
+ pieces:{title:"Piezas individuales",button:"shopTabPieces"},
  boxes:{title:"Cajas completas",button:"shopTabBoxes"},
  packs:{title:"Packs de piezas",button:"shopTabPacks"},
  circuits:{title:"Planos de circuitos",button:"shopTabCircuits"},
@@ -2974,7 +2975,8 @@ function shopCardMarkup(product,compact=false){
 function shopSelectCategory(kind){
  if(!SHOP_CATEGORIES[kind])return false;
  state.shopCategory=kind;renderShop();
- $("shopScroll").scrollTo?.({top:0,behavior:"smooth"});
+ const scroller=$("shopScroll"),tabs=scroller?.querySelector(".shop-tabs");
+ if(scroller&&tabs){const top=tabs.getBoundingClientRect().top-scroller.getBoundingClientRect().top+scroller.scrollTop;scroller.scrollTo({top:Math.max(0,top-8),behavior:"instant"});}
  return true;
 }
 function renderShop(){
@@ -2986,9 +2988,11 @@ function renderShop(){
   tab.setAttribute("aria-pressed",String(active));
   tab.classList.toggle("is-active",active);
  }
- const products=SHOP_PRODUCTS.filter(p=>p.kind===category);
+ const products=category==="pieces"?[]:SHOP_PRODUCTS.filter(p=>p.kind===category);
  $("shopCategoryTitle").textContent=SHOP_CATEGORIES[category].title;
- $("shopCategoryCount").textContent=products.length+" productos";
+ $("shopCategoryCount").textContent=(category==="pieces"?Object.keys(PRICE_BY_PIECE).length:products.length)+" productos";
+ $("shopCategoryTitle").parentElement.hidden=category==="pieces";
+ $("shopProducts").hidden=category==="pieces";
  $("shopProducts").className="shop-products "+(category==="boxes"?"shop-products-boxes":"shop-products-grid");
  $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
  $("shopFeaturedSection").hidden=category!=="boxes";
