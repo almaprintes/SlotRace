@@ -24,4 +24,4 @@ jobs:
       - name: Verificar geometría PT82 y recuperación
         run: node tests/pt82.cjs
       - name: Verificar IA, animación y sentido horario y antihorario
-        run: node tests/game-shell.cjs
+        run: node tests/ai-pt82.cjs
