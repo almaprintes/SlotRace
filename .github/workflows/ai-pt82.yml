@@ -31,3 +31,5 @@ jobs:
         run: node tests/rear-impact-runtime.cjs
       - name: Calcular cierres con piezas propias y presupuesto
         run: node tests/closure-guide.cjs
+      - name: Comprobar cierre flexible 0,4 mm en OchoA
+        run: node tests/flex-close.cjs
