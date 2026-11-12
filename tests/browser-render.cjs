@@ -2,12 +2,16 @@
 const assert=require("node:assert/strict");
 const {chromium}=require("playwright-core");
 (async()=>{
+ let stage="iniciando Chrome";
+ const watchdog=setTimeout(()=>{console.error("BROWSER STALLED at:",stage);process.exit(4);},40000);
+
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN||"/usr/bin/google-chrome",args:["--no-sandbox","--disable-dev-shm-usage"]});
  const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:2,isMobile:true,hasTouch:true});
  const errors=[];
  page.on("pageerror",err=>{errors.push("pageerror "+String(err.stack||err));console.log("PAGEERROR",String(err.stack||err));});
  page.on("console",msg=>{if(msg.type()==="error")console.log("CONSOLE",msg.text());});
  page.on("requestfailed",req=>console.log("REQUESTFAILED",req.url(),req.failure()?.errorText));
+ stage="cargando portada";
  await page.goto("http://127.0.0.1:4173/index.html?v=browser-render",{waitUntil:"domcontentloaded",timeout:30000});
  await page.waitForFunction(()=>Boolean(window.slotraceLab),{timeout:25000});
  const initial=await page.evaluate(()=>({version:window.slotraceLab.version,
@@ -16,6 +20,8 @@ const {chromium}=require("playwright-core");
    pieces:window.slotraceLab.state.types.length,
    mode:window.slotraceLab.state.mode}));
  console.log("INITIAL",JSON.stringify(initial));
+ stage="abriendo carrera";
+ console.log("BEFORE OPEN RACE");
  const started=await page.evaluate(()=>{
   const game=window.slotraceLab;
   const types=[...game.state.types];
@@ -29,7 +35,9 @@ const {chromium}=require("playwright-core");
   return game.openRace();
  });
  console.log("PLAY RESULT",started);
+ stage="primera imagen de carrera";
  await page.waitForTimeout(800);
+ stage="muestreando píxeles de pista";
  const result=await page.evaluate(()=>{
   const canvas=document.getElementById("raceCanvas"),rect=canvas.getBoundingClientRect();
   const ctx=canvas.getContext("2d");
@@ -49,8 +57,11 @@ const {chromium}=require("playwright-core");
    colors:[...new Set(points)].slice(0,20),screens:{raceHidden:document.getElementById("raceScreen").hidden}};
  });
  console.log("RENDER",JSON.stringify(result));
+ stage="captura de pantalla";
  await page.screenshot({path:"/tmp/slotrace-render.png",fullPage:true});
+ stage="cerrando navegador";
  await browser.close();
+ clearTimeout(watchdog);
  assert.equal(started,true,"Debe abrir el circuito");
  assert.ok(result.width>200&&result.height>200,"Canvas de carrera debe tener dimensiones válidas");
  assert.ok(result.nonblank>10,"El circuito debe verse, no puede quedarse el canvas vacío");
