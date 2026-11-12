@@ -156,6 +156,35 @@ const {chromium}=require("playwright-core");
  });
  console.log("AI HEAT SWAP",JSON.stringify(heatSwaps));
  assert.equal(heatSwaps.length,2);
+ // Verificar el cierre automático de una manga en el motor real:
+ // si el jugador llega primero, NO finalizar antes que el rival.
+ const waiting=await page.evaluate(()=>{
+  const g=window.slotraceLab,st=g.state,ai=g.ai.state;
+  g.showMenu();st.driveDirection=1;st.sessionMode="lap_race";st.targetLaps=2;
+  ai.enabled=true;g.openRace();
+  st.sessionLaps=[{heat:1,number:1,lane:st.lane,seconds:7.0}];
+  st.raceStarted=true;st.seconds=8.0;st.run=true;st.lapEligible=true;
+  g.raceClock.active=false;
+  g.completeLap();
+  const waiting={mode:st.mode,playerComplete:st.playerHeatComplete,aiComplete:ai.heatComplete,
+   playerLaps:st.sessionLaps.length};
+  if(!st.playerHeatComplete||st.mode!=="race"||!st.run)
+   throw Error("La carrera se cortó antes de que terminara la IA");
+  ai.sessionLaps=[{heat:1,number:1,lane:ai.lane,seconds:8.2}];
+  ai.heatLapCount=1;ai.lastCrossingMs=8200;
+  const physicalAi=st.driveDirection===-1?1-ai.lane:ai.lane;
+  ai.distance=st.track.lanes[physicalAi].total-3;ai.speed=1100;
+  g.raceClock.active=true;g.raceClock.running=true;
+  g.raceClock.elapsedMs=17000;g.raceClock._frameDurationMs=25;
+  g.ai.advance(.025);
+  const finished={mode:st.mode,aiComplete:ai.heatComplete,
+   aiLaps:ai.sessionLaps.length,playerLaps:st.sessionLaps.length,
+   headline:document.querySelector("#resultsStats .duel-headline")?.textContent};
+  if(st.mode!=="results"||!ai.heatComplete||ai.sessionLaps.length!==2)
+   throw Error("No se terminó la manga cuando la IA cruzó por última vez");
+  return{waiting,finished};
+ });
+ console.log("DUEL HEAT COMPLETION",JSON.stringify(waiting));
  // La herramienta debe funcionar en el taller real y aplicar sólo tras
  // confirmación: circuito cerrado de demostración pero sin pieza de meta.
  stage="probando asistente de cierre";
