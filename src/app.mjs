@@ -2347,6 +2347,13 @@ function archiveTestRace(){
   timingVersion:clock.clockVersion,physicsVersion:"rear-physics-v4",
   elapsedMs:Math.round(clock.elapsedMs),pauseCount:clock.pauseCount,
   pausedMs:Math.round(clock.pausedMs),flags:clock.flags,
+  ...(isDuelRace()?{
+   rival:"ai-easy",aiLaps:aiTest.sessionLaps.map(l=>({
+    heat:l.heat,number:l.number,lane:l.lane,lapMs:Math.round(l.seconds*1000)
+   })),
+   duel:duelSummary(state.sessionLaps,aiTest.sessionLaps,
+    state.targetLaps,state.twoLegPhase)
+  }:{}),
   laps:state.sessionLaps.map(l=>({
    number:l.number,lane:l.lane,lapMs:Math.round(l.seconds*1000),
    firstMs:l.first==null?null:Math.round(l.first*1000),
@@ -2395,6 +2402,78 @@ function endSession(target="menu"){
  if(state.sessionMode!=="lap_race"||state.twoLegPhase===2||state.track.laneChangerIndex>=0){archiveTestRace();awardLocalRaceCredits();}
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
+function renderDuelResults(){
+ const data=duelSummary(state.sessionLaps,aiTest.sessionLaps,
+  state.targetLaps,state.twoLegPhase);
+ const player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
+ const rival=CAR_MODELS[state.selectedCar==="spark"?"gripline":"spark"].name;
+ const scores=$("resultsStats"),list=$("resultsLaps");
+ scores.textContent="";list.textContent="";
+ const el=(tag,cls,text,parent)=>{
+  const node=document.createElement(tag);node.className=cls;
+  node.textContent=text;parent.appendChild(node);return node;
+ };
+ const completeFirst=data.heats[0].playerTotal!==null&&
+  data.heats[0].aiTotal!==null;
+ const head=el("div","duel-headline",
+  data.completed?
+   (data.winner==="tie"?"🏁 ¡EMPATE!":
+    data.winner==="player"?"🏆 ¡HAS GANADO A LA IA!":"🏆 GANADORA: IA"):
+   state.twoLegPhase===1&&completeFirst?
+    "🏁 Manga 1 terminada · faltan los carriles intercambiados":
+    "🏁 Competición en curso · sin ganador definitivo",scores);
+ el("small","duel-caption",
+  "Dos mangas · Carril A y B · "+state.targetLaps+
+  " vueltas por manga y piloto · resultados locales de prueba",head);
+ if(data.completed){
+  const totals=el("div","duel-totals","",scores);
+  for(const [who,name,time] of [
+   ["player","Tú · "+player,data.playerTotal],
+   ["ai","IA · "+rival,data.aiTotal]
+  ]){
+   const tile=el("div","duel-tile "+(data.winner===who?"is-winner":""),"",totals);
+   el("span","",name,tile);
+   el("strong","",format(time)+" s",tile);
+  }
+  el("p","duel-difference",data.winner==="tie"?
+   "Mismo tiempo total (diferencia inferior a 1 ms).":
+   "Diferencia final: "+format(data.difference)+" s",scores);
+ }
+ for(const heat of data.heats){
+  if(heat.heat>state.twoLegPhase)continue;
+  const heading=el("section","duel-heat","",list);
+  el("h3","","Manga "+heat.heat+" · "+
+   (heat.heat===1?"posición inicial":"carriles intercambiados"),heading);
+  for(const [who,name,total,best,completed] of [
+   ["player","Tú · "+player,heat.playerTotal,heat.playerBest,heat.playerLaps],
+   ["ai","IA · "+rival,heat.aiTotal,heat.aiBest,heat.aiLaps]
+  ]){
+   const row=el("div","duel-heat-row","",heading);
+   el("span","",name+" · "+completed+"/"+state.targetLaps+" vueltas",row);
+   el("strong","",total===null?"En curso / incompleto":format(total)+" s",row);
+   el("small","",best===null?"Sin vuelta registrada":
+    "Mejor vuelta: "+format(best)+" s",row);
+  }
+ }
+ // Vueltas reales de ambos pilotos; no representar la IA como un
+ // récord personal ni inventar parciales que no se hayan registrado.
+ const rows=el("section","duel-lap-list","",list);
+ el("h3","","Detalle de vueltas de ambos pilotos",rows);
+ for(let heat=1;heat<=state.twoLegPhase;heat++){
+  el("h4","","Manga "+heat,rows);
+  for(let n=1;n<=state.targetLaps;n++){
+   const p=state.sessionLaps.find(l=>(l.heat||1)===heat&&
+    (l.number-(heat-1)*state.targetLaps)===n);
+   const ai=aiTest.sessionLaps.find(l=>l.heat===heat&&l.number===n);
+   if(!p&&!ai)continue;
+   const row=el("div","duel-lap-row","",rows);
+   el("span","","Vuelta "+n,row);
+   el("span","","Tú: "+(p?format(p.seconds)+" s":"—"),row);
+   el("span","","IA: "+(ai?format(ai.seconds)+" s":"—"),row);
+  }
+ }
+}
+
 function renderSessionSummary(){
  const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
  $("resultsTimingAudit").dataset.phase=pendingSecond?"intermediate":"final";
@@ -2414,7 +2493,11 @@ function renderSessionSummary(){
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+
   " · "+(state.track.laneChangerIndex>=0?
-   state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas completas";
+   state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas del jugador";
+ if(isDuelRace()){
+  renderDuelResults();
+  return;
+ }
  if(state.track.laneChangerIndex>=0){
   const pairs=state.sessionLaps.filter(l=>l.changeover);
   const bestPair=pairs.reduce((best,l)=>Math.min(best,l.seconds),Infinity);
