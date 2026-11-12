@@ -26,6 +26,26 @@ const fs=require("node:fs");
  let r=close(0);
  assert.ok(r?.track?.closed,"Al superar 0,4 mm debe acoplarse");
  assert.ok(r.track.valid,"Tras acoplar permanece válido");
+ // Además de validar geometría, comprobar que el comando Cerrar retira
+ // de verdad las piezas magnéticas y las monta como pista principal.
+ const closeFrom=code.indexOf("function closeLooseLoop("),
+  closeTo=code.indexOf("function wouldCloseOnJoin(",closeFrom);
+ assert.ok(closeFrom>=0&&closeTo>closeFrom);
+ const state={types:[],loose:poses.map(p=>({...p})),track:geo.buildTrack([],group.start),
+  origin:{...group.start},bridgeParts:[],selectedGroup:null,
+  selectionMode:"group",selection:-1,looseSelection:-1,dragLoose:-1};
+ const calls={history:0,saved:0,ui:0};
+ const command=new Function("state","loopFromLooseGroup","pushHistory","buildTrack",
+  "alignStartFinishPiece","extendWorkBoard","save","updateUI","toast",
+  code.slice(closeFrom,closeTo)+"\nreturn closeLooseLoop;")(
+  state,close,()=>calls.history++,geo.buildTrack,()=>{},()=>{},
+  ()=>calls.saved++,()=>calls.ui++,()=>{});
+ assert.equal(command(0),true,"Pulsar Cerrar debe completar el montaje con 0,4 mm");
+ assert.equal(state.loose.length,0,"Ninguna pieza debe quedar sin acoplar");
+ assert.equal(state.types.length,14,"Se conservan las catorce piezas");
+ assert.ok(state.track.valid,"Pista lista tras la conversión");
+ assert.equal(calls.history,1,"Deshacer disponible");
+ assert.equal(calls.saved,1,"El cierre se guarda");
  poses.at(-1).x+=10.1;
  r=close(0);
  assert.equal(r,null,"Más de 10 mm NO se acopla");
