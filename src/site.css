@@ -3140,3 +3140,20 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .closure-guide-actions button:disabled{background:#a6b8bd;border-color:#a6b8bd}
 .closure-guide-actions #closureGuideShop{background:#effff8;color:#145244}
 @media(max-width:420px){.closure-guide-panel{padding:12px}.closure-guide-preview{height:140px}}
+
+/* DEV 0.15.59 — Ayúdame a cerrarlo comparte el área de controles
+   absoluta del taller. Antes quedaba en flujo normal detrás del canvas. */
+.builder-workbench .controlbar .right #closureGuideButton{
+ grid-column:2 / 4!important;grid-row:2!important;
+ display:flex!important;flex-direction:row!important;
+ justify-content:center!important;align-items:center!important;
+ min-height:43px!important;width:100%!important;
+ padding:6px 9px!important;
+ background:#125d55!important;color:#eafff4!important;
+ border:2px solid #55e3ba!important;
+ box-shadow:0 2px 9px #001b2180!important;
+ font:950 12px/1.2 system-ui,-apple-system,sans-serif!important;
+ text-align:center!important;white-space:normal!important;
+}
+.builder-workbench .controlbar .right #closureGuideButton:disabled{opacity:.55!important}
+.builder-workbench .controlbar .right #play{grid-column:1!important;grid-row:2!important}
