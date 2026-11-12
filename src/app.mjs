@@ -2054,22 +2054,29 @@ function archiveTestRace(){
  const didSave=storage(RACE_REPORTS_KEY,JSON.stringify(next));
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
-function awardLocalRaceCredits(){
- if(!playerMode||!playerEconomy||playerEconomy.serverBacked||!state.lastSessionReport)return;
+async function awardLocalRaceCredits(){
+ if(!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
  const report=state.lastSessionReport;
- // Only a completed, two-leg, fixed-lane lap race counts in this DEV preview.
  if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
     state.twoLegPhase!==2||report.laps.length!==state.targetLaps*2)return;
  const a=report.laps.filter(l=>l.lane===laneAIndex()).length;
  const b=report.laps.length-a;
  if(a!==state.targetLaps||b!==state.targetLaps)return;
- const id="race:"+report.id;
- if((playerEconomy.transactions||[]).includes(id))return;
- const earned=raceReward({valid:true});
- playerEconomy={...playerEconomy,credits:playerEconomy.credits+earned,
-  transactions:[...(playerEconomy.transactions||[]),id].slice(-250)};
- savePlayerEconomy();economyPanel();
- toast("¡Carrera completa! +"+earned+" CR de prueba.");
+ const claimKey="slotrace-test-reward:"+report.id;
+ let raceId=storage(claimKey);
+ if(!raceId){raceId=crypto.randomUUID();storage(claimKey,raceId);}
+ const revision=playerModeRevision,creditsBefore=playerEconomy.credits;
+ try{
+  const {data,error}=await playerEconomyClient.rpc("slotrace_claim_test_race",{
+   p_race:raceId,p_laps:state.targetLaps,p_lane_a:a,p_lane_b:b
+  });
+  if(error)throw error;
+  if(revision!==playerModeRevision||!playerMode)return;
+  playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
+  economyPanel();
+  const earned=Math.max(0,data.credits-creditsBefore);
+  toast(earned?"🏁 Carrera completada: +"+earned+" CR de pruebas · Saldo "+data.credits+" CR":"Recompensa de esta carrera ya registrada.");
+ }catch(error){toast("Carrera registrada; recompensa pendiente: "+error.message);}
 }
 function endSession(target="menu"){
  cancelResumeCountdown();
