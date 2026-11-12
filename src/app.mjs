@@ -1755,7 +1755,7 @@ function closeExactly(){
   const groups=openGroups();
   for(const group of groups){
    if(group.index==null||group.count<4)continue;
-   if(closeLooseLoop(group.index,{history:true}))return;
+   if(closeLooseLoop(group.index,{history:true}))return true;
   }
   // El jugador puede cerrar si los conectores quedan a menos de 10 mm
   // y dentro de 1°: la pequeña tensión se reparte por el trazado.
