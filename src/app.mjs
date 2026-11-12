@@ -1879,22 +1879,32 @@ function poseOnDrivingLane(logicalLane,index,progress){
 // solo el sprite y la cámara interpolan suavemente el desplazamiento.
 const LANE_CHANGE_SECONDS=.48;
 const smoothLaneStep=t=>{const u=Math.max(0,Math.min(1,t));return u*u*(3-2*u);};
+// Ambos pilotos recorren exactamente la misma geometría de la PT/82.
+// Aunque el carril lógico cambia al entrar, el coche visible permanece en
+// la guía original al principio y acaba en la de destino al salir.
+function physicalSwitchPose(target,fromLane,pieceIndex){
+ if(!target||target.pieceIndex!==pieceIndex)return target;
+ const from=poseOnDrivingLane(fromLane,target.pieceIndex,target.pieceT);
+ if(!from)return target;
+ const t=Math.max(0,Math.min(1,state.driveDirection===-1?
+  1-(target.pieceT||0):(target.pieceT||0)));
+ const mix=switchEase(t);
+ const lateral=(target.x-from.x)*(-Math.sin(target.h))+
+  (target.y-from.y)*Math.cos(target.h);
+ return{...target,x:from.x+(target.x-from.x)*mix,
+  y:from.y+(target.y-from.y)*mix,
+  h:target.h+Math.atan2(lateral*6*t*(1-t)/350,1)};
+}
 function displayDrivingPose(){
  const target=drivingPose(),change=state.laneTransition;
  if(!target||!change)return target;
+ if(change.physical)return physicalSwitchPose(target,change.from,change.pieceIndex);
  const from=poseOnDrivingLane(change.from,target.pieceIndex,target.pieceT);
  if(!from)return target;
- const physical=change.physical&&target.pieceIndex===change.pieceIndex;
- if(change.physical&&!physical)return target;
- const t=state.driveDirection===-1?1-(target.pieceT||0):(target.pieceT||0);
- const mix=physical?switchEase(Math.max(0,Math.min(1,t))):
-  smoothLaneStep(change.elapsed/change.duration);
+ const mix=smoothLaneStep(change.elapsed/change.duration);
  const dh=Math.atan2(Math.sin(target.h-from.h),Math.cos(target.h-from.h));
- const lateral=(target.x-from.x)*(-Math.sin(target.h))+
-  (target.y-from.y)*Math.cos(target.h);
- const heading=physical?target.h+Math.atan2(lateral*6*t*(1-t)/350,1):from.h+dh*mix;
  return{...target,x:from.x+(target.x-from.x)*mix,
-  y:from.y+(target.y-from.y)*mix,h:heading};
+  y:from.y+(target.y-from.y)*mix,h:from.h+dh*mix};
 }
 function advanceLaneTransition(dt){
  const change=state.laneTransition;
@@ -2031,7 +2041,7 @@ function play(){
   toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
- resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;
+ resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;aiTest.laneTransition=null;
  state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
@@ -2461,13 +2471,15 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,collisions:0,collisionCooldown:0,awaitingSeparation:false};
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false};
 function aiTestPose(){
  if(!aiTest.active||!state.track.valid)return null;
  const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
  const lane=state.track.lanes[physical];
  const p=positionAt(lane,state.driveDirection===-1?-aiTest.distance:aiTest.distance);
- return !p||state.driveDirection===1?p:{...p,h:p.h+Math.PI};
+ const target=!p||state.driveDirection===1?p:{...p,h:p.h+Math.PI,curve:-(p.curve||0)};
+ const change=aiTest.laneTransition;
+ return change?.physical?physicalSwitchPose(target,change.from,change.pieceIndex):target;
 }
 function advanceAiTest(dt){
  if(!aiTest.active||!state.run||!state.raceStarted||state.mode!=="race")return;
@@ -2488,10 +2500,14 @@ function advanceAiTest(dt){
    const nextLane=state.track.lanes[state.driveDirection===-1?1-next:next];
    const nextEntry=laneDistanceAtPiece(nextLane,idx,state.driveDirection===1?0:1);
    const nextDrive=state.driveDirection===1?nextEntry:(nextLane.total-nextEntry)%nextLane.total;
+   const from=aiTest.lane;
    aiTest.lane=next;aiTest.distance=(nextDrive+Math.max(0,travel-remaining))%nextLane.total;
+   aiTest.laneTransition={from,pieceIndex:idx,physical:true};
    aiTest.armed=false;
   }else aiTest.distance=(aiTest.distance+travel)%lane.total;
-  if(aiTestPose()?.pieceIndex!==idx)aiTest.armed=true;
+  if(aiTestPose()?.pieceIndex!==idx){
+   aiTest.armed=true;aiTest.laneTransition=null;
+  }
  }else aiTest.distance=(aiTest.distance+travel)%lane.total;
  const rival=aiTestPose(),player=displayDrivingPose();
  if(!rival||!player)return;
@@ -2515,7 +2531,7 @@ function advanceAiTest(dt){
    state.distance=recovery.player.distance;
    aiTest.lane=recovery.rival.lane;
    aiTest.distance=recovery.rival.distance;
-   state.laneTransition=null;
+   state.laneTransition=null;aiTest.laneTransition=null;
    state.x350Armed=false;aiTest.armed=false;
    state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
    state.drift=0;state.driftDirection=0;state.gripDebt=0;
@@ -6166,7 +6182,7 @@ window.slotraceLab={version:"DEV 0.15.53",state,raceClock,raceReports:readTestRa
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
- physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
+ ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,physicalSwitchPose},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
