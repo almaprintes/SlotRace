@@ -69,6 +69,9 @@ const {chromium}=require("playwright-core");
   const game=window.slotraceLab;
   game.showMenu();
   game.openWorkshop();
+  // El test usa el motor directamente y no pasa por el portal de cuenta.
+  // En la sesión real del usuario el portal ya se ha cerrado.
+  document.getElementById("entryGate").hidden=true;
   game.changeTypes([...game.STARTER],"Prueba de cierre sin meta",[],game.state.origin);
   if(!document.getElementById("closureGuideButton"))
    throw Error("El taller no muestra Ayúdame a cerrarlo");
