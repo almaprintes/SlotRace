@@ -1910,7 +1910,7 @@ function advanceLaneTransition(dt){
 function openWorkshop(){
  cancelResumeCountdown();
  state.flow="build";
- state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
+ aiTest.active=false;state.run=false;state.gas=0;state.keyboardGas=false;state.mode="build";
  // El estante de piezas siempre permanece abierto y anclado a la mesa.
  state.caseOpen=true;
  updateUI();resize();
@@ -2007,6 +2007,7 @@ function renderRaceLobby(){
    travelDirectionLabel(state.types,state.driveDirection,state.track.closed):
   state.track.valid?"Falta una pieza SALIDA / META (obligatoria)":"Circuito abierto · hay que cerrar el recorrido";
  $("raceMode").value=state.sessionMode;
+ $("raceAiEnabled").checked=aiTest.enabled;
  $("raceTargetLaps").value=String(state.targetLaps);
  $("raceTargetLapsRow").hidden=state.sessionMode!=="lap_race";
  $("raceStart").disabled=!valid;
@@ -2030,7 +2031,8 @@ function play(){
   toast(!state.track.valid?"El circuito todavía no está cerrado. Termina el montaje en el taller.":"Para competir necesitas exactamente una pieza SALIDA / META. Añádela desde Especiales.");
   return false;
  }
- resetLap();state.sessionLaps=[];state.sessionName=circuitLabel();
+ resetLap();aiTest.active=aiTest.enabled;aiTest.lane=1-laneAIndex();aiTest.distance=0;aiTest.speed=0;aiTest.penalty=0;aiTest.armed=true;aiTest.collisions=0;
+ state.sessionLaps=[];state.sessionName=circuitLabel();
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
  if(state.track.laneChangerIndex>=0)state.lane=laneAIndex();
@@ -2456,6 +2458,57 @@ function advanceRearDynamics(p,lane,dt){
   slipVelocityMmS:state.rearSlipVelocity,
   yawRad:Math.atan2(state.rearSlip,car.wheelbaseMM),
   limitMm,deslot:Math.abs(state.rearSlip)>=limitMm};
+}
+// Rival experimental: estado independiente y choques geométricos locales.
+// No se contabiliza en récords ni en recompensas.
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,collisions:0};
+function aiTestPose(){
+ if(!aiTest.active||!state.track.valid)return null;
+ const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
+ const lane=state.track.lanes[physical];
+ const p=positionAt(lane,state.driveDirection===-1?-aiTest.distance:aiTest.distance);
+ return !p||state.driveDirection===1?p:{...p,h:p.h+Math.PI};
+}
+function advanceAiTest(dt){
+ if(!aiTest.active||!state.run||!state.raceStarted||state.mode!=="race")return;
+ if(aiTest.penalty>0){aiTest.penalty=Math.max(0,aiTest.penalty-dt);return;}
+ const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
+ const pose=aiTestPose();
+ const target=DRIVE.topSpeed*(pose?.curve?.42:.74);
+ aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-2.1*dt));
+ const travel=aiTest.speed*dt;
+ const idx=state.track.laneChangerIndex;
+ if(idx>=0){
+  const entry=laneDistanceAtPiece(lane,idx,state.driveDirection===1?0:1);
+  const driveEntry=state.driveDirection===1?entry:(lane.total-entry)%lane.total;
+  const remaining=(driveEntry-aiTest.distance+lane.total)%lane.total;
+  if(aiTest.armed&&remaining<=travel){
+   const next=1-aiTest.lane;
+   const nextLane=state.track.lanes[state.driveDirection===-1?1-next:next];
+   const nextEntry=laneDistanceAtPiece(nextLane,idx,state.driveDirection===1?0:1);
+   const nextDrive=state.driveDirection===1?nextEntry:(nextLane.total-nextEntry)%nextLane.total;
+   aiTest.lane=next;aiTest.distance=(nextDrive+Math.max(0,travel-remaining))%nextLane.total;
+   aiTest.armed=false;
+  }else aiTest.distance=(aiTest.distance+travel)%lane.total;
+  if(aiTestPose()?.pieceIndex!==idx)aiTest.armed=true;
+ }else aiTest.distance=(aiTest.distance+travel)%lane.total;
+ const rival=aiTestPose(),player=displayDrivingPose();
+ if(!rival||!player)return;
+ const separation=Math.hypot(rival.x-player.x,rival.y-player.y);
+ if(separation<35&&state.penalty<=0){
+  aiTest.collisions++;aiTest.penalty=3;aiTest.speed=0;
+  state.penalty=3;state.speed=0;
+  state.deslot={pose:{...player},elapsed:0,turn:player.curve||1};
+  toast("💥 Colisión con IA · ambos coches penalizados 3 s.");
+ }
+}
+function paintAiTest(ctx){
+ const p=aiTestPose();if(!p)return;
+ ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.h+Math.PI/2);
+ ctx.shadowColor="#0009";ctx.shadowBlur=8;
+ ctx.fillStyle="#f6c52d";roundRect(ctx,-CAR_WIDTH_MM/2,-CAR_LENGTH_MM/2,CAR_WIDTH_MM,CAR_LENGTH_MM,9);ctx.fill();
+ ctx.shadowBlur=0;ctx.fillStyle="#142c40";ctx.fillRect(-CAR_WIDTH_MM*.3,-CAR_LENGTH_MM*.18,CAR_WIDTH_MM*.6,CAR_LENGTH_MM*.36);
+ ctx.restore();
 }
 function simulation(dt,frameNow=null){
  if(!state.run||!state.track.valid)return;
@@ -5522,6 +5575,7 @@ function renderScene(canvas,mode){
   // las guías discontinuas del nivel inferior.
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
  }else if(track.valid)paintCar(ctx,p,state.lane);
+ if(mode==="race"&&aiTest.active)paintAiTest(ctx);
  // Las piezas aún sueltas son contenido del TALLER, no de la carrera.
  // Dibujarlas después de la cubierta permitía que sus carriles atravesasen
  // cualquier puente ya construido. La carrera sólo muestra la pista montada.
@@ -5949,6 +6003,7 @@ function initEvents(){
   if(!["practice","qualifying","lap_race"].includes(e.target.value))return;
   state.sessionMode=e.target.value;save();renderRaceLobby();
  });
+ $("raceAiEnabled").addEventListener("change",e=>{aiTest.enabled=e.target.checked;renderRaceLobby();});
  $("raceTargetLaps").addEventListener("change",e=>{
   const n=Number(e.target.value);if(![3,5,10,20].includes(n))return;
   state.targetLaps=n;save();renderRaceLobby();
@@ -6054,7 +6109,7 @@ function loop(now){
  pollGamepad();
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  const justResumed=updateResumeCountdown(now);
- if(!justResumed)simulation(dt,now);
+ if(!justResumed){simulation(dt,now);advanceAiTest(dt);}
  if(state.run&&!justResumed)advanceLaneTransition(dt);
  syncMotorAudio(now);
  updateFollowCamera(dt);
