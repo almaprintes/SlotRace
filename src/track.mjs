@@ -460,7 +460,7 @@ export function countPieces(types){
 // separación pequeña originada mucho antes, eso no puede funcionar.
 // Comprobamos una o dos sustituciones EN CUALQUIER POSICIÓN antes de intentar
 // añadir piezas. Las que parecen cerrar se validan con todas las colisiones.
-function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
+function findGlobalReplacements(types,{maxStates=24000,origin=START,accept=()=>true}={}){
  const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger),used=countPieces(types);
  let tested=0,nearest={gap:Infinity,changes:[]};
  const base=buildTrack(types,origin);
@@ -478,7 +478,7 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
   if(gap<nearest.gap-.01)nearest={gap,changes:changes.map(c=>({...c}))};
   if(gap>SNAP_MM)return null;
   const built=buildTrack(candidate,origin);
-  if(!built.valid)return null;
+  if(!built.valid||!accept(candidate))return null;
   return{ok:true,types:candidate.slice(),replaced:changes.length,added:0,
    changes:changes.map(c=>({...c})),unchanged:false};
  }
@@ -537,11 +537,11 @@ function findGlobalReplacements(types,{maxStates=24000,origin=START}={}){
 // Sólo sirve cuando los vectores de desplazamiento de las sustituciones
 // corrigen exactamente la separación. No fuerza ángulos ni conectores.
 export function findStraightRebalance(types,{
- origin=START,raisedParts=[],maxChanges=2
+ origin=START,raisedParts=[],maxChanges=2,accept=()=>true
 }={}){
  if(!allowed(types)||types.length<4)return{ok:false,reason:"Tramo insuficiente"};
  const base=buildTrack(types,origin,raisedParts);
- if(base.valid)return{ok:true,types:[...types],unchanged:true,replaced:0,added:0};
+ if(base.valid&&accept(types))return{ok:true,types:[...types],unchanged:true,replaced:0,added:0};
  if(base.headingGap>1e-8)
   return{ok:false,reason:"Las rectas no pueden corregir una diferencia de ángulo"};
  const dx=origin.x-base.ends.end.x,dy=origin.y-base.ends.end.y;
@@ -564,7 +564,7 @@ export function findStraightRebalance(types,{
   const next=[...types];
   for(const c of changes)next[c.index]=c.to;
   const built=buildTrack(next,origin,raisedParts);
-  return built.valid?{
+  return built.valid&&accept(next)?{
    ok:true,types:next,replaced:changes.length,added:0,
    changes:changes.map(({index,from,to,delta})=>({index,from,to,delta})),
    unchanged:false,rebalanced:true
@@ -587,13 +587,13 @@ export function findStraightRebalance(types,{
 // Busca un cierre utilizando sólo módulos que existan realmente en el inventario.
 // Prioriza conservar la mayor parte posible del circuito; comprueba cruces antes
 // de proponer un resultado. No crea piezas de transición deformadas.
-export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,origin=START,raisedParts=[]}={}){
+export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,origin=START,raisedParts=[],accept=()=>true}={}){
   if(!allowed(types))return{ok:false,reason:"Inventario no válido"};
   const current=buildTrack(types,origin,raisedParts);
-  if(current.valid)return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
+  if(current.valid&&accept(types))return{ok:true,types:[...types],replaced:0,added:0,unchanged:true};
   // Antes de añadir módulos o explorar cambios arbitrarios, probar
   // compensaciones matemáticas entre rectas de tamaño comercial.
-  const balanced=findStraightRebalance(types,{origin,raisedParts});
+  const balanced=findStraightRebalance(types,{origin,raisedParts,accept});
   if(balanced.ok)return balanced;
   // Caso proporcional: los conectores se enfrentan, no tienen desfase
   // lateral ni angular, y el avance exacto se expresa en unidades de 12,5.
@@ -605,7 +605,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
     const fill=composeStraightDistance(gap.forward,CATALOG,GEOMETRY.lengthUnit);
     if(fill&&fill.count<=maxAdd){
      const next=[...types,...fill.ids];
-     if(buildTrack(next,origin).valid)
+     if(buildTrack(next,origin,raisedParts).valid&&accept(next))
       return{ok:true,types:next,replaced:0,added:fill.count,
        unchanged:false,modular:true};
     }
@@ -616,11 +616,11 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
   for(const id of Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger)){
    const candidate=[...types,id];
    if(!allowed(candidate))continue;
-   if(buildTrack(candidate,origin).valid)
+   if(buildTrack(candidate,origin,raisedParts).valid&&accept(candidate))
     return{ok:true,types:candidate,replaced:0,added:1,unchanged:false};
   }
   // Si no basta una adición, buscar sustituciones en cualquier punto.
-  const global=findGlobalReplacements(types,{maxStates:24000,origin});
+  const global=findGlobalReplacements(types,{maxStates:24000,origin,accept});
   if(global.ok)return global;
   const ids=Object.keys(CATALOG).filter(id=>!CATALOG[id].legacy&&!CATALOG[id].laneChanger),target=origin;
   let visits=0;
@@ -644,7 +644,7 @@ export function findLegalClosure(types,{maxReplace=3,maxAdd=5,maxStates=120000,o
           const guess=[...prefix,...proposed];
           if(guess.length<4)return null;
           const built=buildTrack(guess,origin);
-          return built.valid?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
+          return built.valid&&accept(guess)?{ok:true,types:guess,replaced:replace,added:inserted,unchanged:false}:null;
         }
         if(hypot(pose.x-target.x,pose.y-target.y)>remaining*600+SNAP_MM)return null;
         for(const id of ids){
