@@ -1,8 +1,8 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.13";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.13";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.13";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.13";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.13";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.53";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.53";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.53";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.53";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.53";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
@@ -6156,7 +6156,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.13",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.53",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
