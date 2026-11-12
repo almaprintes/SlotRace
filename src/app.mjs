@@ -1808,20 +1808,37 @@ function closeExactly(){
 
 // Asistente de cierre: analiza, enseña un plano y pide confirmación.
 let closureGuideState=null,closureGuideBusy=false;
+// Nunca calcular sobre el tramo principal por defecto si el jugador está
+// trabajando en un grupo magnético distinto (caso OchoA).
 function closureGuideSource(){
- if(state.types.length>=3){
-  return{kind:"main",types:state.types.slice(),origin:{...state.origin},
-   raisedParts:[...state.bridgeParts]};
+ const groups=openGroups().filter(g=>g.index!=null&&g.count>=3)
+  .sort((a,b)=>b.count-a.count);
+ const selected=state.looseSelection>=0?looseGroup(state.looseSelection):null;
+ const candidate=selected?.parts?.length>=3?selected:
+  groups.length?looseGroup(groups[0].index):null;
+ const chooseLoose=candidate&&(
+  selected?.parts?.length>=3||
+  !state.types.length||
+  state.track.valid||
+  candidate.parts.length>=state.types.length
+ );
+ if(chooseLoose){
+  const ignored=state.loose.length-candidate.indices.length;
+  return{kind:"loose",groupKey:candidate.key,indices:[...candidate.indices],
+   types:candidate.parts.map(p=>p.id),origin:{...candidate.start},
+   raisedParts:candidate.parts.flatMap((p,i)=>p.raised?[i]:[]),
+   otherLooseCount:ignored,mainCount:state.types.length};
  }
- if(state.types.length)return{reason:"Conecta primero al menos tres piezas en el tramo principal."};
- const groups=openGroups();
- if(groups.length!==1||groups[0].index==null)
-  return{reason:"Une primero los tramos sueltos en un único recorrido."};
- const group=looseGroup(groups[0].index);
- if(!group||group.indices.length!==state.loose.length||group.parts.length<3)
-  return{reason:"Conecta al menos tres piezas de un mismo tramo antes de pedir un cierre."};
- return{kind:"loose",types:group.parts.map(p=>p.id),origin:{...group.start},
-  raisedParts:group.parts.flatMap((p,i)=>p.raised?[i]:[])};
+ if(state.loose.length){
+  // No prometer un cierre de una pista diferente a las piezas visibles.
+  return{reason:state.loose.length+" piezas siguen sin acoplar al circuito. "+
+   "Selecciona el tramo magnético que quieres cerrar tocando una de sus piezas. "+
+   "El asistente no modificará otro trazado por error."};
+ }
+ if(state.types.length>=3)
+  return{kind:"main",types:state.types.slice(),origin:{...state.origin},
+   raisedParts:[...state.bridgeParts],otherLooseCount:0,mainCount:0};
+ return{reason:"Conecta primero al menos tres piezas de un mismo tramo."};
 }
 function closureGuideFingerprint(){
  return JSON.stringify({types:state.types,loose:state.loose,origin:state.origin,
@@ -1860,6 +1877,8 @@ function renderClosureGuide(){
   "Cierre geométrico válido · "+p.types.length+" piezas · "+(p.geometry.length/1000).toFixed(2)+" m de recorrido.";
  preview.innerHTML=shopBlueprintSvg(p.types,"Cierre calculado",p.origin);
  const changed=p.changes;
+ const displaced=context.source.kind==="loose"?
+  (context.source.mainCount||0)+(context.source.otherLooseCount||0):0;
  details.innerHTML=
   '<div class="closure-guide-section"><strong>Qué cambia</strong>'+
   '<div>'+changed+' módulo(s) respecto al recorrido actual.</div>'+
@@ -1874,9 +1893,11 @@ function renderClosureGuide(){
  }else if(cantApply){
   notice.textContent="El plano está validado, pero no se aplicará hasta adquirir las piezas que faltan. No se harán compras automáticas.";
  }else{
-  notice.textContent=playerMode?
-   "Tienes las piezas necesarias. Aplicar cambiará el circuito, sin gastar créditos; podrás deshacer.":
-   "Modo DEV: piezas ilimitadas. El coste mostrado es orientativo; aplicar no compra nada. Podrás deshacer.";
+  notice.textContent=displaced?
+   "Se cerrará el tramo seleccionado; "+displaced+" pieza(s) de otros tramos seguirán sueltas, sin borrarse. Podrás deshacer.":
+   playerMode?
+    "Tienes las piezas necesarias. Aplicar cambiará el circuito, sin gastar créditos; podrás deshacer.":
+    "Modo DEV: piezas ilimitadas. El coste mostrado es orientativo; aplicar no compra nada. Podrás deshacer.";
   apply.disabled=false;
  }
  shop.hidden=!playerMode||!(p.missingCount>0||!playerEconomy?.serverBacked);
@@ -1926,22 +1947,55 @@ function applyClosureGuide(){
  if(!buildTrack(p.types,p.origin,p.raisedParts).valid){
   toast("El circuito no supera la validación final. No se aplicó nada.");return false;
  }
+ const allPieces=[...p.types,...state.loose.map(piece=>piece.id)];
  if(c.source.kind==="loose"){
+  // Retirar ÚNICAMENTE las piezas del grupo resuelto, nunca borrar todos
+  // los sueltos. Si había otro tramo principal, preservarlo como grupo
+  // independiente en la mesa (un solo movimiento Deshacer).
+  const group=looseGroup(c.source.indices[0]);
+  if(!group||group.key!==c.source.groupKey||
+   group.indices.length!==c.source.indices.length){
+   toast("El grupo ha cambiado. Vuelve a calcular el cierre.");return false;
+  }
+  const keep=state.loose.filter((_,i)=>!new Set(c.source.indices).has(i))
+   .map(part=>({...part}));
+  const formerMain=state.types.length?state.track.parts.map((part,i)=>({
+   id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
+   magnetGroup:"magnet-previous-"+Date.now(),magnetOrder:i,
+   ...(state.bridgeParts.includes(i)?{raised:true}:{})
+  })):[];
+  if(!allowed([...p.types,...keep.map(part=>part.id),...formerMain.map(part=>part.id)])){
+   toast("La conversión duplicaría una pieza especial única. No se ha cambiado nada.");
+   return false;
+  }
+  const verified=buildTrack(p.types,p.origin,p.raisedParts);
+  if(!verified.valid||p.types.filter(id=>id==="START350").length!==1)return false;
   pushHistory();
-  state.types=p.types.slice();state.loose=[];
+  state.types=p.types.slice();state.loose=[...keep,...formerMain];
   state.origin={...p.origin};state.bridgeParts=[...p.raisedParts];
-  state.track=buildTrack(state.types,state.origin,state.bridgeParts);
+  state.track=verified;
   alignStartFinishPiece();extendWorkBoard();
-  state.selection=0;state.looseSelection=-1;
+  state.selection=0;state.looseSelection=-1;state.dragLoose=-1;
   state.selectedGroup="main";state.selectionMode="group";state.run=false;
   resetLap();save();updateUI();
  }else{
+  if(state.loose.length){
+   toast("Quedan piezas sueltas. Selecciona su tramo antes de aplicar el cierre.");
+   return false;
+  }
   const ok=changeTypes(p.types,"Cierre asistido aplicado. Puedes deshacer.",state.loose,
    state.origin,{preserveBridge:true,bridgeParts:p.raisedParts});
   if(!ok)return false;
  }
+ if(!state.track.valid||state.types.filter(id=>id==="START350").length!==1){
+  undo();toast("El cierre no pasó la validación final. Se ha deshecho.");
+  return false;
+ }
  closeClosureGuide();
- toast("✓ ¡Circuito cerrado! Salida/meta verificada. Puedes deshacer el cambio.");
+ const remaining=state.loose.length;
+ toast(remaining?
+  "✓ Tramo cerrado y listo para jugar; "+remaining+" piezas de otros tramos siguen sueltas.":
+  "✓ ¡Circuito cerrado y acoplado! Puedes jugar o deshacer.");
  return true;
 }
 function closureBudgetForCurrent(source,types){
