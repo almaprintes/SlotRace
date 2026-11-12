@@ -15,7 +15,7 @@ for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginFor
  "accountSignedOut","accountClaim","accountConnected"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Falta el control de cuenta: "+id);
 }
-assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.15\.55"/);
+assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.15\.56"/);
 assert.match(account,/flowType:"pkce"/,"Los proveedores usan OAuth con PKCE");
 assert.match(account,/getUser\(\)/,"La cuenta se verifica en el servidor");
 assert.match(account,/from\("craft_accounts"\)/,"El apodo va al registro compartido");
@@ -213,7 +213,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.15\.55/);
+assert.match(html,/DEV 0\.15\.56/);
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
@@ -354,6 +354,6 @@ assert.ok(app.includes("source.loop=true"));
 const motorAsset=fs.readFileSync(path.join(__dirname,"assets/audio/slotrace-motor-loop.mp3"));
 assert.ok(motorAsset.length>50000&&motorAsset.length<1000000);
 assert.equal(motorAsset.subarray(0,3).toString(),"ID3");
-assert.match(app,/const g=state.keyboardGas\?1:Math\.max\(state\.gas,state\.gamepadGas\|\|0\);/);
+assert.match(app,/if\\(state\\.bump&&state\\.bump\\.elapsed>=state\\.bump\\.duration\\)/);\nassert.match(app,/if\\(aiTest\\.bump&&aiTest\\.bump\\.elapsed>=aiTest\\.bump\\.duration\\)/);\nassert.match(app,/const g=state.keyboardGas\?1:Math\.max\(state\.gas,state\.gamepadGas\|\|0\);/);
 console.log("SlotRace DEV 0.14.51 OK: 28 variantes reconocidas (una heredada), 17 huecos disponibles, cierre exacto, puente, inventario y UI.");
 })().catch(e=>{console.error(e);process.exitCode=1;});
