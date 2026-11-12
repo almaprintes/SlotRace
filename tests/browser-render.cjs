@@ -171,7 +171,7 @@ const {chromium}=require("playwright-core");
    id:part.id,x:part.start.x,y:part.start.y,h:part.start.h,
    magnetGroup:"magnet-browser-eight",magnetOrder:i,raised:i===7
   }));
-  g.updateUI();
+  g.openWorkshop();
   const source=g.puzzle.closureGuideSource();
   if(source.kind!=="loose"||source.types.length!==11)
    throw Error("Las once piezas deben reconocerse como un tramo magnético");
