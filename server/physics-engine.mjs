@@ -5,6 +5,7 @@
 import {positionAt,finishInteriorPhysicalLane,LANE_OFFSET,CATALOG} from "../src/track.mjs";
 import {PHYSICS_VERSION,DRIVE,advanceSpeedV4,advanceRearV4,curveStressEnvelope} from "../src/physics-v4.mjs";
 import {canonicalCompetitionTrack} from "./track-identity.mjs";
+import {chooseAiThrottleOnTrackV4} from "../src/ai-driver.mjs";
 import {buildCurveSpanIndex,curvePhaseForCar} from "../src/curve-phase.mjs";
 
 export const FIXED_STEP_MS=10;
@@ -19,7 +20,10 @@ function drivingPose(lane,distance,direction){
  const p=positionAt(lane,direction===-1?-distance:distance);
  return !p||direction===1?p:{...p,h:p.h+Math.PI,curve:-(p.curve||0)};
 }
-export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
+export function createSharedPhysicsEngineFactory(recipe,{carByPilot={},cpuPilots=[]}={}){
+ if(!Array.isArray(cpuPilots)||cpuPilots.some(p=>typeof p!=="string")||
+    new Set(cpuPilots).size!==cpuPilots.length)
+   throw Error("Lista de pilotos CPU inválida");
  const {track,canonical,fingerprint}=canonicalCompetitionTrack(recipe);
  // La X350 requiere resolver eventos simultáneos y colisiones con reglas
  // comprobadas: no admitirla a medias en competiciones experimentales.
@@ -37,6 +41,9 @@ export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
      [assignment.laneA,assignment.laneB].filter(Boolean):[pilot].filter(Boolean);
    if(participants.length<1||participants.length>2||new Set(participants).size!==participants.length)
      throw Error("Pilotos o asignación inválidos");
+   const cpu=new Set(cpuPilots);
+   if(cpuPilots.some(id=>!participants.includes(id)))
+     throw Error("Piloto CPU fuera de carrera");
    const cars=new Map();
    for(const id of participants){
      const physical=assignment?.laneB===id?1-physicalA:physicalA;
@@ -55,14 +62,28 @@ export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
          !Array.isArray(finishedPilots)||finishedPilots.some(id=>!cars.has(id)))
          throw Error("Controles malformados");
        for(const id of Object.keys(controls)){
-         if(!cars.has(id)||!Number.isInteger(controls[id])||controls[id]<0||
-            controls[id]>100)throw Error("Entrada de acelerador inválida");
+         if(!cars.has(id)||cpu.has(id)||!Number.isInteger(controls[id])||controls[id]<0||
+            controls[id]>100)throw Error("Entrada de acelerador inválida o CPU protegido");
        }
        lastTick=tick;
+       // Planificar controles CPU desde un único estado anterior al tick.
+       // El orden de actualización de coches no debe alterar decisiones IA.
+       const aiControls=new Map();
+       for(const [id,s] of cars){
+         if(!cpu.has(id)||finishedPilots.includes(id))continue;
+         const front=[...cars].filter(([otherId,other])=>otherId!==id&&
+           !finishedPilots.includes(otherId)&&other.physicalLane===s.physicalLane)
+           .map(([,other])=>({physicalLane:other.physicalLane,distance:other.distance,
+             speed:other.speed,deslot:other.penaltyMs>0}))[0]??null;
+         aiControls.set(id,chooseAiThrottleOnTrackV4({track,
+           physicalLane:s.physicalLane,distance:s.distance,speed:s.speed,
+           direction,frontCar:front}));
+       }
        const crossings=[];
        for(const [id,s] of cars){
          if(finishedPilots.includes(id))continue;
-         const gas=(controls[id]||0)/100,dtSec=FIXED_STEP_MS/1000;
+         const gas=(cpu.has(id)?aiControls.get(id):(controls[id]||0))/100,
+           dtSec=FIXED_STEP_MS/1000;
          if(s.penaltyMs>0){
            s.penaltyMs=Math.max(0,s.penaltyMs-FIXED_STEP_MS);
            continue;
@@ -100,7 +121,8 @@ export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
        return {crossings};
      },
      // Solo para pruebas locales del árbitro; NUNCA enviar esta vista al cliente.
-     inspect:()=>JSON.parse(JSON.stringify(Object.fromEntries(cars)))
+     inspect:()=>JSON.parse(JSON.stringify(Object.fromEntries(cars))),
+     cpuDrivers:()=>[...cpu]
    };
  };
  return {engineFactory:factory,circuitFingerprint:fingerprint,canonical};
