@@ -12,6 +12,8 @@ on:
       - 'src/competition-protocol.mjs'
       - 'tests/referee-core.cjs'
       - 'tests/shared-physics-v4.cjs'
+      - 'tests/shared-app-physics-contract.cjs'
+      - 'src/app.mjs'
       - '.github/workflows/referee-core.yml'
   workflow_dispatch:
 
@@ -33,7 +35,9 @@ jobs:
       - name: Referee deterministic unit tests
         run: node tests/referee-core.cjs
       - name: Shared SlotRace physics + real geometry
-        run: node tests/shared-physics-v4.cjs
+        run: |
+          node tests/shared-physics-v4.cjs
+          node tests/shared-app-physics-contract.cjs
       - name: Existing timing tests
         run: |
           node tests/event-timing.cjs
