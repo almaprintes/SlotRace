@@ -3622,8 +3622,8 @@ function renderShop(){
  $("shopProducts").className="shop-products "+(category==="boxes"?"shop-products-boxes":"shop-products-grid");
  $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
  $("shopFeaturedSection").hidden=category!=="boxes";
- if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-catalunya"]
-  .map(id=>shopCardMarkup(shopProduct(id),true)).join("");
+ if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-speed","plan-catalunya"]
+  .map(id=>shopProduct(id)).filter(Boolean).map(p=>shopCardMarkup(p,true)).join("");
  const owned=SHOP_PRODUCTS.filter(p=>shopOwned(p.id));
  $("shopCollectionSummary").textContent=owned.length+" productos disponibles · "+
   "La caja básica y sus contenidos están incluidos desde el inicio.";
