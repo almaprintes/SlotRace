@@ -223,7 +223,7 @@ const path=require("node:path");
  assert.equal(elements.get("navBuild").hidden,false,
   "Construir no desaparece al entrar en modo piloto");
  assert.equal(elements.get("navRace").hidden,false);
- assert.equal(elements.get("raceStart").disabled,false,"Óvalo válido listo");
+ assert.equal(elements.get("raceStart").disabled,true,"El óvalo inicial sin SALIDA/META no inicia carrera");
  game.showMenu();
  assert.equal(st.driveDirection,1,"Sentido horario predeterminado");
  game.openWorkshop();
@@ -423,7 +423,7 @@ const path=require("node:path");
  assert.equal(game.openRace(),false);
  assert.equal(st.types.length,0,"No reemplazar montaje por receta de demo");
  game.openWorkshop();
- game.changeTypes(geo.STARTER.slice(),"Óvalo para carreras",[],geo.START);
+ game.changeTypes(ovalWithFinish.slice(),"Óvalo para carreras",[],geo.START);
  assert.equal(st.track.valid,true);
  // En sentido inverso la posición es distancia NEGATIVA y la marcha
  // apunta 180° en sentido contrario. El carril físico también se invierte.
@@ -1255,7 +1255,7 @@ const path=require("node:path");
  assert.equal(storedAfterClosing.driveDirection,-1);
  assert.equal(storedAfterClosing.pendingDesiredDirection,null);
  // El piloto puede alternar entrenamiento, clasificación o carrera cerrada.
- game.changeTypes(geo.STARTER.slice(),"Óvalo de competición",[],geo.START);
+ game.changeTypes(ovalWithFinish.slice(),"Óvalo de competición",[],geo.START);
  game.menuRace();
  const modes=elements.get("raceMode");
  for(const fn of modes.listeners.change||[])
