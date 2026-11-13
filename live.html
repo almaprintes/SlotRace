@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091720">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SlotRace · Duelo en directo BETA 0.15.70</title>
+<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.70">
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ebf5f7;background:#07141e;--mint:#4ff0cb;--muted:#a8b9c7;--panel:#162634}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#16404b,#07141e 55%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+[hidden]{display:none!important}header{padding:16px max(14px,env(safe-area-inset-left));display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #ffffff18}
+.brand{font-weight:950;font-size:20px;letter-spacing:-.6px}.brand b{color:var(--mint)}.sub{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:1px}
+a{color:#8cf6e0}header a{font-size:12px;text-decoration:none;color:#e9f2f5;background:#ffffff18;padding:10px;border-radius:9px}
+main{max-width:900px;margin:auto;padding:16px;display:grid;gap:14px}
+h1{margin:5px 0;font-size:clamp(24px,6vw,35px)}h2{font-size:18px;margin:0 0 12px}p{line-height:1.45;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid #ffffff20;border-radius:18px;padding:16px}
+.tag{color:var(--mint);font-size:11px;font-weight:900;letter-spacing:1.4px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.row>*{min-width:0}
+button,input{font:inherit}button{border:none;border-radius:12px;padding:12px 15px;font-weight:800;background:#2b4355;color:white;cursor:pointer;min-height:44px}
+button.primary{background:#05b68d;color:#042a2b}button.secondary{background:#243948}button:disabled{opacity:.4;cursor:default}
+input[type=text]{background:#081b27;border:1px solid #62828b;color:white;border-radius:12px;padding:13px 10px;text-transform:uppercase;font-weight:900;letter-spacing:2px;width:130px;min-width:0}
+#roomBox{border:1px solid #3dbd9f;border-radius:14px;padding:13px;margin-top:12px;background:#0f3133}
+#roomCode{font-size:clamp(22px,6vw,34px);letter-spacing:3px;color:#a0ffe9;font-weight:950}
+#roomNames{font-weight:800;margin:10px 0 0}.muted{color:var(--muted)}
+#notice{font-size:13px;min-height:20px;color:#adffed;line-height:1.4}
+#notice.error{color:#ff9e9e}
+#raceBoard{position:relative}#trackCanvas{display:block;width:100%;height:min(52dvh,460px);min-height:275px;border-radius:15px;background:#09222e;touch-action:none}
+#countdown{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);font-size:clamp(55px,18vw,96px);font-weight:1000;color:#fff;text-shadow:0 6px 18px #000;pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
+.stat{background:#0a1b27;border-radius:11px;padding:10px;min-width:0}
+.stat label{display:block;color:#8ba9b7;font-size:11px;font-weight:800;text-transform:uppercase}
+.stat strong{font-variant-numeric:tabular-nums;font-weight:900;font-size:clamp(15px,3.9vw,22px)}
+#gasArea{background:#102938;border:1px solid #5c879a55;border-radius:16px;padding:14px;margin-top:10px}
+.gas-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+input[type=range]{width:100%;accent-color:#45e5c0;min-height:34px}
+#gasButton{width:100%;min-height:92px;background:linear-gradient(140deg,#f04a5c,#a90e3a);border-radius:18px;font-size:24px;letter-spacing:1px;touch-action:none;user-select:none;-webkit-user-select:none}
+#gasButton.is-on{background:linear-gradient(140deg,#f68b22,#d72835);transform:scale(.99)}
+#gasButton:disabled{opacity:.35;transform:none}#finalBoard{margin-top:12px}
+.scoreline{display:grid;grid-template-columns:1fr auto auto;gap:8px;border-bottom:1px solid #ffffff1b;padding:9px 0;align-items:center;font-variant-numeric:tabular-nums}
+.scoreline span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+small{color:var(--muted)}footer{color:#8399a7;text-align:center;padding:12px 16px 22px;font-size:11px}
+@media(min-width:650px){#trackCanvas{height:min(55vh,490px)}#gasArea{display:grid;grid-template-columns:1fr 220px;align-items:center;gap:20px}#gasButton{min-height:110px}}
+</style></head>
+<body>
+<header>
+<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">DUELO EN DIRECTO · BETA 0.15.70</div></div>
+<a href="./index.html">← Volver al juego</a>
+</header>
+<main>
+<div><div class="tag">PRUEBA TÉCNICA · DOS PILOTOS REALES</div><h1>Duelo en directo 🏁</h1>
+<p>Dos móviles, dos carriles y un mismo óvalo. Tres vueltas por manga y cambio de carriles. Sin PT82 ni colisiones entre coches en esta primera prueba. Resultados no homologados.</p></div>
+<section id="setup" class="panel">
+<h2>1. Conecta con tu rival</h2>
+<p id="identity" class="muted">Comprobando cuenta CraftRace Studio…</p>
+<div class="row">
+<button id="createRoom" class="primary" disabled>Crear sala privada</button>
+<input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código del duelo" spellcheck="false" autocomplete="off">
+<button id="joinRoom" disabled>Unirme</button>
+</div>
+<div id="roomBox" hidden>
+<small>Código para compartir</small>
+<div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Compartir enlace</button></div>
+<p id="roomNames">Esperando al segundo piloto…</p>
+<p id="connectionStatus">Conectando…</p>
+<div class="row"><button id="startHeat" class="primary" disabled>Esperando rival</button></div>
+</div>
+<p id="notice" role="status" aria-live="polite"></p>
+<p><small>Tu compañero necesita su propia cuenta de CraftRace Studio. Si todavía no la tiene, debe registrarse desde la pantalla inicial de SlotRace y volver a este enlace.</small></p>
+</section>
+<section id="raceArea" class="panel" hidden>
+<div class="row" style="justify-content:space-between">
+<strong id="heatLabel">Manga 1 de 2</strong><span id="liveStatus" class="tag">EN PREPARACIÓN</span>
+</div>
+<div id="raceBoard">
+<canvas id="trackCanvas" aria-label="Circuito y dos coches en directo"></canvas>
+<div id="countdown" hidden>3</div>
+</div>
+<div class="stats">
+<div class="stat"><label id="myName">Mi coche</label><strong id="myTime">0,000 s</strong><div id="myLap"><small>Vuelta 0 / 3</small></div></div>
+<div class="stat"><label id="peerName">Rival</label><strong id="peerTime">0,000 s</strong><div id="peerLap"><small>Vuelta 0 / 3</small></div></div>
+</div>
+<div id="gasArea">
+<div><div class="gas-head"><strong>Potencia del gatillo</strong><output id="powerValue">45%</output></div><input id="powerSlider" type="range" min="0" max="100" step="1" value="45" aria-label="Potencia del acelerador"></div>
+<button id="gasButton" disabled>ACELERAR</button>
+</div>
+<p><small>Mantén pulsado ACELERAR y ajusta el porcentaje. En las curvas, demasiado gas puede provocar una salida de pista y una espera de 2,5 segundos.</small></p>
+<div id="finalBoard" hidden><h2 id="resultTitle">Resultado provisional</h2><div id="scoreLines"></div></div>
+</section>
+</main>
+<footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
+<script type="module" src="./src/live-duel.mjs?v=0.15.70"></script>
+</body></html>
