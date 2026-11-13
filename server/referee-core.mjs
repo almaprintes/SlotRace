@@ -119,12 +119,13 @@ export function createServerReferee({
       return deny("heat-timeout");
     }
     ++tick;
-    const before = Object.fromEntries(pilots.map(p=>[p,controls.get(p)]));
+    const finishedPilots=pilots.filter(p=>laps[p].length>=competition.rules.targetLaps);
+    const before = Object.fromEntries(pilots.map(p=>[p,finishedPilots.includes(p)?0:controls.get(p)]));
     let events;
     try {
       events = serverCrossings(engine.step({
         tick, dtMs:stepMs, controls:snapshot(before),
-        assignment:snapshot(heats[heat - 1])
+        assignment:snapshot(heats[heat - 1]),finishedPilots:[...finishedPilots]
       }),pilots);
       for (const driverId of events) {
         // Nunca permitir una vuelta extra después de completar la manga.
@@ -136,6 +137,7 @@ export function createServerReferee({
         const lane = heats[heat - 1].laneA === driverId ? "A" : "B";
         laps[driverId].push({number:laps[driverId].length + 1, lane,
           lapMs:elapsedMs - previous, finishElapsedMs:elapsedMs});
+        if(laps[driverId].length===competition.rules.targetLaps)controls.set(driverId,0);
         record({kind:"server-crossing",driverId,lane});
       }
     } catch(error) {
@@ -170,9 +172,12 @@ export function createServerReferee({
       laneBHeats:results.filter(part=>part.assignment.laneB===driverId).length
     }));
     totals.sort((a,b)=>a.totalMs-b.totalMs||a.driverId.localeCompare(b.driverId));
-    return {ready:true,official:false,verification:"laboratory-unverified",
-      classification:totals.map((p,i)=>({...p,position:
-        i>0&&p.totalMs===totals[i-1].totalMs?i:i+1}))};
+    let lastTime=null,lastPosition=0;
+    const classification=totals.map((p,i)=>{
+      if(p.totalMs!==lastTime){lastTime=p.totalMs;lastPosition=i+1;}
+      return {...p,position:lastPosition};
+    });
+    return {ready:true,official:false,verification:"laboratory-unverified",classification};
   }
   return Object.freeze({ingest,step,nextHeat,view,provisionalClassification,
     audit:()=>snapshot(audit)});
