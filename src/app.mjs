@@ -9,7 +9,7 @@ import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
 import {duelSummary} from "./race-results.mjs?v=0.15.66";
 import {duelPresentation} from "./duel-presentation.mjs?v=0.15.66";
-import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.66";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.66";
 import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.66";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
@@ -2883,7 +2883,7 @@ function aiTestPose(){
  const change=aiTest.laneTransition;
  return change?.physical?physicalSwitchPose(target,change.from,change.pieceIndex):target;
 }
-function advanceAiTest(dt){
+function advanceAiTest(dt,contactBefore=null){
  if(!aiTest.active||!state.run||!state.raceStarted||
   state.mode!=="race"||aiTest.heatComplete)return;
  if(aiTest.collisionCooldown>0)aiTest.collisionCooldown=Math.max(0,aiTest.collisionCooldown-dt);
@@ -2950,18 +2950,45 @@ function advanceAiTest(dt){
  const separation=Math.hypot(rival.x-player.x,rival.y-player.y);
  if(aiTest.awaitingSeparation&&separation>CAR_LENGTH_MM*1.65)
   aiTest.awaitingSeparation=false;
- if(state.penalty>0||aiTest.collisionCooldown>0||aiTest.awaitingSeparation||
-  carTrackLevel(state.track,rival)!==carTrackLevel(state.track,player))return;
- if(aiTest.lane===state.lane&&separation<CAR_LENGTH_MM){
-  const hit=rearContact({
-   aiDistance:aiTest.distance,playerDistance:state.distance,total:lane.total,
-   aiSpeed:aiTest.speed,playerSpeed:state.speed,carLength:CAR_LENGTH_MM
-  });
-  if(!hit)return;
-  if(hit.severity==="glance")return; // Un roce muy suave no modifica la carrera.
-  aiTest.collisions++;aiTest.awaitingSeparation=true;aiTest.collisionCooldown=.5;
+ if(state.penalty>0||aiTest.penalty>0||
+    carTrackLevel(state.track,rival)!==carTrackLevel(state.track,player))return;
+
+ // La comprobación puntual antigua perdía el choque si el perseguidor
+ // atravesaba al otro en un único fotograma, o si ambos ya se solapaban.
+ // Ahora consideramos TODO el recorrido de los dos coches antes de pintar.
+ const sameGuide=contactBefore&&
+  contactBefore.player.lane===contactBefore.ai.lane&&
+  contactBefore.player.lane===state.lane&&
+  contactBefore.ai.lane===aiTest.lane&&
+  !contactBefore.player.deslot&&!contactBefore.ai.deslot&&
+  !state.laneTransition&&!aiTest.laneTransition;
+ const hit=sameGuide?sweptRearContact({
+  playerStart:contactBefore.player.distance,
+  aiStart:contactBefore.ai.distance,
+  playerTravel:forwardGap(contactBefore.player.distance,state.distance,lane.total),
+  aiTravel:forwardGap(contactBefore.ai.distance,aiTest.distance,lane.total),
+  playerSpeed:state.speed,aiSpeed:aiTest.speed,total:lane.total,
+  carLength:CAR_LENGTH_MM
+ }):null;
+ if(hit){
+  // La guía es compartida: detener al trasero DETRÁS del delantero,
+  // incluso en un roce leve o durante el enfriamiento del choque previo.
+  // Sin esto un simple frenazo de velocidad no impide el teletransporte.
+  if(hit.rear==="ai"){
+   const distance=placeRearBehind(state.distance,lane.total,CAR_LENGTH_MM);
+   if(distance!==null)aiTest.distance=distance;
+   aiTest.speed=Math.min(aiTest.speed,state.speed);
+  }else{
+   const distance=placeRearBehind(aiTest.distance,lane.total,CAR_LENGTH_MM);
+   if(distance!==null)state.distance=distance;
+   state.speed=Math.min(state.speed,aiTest.speed);
+  }
+  if(aiTest.collisionCooldown>0||aiTest.awaitingSeparation)return;
+  aiTest.collisions++;
+  aiTest.awaitingSeparation=true;
+  aiTest.collisionCooldown=hit.severity==="glance"?.25:.5;
+  if(hit.severity==="glance")return; // Sin descarrilar, pero sin atravesar.
   if(hit.severity==="bump"){
-   // Frenazo del que alcanza, ligera desaceleración y culeo del alcanzado.
    if(hit.rear==="ai"){
     aiTest.speed*=.23;state.speed*=.91;
     state.bump={elapsed:0,duration:.65,angle:(player.curve||1)*.28};
@@ -2974,7 +3001,6 @@ function advanceAiTest(dt){
    toast("Toque por alcance · frenada y culeo, sin salida de pista.");
    return;
   }
-  // Golpe agresivo: ambos fuera. Culpa y sanción superiores para el de atrás.
   const playerPenalty=hit.rear==="player"?
    REAR_CONTACT.severeRearPenalty:REAR_CONTACT.severeFrontPenalty;
   const aiPenalty=hit.rear==="ai"?
@@ -2991,6 +3017,7 @@ function advanceAiTest(dt){
    " responsable: "+REAR_CONTACT.severeRearPenalty+" s.");
   return;
  }
+ if(aiTest.collisionCooldown>0||aiTest.awaitingSeparation)return;
  // El cruce entre guías diferentes (PT/82) no es un alcance posterior.
  if(separation<35&&state.track.laneChangerIndex>=0&&
   player.pieceIndex===state.track.laneChangerIndex&&
@@ -6659,7 +6686,13 @@ function loop(now){
  pollGamepad();
  const dt=Math.max(0,Math.min(.05,(now-state.latest)/1000));state.latest=now;
  const justResumed=updateResumeCountdown(now);
- if(!justResumed){simulation(dt,now);advanceAiTest(dt);}
+ // Capturar la posición ANTES de mover ambos coches evita perder impactos
+ // rápidos entre fotogramas; la colisión se resuelve tras ambas físicas.
+ const contactBefore=state.run&&state.raceStarted&&aiTest.active?{
+  player:{lane:state.lane,distance:state.distance,deslot:!!state.deslot},
+  ai:{lane:aiTest.lane,distance:aiTest.distance,deslot:!!aiTest.deslot}
+ }:null;
+ if(!justResumed){simulation(dt,now);advanceAiTest(dt,contactBefore);}
  if(state.run&&!justResumed){
   advanceLaneTransition(dt);
   for(const bumper of [state.bump,aiTest.bump])
