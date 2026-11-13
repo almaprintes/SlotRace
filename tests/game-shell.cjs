@@ -16,7 +16,7 @@ const path=require("node:path");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],listeners:{},dataset:{},style:{},textContent:"",innerHTML:"",disabled:false,hidden:false,
-   width:390,height:600,clientWidth:390,value:"0",
+   width:390,height:600,clientWidth:390,value:"0",parentElement:{hidden:false},
    classList:{add(){},remove(){},toggle(){},contains(){return false}},
    attrs:{},setAttribute(n,v){this.attrs[n]=String(v)},setPointerCapture(){},appendChild(n){this.children.push(n);},
    addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},
@@ -38,7 +38,14 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
+ // Importar dependencias reales del juego para el arnés aislado del navegador.
+ const extraModules=await Promise.all([
+  "kerbs","runoffs","player-economy","box-factory","box-art",
+  "economy-catalog","race-results","rear-contact","closure-guide",
+  "duel-presentation"
+ ].map(name=>import("../src/"+name+".mjs")));
+ const symbols=Object.assign({},geo,blueprint,clockCore,...extraModules);
+ const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
  const navigator={
   shared:null,canShare:()=>true,
   async share(payload){this.shared=payload;}
