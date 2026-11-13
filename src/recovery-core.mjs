@@ -21,7 +21,13 @@ export function advanceRecovery({penalty,deslot,dt,clearToReturn=true}){
  const canReturn=clearToReturn && left<=RECOVERY.reentrySeconds;
  const reentryElapsed=canReturn?
   Math.min(RECOVERY.reentrySeconds,previous+dt):0;
- const completed=left===0&&reentryElapsed>=RECOVERY.reentrySeconds-1e-9;
+ // El HUD conserva un mínimo de 0,05 s mientras esperamos. Nunca usar
+ // ese valor artificial como condición de fin: de otro modo la
+ // recuperación se queda repitiéndose eternamente en 0,05 s.
+ const duration=Number.isFinite(deslot.duration)?deslot.duration:
+  penalty+(Number.isFinite(deslot.elapsed)?deslot.elapsed:0);
+ const completed=elapsed+1e-9>=duration&&
+  reentryElapsed>=RECOVERY.reentrySeconds-1e-9;
  return {penalty:completed?0:Math.max(left,RECOVERY.waitRetrySeconds),
   deslot:completed?null:{...deslot,elapsed,reentryElapsed,
    waitingForSpace:!clearToReturn},
