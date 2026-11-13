@@ -78,8 +78,41 @@ const fs=require("node:fs");
  assert.ok(headers.some(n=>n.textContent==="Ventaja"));
  assert.ok(all.some(n=>n.textContent==="Tú +2,832 s"));
  assert.ok(all.some(n=>n.textContent==="3,124 s"&&n.className.includes("is-best")));
- assert.equal(elements.resultsSectionHeading.textContent,"Resultados por manga");
+ assert.equal(elements.resultsSectionHeading.textContent,"Vuelta a vuelta");
  assert.equal(elements.resultsSectionCaption.textContent,"DOS MANGAS");
+ // Regresión basada en las capturas reales de DEV 0.15.65:
+ // los totales en pantalla DEBEN ser la suma exacta de las milésimas visibles.
+ const screenPlayer=[3.529,2.791,2.791,2.791,2.791,
+   3.65949,6.45649,3.266,3.124,3.12351].map((seconds,i)=>({
+    heat:i<5?1:2,number:i+1,seconds
+   }));
+ const screenAi=[6.505,6.253,6.253,6.253,6.252,
+   5.53051,5.27851,5.277,5.277,5.27749].map((seconds,i)=>({
+    heat:i<5?1:2,number:i%5+1,seconds
+   }));
+ const screenshot=duelPresentation(screenPlayer,screenAi,5,2);
+ assert.equal(screenshot.heats[0].playerTotal,14.693);
+ assert.equal(screenshot.heats[0].aiTotal,31.516);
+ assert.equal(screenshot.heats[0].heatGap,16.823);
+ assert.equal(screenshot.heats[1].playerTotal,19.629);
+ assert.equal(screenshot.heats[1].aiTotal,26.641);
+ assert.equal(screenshot.heats[1].heatGap,7.012);
+ assert.equal(screenshot.heats[1].rows[0].gap,1.872);
+ assert.equal(screenshot.heats[1].rows[1].gap,-1.177);
+ assert.equal(screenshot.heats[1].rows[4].gap,2.153);
+ assert.equal(screenshot.summary.playerTotal,34.322);
+ assert.equal(screenshot.summary.aiTotal,58.157);
+ assert.equal(screenshot.summary.difference,23.835);
+ assert.equal(screenshot.summary.playerTotal,
+  screenshot.heats.reduce((n,h)=>n+h.playerTotal,0));
+ sampleState.sessionLaps=screenPlayer;sampleAi.sessionLaps=screenAi;
+ sampleState.twoLegPhase=2;fn();
+ assert.ok(elements.resultsStats.textContent.includes("34,322 s"));
+ assert.ok(elements.resultsStats.textContent.includes("58,157 s"));
+ assert.ok(elements.resultsStats.textContent.includes("Tú +23,835 s"));
+ assert.ok(elements.resultsStats.textContent.includes("Tú +7,012 s"));
+ assert.ok(elements.resultsLaps.textContent.includes("Tú +1,872 s"));
+ assert.ok(elements.resultsLaps.textContent.includes("IA +1,177 s"));
  // Una sesión intermedia no anuncia ganador ni inventa la manga pendiente.
  sampleState.sessionLaps=player.slice(0,5);sampleState.twoLegPhase=1;
  sampleAi.sessionLaps=ai.slice(0,5);

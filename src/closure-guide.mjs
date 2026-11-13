@@ -1,4 +1,4 @@
-import {findBidirectionalClosure} from "./closure-tail.mjs?v=0.15.65";
+import {findBidirectionalClosure} from "./closure-tail.mjs?v=0.15.66";
 // Propuestas de cierre: geometría validada y presupuesto antes de tocar la mesa.
 // El optimizador prioriza montar con piezas disponibles; el catálogo sólo
 // representa posibilidades, nunca compras automáticas.
