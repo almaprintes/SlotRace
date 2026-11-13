@@ -1,0 +1,39 @@
+name: SlotRace · marcador de carreras
+
+on:
+  push:
+    branches: [feat/results-scoreboard-01565-20261113]
+  pull_request:
+    paths:
+      - 'src/duel-scoreboard.mjs'
+      - 'src/app.mjs'
+      - 'src/site.css'
+      - 'index.html'
+      - 'tests/duel-scoreboard*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scoreboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar JS de juego y marcador
+        run: |
+          node --check src/app.mjs
+          node --check src/duel-scoreboard.mjs
+          node --check tests/duel-scoreboard.cjs
+          node --check tests/duel-scoreboard-ui.cjs
+      - name: Verificar carreras completas, parciales y empates
+        run: |
+          node tests/duel-results.cjs
+          node tests/duel-scoreboard.cjs
+          node tests/duel-scoreboard-ui.cjs
+      - name: Control de la PWA y cronómetro existente
+        run: |
+          node smoke.cjs
+          node tests/update-check.cjs
+          node tests/timing-lab.cjs
