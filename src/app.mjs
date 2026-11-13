@@ -1,15 +1,16 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.64";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.64";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.65";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.65";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.65";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.65";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.65";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.64";
-import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.64";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.64";
+import {duelSummary} from "./race-results.mjs?v=0.15.65";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.65";
+import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.65";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.65";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2405,78 +2406,96 @@ function endSession(target="menu"){
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
 function renderDuelResults(){
- const data=duelSummary(state.sessionLaps,aiTest.sessionLaps,
+ const view=duelPresentation(state.sessionLaps,aiTest.sessionLaps,
   state.targetLaps,state.twoLegPhase);
- const player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
+ const data=view.summary,player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
  const rival=CAR_MODELS[state.selectedCar==="spark"?"gripline":"spark"].name;
  const scores=$("resultsStats"),list=$("resultsLaps");
  scores.textContent="";list.textContent="";
- const el=(tag,cls,text,parent)=>{
-  const node=document.createElement(tag);node.className=cls;
-  node.textContent=text;parent.appendChild(node);return node;
+ const add=(tag,cls,text,parent)=>{
+  const node=document.createElement(tag);
+  if(cls)node.className=cls;
+  if(text!==null)node.textContent=text;
+  parent.appendChild(node);return node;
  };
+ const seconds=value=>value===null?"—":format(value)+" s";
+ const advantage=value=>value===null?"—":
+  Math.abs(value)<.001?"Empate":(value>0?"Tú +":"IA +")+format(Math.abs(value))+" s";
+ const winnerClass=who=>who==="player"?"is-player":
+  who==="ai"?"is-ai":"is-tie";
  const completeFirst=data.heats[0].playerTotal!==null&&
   data.heats[0].aiTotal!==null;
- const head=el("div","duel-headline",
+ const banner=add("div","duel-headline",
   data.completed?
    (data.winner==="tie"?"🏁 ¡EMPATE!":
     data.winner==="player"?"🏆 ¡HAS GANADO A LA IA!":"🏆 GANADORA: IA"):
-   state.twoLegPhase===1&&completeFirst?
-    "🏁 Manga 1 terminada · faltan los carriles intercambiados":
-    "🏁 Competición en curso · sin ganador definitivo",scores);
- el("small","duel-caption",
-  "Dos mangas · Carril A y B · "+state.targetLaps+
-  " vueltas por manga y piloto · resultados locales de prueba",head);
+  state.twoLegPhase===1&&completeFirst?
+   "🏁 Primera manga completada":"🏁 Competición en curso",scores);
+ add("small","duel-caption","2 mangas · Carriles intercambiados · "+
+  state.targetLaps+" vueltas por manga · Prueba local",banner);
  if(data.completed){
-  const totals=el("div","duel-totals","",scores);
-  for(const [who,name,time] of [
-   ["player","Tú · "+player,data.playerTotal],
-   ["ai","IA · "+rival,data.aiTotal]
-  ]){
-   const tile=el("div","duel-tile "+(data.winner===who?"is-winner":""),"",totals);
-   el("span","",name,tile);
-   el("strong","",format(time)+" s",tile);
-  }
-  el("p","duel-difference",data.winner==="tie"?
-   "Mismo tiempo total (diferencia inferior a 1 ms).":
-   "Diferencia final: "+format(data.difference)+" s",scores);
- }
- for(const heat of data.heats){
-  if(heat.heat>state.twoLegPhase)continue;
-  const heading=el("section","duel-heat","",list);
-  el("h3","","Manga "+heat.heat+" · "+
-   (heat.heat===1?"posición inicial":"carriles intercambiados"),heading);
-  for(const [who,name,total,best,completed] of [
-   ["player","Tú · "+player,heat.playerTotal,heat.playerBest,heat.playerLaps],
-   ["ai","IA · "+rival,heat.aiTotal,heat.aiBest,heat.aiLaps]
-  ]){
-   const row=el("div","duel-heat-row","",heading);
-   el("span","",name+" · "+completed+"/"+state.targetLaps+" vueltas",row);
-   el("strong","",total===null?"En curso / incompleto":format(total)+" s",row);
-   el("small","",best===null?"Sin vuelta registrada":
-    "Mejor vuelta: "+format(best)+" s",row);
+  const totals=add("div","duel-totals",null,scores);
+  for(const [who,name,time] of [["player","Tú · "+player,data.playerTotal],
+    ["ai","IA · "+rival,data.aiTotal]]){
+   const tile=add("div","duel-tile "+(data.winner===who?"is-winner":""),null,totals);
+   add("span","",name,tile);
+   add("strong","",seconds(time),tile);
   }
  }
- // Vueltas reales de ambos pilotos; no representar la IA como un
- // récord personal ni inventar parciales que no se hayan registrado.
- const rows=el("section","duel-lap-list","",list);
- el("h3","","Detalle de vueltas de ambos pilotos",rows);
- for(let heat=1;heat<=state.twoLegPhase;heat++){
-  el("h4","","Manga "+heat,rows);
-  for(let n=1;n<=state.targetLaps;n++){
-   const p=state.sessionLaps.find(l=>(l.heat||1)===heat&&
-    (l.number-(heat-1)*state.targetLaps)===n);
-   const ai=aiTest.sessionLaps.find(l=>l.heat===heat&&l.number===n);
-   if(!p&&!ai)continue;
-   const row=el("div","duel-lap-row","",rows);
-   el("span","","Vuelta "+n,row);
-   el("span","","Tú: "+(p?format(p.seconds)+" s":"—"),row);
-   el("span","","IA: "+(ai?format(ai.seconds)+" s":"—"),row);
-  }
+ const metrics=add("div","duel-highlights",null,scores);
+ for(const [label,value,css] of [
+  ["Ventaja final",data.completed?advantage(data.aiTotal-data.playerTotal):"Pendiente","is-gap"],
+  ["Tu mejor vuelta",seconds(view.bestPlayer),"is-player"],
+  ["Mejor vuelta IA",seconds(view.bestAi),"is-ai"]]){
+  const tile=add("div","duel-highlight "+css,null,metrics);
+  add("small","",label,tile);add("strong","",value,tile);
  }
+ const overview=add("section","duel-overview",null,scores);
+ add("h2","","Comparativa de mangas",overview);
+ const table=add("table","duel-table duel-overview-table",null,overview);
+ const cap=add("caption","sr-only","Totales de cada manga por piloto y diferencia",table);
+ const head=add("thead","",null,table),titles=add("tr","",null,head);
+ for(const title of ["Manga","Tú","IA","Ventaja"]){
+  const th=add("th","",title,titles);th.scope="col";
+ }
+ const body=add("tbody","",null,table);
+ for(const heat of view.heats){
+  const tr=add("tr","",null,body);
+  add("th","",String(heat.heat),tr).scope="row";
+  add("td","duel-number",seconds(heat.playerTotal),tr);
+  add("td","duel-number",seconds(heat.aiTotal),tr);
+  add("td","duel-advantage "+winnerClass(heat.heatWinner),advantage(heat.heatGap),tr);
+ }
+ add("h2","duel-laps-heading","Vuelta a vuelta",list);
+ for(const heat of view.heats){
+  const panel=add("details","duel-laps-panel",null,list);
+  panel.open=true;
+  add("summary","", "Manga "+heat.heat+
+   (heat.heat===1?" · Posición inicial":" · Carriles intercambiados"),panel);
+  const lapTable=add("table","duel-table duel-lap-table",null,panel);
+  add("caption","sr-only","Comparación de vueltas de la manga "+heat.heat,lapTable);
+  const thead=add("thead","",null,lapTable),trh=add("tr","",null,thead);
+  for(const label of ["Vuelta","Tú","IA","Ventaja"]){
+   const th=add("th","",label,trh);th.scope="col";
+  }
+  const tbody=add("tbody","",null,lapTable);
+  for(const row of heat.rows){
+   const tr=add("tr","",null,tbody);
+   add("th","duel-number",String(row.lap),tr).scope="row";
+   add("td","duel-number "+(row.playerBest?"is-best":""),seconds(row.playerTime),tr);
+   add("td","duel-number "+(row.aiBest?"is-best":""),seconds(row.aiTime),tr);
+   add("td","duel-advantage "+winnerClass(row.faster),advantage(row.gap),tr);
+  }
+  const best=add("p","duel-heat-best",null,panel);
+  best.textContent="Vueltas rápidas: Tú "+seconds(heat.playerBest)+
+   " · IA "+seconds(heat.aiBest);
+ }
+ $("resultsSectionHeading").textContent="Resultados por manga";
+ $("resultsSectionCaption").textContent="DOS MANGAS";
 }
-
 function renderSessionSummary(){
+ $("resultsSectionHeading").textContent="Progreso vuelta a vuelta";
+ $("resultsSectionCaption").textContent="TODAS TUS VUELTAS";
  const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
  $("resultsTimingAudit").dataset.phase=pendingSecond?"intermediate":"final";
  $("resultsAgain").textContent=pendingSecond?"🏁 Segunda manga · "+laneLabel(1-state.lane):"🏁 Otra sesión";
@@ -6663,7 +6682,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.64",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.65",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
