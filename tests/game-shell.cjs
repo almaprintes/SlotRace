@@ -905,6 +905,8 @@ const path=require("node:path");
  assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Plano en diseño/,
   "El plano provisional ha desaparecido de la tienda");
 
+ // Carrera de garaje exige la pieza física SALIDA/META: montar pista de ensayo válida.
+ game.changeTypes(ovalWithFinish.slice(),"Óvalo reglamentario de ensayo",[],geo.START);
  // Elegir Spark en el garaje lo habilita sin afectar al Gripline.
  game.showHub("garage");
  elements.get("garageChooseSpark").listeners.click[0]();
