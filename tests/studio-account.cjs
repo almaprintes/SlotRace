@@ -21,7 +21,7 @@ const nodes=new Map(ids.map(id=>[id,{
  id,hidden:id==="entryActions"||id==="entryGuest",disabled:false,textContent:"",value:"",
  attrs:{},listeners:{},classList:{toggle(){}},
  setAttribute(name,val){this.attrs[name]=String(val);},
- querySelectorAll:()=>[],focus(){},addEventListener(name,handler){
+ querySelectorAll:()=>[],replaceChildren(){this.textContent="";},focus(){},addEventListener(name,handler){
   (this.listeners[name]??=[]).push(handler);
  }
 }]));
@@ -50,7 +50,7 @@ const api={
  auth,
  from(name){
   return {
-   select(){return this},eq(){return this},is(){return this},
+   select(){return this},eq(){return this},is(){return this},order(){return this},
    async maybeSingle(){
     if(name==="craft_accounts")return {data:{user_id:mockUser.id,nickname:alias},error:null};
     if(name==="profiles")return {data:{nick:"JUANFRIKAZO_DEV"},error:null};
