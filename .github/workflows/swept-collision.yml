@@ -1,0 +1,33 @@
+name: SlotRace · colisiones continuas
+on:
+  push:
+    branches: [fix/swept-rear-contact-0.15.67]
+  pull_request:
+    paths: ['src/rear-contact.mjs','src/app.mjs','tests/rear-contact.cjs','tests/rear-impact-runtime.cjs','tests/ai-pt82.cjs']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis de juego y contactos
+        run: |
+          node --check src/app.mjs
+          node --check src/rear-contact.mjs
+      - name: Detector de choques continuos y sentido del impacto
+        run: node tests/rear-contact.cjs
+      - name: Prueba real de IA, roces, alcances y recuperación
+        run: node tests/rear-impact-runtime.cjs
+      - name: Comprobar PT82 en ambos sentidos
+        run: |
+          node tests/ai-pt82.cjs
+          node tests/pt82.cjs
+      - name: Cronometría y dos mangas
+        run: |
+          node tests/duel-results.cjs
+          node tests/timing-lab.cjs
