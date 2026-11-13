@@ -39,6 +39,12 @@ jobs:
       - name: Comprobar actualización PWA y evitar módulos antiguos
         run: node tests/update-check.cjs
 
+      - name: Verificar clasificación visual y tablas de vueltas del duelo
+        run: |
+          node tests/duel-results.cjs
+          node tests/duel-scoreboard.cjs
+          node tests/duel-scoreboard-ui.cjs
+
       - name: Comprobar copia segura y restauración de progreso
         run: node tests/backup.cjs
 
