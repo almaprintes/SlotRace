@@ -1,15 +1,15 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.63";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.63";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.63";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.63";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.63";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.64";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.64";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.63";
-import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.63";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.63";
+import {duelSummary} from "./race-results.mjs?v=0.15.64";
+import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.64";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.64";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -743,7 +743,7 @@ function restoreLastCircuitRevision(){
 }
 function saveCircuit(){
  const field=state.mode==="build"?$("workCircuitName"):$("circuitName");
- const name=String(field.value||state.circuitName).trim().replace(/\s+/g," ").slice(0,64);
+ const name=String(field.value).trim().replace(/\s+/g," ").slice(0,64);
  if(!name){toast("Ponle nombre al circuito antes de guardarlo.");return false;}
  if(!state.types.length&&!state.loose.length){toast("Añade al menos una pieza.");return false;}
  const active=state.library.find(c=>c.id===state.activeCircuitId);
@@ -2186,6 +2186,8 @@ function createNewCircuit(){
   creator:circuitCreator(),direction:state.driveDirection,
   activeId:state.activeCircuitId};
  state.circuitName="";state.circuitCreator="";state.activeCircuitId=null;
+ // Vaciar mesa inicia un proyecto distinto, incluso con un input todavía enfocado.
+ for(const id of ["circuitName","workCircuitName"])$(id).value="";
  state.sessionLaps=[];
  state.reference=null;state.referenceImage=null;state.templateIncludeInExport=false;
  state.driveDirection=state.newCircuitDirection;
@@ -6439,6 +6441,12 @@ function initEvents(){
  $("settingsCameraCustom").addEventListener("click",()=>setCameraMode("custom"));
  $("settingsCameraZoom").addEventListener("input",e=>setFollowZoom(e.target.value));
  $("menuRecipe").addEventListener("click",exportRecipe);
+ // Guardar el nombre al escribir impide que un repintado de la mesa restaure el anterior.
+ for(const id of ["circuitName","workCircuitName"])$(id).addEventListener("input",event=>{
+  state.circuitName=String(event.target.value).slice(0,64);
+  for(const other of ["circuitName","workCircuitName"])if(other!==id)$(other).value=state.circuitName;
+  save();
+ });
  $("menuSaveCircuit").addEventListener("click",saveCircuit);
  $("deleteCircuitCancel").addEventListener("click",cancelCircuitDeletion);
  $("deleteCircuitConfirm").addEventListener("click",confirmCircuitDeletion);
@@ -6553,10 +6561,7 @@ function initEvents(){
    state.camera={panX:0,panY:0,zoom:1};
    save();
  });
- $("clear").addEventListener("click",()=>{
-  changeTypes([],"Mesa vacía: coloca y mueve las piezas como un puzzle.",[],START);
-  resetWorkBoard();save();updateUI();
- });
+ $("clear").addEventListener("click",createNewCircuit);
  $("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
  $("remove").addEventListener("click",removeSelected);$("restore").addEventListener("click",recoverDraft);
  $("rotate").addEventListener("click",()=>rotateSelection(1));
@@ -6658,7 +6663,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.63",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.64",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
