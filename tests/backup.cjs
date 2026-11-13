@@ -104,9 +104,9 @@ const fs=require("node:fs"),path=require("node:path");
  const css=fs.readFileSync(path.join(__dirname,"../src/site.css"),"utf8");
  for(const id of ["backupExport","backupVerify","backupRestore","backupFile","backupStatus"])
   assert.match(index,new RegExp('id="'+id+'"'));
- assert.match(index,/src\/backup\.mjs\?v=0\.15\.13/);
+ assert.ok(index.includes("src/backup.mjs?v="+JSON.parse(fs.readFileSync(path.join(__dirname,"../version.json"),"utf8")).version));
  assert.match(index,/rel="apple-touch-icon"/);
- assert.match(index,/slotrace-icon-192\.png\?v=0\.15\.13/);
+ assert.ok(index.includes("slotrace-icon-192.png?v="+JSON.parse(fs.readFileSync(path.join(__dirname,"../version.json"),"utf8")).version));
  assert.match(index,/rel="manifest"/);
  assert.match(css,/\.backup-actions/);
  // Regresión visual: la regla global .hub-screen .hub-back{display:none!important}
