@@ -3232,3 +3232,62 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 #resultsLaps .duel-lap-list h4{margin:12px 0 5px;font:900 13px system-ui}
 #resultsLaps .duel-lap-row{display:grid;grid-template-columns:.7fr 1fr 1fr;gap:5px;
  padding:8px 5px;font:700 11px system-ui;border-bottom:1px solid #d7e2e6}
+
+
+/* DEV 0.15.65 · Clasificación comparativa, legible sin scroll horizontal en iPhone */
+.results-audit-details{margin-top:9px;padding-top:9px;border-top:1px solid #e3e9ee}
+.results-hero .results-audit-details summary{display:list-item;cursor:pointer;width:max-content;max-width:100%;color:#55697a;font:800 11px/1.5 system-ui;list-style-position:inside}
+.results-hero .results-audit-details summary span{font-weight:650;color:#89939e}
+.results-hero .results-audit-details .results-timing-audit{max-width:100%;margin-top:7px;font-size:11px;color:#687b89;line-height:1.5}
+#resultsStats .duel-headline{margin:0;border-radius:16px;padding:14px 16px;background:#103e43;border:1px solid #3cb79e;box-shadow:0 3px 10px #073b3b0c;color:#f0fffb}
+#resultsStats .duel-result-title{display:block;color:#f0fffb;font:950 clamp(19px,5vw,26px)/1.16 system-ui,-apple-system,sans-serif;letter-spacing:-.4px}
+#resultsStats .duel-caption{margin-top:7px;color:#bde7e0;font:700 11px/1.4 system-ui}
+#resultsStats .duel-summary-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#resultsStats .duel-summary-card{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px;border:1.5px solid #d1dce4;border-radius:15px;background:#ecf2f6;padding:13px 12px;color:#16303a}
+#resultsStats .duel-summary-card.player{background:#f7eef1;border-color:#ebc4d1}
+#resultsStats .duel-summary-card.is-winner{border:2px solid #209c83;background:#e0f7ed}
+#resultsStats .duel-summary-label{font-size:11px;font-weight:850;color:#435a67;overflow-wrap:anywhere;line-height:1.3}
+#resultsStats .duel-summary-time{font-size:clamp(22px,5.5vw,32px);font-weight:950;letter-spacing:-.7px;color:#142d36;line-height:1.12;font-variant-numeric:tabular-nums;white-space:nowrap}
+#resultsStats .duel-summary-win{color:#0b755c;font:850 10px/1 system-ui}
+#resultsStats .duel-mini-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#resultsStats .duel-mini-card{min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:8px;border:1px solid #d5e0e9;border-radius:12px;background:#fff;padding:10px 7px}
+#resultsStats .duel-mini-card span{font:750 10px/1.25 system-ui;color:#627787}
+#resultsStats .duel-mini-card strong{font:900 clamp(12px,3.2vw,17px)/1.12 system-ui;letter-spacing:-.25px;white-space:nowrap;color:#1b3845;font-variant-numeric:tabular-nums}
+#resultsStats .duel-metric-difference{background:#f4f7fa}
+#resultsStats .duel-metric-player strong{color:#b31941}
+#resultsStats .duel-metric-ai strong{color:#355d74}
+#resultsStats .duel-delta-help{margin:0 1px 2px;color:#708393;font:650 10px/1.45 system-ui}
+#resultsLaps .duel-score-section{min-width:0;background:#fff;border:1px solid #dce5eb;border-radius:15px;padding:14px 10px;box-shadow:0 3px 12px #223c5007;margin:0 0 12px}
+#resultsLaps .duel-section-heading{margin:0 4px 12px;color:#192f3b;font:950 17px/1.2 system-ui;letter-spacing:-.35px}
+#resultsLaps .duel-table-legend{font:700 10px/1.4 system-ui;color:#6c7f89;margin:-6px 4px 10px}
+#resultsLaps .duel-score-table{width:100%;table-layout:fixed;border-collapse:collapse;color:#203849;font-variant-numeric:tabular-nums;font-size:clamp(10px,2.7vw,13px)}
+#resultsLaps .duel-score-table caption.duel-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+#resultsLaps .duel-score-table th:first-child{width:17%}
+#resultsLaps .duel-score-table th:nth-child(2),#resultsLaps .duel-score-table th:nth-child(3){width:26%}
+#resultsLaps .duel-score-table th:nth-child(4){width:31%}
+#resultsLaps .duel-score-table thead th{color:#627789;text-align:right;font-weight:850;background:#f1f5f8;padding:10px 5px;border-bottom:1px solid #d7e3ea}
+#resultsLaps .duel-score-table thead th:first-child{text-align:left;border-radius:7px 0 0 0}
+#resultsLaps .duel-score-table thead th:last-child{border-radius:0 7px 0 0}
+#resultsLaps .duel-score-table tbody th,#resultsLaps .duel-score-table tbody td{padding:11px 5px;text-align:right;border-bottom:1px solid #e4ebef;white-space:nowrap;font-weight:800}
+#resultsLaps .duel-score-table tbody th{text-align:left;color:#5b6c7b}
+#resultsLaps .duel-score-table tbody tr:last-child>th,#resultsLaps .duel-score-table tbody tr:last-child>td{border-bottom:0}
+#resultsLaps .duel-score-table tbody tr:nth-child(even){background:#fafcfd}
+#resultsLaps .duel-faster-cell{background:#e1f6ec;color:#126b53!important}
+#resultsLaps .duel-score-table tbody .duel-delta-ahead{color:#0a785a;font-weight:950}
+#resultsLaps .duel-score-table tbody .duel-delta-behind{color:#b12243;font-weight:950}
+#resultsLaps .duel-score-table tbody .duel-delta-tie{color:#6b7881}
+#resultsLaps .duel-lap-card{min-width:0;border:1px solid #e3eaf0;border-radius:12px;overflow:hidden;margin-top:11px}
+#resultsLaps .duel-lap-heading{display:flex;gap:7px;align-items:center;justify-content:space-between;background:#eef3f6;padding:11px 10px}
+#resultsLaps .duel-lap-heading h4{margin:0;font:950 14px/1.2 system-ui;color:#1f3d4c}
+#resultsLaps .duel-lap-heading span{font:700 10px/1.2 system-ui;color:#647687}
+#resultsLaps .duel-best-lap{box-shadow:inset 0 -2px #db9a42}
+#resultsLaps .duel-best-star{margin-left:2px;color:#a86504;font-size:10px;vertical-align:1px}
+@media(max-width:370px){
+ #resultsStats .duel-summary-card{padding:11px 8px}
+ #resultsStats .duel-summary-time{font-size:clamp(20px,5.5vw,26px)}
+ #resultsStats .duel-mini-metrics{gap:5px}
+ #resultsStats .duel-mini-card{padding:8px 5px}
+ #resultsStats .duel-mini-card strong{font-size:11px}
+ #resultsLaps .duel-score-section{padding:11px 6px}
+ #resultsLaps .duel-score-table thead th,#resultsLaps .duel-score-table tbody th,#resultsLaps .duel-score-table tbody td{padding-left:3px;padding-right:3px;font-size:10px}
+}
