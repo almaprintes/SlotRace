@@ -1,16 +1,16 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.64";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.64";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.65";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.65";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.65";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.65";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.65";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.64";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.64";
-import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.64";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.64";
+import {duelSummary} from "./race-results.mjs?v=0.15.65";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.65";
+import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.65";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.65";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -6682,7 +6682,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.64",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.65",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
