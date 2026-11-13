@@ -51,7 +51,7 @@ const api={
  auth,
  from(name){
   return {
-   select(){return this},eq(){return this},is(){return this},order(){return Promise.resolve({data:[],error:null})},
+   select(){return this},eq(){return this},is(){return this},order(){return {data:[],error:null}},order(){return Promise.resolve({data:[],error:null})},
    async maybeSingle(){
     if(name==="craft_accounts")return {data:{user_id:mockUser.id,nickname:alias},error:null};
     if(name==="profiles")return {data:{nick:"JUANFRIKAZO_DEV"},error:null};
