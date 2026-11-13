@@ -4,6 +4,8 @@ import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
 import {DRIVE as CORE_DRIVE,VEHICLE_DYNAMICS as CORE_VEHICLES,advanceSpeedV4,curveRadiusV4,cornerForcesV4,curveStressEnvelope as coreStressEnvelope,advanceRearV4} from "./physics-v4.mjs?v=0.15.64";
+import {buildCurveSpanIndex,curvePhaseForCar} from "./curve-phase.mjs?v=0.15.64";
+import {chooseAiThrottleV4} from "./ai-driver.mjs?v=0.15.64";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
@@ -2733,41 +2735,13 @@ const CURVE_SPAN_CACHE=new WeakMap();
 function curvePhase(p,lane,distance=state.distance){
  if(!p?.curve||!lane?.total)return{progress:0,lengthMm:0};
  if(!Number.isInteger(p.pieceIndex)||p.pieceIndex<0)
-  return{progress:1,lengthMm:0}; // Uso directo en pruebas de fuerza.
+  return{progress:1,lengthMm:0};
  let spans=CURVE_SPAN_CACHE.get(lane);
  if(!spans){
-  const types=state.track.types,n=types.length;
-  const turns=types.map(id=>Math.sign(CATALOG[id]?.angle||0));
-  const starts=Array(n).fill(Infinity),ends=Array(n).fill(-Infinity);
-  for(let j=1;j<lane.nodes.length;j++){
-   const id=lane.nodes[j].pieceIndex;
-   if(id>=0&&id<n){
-    starts[id]=Math.min(starts[id],lane.lengths[j-1]);
-    ends[id]=Math.max(ends[id],lane.lengths[j]);
-   }
-  }
-  spans=turns.map((turn,i)=>{
-   if(!turn)return null;
-   let first=i,last=i,count=0;
-   while(count++<n-1&&turns[(first+n-1)%n]===turn)
-    first=(first+n-1)%n;
-   count=0;
-   while(count++<n-1&&turns[(last+1)%n]===turn)
-    last=(last+1)%n;
-   const start=starts[first],end=ends[last],total=lane.total;
-   const lengthMm=(end-start+total)%total||total;
-   return{start,end,lengthMm};
-  });
+  spans=buildCurveSpanIndex(state.track.types,lane,CATALOG);
   CURVE_SPAN_CACHE.set(lane,spans);
  }
- const span=spans[p.pieceIndex];
- if(!span)return{progress:0,lengthMm:0};
- const total=lane.total;
- const nativeDistance=((state.driveDirection===-1?-distance:distance)%total+total)%total;
- const traveled=state.driveDirection===-1?
-  (span.end-nativeDistance+total)%total:
-  (nativeDistance-span.start+total)%total;
- return{progress:Math.max(0,Math.min(1,traveled/span.lengthMm)),lengthMm:span.lengthMm};
+ return curvePhaseForCar(p,lane,spans,distance,state.driveDirection);
 }
 // Los neumáticos no desarrollan todo el esfuerzo lateral en la primera
 // junta: la carga efectiva crece y alcanza su máximo pasada media curva.
@@ -2787,7 +2761,7 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[]};
+const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[],rearSlip:0,rearSlipVelocity:0,rearStress:0,drift:0,driftDirection:0,gripDebt:0,cornerDistance:0,cornerDirection:0,carId:"spark",throttle:0};
 // Arranque y cambio de manga comparten esta única regla.
 // El rival SIEMPRE ocupa el carril contrario al jugador; la guía física
 // se resuelve después con driveDirection, también en sentido inverso.
@@ -2797,6 +2771,10 @@ function resetAiForOpponentLane(){
  aiTest.armed=true;aiTest.laneTransition=null;
  aiTest.collisionCooldown=0;aiTest.awaitingSeparation=false;
  aiTest.deslot=null;aiTest.bump=null;aiTest.collisions=0;
+ aiTest.rearSlip=0;aiTest.rearSlipVelocity=0;aiTest.rearStress=0;
+ aiTest.drift=0;aiTest.driftDirection=0;aiTest.gripDebt=0;
+ aiTest.cornerDistance=0;aiTest.cornerDirection=0;aiTest.throttle=0;
+ aiTest.carId=state.selectedCar==="spark"?"gripline":"spark";
  aiTest.heatComplete=false;aiTest.heatLapCount=0;aiTest.lastCrossingMs=0;
  return aiTest.lane;
 }
@@ -2830,16 +2808,41 @@ function advanceAiTest(dt){
  }
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
  const pose=aiTestPose();
- let target=DRIVE.topSpeed*(pose&&pose.curve?0.42:0.74);
- if(!state.deslot&&state.lane===aiTest.lane){
-  const gap=forwardGap(aiTest.distance,state.distance,lane.total);
-  // IA tradicional: no atraviesa al rival ni cambia de carril para adelantar.
-  // Si este se sale en una curva, deja de bloquear y se puede superar.
-  target=followTarget(gap,state.speed,target);
- }
- const response=target<aiTest.speed?9:2.1;
- aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-response*dt));
+ const lookAhead=Math.max(250,aiTest.speed*.65);
+ const projected=aiTest.distance+lookAhead;
+ const preview=positionAt(lane,state.driveDirection===-1?-projected:projected);
+ const gap=!state.deslot&&state.lane===aiTest.lane?
+  forwardGap(aiTest.distance,state.distance,lane.total):Infinity;
+ // La IA únicamente decide el gatillo. Nunca teletransporta velocidad ni
+ // frena con una fórmula de físicas diferente al coche del jugador.
+ aiTest.throttle=chooseAiThrottleV4({pose,nextPose:preview,gap,
+  frontSpeed:state.speed,frontPresent:Number.isFinite(gap)});
+ aiTest.speed=advanceSpeedV4(aiTest.speed,aiTest.throttle/100,dt);
  const travel=aiTest.speed*dt;
+ if(pose?.curve){
+  if(aiTest.cornerDirection!==pose.curve){
+   aiTest.cornerDirection=pose.curve;aiTest.cornerDistance=0;
+  }
+  aiTest.cornerDistance+=travel;
+ }else{aiTest.cornerDistance=0;aiTest.cornerDirection=0;}
+ const phase=curvePhase(pose,lane,aiTest.distance);
+ const rear=advanceRearV4({
+  carId:aiTest.carId,speedMmS:aiTest.speed,
+  rearSlipMm:aiTest.rearSlip,rearSlipVelocityMmS:aiTest.rearSlipVelocity,
+  pose,logicalLane:aiTest.lane,curveProgress:phase.progress,dtSec:dt,
+  laneOffset:LANE_OFFSET
+ });
+ aiTest.rearSlip=rear.slipMm;aiTest.rearSlipVelocity=rear.slipVelocityMmS;
+ aiTest.rearStress=rear.effectiveExcess;aiTest.drift=rear.drift;
+ aiTest.driftDirection=rear.driftDirection;aiTest.gripDebt=rear.drift;
+ if(pose?.curve&&rear.phase>=.50&&
+    aiTest.cornerDistance>=DRIVE.minCurveDistance&&rear.deslot){
+  aiTest.penalty=3;aiTest.speed=0;
+  aiTest.deslot={pose:{...pose},elapsed:0,turn:pose.curve||1,duration:3};
+  aiTest.rearSlip=0;aiTest.rearSlipVelocity=0;aiTest.rearStress=0;
+  aiTest.drift=0;aiTest.driftDirection=0;aiTest.gripDebt=0;
+  return;
+ }
  const idx=state.track.laneChangerIndex;
  if(idx>=0){
   const entry=laneDistanceAtPiece(lane,idx,state.driveDirection===1?0:1);
@@ -2912,6 +2915,9 @@ function advanceAiTest(dt){
   aiTest.deslot={pose:{...rival},elapsed:0,turn:rival.curve||-1,duration:aiPenalty};
   state.drift=0;state.gripDebt=0;state.rearSlip=0;
   state.rearSlipVelocity=0;state.rearStress=0;
+  aiTest.rearSlip=0;aiTest.rearSlipVelocity=0;aiTest.rearStress=0;
+  aiTest.drift=0;aiTest.driftDirection=0;aiTest.gripDebt=0;
+  aiTest.cornerDistance=0;aiTest.cornerDirection=0;
   state.lapEligible=false;
   toast("💥 Alcance fuerte · ambos fuera · "+(hit.rear==="ai"?"IA":"jugador")+
    " responsable: "+REAR_CONTACT.severeRearPenalty+" s.");
@@ -2936,6 +2942,9 @@ function advanceAiTest(dt){
    state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;
    state.drift=0;state.driftDirection=0;state.gripDebt=0;
    state.cornerDistance=0;state.cornerDirection=0;
+   aiTest.rearSlip=0;aiTest.rearSlipVelocity=0;aiTest.rearStress=0;
+   aiTest.drift=0;aiTest.driftDirection=0;aiTest.gripDebt=0;
+   aiTest.cornerDistance=0;aiTest.cornerDirection=0;
    state.followCamera.settle=.85;
   }
   aiTest.collisionCooldown=4;aiTest.awaitingSeparation=true;
@@ -2945,7 +2954,13 @@ function advanceAiTest(dt){
 }
 function paintAiTest(ctx){
  const p=aiTestPose();if(!p)return;
- const visual=collisionVisualPose(p,aiTest.deslot,aiTest.bump);
+ const car=VEHICLE_DYNAMICS[aiTest.carId]||VEHICLE_DYNAMICS.gripline;
+ const yaw=Math.atan2(aiTest.rearSlip||0,car.wheelbaseMM)*2.4+bumpAngle(aiTest.bump);
+ const heading=p.h+yaw,frontOffset=CAR_LENGTH_MM*.40;
+ const moving={...p,
+  x:p.x+frontOffset*(Math.cos(p.h)-Math.cos(heading)),
+  y:p.y+frontOffset*(Math.sin(p.h)-Math.sin(heading)),h:heading};
+ const visual=aiTest.deslot?collisionVisualPose(p,aiTest.deslot,null):moving;
  ctx.save();ctx.translate(visual.x,visual.y);ctx.rotate(visual.h+Math.PI/2);
  const rivalModel=state.selectedCar==="spark"?"gripline":"spark";
  const sprite=carImages[rivalModel];
