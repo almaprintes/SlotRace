@@ -1,19 +1,19 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.69";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.69";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.69";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.69";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.69";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.70";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.70";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.70";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.70";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.70";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.69";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.69";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.69";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.69";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.69";
+import {duelSummary} from "./race-results.mjs?v=0.15.70";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.70";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.70";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.70";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.70";
 const $=id=>document.getElementById(id);
-let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
+let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
 // Existing DEV circuits are previews, not purchases. Their parts do not
 // consume the new server wallet until a player explicitly starts a new build.
@@ -33,7 +33,7 @@ let playerPieceSelected=null;
 const playerPieceQuantities=new Map();
 function economyPanel(){
  const el=$("playerEconomyPanel");if(!el)return;
- el.hidden=!playerMode||state.shopCategory!=="pieces";if(!playerMode){const headerBalance=$("mastCredits");if(headerBalance)headerBalance.hidden=true;return;}
+ el.hidden=!playerMode||state.shopCategory!=="pieces";if(!playerMode){const headerBalance=$("mastCredits");if(headerBalance){headerBalance.hidden=!walletActive;headerBalance.textContent=playerEconomy?.serverBacked?"🪙 "+playerEconomy.credits+" CR":"🪙 — CR";}return;}
  const wallet=playerEconomy?.serverBacked?playerEconomy:null;
  $("playerEconomyBalance").textContent=wallet?wallet.credits+" CR":"Sin conexión";
  const headerBalance=$("mastCredits");if(headerBalance){headerBalance.hidden=!playerMode;headerBalance.textContent=wallet?"🪙 "+wallet.credits+" CR":"🪙 — CR";headerBalance.title=wallet?"Saldo verificado por Supabase":"Esperando saldo de Supabase";}
@@ -85,10 +85,11 @@ window.addEventListener("slotrace:mode",event=>{
  const revision=++playerModeRevision;
  playerEconomyClient=client||null;
  playerMode=mode==="player"&&Boolean(userId);
+ walletActive=Boolean(userId)&&(mode==="player"||mode==="developer");
  playerBuildInventoryActive=false;
  playerEconomyKey=playerMode?"slotrace-economy-preview-v1:"+userId:null;
- if(!playerMode)playerEconomy=null;
- if(playerMode){playerEconomy=null;if(playerEconomyClient)void loadVerifiedWallet(userId,revision);}
+ if(!walletActive)playerEconomy=null;
+ if(walletActive){playerEconomy=null;if(playerEconomyClient)void loadVerifiedWallet(userId,revision);}
  economyPanel();
  if(typeof updateUI==="function")updateUI();
 });
@@ -97,7 +98,7 @@ async function loadVerifiedWallet(userId,revision){
  try{
   const {data,error}=await playerEconomyClient.rpc("slotrace_get_wallet");
   if(error)throw error;
-  if(revision!==playerModeRevision||!playerMode)return;
+  if(revision!==playerModeRevision||!walletActive)return;
   playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
   economyPanel();updateUI();
  }catch(error){if(revision===playerModeRevision){playerEconomy=null;economyPanel();toast("Economía en la nube no disponible: "+error.message);}}
@@ -2305,6 +2306,7 @@ function play(){
  state.sessionStartedAt=Date.now();state.sessionClockSummary=null;
  state.sessionReportSaved=false;state.lastSessionReport=null;
  state.sessionCar=state.selectedCar;
+ state.sessionPlayerNick=$("mastWelcomeNick")?.textContent?.trim()||"Piloto";
  state.run=true;state.penalty=0;state.deslot=null;state.bump=null;state.drift=0;state.driftDirection=0;state.rearSlip=0;state.rearSlipVelocity=0;state.rearStress=0;state.cornerDistance=0;state.gripDebt=0;state.cornerDirection=0;state.gas=0;state.buttonGas=false;state.keyboardGas=false;state.speed=0;
  state.flow="race";state.mode="race";state.latest=performance.now();primeMotorAudio();updateUI();resize();
  resetFollowCamera();
@@ -2372,7 +2374,7 @@ function archiveTestRace(){
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
 async function awardLocalRaceCredits(){
- if(aiTest.enabled||!playerMode||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
+ if(!walletActive||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
  const report=state.lastSessionReport;
  if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
     state.twoLegPhase!==2||report.laps.length!==state.targetLaps*2)return;
@@ -2388,12 +2390,14 @@ async function awardLocalRaceCredits(){
    p_race:raceId,p_laps:state.targetLaps,p_lane_a:a,p_lane_b:b
   });
   if(error)throw error;
-  if(revision!==playerModeRevision||!playerMode)return;
+  if(revision!==playerModeRevision||!walletActive)return;
   playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
   economyPanel();
   const earned=Math.max(0,data.credits-creditsBefore);
+  const rewardLabel=$("resultsReward");if(rewardLabel)rewardLabel.textContent=earned?"🏁 +"+earned+" CR de pruebas · Nuevo saldo: "+data.credits+" CR":"🏁 Recompensa de esta carrera ya registrada · Saldo: "+data.credits+" CR";
   toast(earned?"🏁 Carrera completada: +"+earned+" CR de pruebas · Saldo "+data.credits+" CR":"Recompensa de esta carrera ya registrada.");
- }catch(error){toast("Carrera registrada; recompensa pendiente: "+error.message);}
+ }catch(error){const label=$("resultsReward");if(label)label.textContent="⚠ Recompensa no concedida: "+error.message;
+  toast("Carrera registrada; recompensa pendiente: "+error.message);}
 }
 function endSession(target="menu"){
  cancelResumeCountdown();
@@ -2411,6 +2415,8 @@ function renderDuelResults(){
   state.targetLaps,state.twoLegPhase);
  const data=view.summary,player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
  const rival=CAR_MODELS[state.selectedCar==="spark"?"gripline":"spark"].name;
+ const playerNick=state.sessionPlayerNick||$("mastWelcomeNick")?.textContent?.trim()||"Piloto";
+ const rivalNick=state.sessionOpponentNick||"IA";
  const scores=$("resultsStats"),list=$("resultsLaps");
  scores.textContent="";list.textContent="";
  const add=(tag,cls,text,parent)=>{
@@ -2421,7 +2427,7 @@ function renderDuelResults(){
  };
  const seconds=value=>value===null?"—":format(value)+" s";
  const advantage=value=>value===null?"—":
-  Math.abs(value)<.001?"Empate":(value>0?"Tú +":"IA +")+format(Math.abs(value))+" s";
+  Math.abs(value)<.001?"Empate":(value>0?playerNick+" +":rivalNick+" +")+format(Math.abs(value))+" s";
  const winnerClass=who=>who==="player"?"is-player":
   who==="ai"?"is-ai":"is-tie";
  const completeFirst=data.heats[0].playerTotal!==null&&
@@ -2429,15 +2435,15 @@ function renderDuelResults(){
  const banner=add("div","duel-headline",
   data.completed?
    (data.winner==="tie"?"🏁 ¡EMPATE!":
-    data.winner==="player"?"🏆 ¡HAS GANADO A LA IA!":"🏆 GANADORA: IA"):
+    data.winner==="player"?"🏆 ¡VICTORIA DE "+playerNick+"!":"🏆 GANA "+rivalNick):
   state.twoLegPhase===1&&completeFirst?
    "🏁 Primera manga completada":"🏁 Competición en curso",scores);
- add("small","duel-caption","2 mangas · Carriles intercambiados · "+
+ add("small","duel-caption",playerNick+" VS "+rivalNick+" · 2 mangas · Carriles intercambiados · "+
   state.targetLaps+" vueltas por manga · Prueba local",banner);
  if(data.completed){
   const totals=add("div","duel-totals",null,scores);
-  for(const [who,name,time] of [["player","Tú · "+player,data.playerTotal],
-    ["ai","IA · "+rival,data.aiTotal]]){
+  for(const [who,name,time] of [["player",playerNick+" · "+player,data.playerTotal],
+    ["ai",rivalNick+" · "+rival,data.aiTotal]]){
    const tile=add("div","duel-tile "+(data.winner===who?"is-winner":""),null,totals);
    add("span","",name,tile);
    add("strong","",seconds(time),tile);
@@ -2446,8 +2452,8 @@ function renderDuelResults(){
  const metrics=add("div","duel-highlights",null,scores);
  for(const [label,value,css] of [
   ["Ventaja final",data.completed?advantage(data.aiTotal-data.playerTotal):"Pendiente","is-gap"],
-  ["Tu mejor vuelta",seconds(view.bestPlayer),"is-player"],
-  ["Mejor vuelta IA",seconds(view.bestAi),"is-ai"]]){
+  ["Mejor vuelta · "+playerNick,seconds(view.bestPlayer),"is-player"],
+  ["Mejor vuelta · "+rivalNick,seconds(view.bestAi),"is-ai"]]){
   const tile=add("div","duel-highlight "+css,null,metrics);
   add("small","",label,tile);add("strong","",value,tile);
  }
@@ -2456,7 +2462,7 @@ function renderDuelResults(){
  const table=add("table","duel-table duel-overview-table",null,overview);
  const cap=add("caption","sr-only","Totales de cada manga por piloto y diferencia",table);
  const head=add("thead","",null,table),titles=add("tr","",null,head);
- for(const title of ["Manga","Tú","IA","Ventaja"]){
+ for(const title of ["Manga",playerNick,rivalNick,"Ventaja"]){
   const th=add("th","",title,titles);th.scope="col";
  }
  const body=add("tbody","",null,table);
@@ -2475,7 +2481,7 @@ function renderDuelResults(){
   const lapTable=add("table","duel-table duel-lap-table",null,panel);
   add("caption","sr-only","Comparación de vueltas de la manga "+heat.heat,lapTable);
   const thead=add("thead","",null,lapTable),trh=add("tr","",null,thead);
-  for(const label of ["Vuelta","Tú","IA","Ventaja"]){
+  for(const label of ["Vuelta",playerNick,rivalNick,"Ventaja"]){
    const th=add("th","",label,trh);th.scope="col";
   }
   const tbody=add("tbody","",null,lapTable);
@@ -2496,6 +2502,8 @@ function renderDuelResults(){
 function renderSessionSummary(){
  $("resultsSectionHeading").textContent="Progreso vuelta a vuelta";
  $("resultsSectionCaption").textContent="TODAS TUS VUELTAS";
+ const rewardLabel=$("resultsReward");
+ if(rewardLabel){rewardLabel.textContent=state.sessionMode==="lap_race"&&state.twoLegPhase===2&&state.track.laneChangerIndex<0?"Comprobando recompensa de 20 CR de pruebas (máximo cinco al día y diez minutos entre premios)…":"Recompensas de prueba: completar dos mangas de carrera sin PT82 · cuenta conectada";}
  const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
  $("resultsTimingAudit").dataset.phase=pendingSecond?"intermediate":"final";
  $("resultsAgain").textContent=pendingSecond?"🏁 Segunda manga · "+laneLabel(1-state.lane):"🏁 Otra sesión";
@@ -2514,7 +2522,7 @@ function renderSessionSummary(){
   CAR_MODELS[state.sessionCar||state.selectedCar].name+" · "+
   travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+
   " · "+(state.track.laneChangerIndex>=0?
-   state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas del jugador";
+   state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas de "+(state.sessionPlayerNick||$("mastWelcomeNick")?.textContent?.trim()||"Piloto");
  if(isDuelRace()){
   renderDuelResults();
   return;
@@ -6718,7 +6726,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.69",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.70",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
