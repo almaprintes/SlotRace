@@ -2466,7 +2466,6 @@ function renderDuelResults(){
   add("td","duel-number",seconds(heat.aiTotal),tr);
   add("td","duel-advantage "+winnerClass(heat.heatWinner),advantage(heat.heatGap),tr);
  }
- add("h2","duel-laps-heading","Vuelta a vuelta",list);
  for(const heat of view.heats){
   const panel=add("details","duel-laps-panel",null,list);
   panel.open=true;
@@ -2490,7 +2489,7 @@ function renderDuelResults(){
   best.textContent="Vueltas rápidas: Tú "+seconds(heat.playerBest)+
    " · IA "+seconds(heat.aiBest);
  }
- $("resultsSectionHeading").textContent="Resultados por manga";
+ $("resultsSectionHeading").textContent="Vuelta a vuelta";
  $("resultsSectionCaption").textContent="DOS MANGAS";
 }
 function renderSessionSummary(){
