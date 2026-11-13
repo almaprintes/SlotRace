@@ -293,7 +293,7 @@ const path=require("node:path");
  assert.ok(Math.abs(catTrack.length/1000-18.89)<.04,"Longitud 18,89 m");
  const catSvg=game.shopBlueprintSvg(catalunyaPlan.types,catalunyaPlan.name,catalunyaPlan.origin);
  assert.match(catSvg,/60 piezas/);
- assert.match(elements.get("shopProducts").innerHTML,/is-catalunya/);
+ assert.match(catSvg,/shop-real-blueprint/,"Catalunya mantiene su plano vectorial");
  assert.equal(game.shopSelectCategory("boxes"),true);
  assert.equal(game.shopOpenProduct("box-rally"),true);
  assert.equal(elements.get("shopProductModal").hidden,false);
