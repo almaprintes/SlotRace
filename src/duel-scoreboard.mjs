@@ -1,7 +1,7 @@
 // Resultados VISUALES para duelos locales. Los tiempos oficiales/actas no se modifican.
 // Se calculan en milisegundos enteros a partir de las vueltas que muestra la tabla,
 // para que los totales y diferencias coincidan exactamente con las celdas visibles.
-import {duelSummary} from "./race-results.mjs";
+import {duelSummary} from "./race-results.mjs?v=0.15.65";
 const milliseconds = value => Number.isFinite(value) && value>=0 ?
   Math.round(value*1000) : null;
 const add = values => values.reduce((sum,value)=>sum+value,0);
