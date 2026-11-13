@@ -16,7 +16,7 @@ const path=require("node:path");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],listeners:{},dataset:{},style:{},textContent:"",innerHTML:"",disabled:false,hidden:false,
-   width:390,height:600,clientWidth:390,value:"0",
+   width:390,height:600,clientWidth:390,value:"0",parentElement:{hidden:false},
    classList:{add(){},remove(){},toggle(){},contains(){return false}},
    attrs:{},setAttribute(n,v){this.attrs[n]=String(v)},setPointerCapture(){},appendChild(n){this.children.push(n);},
    addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},
