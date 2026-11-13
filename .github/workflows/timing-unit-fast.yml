@@ -19,6 +19,8 @@ jobs:
         run: node tests/timing-lab.cjs
       - name: "Check: future events timing"
         run: node tests/event-timing.cjs
+      - name: "Check: future competition protocol"
+        run: node tests/competition-protocol.cjs
       - name: "Check: game-shell integration"
         run: node tests/game-shell.cjs
       - name: "Check: asset version compatibility"

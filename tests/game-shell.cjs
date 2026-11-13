@@ -16,7 +16,7 @@ const path=require("node:path");
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  function node(id){
   return{id,children:[],listeners:{},dataset:{},style:{},textContent:"",innerHTML:"",disabled:false,hidden:false,
-   width:390,height:600,clientWidth:390,value:"0",
+   width:390,height:600,clientWidth:390,value:"0",parentElement:{hidden:false},
    classList:{add(){},remove(){},toggle(){},contains(){return false}},
    attrs:{},setAttribute(n,v){this.attrs[n]=String(v)},setPointerCapture(){},appendChild(n){this.children.push(n);},
    addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},
@@ -38,7 +38,14 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
+ // Al evaluar app.mjs sin imports, inyectar todos los módulos actuales.
+ // Si falta uno, el arnés falla antes de poder comprobar el juego.
+ const extraModules=await Promise.all([
+  "kerbs","runoffs","player-economy","box-factory","box-art",
+  "economy-catalog","race-results","rear-contact","closure-guide"
+ ].map(name=>import("../src/"+name+".mjs")));
+ const symbols=Object.assign({},geo,blueprint,clockCore,...extraModules);
+ const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
  const navigator={
   shared:null,canShare:()=>true,
   async share(payload){this.shared=payload;}
@@ -90,12 +97,13 @@ const path=require("node:path");
  assert.match(source,/strokeGeometryCache=new WeakMap\(\)/);
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
- const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
+ const ovalWithFinish=geo.STARTER.map((id,i)=>i===0?"START350":id);
+ const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(ovalWithFinish));
  assert.equal(ovalMarks.length,2);
  assert.deepEqual(ovalMarks.map(m=>m.letter),["B","A"],
   "Óvalo estándar: A impresa en el interior de meta");
- assert.equal(ovalMarks[1].physicalLane,geo.finishInteriorPhysicalLane(geo.STARTER));
- const finishFirst=geo.buildTrack(geo.STARTER).parts[0];
+ assert.equal(ovalMarks[1].physicalLane,geo.finishInteriorPhysicalLane(ovalWithFinish));
+ const finishFirst=geo.buildTrack(ovalWithFinish).parts[0];
  const nearMeta=geo.positionOnPiece(finishFirst.start,finishFirst.id,.20);
  assert.ok(Math.hypot(ovalMarks[0].x-ovalMarks[1].x,
   ovalMarks[0].y-ovalMarks[1].y)>geo.LANE_OFFSET,
@@ -103,7 +111,7 @@ const path=require("node:path");
  assert.ok(Number.isFinite(nearMeta.x)&&Number.isFinite(ovalMarks[1].h));
  const savedDirection=st.driveDirection;
  st.driveDirection=-1;
- assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER))
+ assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(ovalWithFinish))
   .map(m=>m.letter),["B","A"],
   "La dirección de conducción nunca cambia las letras impresas");
  st.driveDirection=savedDirection;
@@ -114,7 +122,7 @@ const path=require("node:path");
   get(_,name){return name==="fillText"?(value)=>printedLetters.push(value):()=>{};},
   set(target,name,value){target[name]=value;return true;}
  });
- game.rendering.paintLaneStencils(stencilContext,geo.buildTrack(geo.STARTER));
+ game.rendering.paintLaneStencils(stencilContext,geo.buildTrack(ovalWithFinish));
  assert.deepEqual(printedLetters,["B","A"],
   "El canvas realmente dibuja ambas letras en su ranura");
  assert.match(html,/id="laneIndicator"/);
