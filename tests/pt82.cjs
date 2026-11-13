@@ -58,6 +58,20 @@ const assert=require("node:assert/strict");
   const lane=t.lanes[dir===-1?1-result.lane:result.lane];
   return g.positionAt(lane,dir===-1?-result.distance:result.distance);
  };
+ // Se compara el avance desde la salida física de PT/82, no las
+ // distancias absolutas de carriles con perímetros diferentes.
+ const advancement=(result,dir)=>{
+  const lane=t.lanes[dir===-1?1-result.lane:result.lane];
+  const first=lane.nodes.findIndex(n=>n.pieceIndex===pos);
+  const last=lane.nodes.findLastIndex(n=>n.pieceIndex===pos);
+  assert.ok(first>0&&last>=first);
+  const exit=lane.lengths[dir===1?last:first-1];
+  const exitForward=dir===1?exit:(lane.total-exit)%lane.total;
+  return(result.distance-exitForward+lane.total)%lane.total;
+ };
+ assert.ok(Math.abs(advancement(recovery.player,1)-
+                    advancement(recovery.rival,1))<.01,
+  "Choque transversal: jugador e IA a la misma distancia después de PT/82");
  const aAfter=physicalPose(recovery.player,1),bAfter=physicalPose(recovery.rival,1);
  assert.notEqual(aAfter.pieceIndex,pos,"Jugador fuera de la pieza conflictiva");
  assert.notEqual(bAfter.pieceIndex,pos,"IA fuera de la pieza conflictiva");
@@ -66,6 +80,9 @@ const assert=require("node:assert/strict");
  const reverseRecovery=g.carsBeyondCollision(t,-1,
   {lane:0,pose:{pieceIndex:pos,pieceT:.52}},
   {lane:1,pose:{pieceIndex:pos,pieceT:.48}});
+ assert.ok(Math.abs(advancement(reverseRecovery.player,-1)-
+                    advancement(reverseRecovery.rival,-1))<.01,
+  "Choque transversal inverso: misma distancia después de PT/82");
  assert.notEqual(physicalPose(reverseRecovery.player,-1).pieceIndex,pos,
   "En marcha inversa el jugador reaparece detrás del extremo correcto");
  assert.notEqual(physicalPose(reverseRecovery.rival,-1).pieceIndex,pos,
@@ -73,8 +90,10 @@ const assert=require("node:assert/strict");
  const sameLane=g.carsBeyondCollision(t,1,
   {lane:0,pose:{pieceIndex:pos,pieceT:.5}},
   {lane:0,pose:{pieceIndex:pos,pieceT:.5}});
- assert.equal(sameLane.rival.lane,1,
-  "Al terminar el cambio, los coches recuperan carriles diferentes");
+ assert.equal(sameLane.rival.lane,0,
+  "Un alcance dentro de PT/82 no cambia artificialmente de guía");
+ assert.ok((sameLane.rival.distance-sameLane.player.distance+t.lanes[0].total)%t.lanes[0].total>=320,
+  "Un alcance dentro de PT/82 conserva la separación de seguridad");
  const plain=g.buildTrack(original);
  const plainRecovery=g.carsBeyondCollision(plain,1,
   {lane:0,pose:{pieceIndex:1,pieceT:.5}},
