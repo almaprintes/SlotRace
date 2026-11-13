@@ -100,6 +100,12 @@ jobs:
       - name: Probar cierre flexible de hasta diez milímetros
         run: node tests/closure-flex.cjs
 
+      - name: Comprobar clasificación de duelos
+        run: node tests/duel-results.cjs
+
+      - name: Comprobar tablas visuales y diferencias por vuelta
+        run: node tests/duel-presentation.cjs
+
       - name: Verificar archivos que sirve GitHub Pages
         run: |
           test -s index.html
