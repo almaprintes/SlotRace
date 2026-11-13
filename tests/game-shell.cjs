@@ -42,7 +42,7 @@ const path=require("node:path");
  const extraModules=await Promise.all([
   "kerbs","runoffs","player-economy","box-factory","box-art",
   "economy-catalog","race-results","rear-contact","closure-guide",
-  "duel-presentation"
+  "duel-presentation","recovery-core"
  ].map(name=>import("../src/"+name+".mjs")));
  const symbols=Object.assign({},geo,blueprint,clockCore,...extraModules);
  const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
