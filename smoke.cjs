@@ -15,7 +15,8 @@ for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginFor
  "accountSignedOut","accountClaim","accountConnected"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Falta el control de cuenta: "+id);
 }
-assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.15\.63"/);
+const expectedVersion=JSON.parse(fs.readFileSync(path.join(__dirname,"version.json"),"utf8")).version;
+assert.ok(html.includes('src="./src/account.mjs?v='+expectedVersion+'"'),"El script de cuenta debe tener la versión publicada");
 assert.match(account,/flowType:"pkce"/,"Los proveedores usan OAuth con PKCE");
 assert.match(account,/getUser\(\)/,"La cuenta se verifica en el servidor");
 assert.match(account,/from\("craft_accounts"\)/,"El apodo va al registro compartido");
