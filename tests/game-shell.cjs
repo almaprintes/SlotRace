@@ -97,12 +97,13 @@ const path=require("node:path");
  assert.match(source,/strokeGeometryCache=new WeakMap\(\)/);
  // Marcas de fábrica en salida/meta: las letras son físicas, no
  // etiquetas relativas a la dirección del coche.
- const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER));
+ const ovalWithFinish=geo.STARTER.map((id,i)=>i===0?"START350":id);
+ const ovalMarks=game.rendering.finishLaneMarkings(geo.buildTrack(ovalWithFinish));
  assert.equal(ovalMarks.length,2);
  assert.deepEqual(ovalMarks.map(m=>m.letter),["B","A"],
   "Óvalo estándar: A impresa en el interior de meta");
- assert.equal(ovalMarks[1].physicalLane,geo.finishInteriorPhysicalLane(geo.STARTER));
- const finishFirst=geo.buildTrack(geo.STARTER).parts[0];
+ assert.equal(ovalMarks[1].physicalLane,geo.finishInteriorPhysicalLane(ovalWithFinish));
+ const finishFirst=geo.buildTrack(ovalWithFinish).parts[0];
  const nearMeta=geo.positionOnPiece(finishFirst.start,finishFirst.id,.20);
  assert.ok(Math.hypot(ovalMarks[0].x-ovalMarks[1].x,
   ovalMarks[0].y-ovalMarks[1].y)>geo.LANE_OFFSET,
@@ -110,7 +111,7 @@ const path=require("node:path");
  assert.ok(Number.isFinite(nearMeta.x)&&Number.isFinite(ovalMarks[1].h));
  const savedDirection=st.driveDirection;
  st.driveDirection=-1;
- assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(geo.STARTER))
+ assert.deepEqual(game.rendering.finishLaneMarkings(geo.buildTrack(ovalWithFinish))
   .map(m=>m.letter),["B","A"],
   "La dirección de conducción nunca cambia las letras impresas");
  st.driveDirection=savedDirection;
@@ -121,7 +122,7 @@ const path=require("node:path");
   get(_,name){return name==="fillText"?(value)=>printedLetters.push(value):()=>{};},
   set(target,name,value){target[name]=value;return true;}
  });
- game.rendering.paintLaneStencils(stencilContext,geo.buildTrack(geo.STARTER));
+ game.rendering.paintLaneStencils(stencilContext,geo.buildTrack(ovalWithFinish));
  assert.deepEqual(printedLetters,["B","A"],
   "El canvas realmente dibuja ambas letras en su ranura");
  assert.match(html,/id="laneIndicator"/);
