@@ -2984,10 +2984,10 @@ function advanceAiTest(dt,contactBefore=null){
    state.speed=Math.min(state.speed,aiTest.speed);
   }
   if(aiTest.collisionCooldown>0||aiTest.awaitingSeparation)return;
-  aiTest.collisions++;
   aiTest.awaitingSeparation=true;
-  aiTest.collisionCooldown=hit.severity==="glance"?.25:.5;
+  aiTest.collisionCooldown=hit.severity==="glance" ? 0.25 : 0.5;
   if(hit.severity==="glance")return; // Sin descarrilar, pero sin atravesar.
+  aiTest.collisions++;
   if(hit.severity==="bump"){
    if(hit.rear==="ai"){
     aiTest.speed*=.23;state.speed*=.91;
