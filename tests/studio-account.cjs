@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const src=fs.readFileSync("src/account.mjs","utf8");
 const html=fs.readFileSync("index.html","utf8");
-const version="0.15.67";
+const version="0.15.68";
 assert.match(html,new RegExp('src/account\\.mjs\\?v='+version.replaceAll(".","\\.")));
 assert.match(src,/auth\.linkIdentity\(/,"Must link identities under existing UUID");
 assert.match(src,/user\.id!==accountUser\?\.id/,"Must verify current UUID before link");

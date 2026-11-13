@@ -5,6 +5,7 @@ const fs=require("node:fs");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const impact=await import("../src/rear-contact.mjs");
+ const recover=await import("../src/recovery-core.mjs");
  const src=fs.readFileSync("src/app.mjs","utf8");
  function section(a,b){
   const x=src.indexOf(a),y=src.indexOf(b,x+a.length);
@@ -19,7 +20,7 @@ const fs=require("node:fs");
  ].join("\n");
  const factory=new Function("state","positionAt","CAR_LENGTH_MM","DRIVE",
   "carTrackLevel","carsBeyondCollision","toast","forwardGap","rearContact",
-  "sweptRearContact","placeRearBehind",
+  "sweptRearContact","placeRearBehind","advanceRecovery",
   "followTarget","reentrySafe","REAR_CONTACT",code+
   '\nfunction displayDrivingPose(){const lane=state.track.lanes[state.driveDirection===-1?1-state.lane:state.lane];return positionAt(lane,state.driveDirection===-1?-state.distance:state.distance);}\n'+
   "return{ai:aiTest,advance:advanceAiTest,pose:aiTestPose};");
@@ -33,7 +34,7 @@ const fs=require("node:fs");
   const rt=factory(state,geo.positionAt,98,{topSpeed:1150},
    geo.carTrackLevel,geo.carsBeyondCollision,t=>events.push(t),
    impact.forwardGap,impact.rearContact,
-   impact.sweptRearContact,impact.placeRearBehind,impact.followTarget,
+   impact.sweptRearContact,impact.placeRearBehind,recover.advanceRecovery,impact.followTarget,
    impact.reentrySafe,impact.REAR_CONTACT);
   Object.assign(rt.ai,{active:true,lane:0,distance:aiDistance,speed:aiSpeed,penalty:0,
    armed:true,laneTransition:null,collisionCooldown:0,awaitingSeparation:false,
@@ -97,7 +98,7 @@ const fs=require("node:fs");
  }
  {
   const x=setUp({playerDistance:400,aiDistance:405,playerSpeed:300,aiSpeed:0});
-  x.ai.deslot={elapsed:2.4,duration:2.5};
+  x.ai.deslot={pose:{x:0,y:0,h:0},turn:1,elapsed:2.4,duration:2.5};
   x.ai.penalty=.01;
   x.advance(.02);
   assert.ok(x.ai.penalty>0,"Reincorporación aplazada si el rival ocupa la guía");

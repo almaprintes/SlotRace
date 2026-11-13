@@ -1,16 +1,17 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.67";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.67";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.67";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.67";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.67";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.68";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.68";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.68";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.68";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.68";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.67";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.67";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.67";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.67";
+import {duelSummary} from "./race-results.mjs?v=0.15.68";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.68";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.68";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.68";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.68";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2888,18 +2889,13 @@ function advanceAiTest(dt,contactBefore=null){
   state.mode!=="race"||aiTest.heatComplete)return;
  if(aiTest.collisionCooldown>0)aiTest.collisionCooldown=Math.max(0,aiTest.collisionCooldown-dt);
  if(aiTest.penalty>0){
-  aiTest.penalty=Math.max(0,aiTest.penalty-dt);
-  if(aiTest.deslot){
-   aiTest.deslot.elapsed=Math.min(aiTest.deslot.duration||3,aiTest.deslot.elapsed+dt);
-   if(aiTest.penalty===0){
-    // La guía queda vacía mientras el piloto está fuera de pista.
-    // Si otro coche lo ha adelantado, no reaparecer encima de él.
-    const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
-    if(!state.deslot&&state.lane===aiTest.lane&&!reentrySafe(
-     aiTest.distance,state.distance,lane.total))aiTest.penalty=.05;
-    else{aiTest.deslot=null;aiTest.collisionCooldown=Math.max(.8,aiTest.collisionCooldown);}
-   }
-  }
+  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
+  const clear=!state.deslot&&state.lane===aiTest.lane?
+   reentrySafe(aiTest.distance,state.distance,lane.total):true;
+  const recovery=advanceRecovery({penalty:aiTest.penalty,deslot:aiTest.deslot,
+   dt,clearToReturn:clear});
+  aiTest.penalty=recovery.penalty;aiTest.deslot=recovery.deslot;
+  if(recovery.completed)aiTest.collisionCooldown=Math.max(.8,aiTest.collisionCooldown);
   return;
  }
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
@@ -3078,14 +3074,13 @@ function simulation(dt,frameNow=null){
  // la IA termina las suyas; el reloj no se detiene prematuramente.
  if(isDuelRace()&&state.playerHeatComplete)return;
  if(state.penalty>0){
-  state.penalty=Math.max(0,state.penalty-dt);
-  if(state.deslot)state.deslot.elapsed=Math.min(3,state.deslot.elapsed+dt);
-  if(state.penalty===0){
-   const lane=state.track.lanes[drivingLaneIndex()];
-   if(state.deslot&&aiTest.active&&!aiTest.deslot&&state.lane===aiTest.lane&&
-    !reentrySafe(state.distance,aiTest.distance,lane.total))state.penalty=.05;
-   else{state.deslot=null;state.drift=0;}
-  }
+  const lane=state.track.lanes[drivingLaneIndex()];
+  const clear=aiTest.active&&!aiTest.deslot&&state.lane===aiTest.lane?
+   reentrySafe(state.distance,aiTest.distance,lane.total):true;
+  const recovery=advanceRecovery({penalty:state.penalty,deslot:state.deslot,
+   dt,clearToReturn:clear});
+  state.penalty=recovery.penalty;state.deslot=recovery.deslot;
+  if(recovery.completed)state.drift=0;
   return;
  }
  const targetSpeed=g*DRIVE.topSpeed;
@@ -3359,6 +3354,7 @@ function updateHud(){
   (state.raceClockWarnings.length?" · ⚠ REVISAR FPS":" · RELOJ REAL");
  $("raceHint").textContent=isDuelRace()&&state.playerHeatComplete?
    "MANGA TERMINADA · ESPERANDO A QUE TERMINE LA IA":
+   state.deslot?.waitingForSpace?"TROMPO · ESPERANDO HUECO PARA VOLVER":
    state.penalty>0?"TROMPO · REGRESO A PISTA EN "+state.penalty.toFixed(1)+" s":
    state.track.laneChangerIndex>=0&&state.laneTransition?"PT/82 · CAMBIO AUTOMÁTICO":
    state.track.laneChangerIndex>=0?"PT/82 · "+laneLabel(state.lane).toUpperCase()+" · DOS VUELTAS":
@@ -5170,14 +5166,7 @@ function bumpAngle(bump){
  return bump.angle*Math.sin(Math.PI*u)*(1-u*.4);
 }
 function collisionVisualPose(at,deslot,bump){
- if(deslot){
-  const t=Math.min(3,deslot.elapsed*3/(deslot.duration||3)),side=deslot.turn||1;
-  const out=t<.7?t/.7:t<1.75?1:Math.max(0,(3-t)/1.25);
-  const spin=t<1.4?Math.PI*4*(t/1.4):Math.PI*4;
-  const nx=-Math.sin(at.h),ny=Math.cos(at.h);
-  return{...at,x:at.x-side*nx*85*out,y:at.y-side*ny*85*out,
-   h:at.h+side*spin,smoke:Math.max(0,1-t/2.5),spin:1};
- }
+ if(deslot)return recoveryVisualPose(at,deslot);
  const yaw=bumpAngle(bump),front=CAR_LENGTH_MM*.40,heading=at.h+yaw;
  return{...at,x:at.x+front*(Math.cos(at.h)-Math.cos(heading)),
   y:at.y+front*(Math.sin(at.h)-Math.sin(heading)),h:heading,smoke:0,spin:0};
@@ -6714,7 +6703,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.67",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.68",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
