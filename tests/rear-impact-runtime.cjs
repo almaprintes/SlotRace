@@ -98,7 +98,7 @@ const fs=require("node:fs");
  }
  {
   const x=setUp({playerDistance:400,aiDistance:405,playerSpeed:300,aiSpeed:0});
-  x.ai.deslot={elapsed:2.4,duration:2.5};
+  x.ai.deslot={pose:{x:0,y:0,h:0},turn:1,elapsed:2.4,duration:2.5};
   x.ai.penalty=.01;
   x.advance(.02);
   assert.ok(x.ai.penalty>0,"Reincorporación aplazada si el rival ocupa la guía");
