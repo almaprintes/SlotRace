@@ -50,7 +50,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.63");
+ assert.equal(game.version,"DEV 0.15.64");
  // Integración real: ejecuta raceClock desde app.mjs, no solo el módulo de eventos.
  game.raceClock.reset();
  game.raceClock.start(1000);
@@ -616,6 +616,30 @@ const path=require("node:path");
   set(target,key,value){target[key]=value;return true;}
  }),game.blueprintData());
  assert.ok(namePrint.includes("Ocho de pruebas"));
+ // Regresión: Vaciar mesa debe desvincular nombre e ID, sin eliminar guardados.
+ game.openWorkshop();
+ elements.get("clear").listeners.click[0]();
+ assert.equal(st.types.length,0,"Vaciar mesa quita las piezas");
+ assert.equal(st.circuitName,"","Un proyecto nuevo no hereda el nombre anterior");
+ assert.equal(st.activeCircuitId,null,"Un proyecto nuevo no apunta al circuito guardado");
+ assert.equal(elements.get("circuitName").value,"","Nombre vacío en Mis circuitos");
+ assert.equal(elements.get("workCircuitName").value,"","Nombre vacío en el taller");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).activeCircuitId,null,
+  "También se persiste que la mesa ya no está ligada a un guardado");
+ assert.equal(game.saveCircuit(),false,"Nunca guardar un circuito nuevo sin nombre");
+ assert.deepEqual(JSON.parse(saved.get("slotrace-circuit-library-v1")),both,
+  "Vaciar mesa y guardar sin nombre no alteran la colección");
+ // Al teclear, el nombre queda sincronizado y sobrevive a los repintados.
+ const nameField=elements.get("workCircuitName");
+ nameField.value="Circuito nuevo";
+ nameField.listeners.input[0]({target:nameField});
+ assert.equal(st.circuitName,"Circuito nuevo");
+ assert.equal(elements.get("circuitName").value,"Circuito nuevo");
+ game.showMenu();
+ assert.equal(elements.get("circuitName").value,"Circuito nuevo");
+ assert.equal(JSON.parse(saved.get("slotrace-lab-10")).circuitName,"Circuito nuevo");
+ assert.equal(game.loadSavedCircuit(previousId),true,"El circuito anterior sigue recuperable");
+ assert.equal(st.circuitName,"Ocho de pruebas");
 
  // Los tiempos de TODAS las vueltas se ven al salir, pero no se persisten.
  game.openRace();
@@ -1259,5 +1283,5 @@ const path=require("node:path");
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.63: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.64: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
