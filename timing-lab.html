@@ -22,7 +22,7 @@ button{border:0;border-radius:12px;padding:14px 19px;background:#63e8cd;color:#0
 <table><thead><tr><th>Escenario</th><th>Esperado</th><th>Medido</th><th>Resultado</th></tr></thead><tbody id="rows"></tbody></table>
 <p class="note">Un tirón de fotogramas puede conservar correctamente el tiempo real y, aun así, invalidar una vuelta de competición si la simulación no ha avanzado de forma verificable. Las pruebas del iPhone y del cruce real por meta son independientes de este laboratorio sintético.</p>
 </main><script type="module">
-import {runTimingDiagnostics} from "./src/timing-lab.mjs?v=0.15.13";
+import {runTimingDiagnostics} from "./src/timing-lab.mjs?v=0.15.65";
 const fmt=n=>n.toFixed(3).replace(".",",")+" ms";
 function run(){
  const report=runTimingDiagnostics();
