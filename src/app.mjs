@@ -2487,7 +2487,7 @@ function renderDuelResults(){
    add("td","duel-advantage "+winnerClass(row.faster),advantage(row.gap),tr);
   }
   const best=add("p","duel-heat-best",null,panel);
-  best.textContent="Mejor manga: Tú "+seconds(heat.playerBest)+
+  best.textContent="Vueltas rápidas: Tú "+seconds(heat.playerBest)+
    " · IA "+seconds(heat.aiBest);
  }
  $("resultsSectionHeading").textContent="Resultados por manga";
