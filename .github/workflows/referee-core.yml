@@ -29,6 +29,10 @@ jobs:
       - name: Validate source
         run: |
           node --check server/referee-core.mjs
+          node --check server/physics-engine.mjs
+          node --check server/track-identity.mjs
+          node --check src/physics-v4.mjs
+          node --check src/app.mjs
           node --check tests/referee-core.cjs
       - name: Competition protocol
         run: node tests/competition-protocol.cjs
