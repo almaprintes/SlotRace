@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#eef1f5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="SlotRace">
-  <link rel="apple-touch-icon" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.69">
-  <link rel="icon" type="image/png" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.69">
-  <link rel="manifest" href="./manifest.webmanifest?v=0.15.69">
+  <link rel="apple-touch-icon" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.70">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/ui/slotrace-icon-192.png?v=0.15.70">
+  <link rel="manifest" href="./manifest.webmanifest?v=0.15.70">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="SlotRace DEV 0.15.69: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
-  <title>SlotRace DEV 0.15.69 · SR-Precision</title>
-  <link rel="stylesheet" href="./src/site.css?v=0.15.69">
+  <meta name="description" content="SlotRace DEV 0.15.70: juego de carreras y constructor modular con Avenir Gripline, exportación PNG y menú principal.">
+  <title>SlotRace DEV 0.15.70 · SR-Precision</title>
+  <link rel="stylesheet" href="./src/site.css?v=0.15.70">
   <style>
   /* CSS crítico: la versión aparece incluso antes de descargar el juego. */
   #loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;
@@ -74,23 +74,23 @@
 .ai-test-option{display:flex;align-items:center;gap:10px;margin:12px 0;font-weight:700}.ai-test-option input{width:20px;height:20px;flex:none}
 </style></head>
 <body>
-<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.15.69">
+<div id="loadingScreen" role="status" aria-live="polite" aria-label="Cargando SlotRace DEV 0.15.70">
   <div class="splash-inner">
     <div class="splash-logo" aria-hidden="true"><img
-      src="./assets/ui/slotrace-icon-192.png?v=0.15.69"
+      src="./assets/ui/slotrace-icon-192.png?v=0.15.70"
       alt="" width="91" height="91" decoding="async"></div>
     <div class="splash-kicker">TOP DOWN RACE · CRAFTRACE STUDIO</div>
     <div class="splash-title">SlotRace</div>
-    <div class="splash-version">DEV 0.15.69</div>
+    <div class="splash-version">DEV 0.15.70</div>
     <div class="splash-progress" aria-hidden="true"></div>
     <div class="splash-info" id="loadingStatus">Preparando mesa, circuito y puente…</div>
-    <a class="splash-retry" href="./?v=0.15.69">Reintentar carga</a>
+    <a class="splash-retry" href="./?v=0.15.70">Reintentar carga</a>
     <div class="splash-note">VERSIÓN DE DESARROLLO · PRUEBAS</div>
   </div>
 </div>
 <section id="entryGate" class="entry-gate" role="region" aria-busy="true" aria-label="Acceso a CraftRace Studio">
   <div class="entry-shell">
-    <img src="./assets/ui/slotrace-icon-192.png?v=0.15.69" class="entry-mark" alt="SlotRace" width="94" height="94">
+    <img src="./assets/ui/slotrace-icon-192.png?v=0.15.70" class="entry-mark" alt="SlotRace" width="94" height="94">
     <span class="entry-eyebrow">TOP DOWN RACE · CRAFTRACE STUDIO</span>
     <h1>Tu mundo.<br><em>Dos formas de jugar.</em></h1>
     <p id="entryStatus" role="status">Comprobando tu sesión de CraftRace Studio…</p>
@@ -112,7 +112,7 @@
   </aside>
   <header class="mast">
     <div id="mastBrand" class="brand"><div class="brand-icon" aria-hidden="true"><img
-      src="./assets/ui/slotrace-icon-192.png?v=0.15.69"
+      src="./assets/ui/slotrace-icon-192.png?v=0.15.70"
       alt="" width="41" height="41" decoding="async"></div><div>
       <small>TOP DOWN RACE · CRAFTRACE STUDIO</small>
       <strong>SlotRace <em>LAB</em></strong>
@@ -128,7 +128,7 @@
       </div>
     </div>
     <span id="mastMode" class="mast-mode" aria-live="polite">INICIO</span>
-  <div class="mast-actions"><span id="mastCredits" class="mast-credits" aria-label="Saldo de créditos" aria-live="polite" hidden>🪙 — CR</span><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.15.69">DEV 0.15.69<br>LOCAL · PRUEBAS</div></div>
+  <div class="mast-actions"><span id="mastCredits" class="mast-credits" aria-label="Saldo de créditos" aria-live="polite" hidden>🪙 — CR</span><button id="goHome" class="mini mast-home" type="button" aria-label="Volver al menú principal">☰ Menú</button><button id="mastSettings" class="mast-settings" type="button" aria-label="Abrir Ajustes" title="Ajustes">⚙</button><div class="version" aria-label="Versión de desarrollo 0.15.70">DEV 0.15.70<br>LOCAL · PRUEBAS</div></div>
   </header>
   <section id="menuScreen" class="screen home-screen launcher-screen" aria-label="Menú principal: competir o construir" hidden>
     <div class="home-scroll">
@@ -217,6 +217,7 @@
         <small>Fase de pruebas: estos tiempos no están homologados online.</small>
       </section>
       <button id="raceStart" class="race-lobby-start" type="button">🏁 Empezar sesión</button>
+      <a class="race-lobby-start" href="./live.html" style="display:block;text-align:center;text-decoration:none;background:#0c8476;color:white;margin-top:10px">👥 Duelo online de dos pilotos · BETA</a>
       <button id="raceDemoOval" class="race-lobby-finish" type="button" hidden>🏁 Montar óvalo de prueba con salida/meta</button>
       <button id="raceFinishTrack" class="race-lobby-finish" type="button" hidden>⚒ Completar circuito en el taller</button>
       <div class="race-lobby-links">
@@ -401,7 +402,7 @@
           </div>
         </div>
       </div>
-      <div class="hub-feature settings-help"><h2>Laboratorio del cronómetro · DEV</h2><p>Pruebas sintéticas de precisión: 60/30/15 FPS, pausas y 1.000 cruces por meta. No altera récords ni circuitos.</p><a class="hub-back" style="display:inline-flex;text-decoration:none" href="./timing-lab.html?v=0.15.69">⏱ Abrir laboratorio</a></div>
+      <div class="hub-feature settings-help"><h2>Laboratorio del cronómetro · DEV</h2><p>Pruebas sintéticas de precisión: 60/30/15 FPS, pausas y 1.000 cruces por meta. No altera récords ni circuitos.</p><a class="hub-back" style="display:inline-flex;text-decoration:none" href="./timing-lab.html?v=0.15.70">⏱ Abrir laboratorio</a></div>
       <div class="hub-feature settings-help"><h2>Mi cuenta CraftRace Studio</h2>
         <p>La misma identidad de Top Down RACE, con perfiles separados. Tu colección y los récords siguen guardándose aquí hasta que actives una futura copia en la nube.</p>
         <button id="settingsAccount" type="button" class="hub-back">♙ Entrar o registrar mi cuenta</button>
@@ -415,7 +416,7 @@
         </div>
         <p>El modo jugador activa un inventario limitado y compras de prueba locales. El modo desarrollador conserva las piezas ilimitadas.</p>
       </section>
-      <section class="hub-feature settings-help" id="boxStudioPanel" aria-label="Box Studio"><h2>📦 Box Studio · DEV</h2><p>Diseña cajas con el mismo estilo gráfico que las actuales. Guarda borradores sin alterar la tienda.</p><a class="box-studio-open" href="./box-studio.html?v=0.15.69">📦 Abrir Box Studio</a></section>
+      <section class="hub-feature settings-help" id="boxStudioPanel" aria-label="Box Studio"><h2>📦 Box Studio · DEV</h2><p>Diseña cajas con el mismo estilo gráfico que las actuales. Guarda borradores sin alterar la tienda.</p><a class="box-studio-open" href="./box-studio.html?v=0.15.70">📦 Abrir Box Studio</a></section>
       <section class="hub-feature settings-help backup-panel" aria-label="Copia de seguridad y restauración">
         <h2>Protege tu progreso</h2>
         <p>Antes de reinstalar la PWA, exporta una copia a <strong>Archivos</strong> o iCloud Drive. Incluye circuitos, revisiones, récords, piezas, coches, ajustes e imágenes de referencia.</p>
@@ -638,6 +639,7 @@
       <div id="resultsStats" class="results-stats" aria-label="Mejores tiempos de la sesión"></div>
       <div class="results-section-title"><h2 id="resultsSectionHeading">Progreso vuelta a vuelta</h2><small id="resultsSectionCaption">TODAS TUS VUELTAS</small></div>
       <div id="resultsLaps" class="results-laps"></div>
+      <p id="resultsReward" class="results-note" role="status" aria-live="polite">Recompensas de prueba: completar dos mangas de carrera sin PT82 · cuenta conectada</p>
       <p class="results-note">Los tiempos de esta sesión se muestran hasta que la cierres. Los récords de cada carril se guardan para futuras carreras.</p>
       <details class="results-technical"><summary>Datos técnicos y homologación</summary><p id="resultsTimingAudit" class="results-timing-audit">Sesión local de prueba · NO HOMOLOGADA</p></details>
     </div>
@@ -762,10 +764,10 @@ window.addEventListener("error",function(event){
   }
 });
 </script>
-<script type="module" src="./src/app.mjs?v=0.15.69"></script>
-<script type="module" src="./src/update-check.mjs?v=0.15.69"></script>
-<script type="module" src="./src/backup.mjs?v=0.15.69"></script>
-<script type="module" src="./src/account.mjs?v=0.15.69"></script>
-  <script type="module" src="./src/account-modes.mjs?v=0.15.69"></script>
+<script type="module" src="./src/app.mjs?v=0.15.70"></script>
+<script type="module" src="./src/update-check.mjs?v=0.15.70"></script>
+<script type="module" src="./src/backup.mjs?v=0.15.70"></script>
+<script type="module" src="./src/account.mjs?v=0.15.70"></script>
+  <script type="module" src="./src/account-modes.mjs?v=0.15.70"></script>
 </body>
 </html>
