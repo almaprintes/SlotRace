@@ -57,7 +57,11 @@ const path=require("node:path");
  };
  let now=0;const callbacks=[];
  const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geom),...Object.keys(blueprint),...Object.keys(clockCore)];const values=keys.map(k=>Object.hasOwn(geom,k)?geom[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
+ const modules=await Promise.all(["kerbs","runoffs","player-economy","box-factory",
+  "box-art","economy-catalog","race-results","duel-scoreboard","rear-contact",
+  "closure-guide"].map(x=>import("../src/"+x+".mjs")));
+ const symbols=Object.assign({},geom,blueprint,clockCore,...modules);
+ const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},requestAnimationFrame,class{observe(){}}
  );
@@ -66,7 +70,7 @@ const path=require("node:path");
   pointerId:id,clientX:x,clientY:y,preventDefault(){}
  });};
  const state=window.slotraceLab.state;
- assert.equal(window.slotraceLab.version,"DEV 0.15.13");
+ assert.equal(window.slotraceLab.version,"DEV "+JSON.parse(fs.readFileSync("version.json","utf8")).version);
  const theme=window.slotraceLab.workspace;
  assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
  assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
