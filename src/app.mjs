@@ -5,7 +5,7 @@ import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
 import {DRIVE as CORE_DRIVE,VEHICLE_DYNAMICS as CORE_VEHICLES,advanceSpeedV4,curveRadiusV4,cornerForcesV4,curveStressEnvelope as coreStressEnvelope,advanceRearV4} from "./physics-v4.mjs?v=0.15.64";
 import {buildCurveSpanIndex,curvePhaseForCar} from "./curve-phase.mjs?v=0.15.64";
-import {chooseAiThrottleV4} from "./ai-driver.mjs?v=0.15.64";
+import {chooseAiThrottleV4,chooseAiThrottleOnTrackV4} from "./ai-driver.mjs?v=0.15.64";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
@@ -2808,15 +2808,15 @@ function advanceAiTest(dt){
  }
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
  const pose=aiTestPose();
- const lookAhead=Math.max(250,aiTest.speed*.65);
- const projected=aiTest.distance+lookAhead;
- const preview=positionAt(lane,state.driveDirection===-1?-projected:projected);
- const gap=!state.deslot&&state.lane===aiTest.lane?
-  forwardGap(aiTest.distance,state.distance,lane.total):Infinity;
- // La IA únicamente decide el gatillo. Nunca teletransporta velocidad ni
- // frena con una fórmula de físicas diferente al coche del jugador.
- aiTest.throttle=chooseAiThrottleV4({pose,nextPose:preview,gap,
-  frontSpeed:state.speed,frontPresent:Number.isFinite(gap)});
+ // La IA y el servidor ejecutan EL MISMO conductor de gatillo sobre
+ // la geometría real; la decisión es independiente de las físicas.
+ const physical=state.driveDirection===-1?1-aiTest.lane:aiTest.lane;
+ const front=state.lane===aiTest.lane&&!state.deslot?
+  {physicalLane:physical,distance:state.distance,speed:state.speed}:null;
+ aiTest.throttle=chooseAiThrottleOnTrackV4({
+  track:state.track,physicalLane:physical,distance:aiTest.distance,
+  speed:aiTest.speed,direction:state.driveDirection,frontCar:front
+ });
  aiTest.speed=advanceSpeedV4(aiTest.speed,aiTest.throttle/100,dt);
  const travel=aiTest.speed*dt;
  if(pose?.curve){
