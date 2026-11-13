@@ -17,10 +17,11 @@ const assert = require("node:assert/strict");
    return {
      physicsVersion:competition.rules.physicsVersion,
      circuitFingerprint:competition.circuit.fingerprint,
-     step({controls,dtMs}) {
+     step({controls,dtMs,finishedPilots=[]}) {
        assert.equal(dtMs,20);
        const crossings=[];
        for(const pilot of entrants) {
+         if(finishedPilots.includes(pilot))continue;
          const next=(progress.get(pilot)||0)+(controls[pilot]||0)/100*0.5;
          if(next>=1) {progress.set(pilot,next-1);crossings.push(pilot);}
          else progress.set(pilot,next);
@@ -80,6 +81,26 @@ const assert = require("node:assert/strict");
  const log=ref.audit();
  assert.ok(log.find(e=>e.kind==="heat-swap"));
  assert.equal(log.filter(e=>e.kind==="server-crossing").length,8);
+ // Faster pilots are parked while slower pilots finish (no phantom laps).
+ const uneven=createServerReferee({competition:live,sessionId:"s-uneven",
+   pilotA:"alex",pilotB:"bea",engineFactory,minLapMs:20});
+ const sendU=(who,seq,type,value=null)=>uneven.ingest(who,
+   createClientIntent(live,{sessionId:"s-uneven",driverId:who,
+     sequence:seq,type,value}));
+ sendU("alex",1,"ready");sendU("bea",1,"ready");
+ sendU("alex",2,"throttle",100);sendU("bea",2,"throttle",50);
+ for(let i=0;i<8;i++)uneven.step();
+ assert.equal(uneven.view().status,"heat-complete");
+ assert.deepEqual(uneven.view().laps.alex.map(l=>l.lapMs),[40,40]);
+ assert.deepEqual(uneven.view().laps.bea.map(l=>l.lapMs),[80,80]);
+ uneven.nextHeat();
+ sendU("alex",3,"ready");sendU("bea",3,"ready");
+ sendU("alex",4,"throttle",100);sendU("bea",4,"throttle",50);
+ for(let i=0;i<8;i++)uneven.step();
+ assert.equal(uneven.view().status,"completed-pending-certification");
+ assert.equal(uneven.provisionalClassification().classification[0].driverId,"alex");
+ assert.equal(uneven.provisionalClassification().classification[0].totalMs,160);
+ assert.equal(uneven.provisionalClassification().classification[1].totalMs,320);
  // A server adapter with different geometry or physics cannot arbitrate.
  assert.throws(()=>createServerReferee({competition:live,sessionId:"s-bad",
    pilotA:"alex",pilotB:"bea",engineFactory:()=>({
