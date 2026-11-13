@@ -633,12 +633,13 @@
       <div class="results-hero">
         <div class="results-overline"><span>🏁 BANDERA A CUADROS</span><small>INFORME DE CARRERA</small></div>
         <h1>Resultados de carrera</h1><p id="resultsCircuit"></p>
-        <p id="resultsTimingAudit" class="results-timing-audit">Sesión local de prueba · NO HOMOLOGADA</p>
+        
       </div>
       <div id="resultsStats" class="results-stats" aria-label="Mejores tiempos de la sesión"></div>
-      <div class="results-section-title"><h2>Progreso vuelta a vuelta</h2><small>TODAS TUS VUELTAS</small></div>
+      <div class="results-section-title"><h2 id="resultsSectionHeading">Progreso vuelta a vuelta</h2><small id="resultsSectionCaption">TODAS TUS VUELTAS</small></div>
       <div id="resultsLaps" class="results-laps"></div>
       <p class="results-note">Los tiempos de esta sesión se muestran hasta que la cierres. Los récords de cada carril se guardan para futuras carreras.</p>
+      <details class="results-technical"><summary>Datos técnicos y homologación</summary><p id="resultsTimingAudit" class="results-timing-audit">Sesión local de prueba · NO HOMOLOGADA</p></details>
     </div>
     <div class="results-actions"><button id="resultsBack" class="mini" type="button">⌁ Construir</button><button id="resultsHome" class="mini" type="button">☰ Menú</button><button id="resultsAgain" class="mini primary" type="button">🏁 Otra sesión</button></div>
   </section>
