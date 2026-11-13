@@ -1,0 +1,35 @@
+name: SlotRace · recuperación suave de colisiones
+on:
+  push:
+    branches: [fix/smooth-reentry-0.15.68]
+  pull_request:
+    paths: ['src/recovery-core.mjs','src/app.mjs','tests/recovery-core.cjs','tests/rear-impact-runtime.cjs']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reentry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check recovery and browser modules
+        run: |
+          node --check src/app.mjs
+          node --check src/recovery-core.mjs
+      - name: Visual recovery and timing at different FPS
+        run: node tests/recovery-core.cjs
+      - name: Real collision and AI recovery
+        run: |
+          node tests/rear-contact.cjs
+          node tests/rear-impact-runtime.cjs
+      - name: PT82 collisions in both directions
+        run: |
+          node tests/ai-pt82.cjs
+          node tests/pt82.cjs
+      - name: Duel timing and 0.15.68 cache integrity
+        run: |
+          node tests/duel-results.cjs
+          node tests/update-check.cjs
