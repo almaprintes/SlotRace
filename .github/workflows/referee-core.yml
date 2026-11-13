@@ -15,6 +15,10 @@ on:
       - 'tests/shared-physics-v4.cjs'
       - 'tests/shared-app-physics-contract.cjs'
       - 'src/app.mjs'
+      - 'src/curve-phase.mjs'
+      - 'src/ai-driver.mjs'
+      - 'tests/ai-pt82.cjs'
+      - 'tests/complex-physics-fixtures.cjs'
       - '.github/workflows/referee-core.yml'
   workflow_dispatch:
 
@@ -34,6 +38,8 @@ jobs:
           node --check server/track-identity.mjs
           node --check src/physics-v4.mjs
           node --check src/app.mjs
+          node --check src/ai-driver.mjs
+          node --check src/curve-phase.mjs
           node --check tests/referee-core.cjs
       - name: Competition protocol
         run: node tests/competition-protocol.cjs
@@ -45,6 +51,8 @@ jobs:
           node tests/shared-app-physics-contract.cjs
       - name: AI shares physical runtime on the PT82
         run: node tests/ai-pt82.cjs
+      - name: Complex-circuit deterministic races and parity
+        run: node tests/complex-physics-fixtures.cjs
       - name: Diagnose historic complex circuits
         run: node tests/complex-circuits-diagnostics.cjs
       - name: Existing timing tests
