@@ -1,0 +1,35 @@
+name: SlotRace referee laboratory
+
+on:
+  push:
+    branches:
+      - feat/server-referee-v1-20261113
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'src/competition-protocol.mjs'
+      - 'tests/referee-core.cjs'
+      - '.github/workflows/referee-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  referee:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source
+        run: |
+          node --check server/referee-core.mjs
+          node --check tests/referee-core.cjs
+      - name: Competition protocol
+        run: node tests/competition-protocol.cjs
+      - name: Referee deterministic unit tests
+        run: node tests/referee-core.cjs
+      - name: Existing timing tests
+        run: |
+          node tests/event-timing.cjs
+          node tests/timing-lab.cjs
