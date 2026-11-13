@@ -6,6 +6,8 @@ const fs=require("node:fs");
 (async()=>{
  const geo=await import("../src/track.mjs");
  const contact=await import("../src/rear-contact.mjs");
+ const physicsV4=await import("../src/physics-v4.mjs");
+ const aiDriver=await import("../src/ai-driver.mjs");
  const src=fs.readFileSync("src/app.mjs","utf8");
  function section(from,to){
   const a=src.indexOf(from),b=src.indexOf(to,a+from.length);
@@ -20,6 +22,7 @@ const fs=require("node:fs");
  ].join("\n");
  const make=new Function("state","positionAt","CAR_LENGTH_MM","DRIVE","carTrackLevel","carsBeyondCollision","toast",
   "forwardGap","rearContact","followTarget","reentrySafe","REAR_CONTACT",
+  "advanceSpeedV4","advanceRearV4","chooseAiThrottleV4","chooseAiThrottleOnTrackV4","curvePhase","LANE_OFFSET",
   physics+"\nfunction displayDrivingPose(){return{x:-100000,y:-100000}}\n"+
   "return{ai:aiTest,pose:aiTestPose,advance:advanceAiTest,at:laneDistanceAtPiece};");
  const types=[...geo.STARTER],idx=types.indexOf("S350");
@@ -31,8 +34,10 @@ const fs=require("node:fs");
  const mm=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
  for(const direction of [1,-1]){
   const state={track,driveDirection:direction,run:true,raceStarted:true,mode:"race",penalty:0};
-  const engine=make(state,geo.positionAt,98,{topSpeed:1150},()=>0,()=>null,()=>{},
-   contact.forwardGap,contact.rearContact,contact.followTarget,contact.reentrySafe,contact.REAR_CONTACT);
+  const engine=make(state,geo.positionAt,98,physicsV4.DRIVE,()=>0,()=>null,()=>{},
+   contact.forwardGap,contact.rearContact,contact.followTarget,contact.reentrySafe,contact.REAR_CONTACT,
+   physicsV4.advanceSpeedV4,physicsV4.advanceRearV4,aiDriver.chooseAiThrottleV4,
+   aiDriver.chooseAiThrottleOnTrackV4,()=>({progress:0,lengthMm:0}),geo.LANE_OFFSET);
   const ai=engine.ai;
   ai.active=true;ai.lane=0;ai.speed=580;ai.armed=true;
   const previousPhysical=direction===1?0:1;
