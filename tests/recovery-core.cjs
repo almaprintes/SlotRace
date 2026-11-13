@@ -31,7 +31,8 @@ const fs=require("node:fs");
  assert.deepEqual(light.parked,heavy.parked,
   "La posición aparcada no depende de la duración deportiva");
  const parked=recoveryVisualPose(target,{...newDeslot(5),elapsed:2,reentryElapsed:0});
- assert.ok(Math.abs(parked.x-(pose.x-85))<1e-8);
+ assert.ok(Math.abs(parked.x-pose.x)<1e-8);
+ assert.ok(Math.abs(parked.y-(pose.y+85))<1e-8);
  const nearEnd=recoveryVisualPose(target,{...newDeslot(5),elapsed:5,reentryElapsed:.8});
  assert.ok(Math.hypot(nearEnd.x-target.x,nearEnd.y-target.y)<1e-8,
   "El último fotograma encaja exactamente en la pista sin salto");
