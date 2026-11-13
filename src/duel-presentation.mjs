@@ -1,7 +1,7 @@
 // Vista comparativa de SlotRace. Nunca modifica el cronómetro ni las actas.
 // La UI enseña milésimas: cada total se obtiene sumando las mismas milésimas
 // que ve el jugador, para que filas, mangas y marcador cuadren exactamente.
-import {duelSummary} from "./race-results.mjs?v=0.15.66";
+import {duelSummary} from "./race-results.mjs?v=0.15.67";
 
 const toMs = value => Number.isFinite(value)&&value>=0?
  Math.round(value*1000):null;
