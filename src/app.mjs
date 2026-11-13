@@ -3582,7 +3582,7 @@ function shopArtwork(product){
  if(product.kind==="packs")return shopPackPiecesArtwork(product);
  if(product.kind==="circuits"){
   if(product.types)return '<div class="shop-blueprint-art'+
-   ""+'">'+
+   (product.id==="plan-catalunya"?" is-catalunya":"")+'">'+
    shopBlueprintSvg(product.types,product.name,product.origin||START)+
    '<span class="shop-plan-caption">'+product.types.length+' PIEZAS · PLANO REAL</span></div>';
   return '<div class="shop-blueprint-pending" aria-label="Plano pendiente de diseño">'+
