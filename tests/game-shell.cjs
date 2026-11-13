@@ -224,7 +224,7 @@ const path=require("node:path");
  assert.equal(elements.get("navBuild").hidden,false,
   "Construir no desaparece al entrar en modo piloto");
  assert.equal(elements.get("navRace").hidden,false);
- assert.equal(elements.get("raceStart").disabled,false,"Óvalo válido listo");
+ assert.equal(elements.get("raceStart").disabled,true,"Sin pieza SALIDA/META el vestíbulo no permite correr");
  game.showMenu();
  assert.equal(st.driveDirection,1,"Sentido horario predeterminado");
  game.openWorkshop();
@@ -264,7 +264,7 @@ const path=require("node:path");
  assert.match(html,/avenir_gripline_threequarter\.webp/);
  assert.match(html,/helix_spark_threequarter\.webp/);
  // Tienda: cuatro categorías, cajas grandes y adquisiciones LOCALES sin pagos.
- assert.equal(game.shopProducts.length,10,"Catálogo inicial con diez referencias");
+ assert.equal(game.shopProducts.length,9,"Catálogo vigente sin el antiguo pack puente");
  elements.get("menuStore").listeners.click[0]();
  assert.equal(st.mode,"store");
  assert.match(elements.get("shopProducts").innerHTML,/Caja básica SR-Precision/);
@@ -273,7 +273,7 @@ const path=require("node:path");
  assert.equal(game.shopOwned("car-gripline"),true,"Avenir Gripline incluido");
  assert.equal(game.shopOwned("plan-oval"),true,"Plano ovalado incluido en caja básica");
  assert.equal(game.shopSelectCategory("packs"),true);
- assert.match(elements.get("shopProducts").innerHTML,/Pack puente 65 mm/);
+ assert.match(elements.get("shopProducts").innerHTML,/Pack de curvas/);
  assert.equal(game.shopSelectCategory("circuits"),true);
  assert.match(elements.get("shopProducts").innerHTML,/Catalunya Slot/);
  assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Sprint urbano|Receta pendiente/);
@@ -424,7 +424,7 @@ const path=require("node:path");
  assert.equal(game.openRace(),false);
  assert.equal(st.types.length,0,"No reemplazar montaje por receta de demo");
  game.openWorkshop();
- game.changeTypes(geo.STARTER.slice(),"Óvalo para carreras",[],geo.START);
+ game.changeTypes(ovalWithFinish.slice(),"Óvalo para carreras",[],geo.START);
  assert.equal(st.track.valid,true);
  // En sentido inverso la posición es distancia NEGATIVA y la marcha
  // apunta 180° en sentido contrario. El carril físico también se invierte.
@@ -1094,7 +1094,7 @@ const path=require("node:path");
  // récord propio de dos vueltas sin mezclarlo con los carriles normales.
  game.showMenu();game.openWorkshop();
  assert.equal(game.chooseCaseCategory("special"),true);
- const ptTypes=geo.STARTER.slice(),ptIndex=ptTypes.indexOf("S350");
+ const ptTypes=ovalWithFinish.slice(),ptIndex=ptTypes.indexOf("S350");
  ptTypes[ptIndex]="X350";
  assert.equal(game.changeTypes(ptTypes,"PT/82",[],geo.START),true);
  assert.equal(st.track.valid,true);
@@ -1256,7 +1256,7 @@ const path=require("node:path");
  assert.equal(storedAfterClosing.driveDirection,-1);
  assert.equal(storedAfterClosing.pendingDesiredDirection,null);
  // El piloto puede alternar entrenamiento, clasificación o carrera cerrada.
- game.changeTypes(geo.STARTER.slice(),"Óvalo de competición",[],geo.START);
+ game.changeTypes(ovalWithFinish.slice(),"Óvalo de competición",[],geo.START);
  game.menuRace();
  const modes=elements.get("raceMode");
  for(const fn of modes.listeners.change||[])
