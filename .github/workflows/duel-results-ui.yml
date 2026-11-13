@@ -1,0 +1,30 @@
+name: SlotRace · comparación visual de resultados
+on:
+  push:
+    branches: [feat/duel-results-tables-0.15.65]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  results-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check game and presentation modules
+        run: |
+          node --check src/app.mjs
+          node --check src/duel-presentation.mjs
+      - name: Compare duel laps, heats and actual DOM tables
+        run: |
+          node tests/duel-results.cjs
+          node tests/duel-presentation.cjs
+      - name: Check version, account and update integrity
+        run: |
+          node tests/update-check.cjs
+          node tests/studio-account.cjs
+          node smoke.cjs
