@@ -1,15 +1,16 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.64";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.64";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.65";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.65";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.65";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.65";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.65";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.64";
-import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.64";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.64";
+import {duelSummary} from "./race-results.mjs?v=0.15.65";
+import {duelScoreboard} from "./duel-scoreboard.mjs?v=0.15.65";
+import {REAR_CONTACT,forwardGap,rearContact,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.65";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.65";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2405,73 +2406,117 @@ function endSession(target="menu"){
  state.mode="results";renderSessionSummary();updateUI();resize();return true;
 }
 function renderDuelResults(){
- const data=duelSummary(state.sessionLaps,aiTest.sessionLaps,
+ // Este componente sólo cambia la presentación; el cronómetro, las actas,
+ // las dos mangas y el ganador real siguen viniendo de race-results.mjs.
+ const data=duelScoreboard(state.sessionLaps,aiTest.sessionLaps,
   state.targetLaps,state.twoLegPhase);
  const player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
  const rival=CAR_MODELS[state.selectedCar==="spark"?"gripline":"spark"].name;
  const scores=$("resultsStats"),list=$("resultsLaps");
  scores.textContent="";list.textContent="";
  const el=(tag,cls,text,parent)=>{
-  const node=document.createElement(tag);node.className=cls;
-  node.textContent=text;parent.appendChild(node);return node;
+  const node=document.createElement(tag);
+  if(cls)node.className=cls;
+  if(text!==null&&text!==undefined)node.textContent=text;
+  if(parent)parent.appendChild(node);
+  return node;
  };
- const completeFirst=data.heats[0].playerTotal!==null&&
-  data.heats[0].aiTotal!==null;
- const head=el("div","duel-headline",
-  data.completed?
-   (data.winner==="tie"?"🏁 ¡EMPATE!":
-    data.winner==="player"?"🏆 ¡HAS GANADO A LA IA!":"🏆 GANADORA: IA"):
-   state.twoLegPhase===1&&completeFirst?
-    "🏁 Manga 1 terminada · faltan los carriles intercambiados":
-    "🏁 Competición en curso · sin ganador definitivo",scores);
- el("small","duel-caption",
-  "Dos mangas · Carril A y B · "+state.targetLaps+
-  " vueltas por manga y piloto · resultados locales de prueba",head);
- if(data.completed){
-  const totals=el("div","duel-totals","",scores);
-  for(const [who,name,time] of [
-   ["player","Tú · "+player,data.playerTotal],
-   ["ai","IA · "+rival,data.aiTotal]
-  ]){
-   const tile=el("div","duel-tile "+(data.winner===who?"is-winner":""),"",totals);
-   el("span","",name,tile);
-   el("strong","",format(time)+" s",tile);
-  }
-  el("p","duel-difference",data.winner==="tie"?
-   "Mismo tiempo total (diferencia inferior a 1 ms).":
-   "Diferencia final: "+format(data.difference)+" s",scores);
+ const ms=value=>value===null?"—":format(value/1000)+" s";
+ // Δ = tiempo IA - tiempo piloto: positivo significa ventaja para el jugador.
+ const gap=value=>value===null?"—":
+  (value>0?"+":value<0?"−":"±")+ms(Math.abs(value));
+ const status=data.completed?
+  (data.winner==="tie"?"🏁 ¡EMPATE!":
+   data.winner==="player"?"🏆 ¡HAS GANADO A LA IA!":"🏆 LA IA HA GANADO"):
+  state.twoLegPhase===1?"🏁 Primera manga completada":"🏁 Carrera incompleta";
+ const hero=el("div","duel-headline","",scores);
+ el("strong","duel-result-title",status,hero);
+ el("small","duel-caption","2 mangas · Carriles A y B · "+
+  state.targetLaps+" vueltas por manga · PRUEBA LOCAL",hero);
+ const totals=el("div","duel-summary-cards","",scores);
+ for(const [who,name,value] of [
+  ["player","Tú · "+player,data.playerTotalMs],
+  ["ai","IA · "+rival,data.aiTotalMs]
+ ]){
+  const tile=el("div","duel-summary-card "+who+
+   (data.completed&&data.winner===who?" is-winner":""),"",totals);
+  el("span","duel-summary-label",name,tile);
+  el("strong","duel-summary-time",ms(value),tile);
+  if(data.completed&&data.winner===who)
+   el("small","duel-summary-win","✓ Ganador",tile);
  }
+ const metrics=el("div","duel-mini-metrics","",scores);
+ for(const [title,value,extra] of [
+  ["Diferencia final",gap(data.differenceMs),"duel-metric-difference"],
+  ["Tu mejor vuelta",ms(data.playerBestMs),"duel-metric-player"],
+  ["Mejor vuelta IA",ms(data.aiBestMs),"duel-metric-ai"]
+ ]){
+  const tile=el("div","duel-mini-card "+extra,"",metrics);
+  el("span","",title,tile);
+  el("strong","",value,tile);
+ }
+ el("p","duel-delta-help",
+  "Δ positivo = tú más rápido · Δ negativo = IA más rápida. "+
+  "Las sumas usan las milésimas visibles de cada vuelta.",scores);
+ const heatCard=el("section","duel-score-section","",list);
+ el("h3","duel-section-heading","Comparación por mangas",heatCard);
+ const table=(where,cls,columns,caption)=>{
+  const t=el("table","duel-score-table "+cls,"",where);
+  el("caption","duel-visually-hidden",caption,t);
+  const thead=el("thead","","",t),tr=el("tr","","",thead);
+  for(const [name,scope] of columns){
+   const th=el("th","",name,tr);
+   th.setAttribute("scope",scope||"col");
+  }
+  return el("tbody","","",t);
+ };
+ const heatBody=table(heatCard,"duel-heats-table",[
+  ["Manga"],["Tú"],["IA"],["Δ"]],"Totales de cada manga");
+ for(const h of data.heats){
+  const tr=el("tr","duel-heat-summary","",heatBody);
+  el("th","",String(h.heat),tr).setAttribute("scope","row");
+  const addTotal=(who,value)=>{
+   const cell=el("td",h.winner===who?"duel-faster-cell":"",ms(value),tr);
+   if(h.winner===who)cell.setAttribute("aria-label",
+    (who==="player"?"Piloto":"IA")+" más rápido: "+ms(value));
+  };
+  addTotal("player",h.playerTotalMs);
+  addTotal("ai",h.aiTotalMs);
+  const diff=el("td",h.deltaMs===null?"":"duel-delta-"+
+   (h.deltaMs>0?"ahead":h.deltaMs<0?"behind":"tie"),gap(h.deltaMs),tr);
+  diff.setAttribute("aria-label","Diferencia: "+gap(h.deltaMs));
+ }
+ const laps=el("section","duel-score-section duel-lap-section","",list);
+ el("h3","duel-section-heading","Vuelta a vuelta",laps);
+ el("p","duel-table-legend","★ mejor vuelta de cada piloto en su manga",laps);
  for(const heat of data.heats){
-  if(heat.heat>state.twoLegPhase)continue;
-  const heading=el("section","duel-heat","",list);
-  el("h3","","Manga "+heat.heat+" · "+
-   (heat.heat===1?"posición inicial":"carriles intercambiados"),heading);
-  for(const [who,name,total,best,completed] of [
-   ["player","Tú · "+player,heat.playerTotal,heat.playerBest,heat.playerLaps],
-   ["ai","IA · "+rival,heat.aiTotal,heat.aiBest,heat.aiLaps]
-  ]){
-   const row=el("div","duel-heat-row","",heading);
-   el("span","",name+" · "+completed+"/"+state.targetLaps+" vueltas",row);
-   el("strong","",total===null?"En curso / incompleto":format(total)+" s",row);
-   el("small","",best===null?"Sin vuelta registrada":
-    "Mejor vuelta: "+format(best)+" s",row);
-  }
- }
- // Vueltas reales de ambos pilotos; no representar la IA como un
- // récord personal ni inventar parciales que no se hayan registrado.
- const rows=el("section","duel-lap-list","",list);
- el("h3","","Detalle de vueltas de ambos pilotos",rows);
- for(let heat=1;heat<=state.twoLegPhase;heat++){
-  el("h4","","Manga "+heat,rows);
-  for(let n=1;n<=state.targetLaps;n++){
-   const p=state.sessionLaps.find(l=>(l.heat||1)===heat&&
-    (l.number-(heat-1)*state.targetLaps)===n);
-   const ai=aiTest.sessionLaps.find(l=>l.heat===heat&&l.number===n);
-   if(!p&&!ai)continue;
-   const row=el("div","duel-lap-row","",rows);
-   el("span","","Vuelta "+n,row);
-   el("span","","Tú: "+(p?format(p.seconds)+" s":"—"),row);
-   el("span","","IA: "+(ai?format(ai.seconds)+" s":"—"),row);
+  const card=el("div","duel-lap-card","",laps);
+  const head=el("div","duel-lap-heading","",card);
+  el("h4","","Manga "+heat.heat,head);
+  el("span","","Carriles "+(heat.heat===1?"iniciales":"intercambiados"),head);
+  const body=table(card,"duel-laps-table",[
+   ["Vuelta"],["Tú"],["IA"],["Δ"]],"Comparación de tiempos de manga "+heat.heat);
+  for(const lap of heat.rows){
+   const tr=el("tr","","",body);
+   el("th","duel-lap-index",String(lap.number),tr).setAttribute("scope","row");
+   function lapCell(value,best,who){
+    const cell=el("td",(best?"duel-best-lap ":"")+
+     (lap.deltaMs!==null&&
+      ((who==="player"&&lap.deltaMs>0)||(who==="ai"&&lap.deltaMs<0))?
+      "duel-faster-cell":""),"",tr);
+    el("span","",ms(value),cell);
+    if(best){
+     const star=el("b","duel-best-star","★",cell);
+     star.setAttribute("aria-hidden","true");
+     cell.setAttribute("aria-label",
+      (who==="player"?"Piloto":"IA")+": "+ms(value)+"; mejor vuelta de su manga");
+    }
+   }
+   lapCell(lap.playerMs,lap.bestPlayer,"player");
+   lapCell(lap.aiMs,lap.bestAi,"ai");
+   el("td",lap.deltaMs===null?"":"duel-delta-"+
+    (lap.deltaMs>0?"ahead":lap.deltaMs<0?"behind":"tie"),
+    gap(lap.deltaMs),tr);
   }
  }
 }
@@ -2496,6 +2541,8 @@ function renderSessionSummary(){
   travelDirectionLabel(state.types,state.driveDirection,state.track.closed)+
   " · "+(state.track.laneChangerIndex>=0?
    state.sessionLaps.length*2:state.sessionLaps.length)+" vueltas del jugador";
+ $("resultsSectionTitle").textContent=isDuelRace()?"Comparación de carrera":"Progreso vuelta a vuelta";
+ $("resultsSectionHint").textContent=isDuelRace()?"TÚ FRENTE A IA":"TODAS TUS VUELTAS";
  if(isDuelRace()){
   renderDuelResults();
   return;
@@ -6663,7 +6710,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.64",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.65",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
