@@ -21,12 +21,12 @@ const nodes=new Map(ids.map(id=>[id,{
  id,hidden:id==="entryActions"||id==="entryGuest",disabled:false,textContent:"",value:"",
  attrs:{},listeners:{},classList:{toggle(){}},
  setAttribute(name,val){this.attrs[name]=String(val);},
- querySelectorAll:()=>[],focus(){},addEventListener(name,handler){
+ querySelectorAll:()=>[],focus(){},replaceChildren(){this.children=[];this.textContent="";},appendChild(node){(this.children??=[]).push(node)},addEventListener(name,handler){
   (this.listeners[name]??=[]).push(handler);
  }
 }]));
 const get=id=>{const v=nodes.get(id);if(!v)throw Error("Missing DOM "+id);return v};
-const doc={getElementById:get,addEventListener(){}};
+const doc={getElementById:get,addEventListener(){},createElement:tag=>({tagName:tag.toUpperCase(),dataset:{},attrs:{},setAttribute(n,v){this.attrs[n]=String(v)},appendChild(){},addEventListener(){}})};
 const loc={origin:"https://almaprintes.github.io",pathname:"/SlotRace/",search:"",hash:""};
 const mem=new Map([["slotrace-circuit-library-v1",JSON.stringify([{id:"one"},{id:"two"},{id:"three"}])],
  ["tdr2:onlineSession:v1","SAVED_TDR_SESSION"]]);
