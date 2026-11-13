@@ -43,6 +43,8 @@ jobs:
         run: |
           node tests/shared-physics-v4.cjs
           node tests/shared-app-physics-contract.cjs
+      - name: AI shares physical runtime on the PT82
+        run: node tests/ai-pt82.cjs
       - name: Diagnose historic complex circuits
         run: node tests/complex-circuits-diagnostics.cjs
       - name: Existing timing tests
