@@ -5,43 +5,11 @@
 import {positionAt,finishInteriorPhysicalLane,LANE_OFFSET,CATALOG} from "../src/track.mjs";
 import {PHYSICS_VERSION,DRIVE,advanceSpeedV4,advanceRearV4,curveStressEnvelope} from "../src/physics-v4.mjs";
 import {canonicalCompetitionTrack} from "./track-identity.mjs";
+import {buildCurveSpanIndex,curvePhaseForCar} from "../src/curve-phase.mjs";
 
 export const FIXED_STEP_MS=10;
 const finite=n=>typeof n==="number"&&Number.isFinite(n);
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
-function prepareCurveSpans(track,lane){
- const types=track.types,n=types.length,turns=types.map(id=>Math.sign(CATALOG[id]?.angle||0));
- const starts=Array(n).fill(Infinity),ends=Array(n).fill(-Infinity);
- for(let j=1;j<lane.nodes.length;j++){
-   const id=lane.nodes[j].pieceIndex;
-   if(id>=0&&id<n){
-     starts[id]=Math.min(starts[id],lane.lengths[j-1]);
-     ends[id]=Math.max(ends[id],lane.lengths[j]);
-   }
- }
- return turns.map((turn,i)=>{
-   if(!turn)return null;
-   let first=i,last=i,count=0;
-   while(count++<n-1&&turns[(first+n-1)%n]===turn)
-     first=(first+n-1)%n;
-   count=0;
-   while(count++<n-1&&turns[(last+1)%n]===turn)
-     last=(last+1)%n;
-   const start=starts[first],end=ends[last],total=lane.total;
-   const lengthMm=(end-start+total)%total||total;
-   return {start,end,lengthMm};
- });
-}
-function phaseAt(p,spans,lane,totalDistance,direction) {
- if(!p?.curve||!lane?.total)return 0;
- const span=spans[p.pieceIndex];
- if(!span||!finite(span.lengthMm)||span.lengthMm<=0)return 1;
- const total=lane.total;
- const native=((direction===-1?-totalDistance:totalDistance)%total+total)%total;
- const travelled=direction===-1?
-   (span.end-native+total)%total:(native-span.start+total)%total;
- return clamp(travelled/span.lengthMm,0,1);
-}
 function initialCar(physicalLane,logicalLane){
  return {physicalLane,logicalLane,distance:0,speed:0,penaltyMs:0,
   rearSlip:0,rearSlipVelocity:0,rearStress:0,drift:0,
@@ -59,7 +27,7 @@ export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
    throw Error("PT/82 no admitida aún por el árbitro compartido");
  const direction=canonical.driveDirection;
  const physicalA=finishInteriorPhysicalLane(canonical.types);
- const curveSpans=track.lanes.map(lane=>prepareCurveSpans(track,lane));
+ const curveSpans=track.lanes.map(lane=>buildCurveSpanIndex(track.types,lane,CATALOG));
  const factory=({competition,assignment=null,pilot=null,stepMs=FIXED_STEP_MS})=>{
    if(competition?.circuit?.fingerprint!==fingerprint||
      competition?.rules?.physicsVersion!==PHYSICS_VERSION)
@@ -110,7 +78,7 @@ export function createSharedPhysicsEngineFactory(recipe,{carByPilot={}}={}){
            }
            s.cornerDistance+=travel;
          }else {s.cornerDistance=0;s.cornerDirection=0;}
-         const phase=phaseAt(p,curveSpans[s.physicalLane],lane,s.distance,direction);
+         const phase=curvePhaseForCar(p,lane,curveSpans[s.physicalLane],s.distance,direction).progress;
          const rear=advanceRearV4({carId:s.carId,speedMmS:s.speed,
            rearSlipMm:s.rearSlip,rearSlipVelocityMmS:s.rearSlipVelocity,
            pose:p,logicalLane:s.logicalLane,curveProgress:phase,dtSec,
