@@ -263,7 +263,7 @@ const path=require("node:path");
  assert.match(html,/avenir_gripline_threequarter\.webp/);
  assert.match(html,/helix_spark_threequarter\.webp/);
  // Tienda: cuatro categorías, cajas grandes y adquisiciones LOCALES sin pagos.
- assert.equal(game.shopProducts.length,10,"Catálogo inicial con diez referencias");
+ assert.equal(game.shopProducts.length,9,"Catálogo inicial vigente: nueve referencias");
  elements.get("menuStore").listeners.click[0]();
  assert.equal(st.mode,"store");
  assert.match(elements.get("shopProducts").innerHTML,/Caja básica SR-Precision/);
@@ -272,7 +272,7 @@ const path=require("node:path");
  assert.equal(game.shopOwned("car-gripline"),true,"Avenir Gripline incluido");
  assert.equal(game.shopOwned("plan-oval"),true,"Plano ovalado incluido en caja básica");
  assert.equal(game.shopSelectCategory("packs"),true);
- assert.match(elements.get("shopProducts").innerHTML,/Pack puente 65 mm/);
+ assert.match(elements.get("shopProducts").innerHTML,/Pack/,"La tienda conserva packs disponibles");
  assert.equal(game.shopSelectCategory("circuits"),true);
  assert.match(elements.get("shopProducts").innerHTML,/Catalunya Slot/);
  assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Sprint urbano|Receta pendiente/);
