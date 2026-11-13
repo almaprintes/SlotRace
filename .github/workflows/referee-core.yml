@@ -5,6 +5,7 @@ on:
     branches:
       - feat/server-referee-v1-20261113
       - feat/shared-physics-v4-20261113
+      - feat/ai-shared-physics-fixtures-20261113
   pull_request:
     paths:
       - 'server/**'
@@ -42,6 +43,8 @@ jobs:
         run: |
           node tests/shared-physics-v4.cjs
           node tests/shared-app-physics-contract.cjs
+      - name: Diagnose historic complex circuits
+        run: node tests/complex-circuits-diagnostics.cjs
       - name: Existing timing tests
         run: |
           node tests/event-timing.cjs
