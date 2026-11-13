@@ -3632,7 +3632,7 @@ function renderShop(){
  $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
  $("shopFeaturedSection").hidden=category!=="boxes";
  if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-catalunya"]
-  .map(id=>shopCardMarkup(shopProduct(id),true)).join("");
+  .map(id=>shopProduct(id)).filter(Boolean).map(product=>shopCardMarkup(product,true)).join("");
  const owned=SHOP_PRODUCTS.filter(p=>shopOwned(p.id));
  $("shopCollectionSummary").textContent=owned.length+" productos disponibles · "+
   "La caja básica y sus contenidos están incluidos desde el inicio.";
