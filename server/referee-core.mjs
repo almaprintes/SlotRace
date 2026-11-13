@@ -1,7 +1,7 @@
 // SlotRace · árbitro independiente (fase de laboratorio).
 // NO importar este módulo desde la PWA: se ejecutará solo en un proceso servidor.
-// No habilita carreras oficiales: falta portar la física real a un motor
-// determinista de servidor y comprobar la procedencia temporal de controles.
+// No habilita carreras oficiales: el motor físico compartido aún no es
+// equivalente a todas las funciones de la PWA ni acredita la procedencia.
 import {COMPETITION_PROTOCOL, planLiveDuel, CLIENT_INTENTS} from "../src/competition-protocol.mjs";
 
 export const REFEREE_SCHEMA = 1;
@@ -35,11 +35,18 @@ function serverCrossings(frame, pilots) {
   ensure(keysExactly(frame, ["crossings"]) && Array.isArray(frame.crossings),
     "Respuesta del motor inválida");
   const unique = new Set();
-  for (const id of frame.crossings) {
-    ensure(pilots.includes(id) && !unique.has(id), "Cruce de motor inválido o duplicado");
-    unique.add(id);
-  }
-  return frame.crossings;
+  return frame.crossings.map(event=>{
+    // Compatibilidad con motores antiguos: string significa final de tick.
+    const candidate=typeof event==="string"?{driverId:event,fraction:1}:event;
+    ensure(keysExactly(candidate,["driverId","fraction"])&&
+      Object.hasOwn(candidate,"driverId")&&Object.hasOwn(candidate,"fraction")&&
+      pilots.includes(candidate.driverId)&&!unique.has(candidate.driverId)&&
+      typeof candidate.fraction==="number"&&Number.isFinite(candidate.fraction)&&
+      candidate.fraction>=0&&candidate.fraction<=1,
+      "Cruce de motor inválido o duplicado");
+    unique.add(candidate.driverId);
+    return candidate;
+  });
 }
 export function createServerReferee({
   competition, sessionId, pilotA, pilotB, engineFactory,
@@ -127,11 +134,11 @@ export function createServerReferee({
         tick, dtMs:stepMs, controls:snapshot(before),
         assignment:snapshot(heats[heat - 1]),finishedPilots:[...finishedPilots]
       }),pilots);
-      for (const driverId of events) {
+      for (const {driverId,fraction} of events) {
         // Nunca permitir una vuelta extra después de completar la manga.
         ensure(laps[driverId].length < competition.rules.targetLaps,
           "Cruce tras finalizar la manga");
-        const elapsedMs = tick * stepMs;
+        const elapsedMs = Math.round(((tick-1+fraction)*stepMs)*1000)/1000;
         const previous = laps[driverId].at(-1)?.finishElapsedMs ?? 0;
         ensure(elapsedMs - previous >= minLapMs, "Vuelta físicamente imposible");
         const lane = heats[heat - 1].laneA === driverId ? "A" : "B";
@@ -202,7 +209,8 @@ export function replayAsyncAttempt({
     attempt.inputs.length<=maxTicks, "Intento malformado o ajeno");
   ensure(Array.isArray(attempt.claimedLapTimes) &&
     attempt.claimedLapTimes.length===competition.rules.targetLaps &&
-    attempt.claimedLapTimes.every(positiveInt), "Vueltas declaradas inválidas");
+    attempt.claimedLapTimes.every(n=>typeof n==="number"&&Number.isFinite(n)&&n>0),
+    "Vueltas declaradas inválidas");
   const engine = engineFactory({competition:snapshot(competition),
     pilot:authenticatedDriverId, stepMs});
   assertEngine(engine,competition);
@@ -217,9 +225,9 @@ export function replayAsyncAttempt({
       tick:i+1,dtMs:stepMs,controls:{[authenticatedDriverId]:frame.throttle},
       assignment:{laneA:authenticatedDriverId,laneB:null}
     }),[authenticatedDriverId]);
-    for(const driverId of crossings) {
+    for(const {driverId,fraction} of crossings) {
       ensure(lapTimes.length<competition.rules.targetLaps,"Exceso de vueltas");
-      const finish=(i+1)*stepMs;
+      const finish=Math.round(((i+fraction)*stepMs)*1000)/1000;
       ensure(finish-previous>=minLapMs,"Vuelta físicamente imposible");
       lapTimes.push(finish-previous);serverFinishTimes.push(finish);
       previous=finish;

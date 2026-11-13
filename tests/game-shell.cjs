@@ -42,9 +42,13 @@ const path=require("node:path");
  // Si falta uno, el arnés falla antes de poder comprobar el juego.
  const extraModules=await Promise.all([
   "kerbs","runoffs","player-economy","box-factory","box-art",
-  "economy-catalog","race-results","rear-contact","closure-guide"
+  "economy-catalog","race-results","rear-contact","closure-guide","physics-v4"
  ].map(name=>import("../src/"+name+".mjs")));
  const symbols=Object.assign({},geo,blueprint,clockCore,...extraModules);
+ // El import aliasado de la PWA se traduce en símbolos del simulador VM.
+ symbols.CORE_DRIVE=symbols.DRIVE;
+ symbols.CORE_VEHICLES=symbols.VEHICLE_DYNAMICS;
+ symbols.coreStressEnvelope=symbols.curveStressEnvelope;
  const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
  const navigator={
   shared:null,canShare:()=>true,

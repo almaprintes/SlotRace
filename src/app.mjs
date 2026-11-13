@@ -3,6 +3,7 @@ import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15
 import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.64";
 import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.64";
 import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.64";
+import {DRIVE as CORE_DRIVE,VEHICLE_DYNAMICS as CORE_VEHICLES,advanceSpeedV4,curveRadiusV4,cornerForcesV4,curveStressEnvelope as coreStressEnvelope,advanceRearV4} from "./physics-v4.mjs?v=0.15.64";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
@@ -2709,35 +2710,13 @@ function completeLap(crossingElapsedMs=raceClock.elapsedMs){
 // Modelo de slot simplificado: masa trasera que desliza lateralmente,
 // neumáticos con fuerza de agarre y amortiguación, guía delantera retenida.
 // Parámetros experimentales; no son medidas de coches reales.
-const DRIVE=Object.freeze({
- maxSpeed:1250,topSpeed:1150,gravity:9.81,
- lateralElasticity:.085, // Derrape visible sin penalizar de más al 95 %.
- fullThrottleSlipAt:.975, // El 100% sostenido no es seguro en curvas largas.
- fullThrottleLoad:90,minCurveDistance:65
-});
-// Ficha por vehículo, preparada para futuras diferencias de comportamiento.
-const VEHICLE_DYNAMICS=Object.freeze({
- gripline:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
-  damperNsPerM:.70,straightSpringNPerM:30,straightDamperNsPerM:.50,
-  wheelbaseMM:65,guideYawLimit:.245}),
- spark:Object.freeze({rearMassKg:.045,gripG:.97,springNPerM:3.6,
-  damperNsPerM:.70,straightSpringNPerM:30,straightDamperNsPerM:.50,
-  wheelbaseMM:65,guideYawLimit:.245})
-});
+// Misma fuente de físicas para la PWA y para el árbitro de servidor.
+const DRIVE=CORE_DRIVE;
+const VEHICLE_DYNAMICS=CORE_VEHICLES;
 const carDynamics=()=>VEHICLE_DYNAMICS[state.selectedCar]||VEHICLE_DYNAMICS.gripline;
-function curveRadius(p,lane){
- if(!p||!p.curve)return Infinity;
- const offset=lane===0?-LANE_OFFSET:LANE_OFFSET;
- return Math.max(70,p.radius-offset*p.curve);
-}
+function curveRadius(p,lane){return curveRadiusV4(p,lane,LANE_OFFSET);}
 function cornerForces(p,lane,speed=state.speed){
- const car=carDynamics(),radiusMm=curveRadius(p,lane);
- const lateralAcceleration=Number.isFinite(radiusMm)?
-  Math.max(0,speed*speed/radiusMm/1000):0; // m/s² (velocidad en mm/s)
- const gripAcceleration=car.gripG*DRIVE.gravity;
- return{radiusMm,lateralAcceleration,gripAcceleration,
-  inertialForceN:car.rearMassKg*lateralAcceleration,
-  gripForceN:car.rearMassKg*gripAcceleration};
+ return cornerForcesV4(p,lane,speed,state.selectedCar,LANE_OFFSET);
 }
 // Referencia del inicio de inestabilidad de la trasera: cuenta tanto la
 // adherencia centrípeta real como la pérdida de estabilidad de la guía a
@@ -2792,54 +2771,19 @@ function curvePhase(p,lane,distance=state.distance){
 }
 // Los neumáticos no desarrollan todo el esfuerzo lateral en la primera
 // junta: la carga efectiva crece y alcanza su máximo pasada media curva.
-function curveStressEnvelope(progress){
- const t=Math.max(0,Math.min(1,(progress-.08)/.62));
- return .08+.92*t*t*(3-2*t);
-}
+function curveStressEnvelope(progress){return coreStressEnvelope(progress);}
 function advanceRearDynamics(p,lane,dt){
- const car=carDynamics(),forces=cornerForces(p,lane);
- const count=Math.max(1,Math.ceil(Math.max(0,dt)/(1/120)));
- const step=Math.max(0,dt)/count,turn=p?.curve||0;
  const phase=curvePhase(p,state.track.lanes[drivingLaneIndex()]);
- const envelope=turn?curveStressEnvelope(phase.progress):0;
- const excess=Math.max(0,forces.lateralAcceleration-forces.gripAcceleration);
- const elastic=DRIVE.lateralElasticity*Math.min(forces.lateralAcceleration,forces.gripAcceleration);
- // A toda velocidad el coche pierde reserva de estabilidad de la guía,
- // también en curvas amplias. El efecto tarda en crecer por el arco.
- // No sustituye a v²/r ni elimina la diferencia entre los dos carriles.
- const guideExcess=Math.max(0,state.speed/DRIVE.topSpeed-
-  DRIVE.fullThrottleSlipAt)*DRIVE.fullThrottleLoad*envelope;
- const effectiveExcess=excess*envelope+guideExcess;
- const outwardForce=turn*car.rearMassKg*
-  (effectiveExcess+elastic*(.25+.75*envelope));
- state.rearStress=effectiveExcess;
- // La curva conserva un muelle suave y amortiguación estable. En recta
- // aumentamos la rigidez y acompañamos la amortiguación: la trasera
- // atraviesa el centro y llega al contraderrape del ~50 % en ~0.12 s,
- // frente a ~0.25 s antes. Latigazo rápido SIN teletransporte, y
- // sin reiniciar ni posición ni velocidad al cambiar de pieza.
- const springRate=turn?car.springNPerM:car.straightSpringNPerM;
- const dampingRate=turn?car.damperNsPerM:car.straightDamperNsPerM;
- for(let i=0;i<count;i++){
-  const spring=springRate*state.rearSlip/1000;
-  const damper=dampingRate*state.rearSlipVelocity/1000;
-  const acceleration=(outwardForce-spring-damper)/car.rearMassKg*1000;
-  state.rearSlipVelocity+=acceleration*step;
-  state.rearSlip+=state.rearSlipVelocity*step;
-  if(!turn&&Math.abs(state.rearSlip)<.025&&
-     Math.abs(state.rearSlipVelocity)<.3){
-   state.rearSlip=0;state.rearSlipVelocity=0;
-  }
- }
- const limitMm=car.wheelbaseMM*Math.tan(car.guideYawLimit);
- state.drift=Math.min(1,Math.abs(state.rearSlip)/limitMm);
- state.driftDirection=Math.abs(state.rearSlip)>.1?Math.sign(state.rearSlip):0;
- state.gripDebt=state.drift;
- return{...forces,phase:phase.progress,stressEnvelope:envelope,
-  effectiveExcess,slipMm:state.rearSlip,
-  slipVelocityMmS:state.rearSlipVelocity,
-  yawRad:Math.atan2(state.rearSlip,car.wheelbaseMM),
-  limitMm,deslot:Math.abs(state.rearSlip)>=limitMm};
+ const rear=advanceRearV4({
+  carId:state.selectedCar,speedMmS:state.speed,
+  rearSlipMm:state.rearSlip,rearSlipVelocityMmS:state.rearSlipVelocity,
+  pose:p,logicalLane:lane,curveProgress:phase.progress,dtSec:dt,
+  laneOffset:LANE_OFFSET
+ });
+ state.rearSlip=rear.slipMm;state.rearSlipVelocity=rear.slipVelocityMmS;
+ state.rearStress=rear.effectiveExcess;state.drift=rear.drift;
+ state.driftDirection=rear.driftDirection;state.gripDebt=rear.drift;
+ return rear;
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
@@ -3043,13 +2987,8 @@ function simulation(dt,frameNow=null){
   }
   return;
  }
- const targetSpeed=g*DRIVE.topSpeed;
- // Al soltar el mando, el gas es CERO en ese mismo instante; la velocidad
- // conserva inercia con rozamiento suave, sin frenado instantáneo.
- const response=g>0?2.25:1.35;
- state.speed=Math.max(0,Math.min(DRIVE.maxSpeed,
-  state.speed+(targetSpeed-state.speed)*(1-Math.exp(-response*dt))
- ));
+ // Cálculo puro compartido: conserva aceleración, inercia y velocidad máxima.
+ state.speed=advanceSpeedV4(state.speed,g,dt);
  const lane=state.track.lanes[drivingLaneIndex()],p=drivingPose();
  const travel=state.speed*dt;
  if(p?.curve){

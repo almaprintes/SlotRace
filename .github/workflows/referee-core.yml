@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - feat/server-referee-v1-20261113
+      - feat/shared-physics-v4-20261113
   pull_request:
     paths:
       - 'server/**'
+      - 'src/physics-v4.mjs'
       - 'src/competition-protocol.mjs'
       - 'tests/referee-core.cjs'
+      - 'tests/shared-physics-v4.cjs'
+      - 'tests/shared-app-physics-contract.cjs'
+      - 'src/app.mjs'
       - '.github/workflows/referee-core.yml'
   workflow_dispatch:
 
@@ -24,11 +29,19 @@ jobs:
       - name: Validate source
         run: |
           node --check server/referee-core.mjs
+          node --check server/physics-engine.mjs
+          node --check server/track-identity.mjs
+          node --check src/physics-v4.mjs
+          node --check src/app.mjs
           node --check tests/referee-core.cjs
       - name: Competition protocol
         run: node tests/competition-protocol.cjs
       - name: Referee deterministic unit tests
         run: node tests/referee-core.cjs
+      - name: Shared SlotRace physics + real geometry
+        run: |
+          node tests/shared-physics-v4.cjs
+          node tests/shared-app-physics-contract.cjs
       - name: Existing timing tests
         run: |
           node tests/event-timing.cjs
