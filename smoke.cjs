@@ -8,6 +8,7 @@ const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(__dirname,"src/site.css"),"utf8");
 const app=fs.readFileSync(path.join(__dirname,"src/app.mjs"),"utf8");
 const account=fs.readFileSync(path.join(__dirname,"src/account.mjs"),"utf8");
+const expectedVersion=JSON.parse(fs.readFileSync(path.join(__dirname,"version.json"),"utf8")).version;
 const {execFileSync}=require("node:child_process");
 execFileSync(process.execPath,["--check",path.join(__dirname,"src/account.mjs")]);
 for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginForm",
@@ -15,7 +16,7 @@ for(const id of ["menuAccount","settingsAccount","accountModal","accountLoginFor
  "accountSignedOut","accountClaim","accountConnected"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Falta el control de cuenta: "+id);
 }
-assert.match(html,/src="\.\/src\/account\.mjs\?v=0\.15\.63"/);
+assert.ok(html.includes('src="./src/account.mjs?v='+expectedVersion+'"'),"El módulo de cuenta coincide con la versión publicada");
 assert.match(account,/flowType:"pkce"/,"Los proveedores usan OAuth con PKCE");
 assert.match(account,/getUser\(\)/,"La cuenta se verifica en el servidor");
 assert.match(account,/from\("craft_accounts"\)/,"El apodo va al registro compartido");
@@ -213,7 +214,7 @@ const p=positionAt(oval.lanes[0],oval.lanes[0].total/2);
 assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
 assert.equal(nearestPiece(oval,oval.parts[0].points[3].x,oval.parts[0].points[3].y).index,0);
 assert.ok(oval.lanes[0].total>oval.lanes[1].total);
-assert.match(html,/DEV 0\.15\.63/);
+assert.ok(html.includes("DEV "+expectedVersion),"La cabecera debe mostrar la versión publicada");
 for(const id of ["editCanvas","raceCanvas","pieces","caseInterior","caseToggle","rotate","rotateCCW","builderSelectionTools","bridgeDock","flip","measureGap","gapInfo","autoClose","eight","oval","trigger","gridToggle","loadingScreen"]){
  assert.match(html,new RegExp('id="'+id+'"'),"Componente "+id);
 }
