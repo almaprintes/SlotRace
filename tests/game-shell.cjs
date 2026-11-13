@@ -906,6 +906,10 @@ const path=require("node:path");
  assert.doesNotMatch(elements.get("shopProducts").innerHTML,/Plano en diseño/,
   "El plano provisional ha desaparecido de la tienda");
 
+ // El plano anterior no incluye una meta, obligatoria para competir;
+ // comprobar los coches con un óvalo de prueba completo y reglamentario.
+ assert.equal(game.changeTypes(ovalWithFinish.slice(),
+  "Óvalo de prueba con meta",[],geo.START),true);
  // Elegir Spark en el garaje lo habilita sin afectar al Gripline.
  game.showHub("garage");
  elements.get("garageChooseSpark").listeners.click[0]();
