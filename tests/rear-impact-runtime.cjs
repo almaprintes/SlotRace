@@ -19,6 +19,7 @@ const fs=require("node:fs");
  ].join("\n");
  const factory=new Function("state","positionAt","CAR_LENGTH_MM","DRIVE",
   "carTrackLevel","carsBeyondCollision","toast","forwardGap","rearContact",
+  "sweptRearContact","placeRearBehind",
   "followTarget","reentrySafe","REAR_CONTACT",code+
   '\nfunction displayDrivingPose(){const lane=state.track.lanes[state.driveDirection===-1?1-state.lane:state.lane];return positionAt(lane,state.driveDirection===-1?-state.distance:state.distance);}\n'+
   "return{ai:aiTest,advance:advanceAiTest,pose:aiTestPose};");
@@ -31,12 +32,24 @@ const fs=require("node:fs");
   const events=[];
   const rt=factory(state,geo.positionAt,98,{topSpeed:1150},
    geo.carTrackLevel,geo.carsBeyondCollision,t=>events.push(t),
-   impact.forwardGap,impact.rearContact,impact.followTarget,
+   impact.forwardGap,impact.rearContact,
+   impact.sweptRearContact,impact.placeRearBehind,impact.followTarget,
    impact.reentrySafe,impact.REAR_CONTACT);
   Object.assign(rt.ai,{active:true,lane:0,distance:aiDistance,speed:aiSpeed,penalty:0,
    armed:true,laneTransition:null,collisionCooldown:0,awaitingSeparation:false,
    deslot:null,bump:null,collisions:0});
-  return{state,ai:rt.ai,advance:rt.advance,events};
+  // La PWA mueve primero al jugador y luego a la IA. Reproducimos
+  // ese orden para verificar el detector DE VERDAD y sus correcciones.
+  function advance(dt){
+   const before={
+    player:{lane:state.lane,distance:state.distance,deslot:!!state.deslot},
+    ai:{lane:rt.ai.lane,distance:rt.ai.distance,deslot:!!rt.ai.deslot}
+   };
+   if(state.penalty<=0&&!state.deslot)
+    state.distance=(state.distance+state.speed*dt)%track.lanes[state.lane].total;
+   rt.advance(dt,before);
+  }
+  return{state,ai:rt.ai,advance,events};
  }
  {
   const x=setUp({aiSpeed:550});
@@ -55,7 +68,9 @@ const fs=require("node:fs");
   assert.ok(x.state.bump,"El coche delantero culea");
   assert.ok(x.ai.speed<300,"El trasero frena fuerte");
   assert.ok(x.state.speed>400,"El delantero solo frena un poco");
-  assert.equal(x.state.distance,400,"Sin teletransporte");
+  assert.equal(x.state.distance,400.5,"El delantero sólo avanza lo físicamente recorrido");
+  assert.equal(impact.forwardGap(x.ai.distance,x.state.distance,track.lanes[0].total),100,
+   "Después del toque, los coches quedan separados 100 mm");
  }
  {
   const x=setUp({playerSpeed:0,aiSpeed:850});
@@ -87,6 +102,33 @@ const fs=require("node:fs");
   x.advance(.02);
   assert.ok(x.ai.penalty>0,"Reincorporación aplazada si el rival ocupa la guía");
   assert.ok(x.ai.deslot,"No aparecer encima del otro coche");
+ }
+ {
+  const x=setUp({playerDistance:100,aiDistance:215,playerSpeed:1240,aiSpeed:160});
+  x.advance(.05);
+  assert.equal(x.state.penalty,5,"Impacto rápido entre fotogramas: sanción del trasero");
+  assert.equal(x.ai.penalty,2.5);
+  assert.equal(impact.forwardGap(x.state.distance,x.ai.distance,track.lanes[0].total),100,
+   "Ni un fotograma lento permite atravesar a la IA");
+ }
+ {
+  const x=setUp({playerDistance:100,aiDistance:195,playerSpeed:400,aiSpeed:350});
+  x.advance(.001);
+  assert.equal(x.state.deslot,null,"Rozar suavemente no provoca descarrilamiento");
+  assert.equal(x.ai.deslot,null);
+  assert.equal(x.ai.collisions,0,"El roce suave no cuenta como choque penalizado");
+  assert.equal(impact.forwardGap(x.state.distance,x.ai.distance,track.lanes[0].total),100,
+   "El roce suave tampoco permite superposición");
+ }
+ {
+  const x=setUp({playerDistance:400,aiDistance:330,playerSpeed:500,aiSpeed:750});
+  x.advance(.001);
+  assert.equal(x.ai.collisions,1);
+  x.ai.speed=600;x.state.speed=250;
+  x.advance(.02);
+  assert.equal(x.ai.collisions,1,"Durante cooldown se evita doble sanción");
+  assert.equal(impact.forwardGap(x.ai.distance,x.state.distance,track.lanes[0].total),100,
+   "Durante cooldown tampoco se atraviesa el coche");
  }
  console.log("Integración real IA: roces leves, culeos, golpes graves y paso libre al descarrilar OK");
 })().catch(e=>{console.error(e);process.exitCode=1});

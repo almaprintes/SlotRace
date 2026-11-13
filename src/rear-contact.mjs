@@ -42,3 +42,41 @@ export function reentrySafe(ownDistance,otherDistance,total,length=REAR_CONTACT.
  const behind=forwardGap(otherDistance,ownDistance,total);
  return Math.min(ahead,behind)>length*REAR_CONTACT.clearanceFactor;
 }
+
+
+// Alcance continuo: compara lo recorrido por ambos vehículos durante todo
+// el fotograma, no sólo sus posiciones FINALES. Evita atravesar al rival
+// cuando el coche de atrás llega a rebasarlo entre dos fotogramas.
+export function sweptRearContact({playerStart,aiStart,playerTravel,aiTravel,
+ total,playerSpeed,aiSpeed,carLength=REAR_CONTACT.lengthMm}){
+ if(![playerStart,aiStart,playerTravel,aiTravel,total,playerSpeed,aiSpeed,carLength]
+  .every(Number.isFinite)||total<=carLength*3||playerTravel<0||aiTravel<0||
+  playerTravel>=total/2||aiTravel>=total/2||carLength<=0)return null;
+ const aiGap=forwardGap(aiStart,playerStart,total);
+ const playerGap=forwardGap(playerStart,aiStart,total);
+ // A igual distancia solo podemos decidir cuál venía por detrás usando el
+ // desplazamiento relativo. No inferir posiciones de velocidad final a ciegas.
+ const rear=aiGap===playerGap ?
+  aiTravel>playerTravel?"ai":playerTravel>aiTravel?"player":null :
+  aiGap<playerGap?"ai":"player";
+ if(!rear)return null;
+ const gap=rear==="ai"?aiGap:playerGap;
+ const closingTravel=rear==="ai"?aiTravel-playerTravel:playerTravel-aiTravel;
+ const closing=rear==="ai"?aiSpeed-playerSpeed:playerSpeed-aiSpeed;
+ if(closingTravel<=0||closing<=0||gap>carLength+closingTravel)return null;
+ const severity=closing<REAR_CONTACT.softLimit?"glance":
+  closing<REAR_CONTACT.hardLimit?"bump":"severe";
+ const fraction=Math.max(0,Math.min(1,
+  (gap-carLength)/closingTravel));
+ return {rear,front:rear==="ai"?"player":"ai",gap,closing,severity,fraction};
+}
+
+// Separa de nuevo los vehículos en el carril físico: incluso un roce suave
+// debe impedir que el trasero ocupe o atraviese el volumen del delantero.
+// No se crean vueltas ni se cambia el carril de ninguno.
+export function placeRearBehind(frontDistance,total,
+ carLength=REAR_CONTACT.lengthMm,clearance=2){
+ if(![frontDistance,total,carLength,clearance].every(Number.isFinite)||
+  total<=carLength*3||carLength<=0||clearance<0)return null;
+ return ((frontDistance-carLength-clearance)%total+total)%total;
+}
