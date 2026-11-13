@@ -38,7 +38,14 @@ const path=require("node:path");
   matchMedia:()=>({matches:true}),addEventListener(){},setTimeout:fn=>fn()};
  const saved=new Map(),localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)};
  const callbacks=[];const requestAnimationFrame=fn=>callbacks.push(fn);
- const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
+ // Al evaluar app.mjs sin imports, inyectar todos los módulos actuales.
+ // Si falta uno, el arnés falla antes de poder comprobar el juego.
+ const extraModules=await Promise.all([
+  "kerbs","runoffs","player-economy","box-factory","box-art",
+  "economy-catalog","race-results","rear-contact","closure-guide"
+ ].map(name=>import("../src/"+name+".mjs")));
+ const symbols=Object.assign({},geo,blueprint,clockCore,...extraModules);
+ const keys=Object.keys(symbols),values=keys.map(k=>symbols[k]);
  const navigator={
   shared:null,canShare:()=>true,
   async share(payload){this.shared=payload;}
