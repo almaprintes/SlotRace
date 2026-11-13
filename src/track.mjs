@@ -1,7 +1,7 @@
 // SlotRace DEV 0.9.0 · Geometría modular PT-Precision: radios y rectas exactos.
 // Catálogo virtual experimental; no se afirma compatibilidad física entre sistemas.
-import {GEOMETRY,RADII,PARTS,RECIPES} from "./pt-precision.mjs?v=0.15.68";
-import {analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance} from "./gap-analysis.mjs?v=0.15.68";
+import {GEOMETRY,RADII,PARTS,RECIPES} from "./pt-precision.mjs?v=0.15.69";
+import {analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance} from "./gap-analysis.mjs?v=0.15.69";
 export const gapAnalysis=Object.freeze({analyzeOpenEnds,gapExplanation,measureGap,composeStraightDistance});
 export const TABLE=Object.freeze({width:2200,height:1450,edge:62});
 export const START=Object.freeze({x:750,y:325,h:0});
@@ -433,12 +433,18 @@ export function carsBeyondCollision(track,direction,player,rival,{carLength=98}=
  const rivalIndex=isChange?changeIndex:rival.pose.pieceIndex;
  if(playerIndex<0||rivalIndex<0||!track.parts[playerIndex]||!track.parts[rivalIndex])return null;
  const playerLane=player.lane;
- // Al salir de la PT/82 cada coche ocupa una guía distinta. Si uno
- // todavía no había completado el cambio al chocar, resolvemos aquí.
- const rivalLane=isChange&&rival.lane===playerLane?1-playerLane:rival.lane;
+ // Un choque por alcance en una misma guía NO cambia de carril a nadie.
+ // En el choque transversal compartido llegan por guías distintas.
+ const rivalLane=rival.lane;
  if(![0,1].includes(playerLane)||![0,1].includes(rivalLane))return null;
  const clearance=Math.max(165,carLength*1.8);
- const stagger=Math.max(320,carLength*3.3);
+ // Sólo el encuentro de trayectorias distintas en la X es un choque
+ // compartido: los dos recorren exactamente el mismo avance tras la pieza.
+ // En alcances normales no se altera el escalonamiento de seguridad.
+ const sharedCrossing=isChange&&
+  player.pose.pieceIndex===changeIndex&&rival.pose.pieceIndex===changeIndex&&
+  playerLane!==rivalLane;
+ const stagger=sharedCrossing?0:Math.max(320,carLength*3.3);
  const after=(logicalLane,index,advance)=>{
   const lane=track.lanes[dir===-1?1-logicalLane:logicalLane];
   const end=pt82PieceDistance(lane,index,dir===1?1:0);

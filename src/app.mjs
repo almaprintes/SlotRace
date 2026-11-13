@@ -1,17 +1,17 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.68";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.68";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.68";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.68";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.68";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.69";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.69";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.69";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.69";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.69";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.68";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.68";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.68";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.68";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.68";
+import {duelSummary} from "./race-results.mjs?v=0.15.69";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.69";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.69";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.69";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.69";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2952,12 +2952,20 @@ function advanceAiTest(dt,contactBefore=null){
  // La comprobación puntual antigua perdía el choque si el perseguidor
  // atravesaba al otro en un único fotograma, o si ambos ya se solapaban.
  // Ahora consideramos TODO el recorrido de los dos coches antes de pintar.
+ // Dos coches pueden seguir el MISMO surco dentro de PT/82 aunque
+ // ambos tengan activa la animación del cambio físico de carril.
+ // Eso es un alcance, no una colisión transversal sin responsable.
+ const samePathOnPt82=state.track.laneChangerIndex>=0&&
+  player.pieceIndex===state.track.laneChangerIndex&&
+  rival.pieceIndex===state.track.laneChangerIndex&&
+  state.laneTransition?.physical&&aiTest.laneTransition?.physical&&
+  state.laneTransition.from===aiTest.laneTransition.from;
  const sameGuide=contactBefore&&
   contactBefore.player.lane===contactBefore.ai.lane&&
   contactBefore.player.lane===state.lane&&
   contactBefore.ai.lane===aiTest.lane&&
   !contactBefore.player.deslot&&!contactBefore.ai.deslot&&
-  !state.laneTransition&&!aiTest.laneTransition;
+  ((!state.laneTransition&&!aiTest.laneTransition)||samePathOnPt82);
  const hit=sameGuide?sweptRearContact({
   playerStart:contactBefore.player.distance,
   aiStart:contactBefore.ai.distance,
@@ -3014,8 +3022,15 @@ function advanceAiTest(dt,contactBefore=null){
   return;
  }
  if(aiTest.collisionCooldown>0||aiTest.awaitingSeparation)return;
- // El cruce entre guías diferentes (PT/82) no es un alcance posterior.
+ // Sólo el encuentro de trayectorias de ENTRADA diferentes dentro de
+ // la PT/82 es un accidente compartido. Si ambos siguen la misma
+ // guía, conserva la responsabilidad del vehículo que golpea detrás.
+ const playerEntryGuide=state.laneTransition?.physical?
+  state.laneTransition.from:state.lane;
+ const aiEntryGuide=aiTest.laneTransition?.physical?
+  aiTest.laneTransition.from:aiTest.lane;
  if(separation<35&&state.track.laneChangerIndex>=0&&
+  playerEntryGuide!==aiEntryGuide&&
   player.pieceIndex===state.track.laneChangerIndex&&
   rival.pieceIndex===state.track.laneChangerIndex){
   aiTest.collisions++;aiTest.penalty=3;aiTest.speed=0;
@@ -3567,7 +3582,7 @@ function shopArtwork(product){
  if(product.kind==="packs")return shopPackPiecesArtwork(product);
  if(product.kind==="circuits"){
   if(product.types)return '<div class="shop-blueprint-art'+
-   ""+'">'+
+   (product.id==="plan-catalunya"?" is-catalunya":"")+'">'+
    shopBlueprintSvg(product.types,product.name,product.origin||START)+
    '<span class="shop-plan-caption">'+product.types.length+' PIEZAS · PLANO REAL</span></div>';
   return '<div class="shop-blueprint-pending" aria-label="Plano pendiente de diseño">'+
@@ -3617,7 +3632,7 @@ function renderShop(){
  $("shopProducts").innerHTML=products.map(p=>shopCardMarkup(p)).join("");
  $("shopFeaturedSection").hidden=category!=="boxes";
  if(category==="boxes")$("shopFeatured").innerHTML=["pack-curves","pack-bridge","plan-catalunya"]
-  .map(id=>shopCardMarkup(shopProduct(id),true)).join("");
+  .map(id=>shopProduct(id)).filter(Boolean).map(product=>shopCardMarkup(product,true)).join("");
  const owned=SHOP_PRODUCTS.filter(p=>shopOwned(p.id));
  $("shopCollectionSummary").textContent=owned.length+" productos disponibles · "+
   "La caja básica y sus contenidos están incluidos desde el inicio.";
@@ -6703,7 +6718,7 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.68",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.69",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
