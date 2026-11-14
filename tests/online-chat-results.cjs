@@ -56,7 +56,7 @@ const fs=require("node:fs");
  assert.match(iframe,/\$\("onlineResultRematch"\)\.addEventListener\("click"/);
  assert.match(iframe,/\$\("onlineResultChat"\)\.addEventListener\("click"/);
  assert.match(iframe,/event:"rematch-invite"/);
- assert.match(app,/msg\.kind==="slotrace:online:goBack"/);
+ assert.match(app,/msg\.kind==="slotrace:online:goBack"\)\{\s*menuRace\(\);/,"Volver atrás sale sin confirmación al terminar");
 
  assert.ok(page.includes('id="onlineReactionStage"'));
  assert.ok(page.includes('id="onlineChatDock"'));
