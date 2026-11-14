@@ -340,16 +340,31 @@ async function subscribe(){
  }finally{reconnectBusy=false;}
 }
 async function enterRoom(next,playerRole){
- room=next;role=playerRole;phase="idle";heat=0;
- localGameActive=false;peerCanContinue=false;lastPeerStateAt=0;lastReadySentAt=0;
+ // El código permite recuperar la pista: leer antes la copia local.
+ const resume=reconnectRoomFromCode(next,playerRole,account?.id,
+  readOnlineRejoin(localStorage));
+ room=next;role=playerRole;phase=resume?.phase||"idle";heat=resume?.heat||0;
+ localGameActive=false;localGameReady=false;peerGameReady=false;
+ rejoinStartPending=false;peerCanContinue=false;lastPeerStateAt=0;lastReadySentAt=0;
+ for(const h of [1,2]){scores[h].host=null;scores[h].guest=null;}
+ if(resume?.scores)for(const h of [1,2]){
+  for(const pilot of ["host","guest"])
+   if(Number.isFinite(resume.scores[h]?.[pilot]))
+    scores[h][pilot]=resume.scores[h][pilot];
+ }
  pendingRematchCode=null;rematchRequested=false;rematchBusy=false;
  $("raceArea").hidden=true;$("finalBoard").hidden=true;
  document.documentElement.classList.remove("heat-finished");
- sharedTrack=null;pendingTrack=null;guestTrackReady=false;
- local=null;remote=null;sequence=0;remoteSeq=0;
+ sharedTrack=resume?.track||null;pendingTrack=null;guestTrackReady=false;
+ local=resume?makeCar(laneFor(role,heat)):null;
+ remote=resume?makeCar(laneFor(other(),heat)):null;
+ sequence=0;remoteSeq=0;
  chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;lastPeerChatAt=0;
  notifyGame("chatReset",{roomId:next.id});
- saveLiveRecovery();updateRoom();notice("Conectando canal privado…");
+ if(resume&&sharedTrack)trackAccepted(sharedTrack);
+ saveLiveRecovery();updateRoom();
+ notice(resume?"Reincorporando a la manga "+heat+". Esperando a los dos pilotos.":
+  "Conectando canal privado…");
  await subscribe();await checkRoom();
 }
 async function recoverPreviousRoom(){
@@ -369,6 +384,7 @@ async function recoverPreviousRoom(){
   phase=recovered;
   sharedTrack=cache.track||null;pendingTrack=null;
   guestTrackReady=false;peerCanContinue=false;localGameActive=false;
+ localGameReady=false;peerGameReady=false;rejoinStartPending=false;
   if(Number.isFinite(cache.scores?.[1]?.host)&&Number.isFinite(cache.scores?.[1]?.guest)){
    scores[1].host=cache.scores[1].host;scores[1].guest=cache.scores[1].guest;
   }
@@ -387,7 +403,8 @@ async function recoverPreviousRoom(){
    $("trackSharedName").hidden=false;
   }
   notifyGame("chatReset",{roomId:room.id});
-  if(phase==="paused")notifyGame("networkHold",{reason:"Esperando a que ambos pilotos estén conectados. Se repetirá la manga interrumpida."});
+ if(phase==="paused"&&sharedTrack)requestPrepareRejoin();
+ if(phase==="paused")notifyGame("networkHold",{reason:"Esperando a que ambos pilotos estén conectados. Se repetirá la manga interrumpida."});
   updateRoom();
   await subscribe();await checkRoom();
   if(phase==="paused")notice("Pista recuperada. Ambos pilotos deben estar conectados para repetir la manga.");
@@ -419,6 +436,7 @@ async function join(){
   $("joinRoom").disabled=true;
   const {data,error}=await api.rpc("slotrace_live_join",{p_code:value});
   if(error)throw error;
+  if(data?.guest_id!==account.id)throw Error("La pista no pertenece a esta cuenta.");
   await enterRoom(data,"guest");
  }catch(e){notice("No se pudo entrar: "+safeError(e),true);$("joinRoom").disabled=false;}
 }
