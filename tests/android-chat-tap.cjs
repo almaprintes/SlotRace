@@ -8,11 +8,12 @@ const assert=require("node:assert/strict");
   };
   let time=1000,racing=true,calls=0;
   bindSingleChatTap(button,()=>calls++,()=>racing,()=>time);
-  const touch=()=>{
+  const touch=(expectHandled=true)=>{
    let prevented=false,stopped=false;
    handlers.pointerdown({pointerType:"touch",preventDefault(){prevented=true},
     stopPropagation(){stopped=true}});
-   assert.ok(prevented&&stopped,"El gesto táctil no activa un segundo click por defecto");
+   assert.equal(prevented&&stopped,expectHandled,
+    "Solo se captura pointerdown cuando la carrera está activa");
   };
   const click=(type=undefined)=>{
    let prevented=false;
@@ -38,7 +39,7 @@ const assert=require("node:assert/strict");
  assert.equal(a.count,3);
  a.setRacing(false);a.setTime(3200);
  // Fuera de carrera, el toque espera el click normal.
- a.touch();assert.equal(a.count,3);
+ a.touch(false);assert.equal(a.count,3);
  assert.equal(a.click("mouse"),false);assert.equal(a.count,4);
  assert.equal(CHAT_COOLDOWN_MS,5000,"No modificar el antiflood");
  const b=mock();
