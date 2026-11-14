@@ -42,7 +42,7 @@ const fs=require("node:fs");
   css=fs.readFileSync("src/site.css","utf8");
  assert.match(app,/initOnlineChat\(/);
  assert.match(app,/slotrace:online:chatMessage/);
- assert.match(app,/slotrace:online:chatSend/);
+ assert.match(app,/postToLive\("chatSend"/);
  assert.match(iframe,/event:"chat"/);
  assert.match(iframe,/chatCooldownRemaining\(lastChatAt,now\)/);
  assert.match(iframe,/chatCooldownRemaining\(lastPeerChatAt,now\)/);
