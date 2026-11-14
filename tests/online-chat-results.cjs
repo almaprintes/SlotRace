@@ -39,7 +39,8 @@ const fs=require("node:fs");
   iframe=fs.readFileSync("src/live-duel.mjs","utf8"),
   page=fs.readFileSync("index.html","utf8"),
   results=fs.readFileSync("src/online-results.mjs","utf8"),
-  css=fs.readFileSync("src/site.css","utf8");
+  css=fs.readFileSync("src/site.css","utf8"),
+  liveHtml=fs.readFileSync("live.html","utf8");
  assert.match(app,/initOnlineChat\(/);
  assert.match(app,/slotrace:online:chatMessage/);
  assert.match(app,/postToLive\("chatSend"/);
@@ -48,6 +49,15 @@ const fs=require("node:fs");
  assert.match(iframe,/chatCooldownRemaining\(lastPeerChatAt,now\)/);
  assert.match(iframe,/buildOnlineResultModel\(/);
  assert.match(iframe,/renderOnlineResultBoard\(/);
+ assert.match(liveHtml,/id="onlineResultBack"[^>]*>← Volver atrás</);
+ assert.match(liveHtml,/id="onlineResultRematch"/);
+ assert.match(liveHtml,/id="onlineResultChat"/);
+ assert.match(iframe,/\$\("onlineResultBack"\)\.addEventListener\("click"/);
+ assert.match(iframe,/\$\("onlineResultRematch"\)\.addEventListener\("click"/);
+ assert.match(iframe,/\$\("onlineResultChat"\)\.addEventListener\("click"/);
+ assert.match(iframe,/event:"rematch-invite"/);
+ assert.match(app,/msg\.kind==="slotrace:online:goBack"/);
+
  assert.ok(page.includes('id="onlineReactionStage"'));
  assert.ok(page.includes('id="onlineChatDock"'));
  assert.ok(css.includes(".online-reaction-emoji"));
