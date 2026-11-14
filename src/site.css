@@ -3286,3 +3286,8 @@ html:has(#accountModal:not([hidden])){background:#06121d}
   #resultsScreen .duel-table .duel-advantage{font-size:10px}
   #resultsStats .duel-tile strong{font-size:19px}
 }
+
+/* DEV 0.15.70: nicks largos en las tablas de resultados de dos pilotos */
+.duel-table th,.duel-table td{overflow-wrap:anywhere;word-break:normal}
+.duel-table th{font-size:clamp(10px,2.6vw,13px)}
+.duel-caption{overflow-wrap:anywhere}
