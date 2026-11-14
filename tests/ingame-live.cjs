@@ -14,7 +14,7 @@ assert.match(index,/<iframe id="liveDuelFrame" class="online-duel-iframe"/);
 assert.doesNotMatch(index,/<a[^>]*href="\.\/live\.html"/,"El enlace externo antiguo no debe figurar en Competir");
 assert.match(app,/raceLobby:\$\("raceLobbyScreen"\),online:\$\("onlineScreen"\)/);
 assert.match(app,/function openLiveDuels\(\)/);
-assert.match(app,/\$\("liveDuelFrame"\)\.src="\.\/live\.html\?embedded=1&v=0\.15\.72"/);
+assert.match(app,/\$\("liveDuelFrame"\)\.src="\.\/live\.html\?embedded=1&v=0\.15\.73"/);
 assert.match(app,/function closeLiveDuels\(\)/);
 assert.match(app,/\$\("raceLiveDuel"\)\.addEventListener\("click",openLiveDuels\)/);
 assert.match(app,/\$\("onlineBack"\)\.addEventListener\("click",closeLiveDuels\)/);
