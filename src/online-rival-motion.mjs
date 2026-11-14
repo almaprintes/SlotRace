@@ -2,7 +2,7 @@
 // Los paquetes llegan a ~10 Hz y con latencia variable; el canvas dibuja a su propio FPS.
 export const ONLINE_RIVAL_MOTION=Object.freeze({
  delayMs:260,              // Pequeño colchón para interpolar paquetes tardíos.
- predictionMs:160,         // Predicción limitada si el siguiente paquete se retrasa.
+ predictionMs:200,         // Predicción limitada si el siguiente paquete se retrasa.
  maxDrawSpeedMmS:1550,     // Corrección gradual: jamás teletransportar al rival.
  maxFrames:20
 });
