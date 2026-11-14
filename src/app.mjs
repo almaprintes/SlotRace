@@ -2933,10 +2933,12 @@ function advanceRearDynamics(p,lane,dt){
 
 const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
  remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
-const onlineChat=initOnlineChat({
+// Los arneses de físicas que evalúan el motor sin importaciones usan un chat
+// inerte. En el navegador se inicializa siempre la interfaz real.
+const onlineChat=typeof initOnlineChat==="function"?initOnlineChat({
  send:(text,kind)=>postToLive("chatSend",{text,chatKind:kind}),
  isRacing:()=>liveRace.active&&state.mode==="race"
-});
+}):{reset(){},ready(){},refresh(){},receive(){},showError(){}};
 function postToLive(kind,extra={}){
  const iframe=$("liveDuelFrame");
  if(iframe?.contentWindow&&iframe.src&&!iframe.src.endsWith("about:blank"))
