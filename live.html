@@ -2,10 +2,11 @@
 <html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");</script>
 <meta name="theme-color" content="#091720">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>SlotRace · Duelo en directo BETA 0.15.70</title>
-<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.70">
+<title>SlotRace · Duelo en directo BETA 0.15.71</title>
+<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.71">
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ebf5f7;background:#07141e;--mint:#4ff0cb;--muted:#a8b9c7;--panel:#162634}
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#16404b,#07141e 55%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
@@ -40,32 +41,48 @@ input[type=range]{width:100%;accent-color:#45e5c0;min-height:34px}
 .scoreline span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 small{color:var(--muted)}footer{color:#8399a7;text-align:center;padding:12px 16px 22px;font-size:11px}
 @media(min-width:650px){#trackCanvas{height:min(55vh,490px)}#gasArea{display:grid;grid-template-columns:1fr 220px;align-items:center;gap:20px}#gasButton{min-height:110px}}
+/* Integración visual con la PWA: un único encabezado, el de SlotRace. */
+html.embedded header,html.embedded footer,html.embedded .live-intro{display:none!important}
+html.embedded body{padding:0;min-height:100%;background:#07141e}
+html.embedded main{padding:9px 11px 16px;max-width:740px;gap:11px}
+html.embedded .panel{padding:13px}
+html.embedded #trackCanvas{height:clamp(245px,43dvh,410px)}
+html.embedded #gasButton{min-height:82px}
+html.embedded #roomBox{margin-top:10px}
+html.embedded #setup h2{font-size:18px}
+@media(max-width:390px){
+ html.embedded main{padding:8px}
+ html.embedded .panel{padding:10px}
+ html.embedded #trackCanvas{height:clamp(230px,39dvh,360px)}
+ html.embedded button{font-size:13px}
+}
 </style></head>
 <body>
 <header>
-<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">DUELO EN DIRECTO · BETA 0.15.70</div></div>
+<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">DUELO EN DIRECTO · BETA 0.15.71</div></div>
 <a href="./index.html">← Volver al juego</a>
 </header>
 <main>
-<div><div class="tag">PRUEBA TÉCNICA · DOS PILOTOS REALES</div><h1>Duelo en directo 🏁</h1>
+<div class="live-intro"><div class="tag">PRUEBA TÉCNICA · DOS PILOTOS REALES</div><h1>Duelo en directo 🏁</h1>
 <p>Dos móviles, dos carriles y un mismo óvalo. Tres vueltas por manga y cambio de carriles. Sin PT82 ni colisiones entre coches en esta primera prueba. Resultados no homologados.</p></div>
 <section id="setup" class="panel">
-<h2>1. Conecta con tu rival</h2>
+<h2>👥 Prueba con un compañero</h2>
+<p style="margin:0 0 12px">Uno crea el duelo y le dice el código al otro. Los dos debéis estar conectados con vuestra cuenta de CraftRace Studio.</p>
 <p id="identity" class="muted">Comprobando cuenta CraftRace Studio…</p>
 <div class="row">
-<button id="createRoom" class="primary" disabled>Crear sala privada</button>
+<button id="createRoom" class="primary" disabled>1 · Crear duelo</button>
 <input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código del duelo" spellcheck="false" autocomplete="off">
-<button id="joinRoom" disabled>Unirme</button>
+<button id="joinRoom" disabled>2 · Unirme</button>
 </div>
 <div id="roomBox" hidden>
-<small>Código para compartir</small>
-<div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Compartir enlace</button></div>
+<small>Dile este código a tu compañero:</small>
+<div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
 <p id="roomNames">Esperando al segundo piloto…</p>
 <p id="connectionStatus">Conectando…</p>
 <div class="row"><button id="startHeat" class="primary" disabled>Esperando rival</button></div>
 </div>
 <p id="notice" role="status" aria-live="polite"></p>
-<p><small>Tu compañero necesita su propia cuenta de CraftRace Studio. Si todavía no la tiene, debe registrarse desde la pantalla inicial de SlotRace y volver a este enlace.</small></p>
+<p><small>Tu compañero abre SlotRace en su móvil, entra en Competir → Duelo con un compañero e introduce tu código. Si no tiene cuenta, primero debe registrarse en SlotRace.</small></p>
 </section>
 <section id="raceArea" class="panel" hidden>
 <div class="row" style="justify-content:space-between">
@@ -88,5 +105,5 @@ small{color:var(--muted)}footer{color:#8399a7;text-align:center;padding:12px 16p
 </section>
 </main>
 <footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
-<script type="module" src="./src/live-duel.mjs?v=0.15.70"></script>
+<script type="module" src="./src/live-duel.mjs?v=0.15.71"></script>
 </body></html>

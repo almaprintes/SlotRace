@@ -1,17 +1,17 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.70";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.70";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.70";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.70";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.70";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.71";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.71";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.71";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.71";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.71";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.70";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.70";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.70";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.70";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.70";
+import {duelSummary} from "./race-results.mjs?v=0.15.71";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.71";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.71";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.71";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.71";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -404,7 +404,7 @@ extendWorkBoard();
 
 const stage=$("buildScreen"),race=$("raceScreen"),menu=$("menuScreen"),results=$("resultsScreen");
 const hubScreens={
- raceLobby:$("raceLobbyScreen"),library:$("libraryScreen"),garage:$("garageScreen"),store:$("storeScreen"),settings:$("settingsScreen")
+ raceLobby:$("raceLobbyScreen"),online:$("onlineScreen"),library:$("libraryScreen"),garage:$("garageScreen"),store:$("storeScreen"),settings:$("settingsScreen")
 };
 const editCanvas=$("editCanvas"),raceCanvas=$("raceCanvas");
 const canvasCtx=new Map([[editCanvas,editCanvas.getContext("2d",{alpha:false})],[raceCanvas,raceCanvas.getContext("2d",{alpha:false})]]);
@@ -2158,6 +2158,9 @@ function openWorkshop(){
 }
 function showHub(which){
  if(!hubScreens[which])return false;
+ // Desmontar la conexión experimental al salir. Nunca dejar un
+ // coche online corriendo dentro de una pantalla oculta.
+ if(state.mode==="online"&&which!=="online")$("liveDuelFrame").src="about:blank";
  cancelResumeCountdown();
  state.run=false;state.gas=0;state.buttonGas=false;
  state.keyboardGas=false;state.triggerGesture=null;
@@ -2165,6 +2168,7 @@ function showHub(which){
  updateUI();return true;
 }
 function showMenu(){
+ if(state.mode==="online")$("liveDuelFrame").src="about:blank";
  cancelResumeCountdown();
  state.flow="none";
  state.run=false;state.gas=0;state.buttonGas=false;
@@ -2220,6 +2224,19 @@ function selectCar(id){
 function menuRace(){
  state.flow="race";
  return showHub("raceLobby");
+}
+// Se abre como una pantalla más del juego, dentro de la misma PWA.
+// La beta de red permanece aislada del simulador local verificado.
+function openLiveDuels(){
+ state.flow="race";
+ if(!showHub("online"))return false;
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.71";
+ return true;
+}
+function closeLiveDuels(){
+ if(typeof window.confirm==="function"&&
+   !window.confirm("¿Salir del duelo? Se cerrará la conexión con tu compañero."))return false;
+ return menuRace();
 }
 function raceSelectCircuit(id){
  if(id==="current"){updateUI();return true;}
@@ -3780,11 +3797,11 @@ function updateUI(){
  // y construcción recuperamos el identificador habitual del juego.
  $("mastBrand").hidden=state.mode==="menu";
  $("mastWelcome").hidden=state.mode!=="menu";
- const labels={menu:"INICIO",raceLobby:"COMPETIR",build:"CONSTRUIR",library:"CIRCUITOS",
+ const labels={menu:"INICIO",raceLobby:"COMPETIR",online:"DUELO EN DIRECTO",build:"CONSTRUIR",library:"CIRCUITOS",
   garage:"GARAJE",store:"TIENDA",settings:"AJUSTES",race:"CARRERA",results:"RESULTADOS"};
  $("mastMode").textContent=labels[state.mode]||"SLOTRACE";
  // El mando de pilotaje no comparte pantalla con herramientas de montaje.
- const showMainNavigation=!["race","results"].includes(state.mode);
+ const showMainNavigation=!["race","results","online"].includes(state.mode);
  $("mainNavigation").hidden=!showMainNavigation;
  for(const [id,mode] of [
   ["navMenu","menu"],["navRace","raceLobby"],["navBuild","build"],["navLibrary","library"],
@@ -6602,6 +6619,8 @@ function initEvents(){
  $("raceChooseGripline").addEventListener("click",()=>selectCar("gripline"));
  $("raceChooseSpark").addEventListener("click",()=>selectCar("spark"));
  $("raceStart").addEventListener("click",play);
+ $("raceLiveDuel").addEventListener("click",openLiveDuels);
+ $("onlineBack").addEventListener("click",closeLiveDuels);
  $("raceDemoOval").addEventListener("click",mountRaceDemo);
  $("raceMode").addEventListener("change",e=>{
   if(!["practice","qualifying","lap_race"].includes(e.target.value))return;
@@ -6742,11 +6761,11 @@ function loop(now){
 }
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.70",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.71",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
- showHub,menuRace,raceSelectCircuit,renderRaceLobby,canMountRaceDemo,mountRaceDemo,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer,pauseRace:pause,advanceResumeCountdown:updateResumeCountdown},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
+ showHub,menuRace,openLiveDuels,closeLiveDuels,raceSelectCircuit,renderRaceLobby,canMountRaceDemo,mountRaceDemo,setLibraryTab,savedCircuitRecords,selectSavedCircuit,setCameraMode,timing:{updateChronometer,pauseRace:pause,advanceResumeCountdown:updateResumeCountdown},camera:{makeView,resetFollowCamera,updateFollowCamera,setFollowZoom,FOLLOW_ZOOM,FOLLOW_CUSTOM_MIN_ZOOM,FOLLOW_CUSTOM_MAX_ZOOM},
  workspace:{makeView,visibleWorldBounds,workspaceContentBounds,fitWorkspace,extendWorkBoard,paintInfiniteWorkspace,paintGrid,setTableTheme,TABLE_THEMES,addLoose,BUILDER_MIN_ZOOM,BUILDER_MAX_ZOOM},
  lanes:{switchLane,advanceLaneTransition,displayDrivingPose,laneDistanceAtPiece,poseOnDrivingLane,LANE_CHANGE_SECONDS,laneAIndex,laneLabel,laneLetter},selectCar,shopBlueprintSvg,carImages,shopSelectCategory,shopOpenProduct,shopAcquire,shopInstallPlan,shopCloseProduct,shopOwned,shopPrimaryAction,shopProducts:SHOP_PRODUCTS,requestCircuitDeletion,cancelCircuitDeletion,confirmCircuitDeletion,recoverDraftToLibrary,restoreLastCircuitRevision,readCircuitRevisions,chooseCaseCategory,changeCasePage,scrollPieceShelf,removeLooseFromCase,activateGroupMove,inventoryAction,buildTrack,STARTER,FIGURE_EIGHT,CATALOG,openRace:play,back,endSession,completeLap,saveCircuit,loadSavedCircuit,exportRecipe,importRecipe,circuitPackage,showMenu,openWorkshop,createNewCircuit,changeDriveDirection,drivingPose,blueprintData,drawBlueprint,exportBlueprint,undo,redo,changeTypes,
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},

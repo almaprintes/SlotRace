@@ -41,7 +41,7 @@ const fs=require("node:fs"),path=require("node:path");
  const imageId="ref-example123456";
  const originalImages={[imageId]:"data:image/png;base64,iVBORw0KGgo="};
  const archive=await createBackup(original,originalImages);
- assert.equal(BACKUP_APP_VERSION,"0.15.70");
+ assert.equal(BACKUP_APP_VERSION,"0.15.71");
  assert.equal(archive.format,BACKUP_FORMAT);
  assert.equal(archive.schema,BACKUP_SCHEMA);
  const file=JSON.stringify(archive);
@@ -131,5 +131,5 @@ const fs=require("node:fs"),path=require("node:path");
  }
  const app=fs.readFileSync(path.join(__dirname,"../src/app.mjs"),"utf8");
  assert.match(app,/slotrace:flush-save/);
- console.log("SlotRace 0.15.70: copia firmada, privacidad, fotos, importación, reversión y nuevo icono — OK");
+ console.log("SlotRace 0.15.71: copia firmada, privacidad, fotos, importación, reversión y nuevo icono — OK");
 })().catch(error=>{console.error(error);process.exitCode=1;});
