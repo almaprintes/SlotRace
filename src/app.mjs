@@ -3100,6 +3100,13 @@ function handleOnlineMessage(event){
  try{
   if(msg.kind==="slotrace:online:networkHold"){
    holdOnlineRace(msg.reason);
+  }else if(msg.kind==="slotrace:online:prepareRejoin"){
+   if(!["host","guest"].includes(msg.role)||![1,2].includes(msg.heat)||!msg.track)
+    throw Error("Datos de reincorporación incompletos");
+   if(!liveRace.active||liveRace.heat!==msg.heat)
+    startRealOnlineHeat({...msg,startAt:Date.now()+60000,restart:liveRace.active});
+   holdOnlineRace("Ambos pilotos deben recuperar la conexión. Preparando manga "+msg.heat+".");
+   postToLive("gameReady",{heat:msg.heat});
   }else if(msg.kind==="slotrace:online:networkResumeAt"){
    if(liveRace.active&&liveRace.hold&&Number.isFinite(msg.startAt)){
     liveRace.resumeAt=msg.startAt;onlineChat.refresh();
@@ -3126,6 +3133,7 @@ function handleOnlineMessage(event){
    postToLive("trackChecked",{ready:true,trackName:t.name});
   }else if(msg.kind==="slotrace:online:start"){
    startRealOnlineHeat(msg);
+   postToLive("gameReady",{heat:msg.heat});
   }else if(msg.kind==="slotrace:online:remoteState"){
    if(!liveRace.active||msg.heat!==liveRace.heat||!msg.data)return;
    const d=msg.data;
