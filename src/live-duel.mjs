@@ -16,6 +16,7 @@ let lastFrame=0,lastSend=0,roomPolling=false,refreshStamp=0,sequence=0,remoteSeq
 const scores={1:{host:null,guest:null},2:{host:null,guest:null}};
 let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0,lastPeerChatAt=0;
 let pendingRematchCode=null,rematchRequested=false,rematchBusy=false;
+let incomingRematch=false,rematchDeclined=false;
 let localGameActive=false,peerCanContinue=false,lastPeerStateAt=0,lastReadySentAt=0;
 let reconnectTimer=null,reconnectBusy=false;
 let localGameReady=false,peerGameReady=false,rejoinStartPending=false;
@@ -149,8 +150,9 @@ function updateRoom(){
  const rematch=$("onlineResultRematch");
  if(rematch){
   rematch.hidden=phase!=="finished";
-  rematch.disabled=rematchBusy;
-  rematch.textContent=role==="host"?"🔁 Crear revancha":
+  rematch.disabled=rematchBusy||rematchDeclined;
+  rematch.textContent=role==="host"?(incomingRematch?"🏁 ¡Revancha solicitada!":"🔁 Crear revancha"):
+   rematchDeclined?"↩ Revancha rechazada":
    pendingRematchCode?"🔁 Aceptar revancha":
    rematchRequested?"⏳ Esperando al anfitrión":"🔁 Pedir revancha";
  }
@@ -241,8 +243,19 @@ async function subscribe(){
   .on("broadcast",{event:"rematch-request"},({payload})=>{
    if(role!=="host"||phase!=="finished"||!payload||
     payload.roomId!==room?.id||payload.userId!==room.guest_id)return;
-   notice("¡Tu compañero quiere revancha! Pulsa «Crear revancha» para preparar la pista.");
-   $("onlineResultRematch").textContent="🔁 Aceptar revancha";
+   if(incomingRematch)return;
+   incomingRematch=true;
+   notice("🏁 ¡"+(peerNick()||"Tu rival")+" quiere revancha! Acepta o rechaza la invitación.");
+   notifyGame("rematchRequest",{nick:peerNick()||"Tu rival",roomId:room.id});
+   updateRoom();
+  })
+  .on("broadcast",{event:"rematch-declined"},({payload})=>{
+   if(role!=="guest"||phase!=="finished"||
+    payload?.roomId!==room?.id||payload.userId!==room.host_id)return;
+   rematchDeclined=true;
+   notice("Tu compañero ha rechazado la revancha.");
+   notifyGame("rematchDeclined",{roomId:room.id});
+   updateRoom();
   })
   .on("broadcast",{event:"rematch-invite"},({payload})=>{
    if(role!=="guest"||phase!=="finished"||!payload||
@@ -353,6 +366,7 @@ async function enterRoom(next,playerRole){
     scores[h][pilot]=resume.scores[h][pilot];
  }
  pendingRematchCode=null;rematchRequested=false;rematchBusy=false;
+ incomingRematch=false;rematchDeclined=false;
  $("raceArea").hidden=true;$("finalBoard").hidden=true;
  document.documentElement.classList.remove("heat-finished");
  sharedTrack=resume?.track||null;pendingTrack=null;guestTrackReady=false;
@@ -454,7 +468,7 @@ async function joinRematch(nextCode){
  }
 }
 async function requestRematch(){
- if(phase!=="finished"||rematchBusy||!connected||!channel)return;
+ if(phase!=="finished"||rematchBusy||rematchDeclined||!connected||!channel)return;
  if(role==="guest"){
   if(pendingRematchCode){await joinRematch(pendingRematchCode);return;}
   if(rematchRequested)return;
@@ -701,6 +715,16 @@ window.addEventListener("message",event=>{
   }
  }else if(msg.kind==="slotrace:online:gameReady"&&msg.heat===heat){
   localGameReady=true;lastReadySentAt=0;announceRejoinReady();updateRoom();
+ }else if(msg.kind==="slotrace:online:rematchRespond"&&embedded){
+  if(role!=="host"||phase!=="finished"||!incomingRematch)return;
+  incomingRematch=false;
+  if(msg.accept===true)void requestRematch();
+  else{
+   notice("Revancha rechazada. Puedes crear otra más tarde.");
+   updateRoom();
+   void channel?.send({type:"broadcast",event:"rematch-declined",
+    payload:{roomId:room.id,userId:account.id}}).catch(()=>{});
+  }
  }else if(msg.kind==="slotrace:online:localState"&&embedded&&local){
   if((phase==="countdown"||phase==="resume-countdown")&&Date.now()>=startAt)phase="racing";
   if(phase!=="racing")return;
