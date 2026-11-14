@@ -3054,9 +3054,14 @@ function handleOnlineMessage(event){
   }else if(msg.kind==="slotrace:online:heatComplete"){
    if(liveRace.active&&msg.heat===liveRace.heat)stopRealOnlineHeat();
   }else if(msg.kind==="slotrace:online:networkError"){
+   if(liveRace.active)stopRealOnlineHeat();
    toast(msg.message||"Problema de red; carrera no homologada.");
   }
- }catch(err){postToLive("trackChecked",{ready:false,error:err.message});toast(err.message);}
+ }catch(err){
+  if(msg.kind==="slotrace:online:requestTrack")postToLive("hostTrackError",{error:err.message});
+  else postToLive("trackChecked",{ready:false,error:err.message});
+  toast(err.message);
+ }
 }
 window.addEventListener("message",handleOnlineMessage);
 
