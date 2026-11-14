@@ -3,7 +3,8 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 (async()=>{
  const {ONLINE_REJOIN_KEY,ONLINE_REJOIN_TTL_MS,validOnlineRejoin,
-  readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase}=
+  readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase,
+  reconnectRoomFromCode,canAutoReconnectHeat}=
   await import("../src/online-rejoin.mjs");
  const now=Date.now();
  const storage=new Map(),api={
@@ -34,11 +35,38 @@ const fs=require("node:fs");
  assert.equal(storage.has(ONLINE_REJOIN_KEY),false);
  persistOnlineRejoin(api,sample,now);
  clearOnlineRejoin(api);assert.equal(storage.has(ONLINE_REJOIN_KEY),false);
- const live=fs.readFileSync("src/live-duel.mjs","utf8");
+ const returningRoom={id:sample.roomId,code:sample.code,state:"heat2",
+   host_id:"host-a",guest_id:"user-a"};
+  const manual=reconnectRoomFromCode(returningRoom,"guest","user-a",null,now);
+  assert.equal(manual?.phase,"paused",
+   "Volver a introducir el código no puede reiniciar la manga a idle");
+  assert.equal(manual?.heat,2,
+   "El invitado debe recuperar manga 2 desde la pista compartida");
+  assert.equal(manual?.track,null,
+   "Si falta caché, hay que pedir otra vez el plano prestado");
+  const cached=reconnectRoomFromCode(returningRoom,"guest","user-a",
+   {...sample,version:1,updatedAt:now},now);
+  assert.equal(cached?.track?.name,"Mónaco Slot");
+  assert.equal(reconnectRoomFromCode(returningRoom,"guest","intruso",null,now),null);
+  const ready={role:"host",phase:"paused",connected:true,peerOnline:true,
+   peerGameReady:true,localGameReady:true,guestTrackReady:true,
+   sharedTrack:{name:"Mónaco Slot"},guestId:"user-a",pending:false};
+  assert.equal(canAutoReconnectHeat(ready),true);
+  assert.equal(canAutoReconnectHeat({...ready,peerGameReady:false}),false,
+   "El anfitrión NO debe arrancar antes de confirmar el motor Android");
+  assert.equal(canAutoReconnectHeat({...ready,guestTrackReady:false}),false);
+  assert.equal(canAutoReconnectHeat({...ready,peerOnline:false}),false);
+  assert.equal(canAutoReconnectHeat({...ready,pending:true}),false);
+  const live=fs.readFileSync("src/live-duel.mjs","utf8");
  const app=fs.readFileSync("src/app.mjs","utf8");
  const chat=fs.readFileSync("src/online-chat-ui.mjs","utf8");
  const css=fs.readFileSync("src/site.css","utf8");
  assert.match(live,/async function recoverPreviousRoom\(/);
+  assert.match(live,/reconnectRoomFromCode\(next,playerRole/);
+  assert.match(live,/scheduleAutoReconnect\(\)/);
+  assert.match(live,/event:"earlier-scores"/);
+  assert.match(app,/slotrace:online:prepareRejoin/);
+  assert.match(app,/postToLive\("gameReady"/);
  assert.match(live,/async function subscribe\(/);
  assert.match(live,/channel\.presenceState\(\)/);
  assert.match(live,/event:"interruption"/);
