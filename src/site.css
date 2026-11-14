@@ -3351,3 +3351,11 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .online-chat-dock.is-racing .online-chat-quick button{font-size:clamp(23px,6vw,30px);padding:5px 2px;min-width:0;min-height:48px}
 .online-chat-dock.is-racing .online-chat-messages{display:none}
 @media(prefers-reduced-motion:reduce){.online-reaction-popup{animation:none}}
+
+/* DEV 0.15.77: permitir un segundo dedo en el chat mientras el primero
+   mantiene la rueda del gas. Los botones no inician zoom/pan de Safari. */
+.online-chat-dock.is-racing,.online-chat-dock.is-racing button,
+.online-chat-dock.is-racing .online-chat-quick{touch-action:none;-webkit-user-select:none;user-select:none}
+.online-chat-dock.is-racing .online-chat-toggle{min-width:58px;min-height:58px}
+.online-chat-dock.is-racing .online-chat-panel{max-height:min(270px,45dvh)}
+.online-chat-dock.is-racing .online-chat-quick button{touch-action:none}
