@@ -21,6 +21,8 @@ jobs:
           node --check src/app.mjs
           node --check src/live-duel.mjs
           node --check src/live-duel-core.mjs
+      - name: Verificar el acceso dentro de Competir
+        run: node tests/ingame-live.cjs
       - name: Verificar ovalo, carriles y vuelta local
         run: node tests/live-duel.cjs
       - name: Verificar menu multijugador dentro del juego
