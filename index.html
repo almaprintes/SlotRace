@@ -772,6 +772,23 @@
       </div>
     </div>
   </section>
+  <aside id="onlineChatDock" class="online-chat-dock" aria-label="Chat privado de pista" hidden>
+    <section id="onlineChatPanel" class="online-chat-panel" aria-label="Mensajes de la pista" hidden>
+      <div class="online-chat-heading"><div><strong>💬 Chat de pista</strong><small>Solo los dos pilotos · Sin historial guardado</small></div>
+        <button id="onlineChatClose" type="button" aria-label="Cerrar chat">✕</button></div>
+      <div id="onlineChatMessages" class="online-chat-messages" role="log" aria-live="polite" aria-relevant="additions text">
+        <div class="online-chat-empty">Hablad de la carrera y compartid alguna buena vuelta 🏁</div>
+      </div>
+      <div id="onlineChatQuick" class="online-chat-quick" role="group" aria-label="Mensajes rápidos"></div>
+      <form id="onlineChatForm" class="online-chat-form">
+        <input id="onlineChatInput" type="text" maxlength="160" placeholder="Comenta la carrera…" aria-label="Mensaje para el otro piloto" autocomplete="off">
+        <button type="submit" aria-label="Enviar mensaje">➤</button>
+      </form>
+      <small id="onlineChatStatus" class="online-chat-status" role="status" aria-live="polite"></small>
+    </section>
+    <button id="onlineChatToggle" class="online-chat-toggle" type="button" aria-expanded="false" aria-controls="onlineChatPanel" aria-label="Abrir chat de pista">💬 <span class="online-chat-toggle-label">Chat</span>
+      <span id="onlineChatUnread" class="online-chat-unread" hidden>0</span></button>
+  </aside>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
 <script>
