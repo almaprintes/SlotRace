@@ -444,7 +444,7 @@ async function startHeat(){
   }catch(e){notice(safeError(e),true);updateRoom();}
   return;
  }
- if(role!=="host'||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
+ if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
  const next=heat+1;
  if(next===2&&(!local?.done||!remote?.done))return;
  $("startHeat").disabled=true;
