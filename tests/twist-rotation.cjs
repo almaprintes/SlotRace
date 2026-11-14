@@ -43,7 +43,7 @@ const path=require("node:path");
  );
  const game=window.slotraceLab,st=game.state;
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.15.77");
+ assert.equal(game.version,"DEV 0.15.78");
  assert.match(html,/id="rotateCCW"/,"Giro antihorario presente");
  assert.match(html,/id="rotate"/,"Giro horario presente");
  const step=Math.PI/8;
