@@ -40,8 +40,8 @@ const fs=require("node:fs");
   "La predicción entre paquetes tiene límite estricto");
  const app=fs.readFileSync("src/app.mjs","utf8");
  const iframe=fs.readFileSync("src/live-duel.mjs","utf8");
- assert.match(app,/if\(now-liveRace\.lastSent<115\)return;/,
-  "Un estado cada 115 ms, sin aumentar el tráfico a Supabase");
+ assert.match(app,/if\(now-liveRace\.lastSent<230\)return;/,
+  "Un estado como máximo cada 230 ms, sin aumentar el tráfico a Supabase");
  assert.match(iframe,/local\.done\?600:\(embedded\?0:115\)/,
   "El iframe no descarta la mitad de las muestras ni añade emisiones");
  assert.match(app,/drawOnlineRivalMotion\(liveRace\.motion,now,length\)/,
@@ -49,5 +49,5 @@ const fs=require("node:fs");
  assert.match(app,/const peer=liveRace\.visualRemote\|\|liveRace\.remote;/);
  assert.match(app,/if\(liveRace\.active\)\{\s*onlineSnapshot\(now\);/,
   "Se mantiene la transmisión existente sin modificar el tiempo de carrera");
- console.log("SlotRace online: interpolación local, 115 ms de red, 60 FPS, vueltas, 3G, predicción y tiempos intactos OK");
+ console.log("SlotRace online: interpolación local, 230 ms de red, 60 FPS, vueltas, 3G, predicción y tiempos intactos OK");
 })().catch(e=>{console.error(e);process.exitCode=1});
