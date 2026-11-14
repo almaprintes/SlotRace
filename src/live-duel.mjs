@@ -1,9 +1,9 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.78";
-import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase} from "./online-rejoin.mjs?v=0.15.78";
-import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.78";
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.78";
+import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.79";
+import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase,reconnectRoomFromCode,canAutoReconnectHeat} from "./online-rejoin.mjs?v=0.15.79";
+import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.79";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.79";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
@@ -18,6 +18,33 @@ let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0,lastPeerChatAt=0;
 let pendingRematchCode=null,rematchRequested=false,rematchBusy=false;
 let localGameActive=false,peerCanContinue=false,lastPeerStateAt=0,lastReadySentAt=0;
 let reconnectTimer=null,reconnectBusy=false;
+let localGameReady=false,peerGameReady=false,rejoinStartPending=false;
+let autoReconnectTimer=null,lastAutoReconnectAt=0;
+function readyToAutoReconnect(){
+ return canAutoReconnectHeat({role,phase,connected,peerOnline,
+  peerGameReady,localGameReady,guestTrackReady,sharedTrack,
+  guestId:room?.guest_id,pending:rejoinStartPending});
+}
+function scheduleAutoReconnect(){
+ if(!readyToAutoReconnect()||autoReconnectTimer!==null||
+  Date.now()-lastAutoReconnectAt<4000)return;
+ autoReconnectTimer=setTimeout(()=>{
+  autoReconnectTimer=null;
+  if(!readyToAutoReconnect())return;
+  lastAutoReconnectAt=Date.now();
+  void startHeat();
+ },900);
+}
+function requestPrepareRejoin(){
+ if(phase!=="paused"||!sharedTrack||!embedded||!role)return;
+ notifyGame("prepareRejoin",{track:sharedTrack,role,heat,opponent:peerNick()});
+}
+function sendEarlierScores(){
+ if(role!=="host"||heat!==2||!connected||!channel||!room||
+  !Number.isFinite(scores[1].host)||!Number.isFinite(scores[1].guest))return;
+ void channel.send({type:"broadcast",event:"earlier-scores",
+  payload:{roomId:room.id,userId:account.id,heat:1,scores:{...scores[1]}}}).catch(()=>{});
+}
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
 function notifyGame(kind,detail={}){
@@ -34,7 +61,7 @@ function saveLiveRecovery(){
 }
 function pauseForReconnect(reason="Conexión perdida · esperando al otro piloto"){
  if(!["racing","countdown","resume-countdown"].includes(phase))return;
- phase="paused";peerCanContinue=false;lastReadySentAt=0;
+ phase="paused";peerCanContinue=false;peerGameReady=false;lastReadySentAt=0;
  activateControls(false);setStatus("⏸ PISTA EN ESPERA");
  notice(reason);saveLiveRecovery();updateRoom();
  notifyGame("networkHold",{reason});
@@ -47,7 +74,8 @@ function announceRejoinReady(){
  if(Date.now()-lastReadySentAt<1600)return;
  lastReadySentAt=Date.now();
  void channel.send({type:"broadcast",event:"rejoin-ready",payload:{
-  roomId:room.id,userId:account.id,heat,canContinue:localGameActive
+  roomId:room.id,userId:account.id,heat,canContinue:localGameActive,
+   gameReady:localGameReady
  }}).catch(()=>{});
 }
 function announceTrack(){
@@ -61,6 +89,7 @@ function trackAccepted(loan){
   " · "+loan.types.length+" piezas"+(role==="guest"?" · Prestada para esta carrera":"");
  $("trackSharedName").hidden=false;
  saveLiveRecovery();updateRoom();
+ requestPrepareRejoin();
 }
 const myNick=()=>role==="host"?room?.host_nick:room?.guest_nick;
 const peerNick=()=>role==="host"?room?.guest_nick:room?.host_nick;
@@ -109,13 +138,13 @@ function updateRoom(){
    ((heat===0&&room.state==="waiting")||
     (heat===1&&phase==="between"&&room.state==="heat1"&&
       local?.done&&remote?.done));
-  const reconnectReady=phase==="paused"&&joined&&connected&&peerOnline&&
-   Boolean(sharedTrack)&&guestTrackReady;
-  btn.disabled=!(ready||reconnectReady);
-  btn.textContent=phase==="paused"?
+  const reconnectReady=readyToAutoReconnect();
+  btn.disabled=rejoinStartPending||!(ready||reconnectReady);
+  btn.textContent=rejoinStartPending?"⏳ Sincronizando manga":phase==="paused"?
     (peerCanContinue&&localGameActive?"▶ Reanudar manga":"🏁 Repetir manga interrumpida"):
     heat===0?"🏁 Empezar primera manga":
     heat===1?"🏁 Iniciar segunda manga":"Carrera finalizada";
+  scheduleAutoReconnect();
  }
  const rematch=$("onlineResultRematch");
  if(rematch){
@@ -152,7 +181,11 @@ function updatePresence(){
   const members=Object.values(state).flat();
   peerOnline=members.some(item=>item?.userId&&item.userId!==account?.id);
  }catch(_){peerOnline=false;}
- if(wasOnline&&!peerOnline)pauseForReconnect("Tu compañero se ha desconectado · esperando a que vuelva.");
+ if(wasOnline&&!peerOnline){
+  peerGameReady=false;
+  if(role==="host")guestTrackReady=false;
+  pauseForReconnect("Tu compañero se ha desconectado · esperando a que vuelva.");
+ }
  if(peerOnline)announceRejoinReady();
  updateRoom();
 }
@@ -161,8 +194,9 @@ async function subscribe(){
  reconnectBusy=true;
  try{
  if(channel){try{await api.removeChannel(channel);}catch(_){ }channel=null;}
- connected=false;peerOnline=false;
- const topic="slotrace-live:"+room.id;
+ connected=false;peerOnline=false;peerGameReady=false;
+  if(role==="host")guestTrackReady=false;
+  const topic="slotrace-live:"+room.id;
  channel=api.channel(topic,{config:{private:true,broadcast:{self:false,ack:true},presence:{key:account.id}}})
   .on("presence",{event:"sync"},updatePresence)
   .on("broadcast",{event:"track-request"},()=>{
@@ -219,6 +253,13 @@ async function subscribe(){
    updateRoom();
    if(rematchRequested)void joinRematch(pendingRematchCode);
   })
+  .on("broadcast",{event:"earlier-scores"},({payload})=>{
+   if(role!=="guest"||heat!==2||payload?.roomId!==room?.id||
+    payload.userId!==room.host_id||payload.heat!==1||
+    !Number.isFinite(payload.scores?.host)||!Number.isFinite(payload.scores?.guest))return;
+   scores[1].host=payload.scores.host;scores[1].guest=payload.scores.guest;
+   saveLiveRecovery();
+  })
   .on("broadcast",{event:"interruption"},({payload})=>{
    if(!room||payload?.roomId!==room.id||
      payload.userId!==(role==="host"?room.guest_id:room.host_id)||
@@ -234,14 +275,17 @@ async function subscribe(){
     pauseForReconnect("El otro móvil ha vuelto a la pista. Preparando reanudación.");
    if(phase==="paused"){
     peerCanContinue=payload.canContinue===true;
+    peerGameReady=payload.gameReady===true;
     announceRejoinReady();
+    sendEarlierScores();
     updateRoom();
    }
   })
   .on("broadcast",{event:"reconnect-start"},({payload})=>{
    if(role!=="guest"||phase!=="paused"||
      payload?.roomId!==room?.id||payload.userId!==room.host_id||
-     payload.heat!==heat||!Number.isFinite(payload.startAt))return;
+     payload.heat!==heat||!Number.isFinite(payload.startAt)||
+    !localGameReady)return;
    if(payload.restart===true)prepareHeat(heat,payload.startAt,true);
    else resumeInterruptedHeat(payload.startAt);
   })
@@ -285,8 +329,8 @@ async function subscribe(){
    if(phase==="paused")announceRejoinReady();
   }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED"){
    pauseForReconnect("Se perdió la conexión de red. Reconectando la misma pista…");
-   connected=false;peerOnline=false;
-   notifyGame("chatError",{message:"Sin conexión · recuperando la pista"});
+   connected=false;peerOnline=false;peerGameReady=false;
+    notifyGame("chatError",{message:"Sin conexión · recuperando la pista"});
    updateRoom();
    if(reconnectTimer===null)reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;if(room&&!connected)void subscribe();
@@ -296,16 +340,31 @@ async function subscribe(){
  }finally{reconnectBusy=false;}
 }
 async function enterRoom(next,playerRole){
- room=next;role=playerRole;phase="idle";heat=0;
- localGameActive=false;peerCanContinue=false;lastPeerStateAt=0;lastReadySentAt=0;
+ // El código permite recuperar la pista: leer antes la copia local.
+ const resume=reconnectRoomFromCode(next,playerRole,account?.id,
+  readOnlineRejoin(localStorage));
+ room=next;role=playerRole;phase=resume?.phase||"idle";heat=resume?.heat||0;
+ localGameActive=false;localGameReady=false;peerGameReady=false;
+ rejoinStartPending=false;peerCanContinue=false;lastPeerStateAt=0;lastReadySentAt=0;
+ for(const h of [1,2]){scores[h].host=null;scores[h].guest=null;}
+ if(resume?.scores)for(const h of [1,2]){
+  for(const pilot of ["host","guest"])
+   if(Number.isFinite(resume.scores[h]?.[pilot]))
+    scores[h][pilot]=resume.scores[h][pilot];
+ }
  pendingRematchCode=null;rematchRequested=false;rematchBusy=false;
  $("raceArea").hidden=true;$("finalBoard").hidden=true;
  document.documentElement.classList.remove("heat-finished");
- sharedTrack=null;pendingTrack=null;guestTrackReady=false;
- local=null;remote=null;sequence=0;remoteSeq=0;
+ sharedTrack=resume?.track||null;pendingTrack=null;guestTrackReady=false;
+ local=resume?makeCar(laneFor(role,heat)):null;
+ remote=resume?makeCar(laneFor(other(),heat)):null;
+ sequence=0;remoteSeq=0;
  chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;lastPeerChatAt=0;
  notifyGame("chatReset",{roomId:next.id});
- saveLiveRecovery();updateRoom();notice("Conectando canal privado…");
+ if(resume&&sharedTrack)trackAccepted(sharedTrack);
+ saveLiveRecovery();updateRoom();
+ notice(resume?"Reincorporando a la manga "+heat+". Esperando a los dos pilotos.":
+  "Conectando canal privado…");
  await subscribe();await checkRoom();
 }
 async function recoverPreviousRoom(){
@@ -325,6 +384,7 @@ async function recoverPreviousRoom(){
   phase=recovered;
   sharedTrack=cache.track||null;pendingTrack=null;
   guestTrackReady=false;peerCanContinue=false;localGameActive=false;
+ localGameReady=false;peerGameReady=false;rejoinStartPending=false;
   if(Number.isFinite(cache.scores?.[1]?.host)&&Number.isFinite(cache.scores?.[1]?.guest)){
    scores[1].host=cache.scores[1].host;scores[1].guest=cache.scores[1].guest;
   }
@@ -343,7 +403,8 @@ async function recoverPreviousRoom(){
    $("trackSharedName").hidden=false;
   }
   notifyGame("chatReset",{roomId:room.id});
-  if(phase==="paused")notifyGame("networkHold",{reason:"Esperando a que ambos pilotos estén conectados. Se repetirá la manga interrumpida."});
+ if(phase==="paused"&&sharedTrack)requestPrepareRejoin();
+ if(phase==="paused")notifyGame("networkHold",{reason:"Esperando a que ambos pilotos estén conectados. Se repetirá la manga interrumpida."});
   updateRoom();
   await subscribe();await checkRoom();
   if(phase==="paused")notice("Pista recuperada. Ambos pilotos deben estar conectados para repetir la manga.");
@@ -375,6 +436,7 @@ async function join(){
   $("joinRoom").disabled=true;
   const {data,error}=await api.rpc("slotrace_live_join",{p_code:value});
   if(error)throw error;
+  if(data?.guest_id!==account.id)throw Error("La pista no pertenece a esta cuenta.");
   await enterRoom(data,"guest");
  }catch(e){notice("No se pudo entrar: "+safeError(e),true);$("joinRoom").disabled=false;}
 }
@@ -430,7 +492,8 @@ function resumeInterruptedHeat(when){
 }
 async function startHeat(){
  if(role==="host"&&phase==="paused"){
-  if(!connected||!peerOnline||!channel||!sharedTrack||!guestTrackReady)return;
+  if(rejoinStartPending||!readyToAutoReconnect()||!channel)return;
+  rejoinStartPending=true;
   $("startHeat").disabled=true;
   const canContinue=peerCanContinue&&localGameActive;
   const at=Date.now()+4000;
@@ -443,7 +506,8 @@ async function startHeat(){
    else prepareHeat(heat,at,true);
    notice(canContinue?"Ambos coches reanudan tras la cuenta atrás.":
     "Manga interrumpida reiniciada desde cero. Las anteriores se conservan.");
-  }catch(e){notice(safeError(e),true);updateRoom();}
+  }catch(e){notice(safeError(e),true);}
+  finally{rejoinStartPending=false;updateRoom();}
   return;
  }
  if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
@@ -468,6 +532,7 @@ function prepareHeat(next,when,restart=false){
   notifyGame("start",{track:sharedTrack,role,heat:next,startAt:when,opponent:peerNick(),restart});
  }
  heat=next;startAt=when;phase="countdown";sequence=0;remoteSeq=0;
+ localGameReady=false;peerGameReady=false;
  lastPeerStateAt=when;localGameActive=false;peerCanContinue=false;
  scores[heat][role]=null;scores[heat][other()]=null;
  document.documentElement.classList.remove("heat-finished");
@@ -634,6 +699,8 @@ window.addEventListener("message",event=>{
   }else{
    notice("No se puede correr en esa pista: "+(msg.error||"plano inválido"),true);
   }
+ }else if(msg.kind==="slotrace:online:gameReady"&&msg.heat===heat){
+  localGameReady=true;lastReadySentAt=0;announceRejoinReady();updateRoom();
  }else if(msg.kind==="slotrace:online:localState"&&embedded&&local){
   if((phase==="countdown"||phase==="resume-countdown")&&Date.now()>=startAt)phase="racing";
   if(phase!=="racing")return;

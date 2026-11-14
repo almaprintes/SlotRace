@@ -35,6 +35,22 @@ export function persistOnlineRejoin(storage,data,now=Date.now()){
 export function clearOnlineRejoin(storage){
  try{storage?.removeItem(ONLINE_REJOIN_KEY);}catch(_){}
 }
+// Volver con el mismo código conserva la manga, sin inventar tiempos ni posiciones.
+export function reconnectRoomFromCode(room,role,userId,cache,now=Date.now()){
+ if(!room||!["host","guest"].includes(role)||room[role+"_id"]!==userId||
+  !["heat1","heat2"].includes(room.state))return null;
+ const previous=validOnlineRejoin(cache,now)&&cache.roomId===room.id&&
+  cache.code===room.code&&cache.userId===userId&&cache.role===role?cache:null;
+ return {heat:room.state==="heat2"?2:1,phase:"paused",
+  track:previous?.track||null,scores:previous?.scores||null};
+}
+// No enviar una nueva salida hasta confirmar AMBOS motores y la pista.
+export function canAutoReconnectHeat({role,phase,connected,peerOnline,
+ peerGameReady,localGameReady,guestTrackReady,sharedTrack,guestId,pending}={}){
+ return role==="host"&&phase==="paused"&&connected===true&&
+  peerOnline===true&&peerGameReady===true&&localGameReady===true&&
+  guestTrackReady===true&&Boolean(sharedTrack)&&Boolean(guestId)&&pending!==true;
+}
 export function restoredOnlinePhase(record,dbState){
  if(!validOnlineRejoin(record))return null;
  if(dbState==="waiting")return "idle";

@@ -1,21 +1,21 @@
-import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.78";
-import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.78";
-import {readOnlineRejoin,clearOnlineRejoin} from "./online-rejoin.mjs?v=0.15.78";
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.78";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.78";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.78";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.78";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.78";
+import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.79";
+import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.79";
+import {readOnlineRejoin,clearOnlineRejoin} from "./online-rejoin.mjs?v=0.15.79";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.79";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.79";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.79";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.79";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.79";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.78";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.78";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.78";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.78";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.78";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.78";
+import {duelSummary} from "./race-results.mjs?v=0.15.79";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.79";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.79";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.79";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.79";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.79";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2247,7 +2247,7 @@ function openLiveDuels(){
  onlineChat.reset();
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.78";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.79";
  return true;
 }
 function closeLiveDuels(){
@@ -3100,6 +3100,13 @@ function handleOnlineMessage(event){
  try{
   if(msg.kind==="slotrace:online:networkHold"){
    holdOnlineRace(msg.reason);
+  }else if(msg.kind==="slotrace:online:prepareRejoin"){
+   if(!["host","guest"].includes(msg.role)||![1,2].includes(msg.heat)||!msg.track)
+    throw Error("Datos de reincorporación incompletos");
+   if(!liveRace.active||liveRace.heat!==msg.heat)
+    startRealOnlineHeat({...msg,startAt:Date.now()+60000,restart:liveRace.active});
+   holdOnlineRace("Ambos pilotos deben recuperar la conexión. Preparando manga "+msg.heat+".");
+   postToLive("gameReady",{heat:msg.heat});
   }else if(msg.kind==="slotrace:online:networkResumeAt"){
    if(liveRace.active&&liveRace.hold&&Number.isFinite(msg.startAt)){
     liveRace.resumeAt=msg.startAt;onlineChat.refresh();
@@ -3126,6 +3133,7 @@ function handleOnlineMessage(event){
    postToLive("trackChecked",{ready:true,trackName:t.name});
   }else if(msg.kind==="slotrace:online:start"){
    startRealOnlineHeat(msg);
+   postToLive("gameReady",{heat:msg.heat});
   }else if(msg.kind==="slotrace:online:remoteState"){
    if(!liveRace.active||msg.heat!==liveRace.heat||!msg.data)return;
    const d=msg.data;
@@ -7104,7 +7112,7 @@ protectOrphanDraft();palette();initEvents();updateUI();resize();
   }
  }catch(_){}
 
-window.slotraceLab={version:"DEV 0.15.78",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.79",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
