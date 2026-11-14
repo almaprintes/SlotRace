@@ -1,6 +1,7 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
 import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.76";
+import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.76";
 import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.75";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
@@ -258,27 +259,9 @@ function finishIfBoth(){
  scores[heat][other()]=lapTotal(remote.lapTimes);
  setStatus(heat===1?"MANGA 1 COMPLETADA":"CARRERA COMPLETADA");
  $("finalBoard").hidden=false;
- if(heat===1){
-  $("resultTitle").textContent="Manga 1 completada · Cambio de carriles";
- }else{
-  const mine=scores[1][role]+scores[2][role];
-  const theirs=scores[1][other()]+scores[2][other()];
-  const winner=Math.abs(mine-theirs)<.001?"Empate":
-    mine<theirs?"Gana "+myNick():"Gana "+peerNick();
-  $("resultTitle").textContent="🏆 "+winner;
- }
- const lines=[];
- for(let i=1;i<=heat;i++){
-  const a=scores[i].host,b=scores[i].guest;
-  lines.push("<div class='scoreline'><span>Manga "+i+"</span><strong>"+
-   (a===null?"—":fmt(a)+"s")+"</strong><strong>"+(b===null?"—":fmt(b)+"s")+"</strong></div>");
- }
- if(heat===2){
-  const host=scores[1].host+scores[2].host;
-  const guest=scores[1].guest+scores[2].guest;
-  lines.push("<div class='scoreline'><span>TOTAL</span><strong>"+fmt(host)+"s</strong><strong>"+fmt(guest)+"s</strong></div>");
- }
- $("scoreLines").innerHTML="<small>"+room.host_nick+" / "+room.guest_nick+"</small>"+lines.join("");
+ const result=buildOnlineResultModel({scores,heat,hostNick:room.host_nick,
+  guestNick:room.guest_nick,trackName:sharedTrack?.name});
+ renderOnlineResultBoard({target:$("scoreLines"),title:$("resultTitle"),model:result});
  if(embedded){
   $("raceArea").hidden=false;
   document.documentElement.classList.add("heat-finished");
