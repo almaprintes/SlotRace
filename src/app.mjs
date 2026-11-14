@@ -2508,8 +2508,8 @@ function renderDuelResults(){
    add("td","duel-advantage "+winnerClass(row.faster),advantage(row.gap),tr);
   }
   const best=add("p","duel-heat-best",null,panel);
-  best.textContent="Vueltas rápidas: Tú "+seconds(heat.playerBest)+
-   " · IA "+seconds(heat.aiBest);
+  best.textContent="Vueltas rápidas: "+playerNick+" "+seconds(heat.playerBest)+
+   " · "+rivalNick+" "+seconds(heat.aiBest);
  }
  $("resultsSectionHeading").textContent="Vuelta a vuelta";
  $("resultsSectionCaption").textContent="DOS MANGAS";
