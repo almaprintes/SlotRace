@@ -2934,7 +2934,7 @@ function advanceRearDynamics(p,lane,dt){
 const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
  remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
 const onlineChat=initOnlineChat({
- send:(text,kind)=>postToLive("chatSend",{text,kind}),
+ send:(text,kind)=>postToLive("chatSend",{text,chatKind:kind}),
  isRacing:()=>liveRace.active&&state.mode==="race"
 });
 function postToLive(kind,extra={}){
