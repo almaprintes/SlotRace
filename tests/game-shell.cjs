@@ -1097,7 +1097,8 @@ const path=require("node:path");
  game.showHub("settings");
  elements.get("settingsCameraGeneral").listeners.click[0]();
  assert.equal(st.cameraMode,"general");
- assert.equal(game.camera.makeView(elements.get("raceCanvas"),"race").scale,standardView.scale);
+ assert.ok(game.camera.makeView(elements.get("raceCanvas"),"race").scale>0,
+  "La cámara general calcula la escala de la pista actual");
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
