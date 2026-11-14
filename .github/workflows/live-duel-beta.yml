@@ -29,6 +29,8 @@ jobs:
         run: node tests/real-online-pista.cjs
       - name: Verificar ovalo, carriles y vuelta local
         run: node tests/live-duel.cjs
+      - name: Comprobar interpolación de rival online sin más tráfico
+        run: node tests/online-rival-motion.cjs
       - name: Verificar menu multijugador dentro del juego
         run: node tests/live-duel-ingame.cjs
       - name: Probar CR, nicks y casos sin recompensa
