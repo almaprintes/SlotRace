@@ -37,4 +37,12 @@ assert.match(client,/notifyGame\("checkTrack"/,
  "El invitado verifica el plano antes de correr");
 assert.match(html,/else location\.replace\("\.\/index\.html"\)/,
  "La antigua URL no debe volver a abrir el minijuego");
+assert.match(app,/const ONLINE_ROLE_CARS=Object\.freeze\(\{host:"gripline",guest:"spark"\}\)/,
+ "Anfitrión Gripline e invitado Spark sin depender del móvil");
+assert.match(app,/state\.selectedCar=ONLINE_ROLE_CARS\[role\]/,
+ "El modelo de carrera se asigna por rol y no modifica la selección del garaje");
+assert.match(app,/const img=carImages\[ONLINE_ROLE_CARS\[/,
+ "La animación remota nunca cambia arbitrariamente de modelo");
+assert.doesNotMatch(app,/carImages\[peer\.car\]/,
+ "La interpolación de red no debe cambiar la apariencia del rival");
 console.log("OK: pista prestada reversible, salida sin CR, plano verificado y acceso solo desde SlotRace");
