@@ -492,7 +492,8 @@ function resumeInterruptedHeat(when){
 }
 async function startHeat(){
  if(role==="host"&&phase==="paused"){
-  if(!connected||!peerOnline||!channel||!sharedTrack||!guestTrackReady)return;
+  if(rejoinStartPending||!readyToAutoReconnect()||!channel)return;
+  rejoinStartPending=true;
   $("startHeat").disabled=true;
   const canContinue=peerCanContinue&&localGameActive;
   const at=Date.now()+4000;
@@ -505,7 +506,8 @@ async function startHeat(){
    else prepareHeat(heat,at,true);
    notice(canContinue?"Ambos coches reanudan tras la cuenta atrás.":
     "Manga interrumpida reiniciada desde cero. Las anteriores se conservan.");
-  }catch(e){notice(safeError(e),true);updateRoom();}
+  }catch(e){notice(safeError(e),true);}
+  finally{rejoinStartPending=false;updateRoom();}
   return;
  }
  if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
@@ -530,6 +532,7 @@ function prepareHeat(next,when,restart=false){
   notifyGame("start",{track:sharedTrack,role,heat:next,startAt:when,opponent:peerNick(),restart});
  }
  heat=next;startAt=when;phase="countdown";sequence=0;remoteSeq=0;
+ localGameReady=false;peerGameReady=false;
  lastPeerStateAt=when;localGameActive=false;peerCanContinue=false;
  scores[heat][role]=null;scores[heat][other()]=null;
  document.documentElement.classList.remove("heat-finished");
@@ -696,6 +699,8 @@ window.addEventListener("message",event=>{
   }else{
    notice("No se puede correr en esa pista: "+(msg.error||"plano inválido"),true);
   }
+ }else if(msg.kind==="slotrace:online:gameReady"&&msg.heat===heat){
+  localGameReady=true;lastReadySentAt=0;announceRejoinReady();updateRoom();
  }else if(msg.kind==="slotrace:online:localState"&&embedded&&local){
   if((phase==="countdown"||phase==="resume-countdown")&&Date.now()>=startAt)phase="racing";
   if(phase!=="racing")return;
