@@ -350,7 +350,7 @@ window.addEventListener("message",event=>{
  if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
  const msg=event.data;
  if(!msg||typeof msg.kind!=="string")return;
- if(msg.kind==="slotrace:online:trackError"){
+ if(msg.kind==="slotrace:online:hostTrackError"){
   notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
  }else if(msg.kind==="slotrace:online:hostTrackError"&&role==="host"){
   sharedTrack=null;guestTrackReady=false;
