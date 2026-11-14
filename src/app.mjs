@@ -2988,7 +2988,7 @@ function startRealOnlineHeat({track,role,heat,startAt,opponent}){
  $("raceResumeCountdown").querySelector("span").textContent="Tu rival corre en el otro carril";
  $("onlineRacingIndicator").hidden=false;
  $("onlineRacingIndicator").textContent="🏁 "+loan.name+" · "+state.sessionPlayerNick+
-   " VS "+state.sessionOpponentNick+" · Manga "+heat+"/2";
+   " VS "+state.sessionOpponentNick+" · Manga "+heat+"/2 · NO HOMOLOGADA";
  toast(role==="guest"?"Pista prestada para esta carrera · no se guardará en tu colección.":"Tu pista está preparada para competir online.");
 }
 function stopRealOnlineHeat(){
@@ -3272,7 +3272,7 @@ function paintAiTest(ctx){
  }
  ctx.restore();
 }
-function paintOnlineRival(ctx){
+function paintOnlineRival(ctx,onlyAbove=null){
  const peer=liveRace.remote;
  if(!peer||!state.track.valid)return;
  const lane=1-state.lane;
@@ -3281,6 +3281,8 @@ function paintOnlineRival(ctx){
  if(!path)return;
  const pose=positionAt(path,state.driveDirection===-1?-peer.distance:peer.distance);
  if(!pose)return;
+ const elevated=Boolean(state.track.elevation?.profiles?.[pose.pieceIndex]);
+ if(onlyAbove!==null&&elevated!==onlyAbove)return;
  const heading=state.driveDirection===1?pose.h:pose.h+Math.PI;
  const rearSlip=peer.rearSlip||0;
  const yaw=Math.atan2(rearSlip,65)*2.4;
@@ -6356,6 +6358,7 @@ function renderScene(canvas,mode){
   // Orden de capas: pista base → coche inferior → puente completo
   // (una banda opaca) → coche elevado. Sin recorte pequeño en el cruce.
   if(track.valid&&!carAbove)paintCar(ctx,p,state.lane);
+  if(mode==="race"&&liveRace.active)paintOnlineRival(ctx,false);
   // La cubierta elevada se dibuja una sola vez, completa y opaca.
   // El repintado localizado por recortes añadía nuevos artefactos al
   // coincidir con bordes y curvas; queda fuera de la pasada de carrera.
@@ -6369,9 +6372,10 @@ function renderScene(canvas,mode){
   // El coche de ARRIBA se pinta al final para que nunca lo crucen
   // las guías discontinuas del nivel inferior.
   if(track.valid&&carAbove)paintCar(ctx,p,state.lane);
+  if(mode==="race"&&liveRace.active)paintOnlineRival(ctx,true);
  }else if(track.valid)paintCar(ctx,p,state.lane);
  if(mode==="race"&&aiTest.active)paintAiTest(ctx);
- if(mode==="race"&&liveRace.active)paintOnlineRival(ctx);
+ if(mode==="race"&&liveRace.active&&!hasBridge)paintOnlineRival(ctx);
  // Las piezas aún sueltas son contenido del TALLER, no de la carrera.
  // Dibujarlas después de la cubierta permitía que sus carriles atravesasen
  // cualquier puente ya construido. La carrera sólo muestra la pista montada.
