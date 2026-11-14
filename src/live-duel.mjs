@@ -169,7 +169,15 @@ async function subscribe(){
    if(role==="host"){if(sharedTrack)announceTrack();else notifyGame("requestTrack");}
   })
   .on("broadcast",{event:"track"},({payload})=>{
-   if(role!=="guest"||!payload?.track||phase!=="idle")return;
+   if(role!=="guest"||!payload?.track||
+    !["idle","paused","between"].includes(phase))return;
+   // Tras recargar, los dos móviles pueden suscribirse en cualquier orden.
+   // El anfitrión reenvía el plano y el invitado confirma el que ya tenía.
+   if(phase!=="idle"&&sharedTrack){
+    void channel?.send({type:"broadcast",event:"track-ready",
+     payload:{ready:true}}).catch(()=>{});
+    return;
+   }
    guestTrackReady=false;pendingTrack=payload.track;
    notifyGame("checkTrack",{track:payload.track});
   })
@@ -267,7 +275,7 @@ async function subscribe(){
    notifyGame("chatReady",{roomId:room.id});
    await checkRoom();updatePresence();
    if(embedded){
-    if(role==="host")notifyGame("requestTrack");
+    if(role==="host"){if(sharedTrack)announceTrack();else notifyGame("requestTrack");}
     else if(role==="guest"){
      if(sharedTrack)void channel.send({type:"broadcast",event:"track-ready",
       payload:{ready:true}}).catch(()=>{});
