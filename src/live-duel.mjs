@@ -300,6 +300,51 @@ async function enterRoom(next,playerRole){
  saveLiveRecovery();updateRoom();notice("Conectando canal privado…");
  await subscribe();await checkRoom();
 }
+async function recoverPreviousRoom(){
+ const cache=readOnlineRejoin(localStorage);
+ if(!cache||!account||cache.userId!==account.id)return false;
+ try{
+  const {data,error}=await api.from("slotrace_live_rooms")
+   .select("id,code,host_id,guest_id,host_nick,guest_nick,state,laps,track_id,expires_at")
+   .eq("id",cache.roomId).single();
+  if(error||!data||data.code!==cache.code||
+   (cache.role==="host"?data.host_id!==account.id:data.guest_id!==account.id)||
+   new Date(data.expires_at).getTime()<=Date.now())throw Error("Pista caducada o no autorizada");
+  const recovered=restoredOnlinePhase(cache,data.state);
+  if(!recovered)throw Error("No se pudo reconstruir esta pista");
+  room=data;role=cache.role;heat=cache.heat;phase=recovered;
+  sharedTrack=cache.track||null;pendingTrack=null;
+  guestTrackReady=false;peerCanContinue=false;localGameActive=false;
+  if(Number.isFinite(cache.scores?.[1]?.host)&&Number.isFinite(cache.scores?.[1]?.guest)){
+   scores[1].host=cache.scores[1].host;scores[1].guest=cache.scores[1].guest;
+  }
+  if(phase==="between"){
+   local=makeCar(laneFor(role,heat));remote=makeCar(laneFor(other(),heat));
+   local.done=true;remote.done=true;
+  }else if(phase==="paused"){
+   local=makeCar(laneFor(role,heat));remote=makeCar(laneFor(other(),heat));
+  }
+  $("raceArea").hidden=phase!=="between";
+  $("finalBoard").hidden=true;
+  document.documentElement.classList.remove("heat-finished");
+  if(sharedTrack){
+   $("trackSharedName").textContent="Pista recuperada: "+sharedTrack.name+
+    " · "+sharedTrack.types.length+" piezas";
+   $("trackSharedName").hidden=false;
+  }
+  notifyGame("chatReset",{roomId:room.id});
+  if(phase==="paused")notifyGame("networkHold",{reason:"Esperando a que ambos pilotos estén conectados. Se repetirá la manga interrumpida."});
+  updateRoom();
+  await subscribe();await checkRoom();
+  if(phase==="paused")notice("Pista recuperada. Ambos pilotos deben estar conectados para repetir la manga.");
+  else notice("Tu pista anterior está disponible de nuevo.");
+  saveLiveRecovery();return true;
+ }catch(error){
+  clearOnlineRejoin(localStorage);
+  notice("No se pudo recuperar la pista anterior: "+safeError(error),true);
+  return false;
+ }
+}
 async function create(){
  try{
   if(!account)return;
@@ -365,8 +410,33 @@ async function requestRematch(){
    "Revancha creada. Comparte el nuevo código con tu compañero.");
  }catch(error){rematchBusy=false;updateRoom();notice("No se pudo crear la revancha: "+safeError(error),true);}
 }
+function resumeInterruptedHeat(when){
+ if(phase!=="paused"||!localGameActive)return;
+ startAt=when;phase="resume-countdown";lastPeerStateAt=Date.now();
+ setStatus("REANUDACIÓN · 3, 2, 1");
+ notice("Ambos pilotos conectados. Continuamos desde la posición pausada.");
+ notifyGame("networkResumeAt",{heat,startAt:when});
+ saveLiveRecovery();updateRoom();
+}
 async function startHeat(){
- if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
+ if(role==="host"&&phase==="paused"){
+  if(!connected||!peerOnline||!channel||!sharedTrack||!guestTrackReady)return;
+  $("startHeat").disabled=true;
+  const canContinue=peerCanContinue&&localGameActive;
+  const at=Date.now()+4000;
+  try{
+   const sent=await channel.send({type:"broadcast",event:"reconnect-start",
+    payload:{roomId:room.id,userId:account.id,heat,startAt:at,
+     restart:!canContinue}});
+   if(sent!=="ok")throw Error("No se pudo confirmar la reconexión");
+   if(canContinue)resumeInterruptedHeat(at);
+   else prepareHeat(heat,at,true);
+   notice(canContinue?"Ambos coches reanudan tras la cuenta atrás.":
+    "Manga interrumpida reiniciada desde cero. Las anteriores se conservan.");
+  }catch(e){notice(safeError(e),true);updateRoom();}
+  return;
+ }
+ if(role!=="host'||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
  const next=heat+1;
  if(next===2&&(!local?.done||!remote?.done))return;
  $("startHeat").disabled=true;
@@ -382,12 +452,14 @@ async function startHeat(){
   notice("Salida de manga "+next+" programada para ambos móviles.");
  }catch(e){notice("No se pudo iniciar: "+safeError(e),true);await checkRoom();}
 }
-function prepareHeat(next,when){
+function prepareHeat(next,when,restart=false){
  if(embedded){
   if(!sharedTrack){notice("Falta el plano de la pista del anfitrión.",true);return;}
-  notifyGame("start",{track:sharedTrack,role,heat:next,startAt:when,opponent:peerNick()});
+  notifyGame("start",{track:sharedTrack,role,heat:next,startAt:when,opponent:peerNick(),restart});
  }
  heat=next;startAt=when;phase="countdown";sequence=0;remoteSeq=0;
+ lastPeerStateAt=when;localGameActive=false;peerCanContinue=false;
+ scores[heat][role]=null;scores[heat][other()]=null;
  document.documentElement.classList.remove("heat-finished");
  local=makeCar(laneFor(role,heat));
  remote=makeCar(laneFor(other(),heat));
@@ -395,7 +467,7 @@ function prepareHeat(next,when){
  $("heatLabel").textContent="Manga "+heat+" de 2 · "+
   (heat===1?"Primera salida":"Carriles intercambiados");
  setStatus("CUENTA ATRÁS");activateControls(false);
- updateRoom();draw();
+ updateRoom();draw();saveLiveRecovery();
 }
 function finishIfBoth(){
  if(phase!=="racing"||!local?.done||!remote?.done)return;
@@ -404,6 +476,8 @@ function finishIfBoth(){
  scores[heat][role]=lapTotal(local.lapTimes);
  scores[heat][other()]=lapTotal(remote.lapTimes);
  setStatus(heat===1?"MANGA 1 COMPLETADA":"CARRERA COMPLETADA");
+ if(phase==="finished")clearOnlineRejoin(localStorage);
+ else saveLiveRecovery();
  $("finalBoard").hidden=false;
  updateRoom();
  const result=buildOnlineResultModel({scores,heat,hostNick:room.host_nick,
@@ -501,11 +575,15 @@ function setupGas(){
 function frame(now){
  const dt=lastFrame?Math.min(.05,(now-lastFrame)/1000):0;
  lastFrame=now;
- if(phase==="countdown"){
+ if(phase==="countdown"||phase==="resume-countdown"){
   const remaining=startAt-Date.now();
   $("countdown").hidden=remaining<=0;
   $("countdown").textContent=String(Math.max(1,Math.ceil(remaining/1000)));
   if(remaining<=0){phase="racing";$("countdown").hidden=true;activateControls(true);setStatus("CARRERA EN DIRECTO");}
+ }
+ if(phase==="racing"&&remote&&!remote.done&&lastPeerStateAt&&
+  Date.now()-Math.max(lastPeerStateAt,startAt)>4600){
+  pauseForReconnect("El móvil rival ha dejado de enviar datos. Esperando reconexión.");
  }
  if(phase==="racing"&&!embedded){
   advanceCar(local,dt);
@@ -523,6 +601,8 @@ window.addEventListener("message",event=>{
  if(!msg||typeof msg.kind!=="string")return;
  if(msg.kind==="slotrace:online:chatSend"&&embedded){
   void sendChat(msg.text,msg.chatKind);
+ }else if(msg.kind==="slotrace:online:localHold"){
+  pauseForReconnect("Tu móvil ha interrumpido la carrera. Esperando la conexión de ambos.");
  }else if(msg.kind==="slotrace:online:trackError"){
   notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
  }else if(msg.kind==="slotrace:online:hostTrackError"&&role==="host"){
@@ -545,10 +625,11 @@ window.addEventListener("message",event=>{
    notice("No se puede correr en esa pista: "+(msg.error||"plano inválido"),true);
   }
  }else if(msg.kind==="slotrace:online:localState"&&embedded&&local){
-  if(phase==="countdown"&&Date.now()>=startAt)phase="racing";
+  if((phase==="countdown"||phase==="resume-countdown")&&Date.now()>=startAt)phase="racing";
   if(phase!=="racing")return;
   const d=msg.data;
   if(!d||!Number.isFinite(d.distance)||!Number.isFinite(d.elapsed))return;
+  localGameActive=true;
   local.distance=d.distance;local.speed=d.speed;local.elapsed=d.elapsed;
   local.lap=d.lap;local.deslotFor=d.deslotFor;
   local.lapTimes=Array.isArray(d.lapTimes)?d.lapTimes.slice(0,LIVE_LAPS):[];
@@ -591,14 +672,19 @@ async function init(){
   account={id:user.id,nick:profile.nickname};
   $("identity").textContent="Conectado: "+account.nick;
   $("createRoom").disabled=false;$("joinRoom").disabled=false;
-  notice("Cuenta lista. Crea una sala o introduce el código recibido.");
+  notice("Cuenta lista. Crea una pista o introduce el código recibido.");
+  await recoverPreviousRoom();
  }catch(e){
   $("identity").textContent="No hay una cuenta verificada en este navegador.";
   notice(safeError(e)+" Vuelve al juego para identificarte.",true);
  }
  setInterval(()=>{if(room)void checkRoom();},1700);
  document.addEventListener("visibilitychange",()=>{
-  if(document.hidden&&phase==="racing"){release();notice("Has cambiado de pantalla durante la carrera; cronometraje no homologado.",true);}
+  if(document.hidden&&["racing","countdown","resume-countdown"].includes(phase)){
+   release();pauseForReconnect("Pista en espera: uno de los pilotos ha cambiado de pantalla.");
+  }
  });
+ window.addEventListener("pagehide",()=>{saveLiveRecovery();});
+
 }
 init();
