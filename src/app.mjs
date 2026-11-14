@@ -3025,7 +3025,7 @@ function onlineFinishLap(crossingElapsedMs){
 }
 function onlineSnapshot(now){
  if(!liveRace.active||!state.raceStarted)return;
- if(now-liveRace.lastSent<105)return;
+ if(now-liveRace.lastSent<115)return;
  liveRace.lastSent=now;
  const elapsed=liveRace.laps.reduce((a,b)=>a+b,0)+state.seconds;
  postToLive("localState",{data:{
