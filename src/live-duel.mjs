@@ -1,6 +1,6 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.70";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.71";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
@@ -301,14 +301,15 @@ async function init(){
  $("joinRoom").addEventListener("click",join);
  $("startHeat").addEventListener("click",startHeat);
  $("copyInvite").addEventListener("click",async()=>{
-  const link=new URL(location.pathname,location.origin);
-  link.searchParams.set("room",room.code);
+  if(!room?.code)return;
   try{
-   if(navigator.share)await navigator.share({title:"Duelo SlotRace",url:link.toString()});
-   else if(navigator.clipboard)await navigator.clipboard.writeText(link.toString());
-   else throw Error("Copia manualmente el código de sala");
-   notice("Invitación preparada para tu rival.");
-  }catch(e){notice(safeError(e),true);}
+   if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(room.code);
+   else if(navigator.share)await navigator.share({title:"Duelo SlotRace",text:"Código para unirte desde SlotRace → Competir: "+room.code});
+   else throw Error("Dile este código a tu compañero: "+room.code);
+   notice("Código listo: "+room.code+" · Tu compañero lo escribe dentro de SlotRace.");
+  }catch(e){
+   notice("Comparte este código: "+room.code+". "+safeError(e));
+  }
  });
  const prefill=new URLSearchParams(location.search).get("room");
  if(prefill)$("joinCode").value=prefill.slice(0,7).toUpperCase();
