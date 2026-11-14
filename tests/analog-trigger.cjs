@@ -75,7 +75,7 @@ const path=require("node:path");
  // Para iniciar una carrera se exige una única pieza SALIDA/META.
  window.slotraceLab.changeTypes(geom.STARTER.map((id,i)=>i===0?"START350":id),
   "Óvalo para comprobar gatillo",[],geom.START);
- assert.equal(window.slotraceLab.version,"DEV 0.15.71");
+ assert.equal(window.slotraceLab.version,"DEV 0.15.72");
  const theme=window.slotraceLab.workspace;
  assert.equal(state.tableTheme,"wine","El fondo vino es el predeterminado");
  assert.equal(elements.get("settingsTableWine").attrs["aria-pressed"],"true");
