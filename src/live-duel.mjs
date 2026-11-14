@@ -1,6 +1,8 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.75";
+import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.76";
+import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.76";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.76";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
@@ -11,6 +13,8 @@ const embedded=new URLSearchParams(location.search).get("embedded")==="1";
 let sharedTrack=null,pendingTrack=null,guestTrackReady=false;
 let lastFrame=0,lastSend=0,roomPolling=false,refreshStamp=0,sequence=0,remoteSeq=0;
 const scores={1:{host:null,guest:null},2:{host:null,guest:null}};
+let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0,lastPeerChatAt=0;
+let pendingRematchCode=null,rematchRequested=false,rematchBusy=false;
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
 function notifyGame(kind,detail={}){
@@ -37,6 +41,27 @@ function activateControls(active){$("gasButton").disabled=!active;if(!active){$(
 function code(){const bytes=new Uint8Array(7);crypto.getRandomValues(bytes);return roomCode(bytes);}
 function safeError(error){return error?.message||String(error)||"Error de conexión";}
 function roleLabel(player){return player===role?" (tú)":"";}
+async function sendChat(text,kind="text"){
+ const cleaned=cleanLiveChatText(text);
+ if(!validLiveChat(cleaned,kind))return;
+ const now=Date.now();
+ const remaining=chatCooldownRemaining(lastChatAt,now);
+ if(remaining){notifyGame("chatError",{message:"Espera "+Math.ceil(remaining/1000)+" segundos para enviar otro mensaje."});return;}
+ if(!connected||!channel||!room?.guest_id||!account){
+  notifyGame("chatError",{message:"Necesitas que ambos pilotos estén conectados."});return;
+ }
+ if(phase==="racing"&&kind!=="quick"){
+  notifyGame("chatError",{message:"Durante la carrera utiliza las reacciones rápidas."});return;
+ }
+ lastChatAt=now;
+ try{
+  const payload={roomId:room.id,userId:account.id,seq:++chatSequence,
+   text:cleaned,kind};
+  const result=await channel.send({type:"broadcast",event:"chat",payload});
+  if(result!=="ok")throw Error("Mensaje no confirmado por la conexión.");
+  notifyGame("chatMessage",{message:{...payload,nick:myNick()||account.nick,mine:true}});
+ }catch(error){notifyGame("chatError",{message:"No enviado: "+safeError(error)});}
+}
 function updateRoom(){
  if(!room)return;
  $("roomBox").hidden=false;$("roomCode").textContent=room.code;
@@ -58,6 +83,14 @@ function updateRoom(){
   btn.disabled=!ready;
   btn.textContent=heat===0?"🏁 Empezar primera manga":
     heat===1?"🏁 Iniciar segunda manga":"Carrera finalizada";
+ }
+ const rematch=$("onlineResultRematch");
+ if(rematch){
+  rematch.hidden=phase!=="finished";
+  rematch.disabled=rematchBusy;
+  rematch.textContent=role==="host"?"🔁 Crear revancha":
+   pendingRematchCode?"🔁 Aceptar revancha":
+   rematchRequested?"⏳ Esperando al anfitrión":"🔁 Pedir revancha";
  }
  $("myName").textContent=(myNick()||"Tu coche")+" · Carril "+String.fromCharCode(65+laneFor(role||"host",heat||1));
  $("peerName").textContent=(peerNick()||"Rival")+" · Carril "+String.fromCharCode(65+laneFor(other(),heat||1));
@@ -106,11 +139,38 @@ async function subscribe(){
    guestTrackReady=payload?.ready===true;
    updateRoom();
   })
+  .on("broadcast",{event:"chat"},({payload})=>{
+   if(!room||!payload||payload.roomId!==room.id||
+     payload.userId!==(role==="host"?room.guest_id:room.host_id)||
+     !Number.isSafeInteger(payload.seq)||payload.seq<=lastPeerChatSeq||
+     !validLiveChat(payload.text,payload.kind))return;
+   const now=Date.now();
+   if(chatCooldownRemaining(lastPeerChatAt,now))return;
+   lastPeerChatAt=now;
+   lastPeerChatSeq=payload.seq;
+   notifyGame("chatMessage",{message:{roomId:room.id,kind:payload.kind,
+    text:cleanLiveChatText(payload.text),nick:peerNick()||"Rival",mine:false}});
+  })
   .on("broadcast",{event:"start"},({payload})=>{
    if(!payload||!Number.isFinite(payload.heat)||!Number.isFinite(payload.startAt))return;
    if(payload.heat!==heat+1)return;
    if(!payload.track||!sharedTrack)return;
    prepareHeat(payload.heat,payload.startAt);
+  })
+  .on("broadcast",{event:"rematch-request"},({payload})=>{
+   if(role!=="host"||phase!=="finished"||!payload||
+    payload.roomId!==room?.id||payload.userId!==room.guest_id)return;
+   notice("¡Tu compañero quiere revancha! Pulsa «Crear revancha» para preparar la pista.");
+   $("onlineResultRematch").textContent="🔁 Aceptar revancha";
+  })
+  .on("broadcast",{event:"rematch-invite"},({payload})=>{
+   if(role!=="guest"||phase!=="finished"||!payload||
+    payload.roomId!==room?.id||payload.userId!==room.host_id||
+    !/^[A-Z2-9]{7}$/.test(String(payload.code)))return;
+   pendingRematchCode=payload.code;
+   notice("¡Revancha preparada! Pulsa «Aceptar revancha» para entrar.");
+   updateRoom();
+   if(rematchRequested)void joinRematch(pendingRematchCode);
   })
   .on("broadcast",{event:"state"},({payload})=>{
    if(!payload||payload.heat!==heat||payload.role!==other()||
@@ -136,6 +196,7 @@ async function subscribe(){
    try{await channel.track({userId:account.id,nick:account.nick});}
    catch(e){notice("No se pudo anunciar presencia: "+safeError(e),true);}
    notice("Conexión privada activada. Preparados para competir.");
+   notifyGame("chatReady",{roomId:room.id});
    await checkRoom();updatePresence();
    if(embedded){
     if(role==="host")notifyGame("requestTrack");
@@ -144,6 +205,7 @@ async function subscribe(){
   }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
    connected=false;peerOnline=false;activateControls(false);
    notice("Se perdió la conexión de la pista. Regresa a Competir y vuelve a entrar.",true);
+   notifyGame("chatClosed");
    notifyGame("networkError",{message:"Se perdió la conexión con el otro piloto"});
    updateRoom();
   }
@@ -151,8 +213,13 @@ async function subscribe(){
 }
 async function enterRoom(next,playerRole){
  room=next;role=playerRole;phase="idle";heat=0;
+ pendingRematchCode=null;rematchRequested=false;rematchBusy=false;
+ $("raceArea").hidden=true;$("finalBoard").hidden=true;
+ document.documentElement.classList.remove("heat-finished");
  sharedTrack=null;pendingTrack=null;guestTrackReady=false;
  local=null;remote=null;sequence=0;remoteSeq=0;
+ chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;lastPeerChatAt=0;
+ notifyGame("chatReset",{roomId:next.id});
  updateRoom();notice("Conectando canal privado…");
  await subscribe();await checkRoom();
 }
@@ -178,6 +245,48 @@ async function join(){
   if(error)throw error;
   await enterRoom(data,"guest");
  }catch(e){notice("No se pudo entrar: "+safeError(e),true);$("joinRoom").disabled=false;}
+}
+async function joinRematch(nextCode){
+ if(rematchBusy||!nextCode)return;
+ rematchBusy=true;updateRoom();
+ try{
+  const {data,error}=await api.rpc("slotrace_live_join",{p_code:nextCode});
+  if(error)throw error;
+  await enterRoom(data,"guest");
+  notice("Revancha preparada. Esperando a que arranque la primera manga.");
+ }catch(e){
+  rematchBusy=false;
+  notice("No se pudo entrar en la revancha: "+safeError(e),true);updateRoom();
+ }
+}
+async function requestRematch(){
+ if(phase!=="finished"||rematchBusy||!connected||!channel)return;
+ if(role==="guest"){
+  if(pendingRematchCode){await joinRematch(pendingRematchCode);return;}
+  if(rematchRequested)return;
+  rematchRequested=true;updateRoom();
+  try{
+   const result=await channel.send({type:"broadcast",event:"rematch-request",
+    payload:{roomId:room.id,userId:account.id}});
+   if(result!=="ok")throw Error("No se pudo notificar al otro piloto");
+   notice("Revancha solicitada. Esperando respuesta del anfitrión.");
+  }catch(error){rematchRequested=false;notice(safeError(error),true);updateRoom();}
+  return;
+ }
+ rematchBusy=true;updateRoom();
+ try{
+  let data=null,error=null;
+  for(let attempt=0;attempt<3;attempt++){
+   ({data,error}=await api.rpc("slotrace_live_create",{p_code:code()}));
+   if(!error||!/duplicate|unique/i.test(safeError(error)))break;
+  }
+  if(error)throw error;
+  const result=await channel.send({type:"broadcast",event:"rematch-invite",
+   payload:{roomId:room.id,userId:account.id,code:data.code}});
+  await enterRoom(data,"host");
+  notice(result==="ok"?"Revancha creada y enviada al otro piloto.":
+   "Revancha creada. Comparte el nuevo código con tu compañero.");
+ }catch(error){rematchBusy=false;updateRoom();notice("No se pudo crear la revancha: "+safeError(error),true);}
 }
 async function startHeat(){
  if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
@@ -219,27 +328,10 @@ function finishIfBoth(){
  scores[heat][other()]=lapTotal(remote.lapTimes);
  setStatus(heat===1?"MANGA 1 COMPLETADA":"CARRERA COMPLETADA");
  $("finalBoard").hidden=false;
- if(heat===1){
-  $("resultTitle").textContent="Manga 1 completada · Cambio de carriles";
- }else{
-  const mine=scores[1][role]+scores[2][role];
-  const theirs=scores[1][other()]+scores[2][other()];
-  const winner=Math.abs(mine-theirs)<.001?"Empate":
-    mine<theirs?"Gana "+myNick():"Gana "+peerNick();
-  $("resultTitle").textContent="🏆 "+winner;
- }
- const lines=[];
- for(let i=1;i<=heat;i++){
-  const a=scores[i].host,b=scores[i].guest;
-  lines.push("<div class='scoreline'><span>Manga "+i+"</span><strong>"+
-   (a===null?"—":fmt(a)+"s")+"</strong><strong>"+(b===null?"—":fmt(b)+"s")+"</strong></div>");
- }
- if(heat===2){
-  const host=scores[1].host+scores[2].host;
-  const guest=scores[1].guest+scores[2].guest;
-  lines.push("<div class='scoreline'><span>TOTAL</span><strong>"+fmt(host)+"s</strong><strong>"+fmt(guest)+"s</strong></div>");
- }
- $("scoreLines").innerHTML="<small>"+room.host_nick+" / "+room.guest_nick+"</small>"+lines.join("");
+ updateRoom();
+ const result=buildOnlineResultModel({scores,heat,hostNick:room.host_nick,
+  guestNick:room.guest_nick,trackName:sharedTrack?.name});
+ renderOnlineResultBoard({target:$("scoreLines"),title:$("resultTitle"),model:result});
  if(embedded){
   $("raceArea").hidden=false;
   document.documentElement.classList.add("heat-finished");
@@ -352,7 +444,9 @@ window.addEventListener("message",event=>{
  if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
  const msg=event.data;
  if(!msg||typeof msg.kind!=="string")return;
- if(msg.kind==="slotrace:online:trackError"){
+ if(msg.kind==="slotrace:online:chatSend"&&embedded){
+  void sendChat(msg.text,msg.chatKind);
+ }else if(msg.kind==="slotrace:online:trackError"){
   notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
  }else if(msg.kind==="slotrace:online:hostTrackError"&&role==="host"){
   sharedTrack=null;guestTrackReady=false;
@@ -391,6 +485,9 @@ async function init(){
  $("createRoom").addEventListener("click",create);
  $("joinRoom").addEventListener("click",join);
  $("startHeat").addEventListener("click",startHeat);
+ $("onlineResultRematch").addEventListener("click",()=>{void requestRematch();});
+ $("onlineResultChat").addEventListener("click",()=>notifyGame("openChat"));
+ $("onlineResultBack").addEventListener("click",()=>notifyGame("goBack"));
  $("copyInvite").addEventListener("click",async()=>{
   if(!room?.code)return;
   try{

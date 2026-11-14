@@ -31,6 +31,8 @@ jobs:
         run: node tests/live-duel.cjs
       - name: Comprobar interpolación de rival online sin más tráfico
         run: node tests/online-rival-motion.cjs
+      - name: Validar chat antispam, emojis grandes y marcador multijugador
+        run: node tests/online-chat-results.cjs
       - name: Verificar menu multijugador dentro del juego
         run: node tests/live-duel-ingame.cjs
       - name: Probar CR, nicks y casos sin recompensa

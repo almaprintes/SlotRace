@@ -1,19 +1,20 @@
-import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.75";
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.75";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.75";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.75";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.75";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.75";
+import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.76";
+import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.76";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.76";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.76";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.76";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.76";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.76";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.75";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.75";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.75";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.75";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.75";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.75";
+import {duelSummary} from "./race-results.mjs?v=0.15.76";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.76";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.76";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.76";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.76";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.76";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2149,6 +2150,7 @@ function advanceLaneTransition(dt){
  if(change.elapsed>=change.duration)state.laneTransition=null;
 }
 function openWorkshop(){
+ if(liveRace.active||state.mode==="online")onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  cancelResumeCountdown();
  state.flow="build";
@@ -2162,6 +2164,7 @@ function openWorkshop(){
 }
 function showHub(which){
  if(!hubScreens[which])return false;
+ if(which!=="online"&&(liveRace.active||state.mode==="online"))onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  // Desmontar la conexión experimental al salir. Nunca dejar un
  // coche online corriendo dentro de una pantalla oculta.
@@ -2173,6 +2176,7 @@ function showHub(which){
  updateUI();return true;
 }
 function showMenu(){
+ onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  if(state.mode==="online")$("liveDuelFrame").src="about:blank";
  cancelResumeCountdown();
@@ -2234,9 +2238,10 @@ function menuRace(){
 // Se abre como una pantalla más del juego, dentro de la misma PWA.
 // La beta de red permanece aislada del simulador local verificado.
 function openLiveDuels(){
+ onlineChat.reset();
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.75";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.76";
  return true;
 }
 function closeLiveDuels(){
@@ -2928,6 +2933,12 @@ function advanceRearDynamics(p,lane,dt){
 
 const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
  remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
+// Los arneses de físicas que evalúan el motor sin importaciones usan un chat
+// inerte. En el navegador se inicializa siempre la interfaz real.
+const onlineChat=typeof initOnlineChat==="function"?initOnlineChat({
+ send:(text,kind)=>postToLive("chatSend",{text,chatKind:kind}),
+ isRacing:()=>liveRace.active&&state.mode==="race"
+}):{reset(){},ready(){},refresh(){},receive(){},showError(){}};
 function postToLive(kind,extra={}){
  const iframe=$("liveDuelFrame");
  if(iframe?.contentWindow&&iframe.src&&!iframe.src.endsWith("about:blank"))
@@ -2984,6 +2995,7 @@ function startRealOnlineHeat({track,role,heat,startAt,opponent}){
  liveRace.motion=createOnlineRivalMotion();liveRace.visualRemote=null;
  liveRace.laps=[];liveRace.done=false;liveRace.lastSent=0;
  state.flow="race";state.mode="race";state.run=false;state.raceStarted=false;
+ onlineChat.refresh();
  state.gas=0;state.buttonGas=false;state.keyboardGas=false;
  state.latest=performance.now();
  updateUI();resize();resetFollowCamera();
@@ -3006,7 +3018,7 @@ function stopRealOnlineHeat(){
  $("onlineRacingIndicator").hidden=true;
  restoreLiveTrack();
  state.flow="race";state.mode="online";
- updateUI();resize();
+ onlineChat.refresh();updateUI();resize();
 }
 function onlineFinishLap(crossingElapsedMs){
  const seconds=state.seconds;
@@ -3041,7 +3053,21 @@ function handleOnlineMessage(event){
  const msg=event.data;
  if(!msg||typeof msg!=="object"||typeof msg.kind!=="string")return;
  try{
-  if(msg.kind==="slotrace:online:requestTrack"){
+  if(msg.kind==="slotrace:online:chatReset"){
+   onlineChat.reset(msg.roomId);
+  }else if(msg.kind==="slotrace:online:chatReady"){
+   onlineChat.ready(msg.roomId);
+  }else if(msg.kind==="slotrace:online:openChat"){
+   onlineChat.openPanel();
+  }else if(msg.kind==="slotrace:online:goBack"){
+   closeLiveDuels();
+  }else if(msg.kind==="slotrace:online:chatMessage"){
+   onlineChat.receive(msg.message);
+  }else if(msg.kind==="slotrace:online:chatError"){
+   onlineChat.showError(msg.message||"No se pudo enviar el mensaje");
+  }else if(msg.kind==="slotrace:online:chatClosed"){
+   onlineChat.reset();
+  }else if(msg.kind==="slotrace:online:requestTrack"){
    try{postToLive("hostTrack",{track:ownLiveTrack()});}
    catch(err){postToLive("trackError",{error:err.message});}
   }else if(msg.kind==="slotrace:online:checkTrack"){
@@ -7013,7 +7039,7 @@ aiTest.enabled=old?.aiEnabled===true;
 aiTest.level=AI_DIFFICULTIES[old?.aiLevel]?old.aiLevel:"easy";
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.75",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.76",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

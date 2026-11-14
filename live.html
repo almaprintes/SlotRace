@@ -5,8 +5,8 @@
 <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");else location.replace("./index.html");</script>
 <meta name="theme-color" content="#091720">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>SlotRace · Pista de slot online BETA 0.15.75</title>
-<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.75">
+<title>SlotRace · Pista de slot online BETA 0.15.76</title>
+<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.76">
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ebf5f7;background:#07141e;--mint:#4ff0cb;--muted:#a8b9c7;--panel:#162634}
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#16404b,#07141e 55%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
@@ -61,11 +61,45 @@ html.embedded.heat-finished #gasArea,
 html.embedded.heat-finished #countdown,
 html.embedded.heat-finished #raceArea>p,
 html.embedded.heat-finished .stats{display:none!important}
-html.embedded.heat-finished #raceArea{background:#112e36}
+html.embedded.heat-finished #raceArea{background:transparent;border:0;padding:0}
+html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoard{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.online-results{margin-top:12px;display:flex;flex-direction:column;gap:12px;color:#eafdf8}
+.online-results-hero{position:relative;overflow:hidden;border-radius:19px;padding:22px 17px;background:linear-gradient(128deg,#09504a 0%,#063d48 50%,#112a3d 100%);border:1px solid #63e7c9;box-shadow:0 9px 28px #0005}
+.online-results-hero:before{content:"🏁";position:absolute;right:-3px;top:15px;opacity:.12;font-size:92px;pointer-events:none}
+.online-results-kicker{color:#94ffdd;font-size:11px;font-weight:950;letter-spacing:1.4px}
+.online-results-circuit{display:block;color:#a7ddda;font-size:12px;margin:9px 0 0;overflow-wrap:anywhere}
+.online-results-title{font-size:clamp(24px,7vw,35px);color:white;line-height:1.14;font-weight:950;letter-spacing:-.8px;margin:12px 0 7px;overflow-wrap:anywhere;max-width:95%}
+.online-results-margin{color:#b8ffe1;font-size:clamp(15px,4vw,20px);font-weight:900}
+.online-results-next{font-size:12px;color:#badfd8;margin:11px 0 0}
+.online-results-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.online-results-tile{min-width:0;display:flex;flex-direction:column;gap:7px;background:#1d3540;border:1px solid #54727b;border-radius:15px;padding:15px 11px}
+.online-results-tile.is-leader{background:linear-gradient(135deg,#16554b,#12383e);border-color:#65d7b6}
+.online-results-nick{color:#d6e8e8;font-size:clamp(11px,3vw,15px);font-weight:900;overflow-wrap:anywhere}
+.online-results-time{font-size:clamp(21px,5.2vw,29px);font-weight:950;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.5px;white-space:nowrap}
+.online-results-position{font-size:12px;color:#81e9c8;font-weight:900}
+.online-results-breakdown{background:#122e38;border:1px solid #395d68;border-radius:17px;padding:17px 12px}
+.online-results-breakdown h3{font-size:16px;color:#eafff8;margin:0 0 10px}
+.online-results-grid{display:grid;grid-template-columns:minmax(68px,.75fr) minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:center;padding:11px 0;border-top:1px solid #ffffff22;font-size:clamp(12px,3.1vw,15px);font-variant-numeric:tabular-nums}
+.online-results-grid>*{min-width:0;overflow-wrap:anywhere}
+.online-results-grid>:not(:first-child){text-align:right}
+.online-results-grid-head{color:#a6c2ca;font-size:clamp(10px,2.7vw,12px);font-weight:850;border-top:none;line-height:1.3}
+.online-results-grid .is-best{color:#6df5c6;font-weight:950}
+.online-results-heat{color:#c6dadb}
+.online-results-total{font-weight:950;font-size:clamp(14px,3.7vw,18px);border-top:2px solid #6dbaa8}
+.online-results-footnote{text-align:center;color:#91b0ba;font-size:11px;line-height:1.35;margin:0 0 2px}
+@media(max-width:380px){.online-results-hero{padding:16px 13px}.online-results-tile{padding:11px 8px}.online-results-grid{grid-template-columns:minmax(62px,.7fr) minmax(0,1fr) minmax(0,1fr)}}
+
+
+.online-results-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.online-results-actions button{min-height:49px;border:1px solid #4a7480;border-radius:13px;background:#223e4d;font-size:13px;font-weight:950;white-space:normal;padding:10px 8px}
+.online-results-actions button.primary{background:linear-gradient(120deg,#24cca1,#44e1c2);border-color:#6beecf;color:#072f2c}
+.online-results-actions button:first-child:not([hidden]){grid-column:1/-1}
+@media(min-width:650px){.online-results-actions{grid-template-columns:1.1fr 1fr 1fr}.online-results-actions button:first-child:not([hidden]){grid-column:auto}}
 </style></head>
 <body>
 <header>
-<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.75</div></div>
+<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.76</div></div>
 <a href="./index.html">← Volver al juego</a>
 </header>
 <main>
@@ -108,9 +142,17 @@ html.embedded.heat-finished #raceArea{background:#112e36}
 <button id="gasButton" disabled>ACELERAR</button>
 </div>
 <p><small>Mantén pulsado ACELERAR y ajusta el porcentaje. En las curvas, demasiado gas puede provocar una salida de pista y una espera de 2,5 segundos.</small></p>
-<div id="finalBoard" hidden><h2 id="resultTitle">Resultado provisional</h2><div id="scoreLines"></div></div>
+<div id="finalBoard" class="online-results" hidden>
+  <h2 id="resultTitle" class="sr-only">Resultado provisional</h2>
+  <div id="scoreLines"></div>
+  <div class="online-results-actions">
+    <button id="onlineResultRematch" class="primary" type="button" hidden>🔁 Revancha</button>
+    <button id="onlineResultChat" type="button">💬 Comentar carrera</button>
+    <button id="onlineResultBack" type="button">← Volver atrás</button>
+  </div>
+</div>
 </section>
 </main>
 <footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
-<script type="module" src="./src/live-duel.mjs?v=0.15.75"></script>
+<script type="module" src="./src/live-duel.mjs?v=0.15.76"></script>
 </body></html>
