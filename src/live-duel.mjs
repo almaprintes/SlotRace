@@ -1,7 +1,7 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
 import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.78";
-import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase} from "./online-rejoin.mjs?v=0.15.78";
+import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase,reconnectRoomFromCode,canAutoReconnectHeat} from "./online-rejoin.mjs?v=0.15.78";
 import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.78";
 import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.78";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
@@ -18,6 +18,33 @@ let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0,lastPeerChatAt=0;
 let pendingRematchCode=null,rematchRequested=false,rematchBusy=false;
 let localGameActive=false,peerCanContinue=false,lastPeerStateAt=0,lastReadySentAt=0;
 let reconnectTimer=null,reconnectBusy=false;
+let localGameReady=false,peerGameReady=false,rejoinStartPending=false;
+let autoReconnectTimer=null,lastAutoReconnectAt=0;
+function readyToAutoReconnect(){
+ return canAutoReconnectHeat({role,phase,connected,peerOnline,
+  peerGameReady,localGameReady,guestTrackReady,sharedTrack,
+  guestId:room?.guest_id,pending:rejoinStartPending});
+}
+function scheduleAutoReconnect(){
+ if(!readyToAutoReconnect()||autoReconnectTimer!==null||
+  Date.now()-lastAutoReconnectAt<4000)return;
+ autoReconnectTimer=setTimeout(()=>{
+  autoReconnectTimer=null;
+  if(!readyToAutoReconnect())return;
+  lastAutoReconnectAt=Date.now();
+  void startHeat();
+ },900);
+}
+function requestPrepareRejoin(){
+ if(phase!=="paused"||!sharedTrack||!embedded||!role)return;
+ notifyGame("prepareRejoin",{track:sharedTrack,role,heat,opponent:peerNick()});
+}
+function sendEarlierScores(){
+ if(role!=="host"||heat!==2||!connected||!channel||!room||
+  !Number.isFinite(scores[1].host)||!Number.isFinite(scores[1].guest))return;
+ void channel.send({type:"broadcast",event:"earlier-scores",
+  payload:{roomId:room.id,userId:account.id,heat:1,scores:{...scores[1]}}}).catch(()=>{});
+}
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
 function notifyGame(kind,detail={}){
@@ -34,7 +61,7 @@ function saveLiveRecovery(){
 }
 function pauseForReconnect(reason="Conexión perdida · esperando al otro piloto"){
  if(!["racing","countdown","resume-countdown"].includes(phase))return;
- phase="paused";peerCanContinue=false;lastReadySentAt=0;
+ phase="paused";peerCanContinue=false;peerGameReady=false;lastReadySentAt=0;
  activateControls(false);setStatus("⏸ PISTA EN ESPERA");
  notice(reason);saveLiveRecovery();updateRoom();
  notifyGame("networkHold",{reason});
@@ -47,7 +74,8 @@ function announceRejoinReady(){
  if(Date.now()-lastReadySentAt<1600)return;
  lastReadySentAt=Date.now();
  void channel.send({type:"broadcast",event:"rejoin-ready",payload:{
-  roomId:room.id,userId:account.id,heat,canContinue:localGameActive
+  roomId:room.id,userId:account.id,heat,canContinue:localGameActive,
+   gameReady:localGameReady
  }}).catch(()=>{});
 }
 function announceTrack(){
@@ -61,6 +89,7 @@ function trackAccepted(loan){
   " · "+loan.types.length+" piezas"+(role==="guest"?" · Prestada para esta carrera":"");
  $("trackSharedName").hidden=false;
  saveLiveRecovery();updateRoom();
+ requestPrepareRejoin();
 }
 const myNick=()=>role==="host"?room?.host_nick:room?.guest_nick;
 const peerNick=()=>role==="host"?room?.guest_nick:room?.host_nick;
@@ -109,13 +138,13 @@ function updateRoom(){
    ((heat===0&&room.state==="waiting")||
     (heat===1&&phase==="between"&&room.state==="heat1"&&
       local?.done&&remote?.done));
-  const reconnectReady=phase==="paused"&&joined&&connected&&peerOnline&&
-   Boolean(sharedTrack)&&guestTrackReady;
-  btn.disabled=!(ready||reconnectReady);
-  btn.textContent=phase==="paused"?
+  const reconnectReady=readyToAutoReconnect();
+  btn.disabled=rejoinStartPending||!(ready||reconnectReady);
+  btn.textContent=rejoinStartPending?"⏳ Sincronizando manga":phase==="paused"?
     (peerCanContinue&&localGameActive?"▶ Reanudar manga":"🏁 Repetir manga interrumpida"):
     heat===0?"🏁 Empezar primera manga":
     heat===1?"🏁 Iniciar segunda manga":"Carrera finalizada";
+  scheduleAutoReconnect();
  }
  const rematch=$("onlineResultRematch");
  if(rematch){
@@ -152,7 +181,11 @@ function updatePresence(){
   const members=Object.values(state).flat();
   peerOnline=members.some(item=>item?.userId&&item.userId!==account?.id);
  }catch(_){peerOnline=false;}
- if(wasOnline&&!peerOnline)pauseForReconnect("Tu compañero se ha desconectado · esperando a que vuelva.");
+ if(wasOnline&&!peerOnline){
+  peerGameReady=false;
+  if(role==="host")guestTrackReady=false;
+  pauseForReconnect("Tu compañero se ha desconectado · esperando a que vuelva.");
+ }
  if(peerOnline)announceRejoinReady();
  updateRoom();
 }
@@ -161,8 +194,9 @@ async function subscribe(){
  reconnectBusy=true;
  try{
  if(channel){try{await api.removeChannel(channel);}catch(_){ }channel=null;}
- connected=false;peerOnline=false;
- const topic="slotrace-live:"+room.id;
+ connected=false;peerOnline=false;peerGameReady=false;
+  if(role==="host")guestTrackReady=false;
+  const topic="slotrace-live:"+room.id;
  channel=api.channel(topic,{config:{private:true,broadcast:{self:false,ack:true},presence:{key:account.id}}})
   .on("presence",{event:"sync"},updatePresence)
   .on("broadcast",{event:"track-request"},()=>{
