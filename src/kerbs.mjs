@@ -1,6 +1,6 @@
 // Pianos de curva puramente visuales: ni el trazado ni la física cambian.
 // La salida son polígonos en mm mundiales para reutilizar en Canvas 2D.
-import {CATALOG,TRACK_WIDTH} from "./track.mjs?v=0.15.74";
+import {CATALOG,TRACK_WIDTH} from "./track.mjs?v=0.15.75";
 
 export const KERB_STYLE=Object.freeze({
  stripeLength:30,
