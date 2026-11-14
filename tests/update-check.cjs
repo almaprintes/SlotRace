@@ -25,7 +25,7 @@ const fs=require("node:fs"),path=require("node:path");
  assert.match(upgrade,/No elimines la PWA/);
  assert.equal(isNewerVersion("0.14.61"),false);
  assert.equal(isNewerVersion("0.15.79"),false);
- assert.equal(isNewerVersion("0.15.79"),true);
+ assert.equal(isNewerVersion("0.15.80"),true);
  assert.equal(isNewerVersion("1.0.0"),true);
  assert.equal(isNewerVersion("0.14.56"),false);
  assert.equal(isNewerVersion("0.15.9"),false);
