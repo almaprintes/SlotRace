@@ -3060,7 +3060,7 @@ function handleOnlineMessage(event){
   }else if(msg.kind==="slotrace:online:openChat"){
    onlineChat.openPanel();
   }else if(msg.kind==="slotrace:online:goBack"){
-   closeLiveDuels();
+   menuRace();
   }else if(msg.kind==="slotrace:online:chatMessage"){
    onlineChat.receive(msg.message);
   }else if(msg.kind==="slotrace:online:chatError"){
