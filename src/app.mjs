@@ -2235,7 +2235,7 @@ function openLiveDuels(){
 }
 function closeLiveDuels(){
  if(typeof window.confirm==="function"&&
-   !window.confirm("¿Salir del duelo? Se cerrará la conexión con tu compañero."))return false;
+   !window.confirm("¿Salir de la pista online? Se cerrará la conexión con tu compañero."))return false;
  return menuRace();
 }
 function raceSelectCircuit(id){
@@ -3797,7 +3797,7 @@ function updateUI(){
  // y construcción recuperamos el identificador habitual del juego.
  $("mastBrand").hidden=state.mode==="menu";
  $("mastWelcome").hidden=state.mode!=="menu";
- const labels={menu:"INICIO",raceLobby:"COMPETIR",online:"DUELO EN DIRECTO",build:"CONSTRUIR",library:"CIRCUITOS",
+ const labels={menu:"INICIO",raceLobby:"COMPETIR",online:"PISTA DE SLOT ONLINE",build:"CONSTRUIR",library:"CIRCUITOS",
   garage:"GARAJE",store:"TIENDA",settings:"AJUSTES",race:"CARRERA",results:"RESULTADOS"};
  $("mastMode").textContent=labels[state.mode]||"SLOTRACE";
  // El mando de pilotaje no comparte pantalla con herramientas de montaje.
