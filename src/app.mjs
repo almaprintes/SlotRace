@@ -1,21 +1,21 @@
-import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.79";
-import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.79";
-import {readOnlineRejoin,clearOnlineRejoin} from "./online-rejoin.mjs?v=0.15.79";
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.79";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.79";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.79";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.79";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.79";
+import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.80";
+import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.80";
+import {readOnlineRejoin,clearOnlineRejoin} from "./online-rejoin.mjs?v=0.15.80";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.80";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.80";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.80";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.80";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.80";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.79";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.79";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.79";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.79";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.79";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.79";
+import {duelSummary} from "./race-results.mjs?v=0.15.80";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.80";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.80";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.80";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.80";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.80";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2247,7 +2247,7 @@ function openLiveDuels(){
  onlineChat.reset();
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.79";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.80";
  return true;
 }
 function closeLiveDuels(){
@@ -7139,7 +7139,7 @@ protectOrphanDraft();palette();initEvents();updateUI();resize();
   }
  }catch(_){}
 
-window.slotraceLab={version:"DEV 0.15.79",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.80",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},

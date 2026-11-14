@@ -1,9 +1,9 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.79";
-import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase,reconnectRoomFromCode,canAutoReconnectHeat} from "./online-rejoin.mjs?v=0.15.79";
-import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.79";
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.79";
+import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.80";
+import {readOnlineRejoin,persistOnlineRejoin,clearOnlineRejoin,restoredOnlinePhase,reconnectRoomFromCode,canAutoReconnectHeat} from "./online-rejoin.mjs?v=0.15.80";
+import {buildOnlineResultModel,renderOnlineResultBoard} from "./online-results.mjs?v=0.15.80";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.80";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
