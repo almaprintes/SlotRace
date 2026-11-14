@@ -3305,3 +3305,9 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .online-duel-toolbar button{min-height:40px;padding:7px 10px;border-radius:10px;border:1px solid #72919a;color:white;background:#214353;font-size:12px;font-weight:850;white-space:nowrap}
 .online-duel-iframe{border:0;width:100%;height:100%;flex:1;min-height:0;display:block;background:#07141e}
 @media(max-width:390px){.online-duel-toolbar strong{font-size:10px}.online-duel-toolbar button{font-size:11px;padding:7px}}
+
+/* DEV 0.15.72 · Pista online: HUD de carrera original. */
+.online-race-indicator{position:absolute;z-index:6;left:9px;right:9px;top:9px;
+ background:#083a39d9;border:1px solid #4de2c8;color:white;font-size:12px;
+ font-weight:900;line-height:1.45;padding:8px 11px;border-radius:12px;
+ pointer-events:none;white-space:normal;text-shadow:0 1px 3px #001a1f}
