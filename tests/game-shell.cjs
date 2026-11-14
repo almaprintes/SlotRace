@@ -57,7 +57,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.70");
+ assert.equal(game.version,"DEV 0.15.71");
  // Integración real: ejecuta raceClock desde app.mjs, no solo el módulo de eventos.
  game.raceClock.reset();
  game.raceClock.start(1000);
@@ -1295,5 +1295,5 @@ const path=require("node:path");
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.70: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.71: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
