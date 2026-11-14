@@ -260,7 +260,9 @@ function sendState(now){
  if(!connected||!channel||!local||phase!=="racing")return;
  // Al cruzar meta se transmite el estado final inmediatamente, sin esperar el
  // siguiente intervalo: el rival debe enterarse incluso si deja de moverse.
- const interval=local.done?600:(embedded?80:115);
+ // La PWA padre ya envía una muestra cada ~115 ms; el iframe
+ // reenvía exactamente esa muestra, sin duplicar el limitador de red.
+ const interval=local.done?600:(embedded?0:115);
  if(now-lastSend<interval&&!(local.done&&!local.finalStateSent))return;
  lastSend=now;
  if(local.done)local.finalStateSent=true;
