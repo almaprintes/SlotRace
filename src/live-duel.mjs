@@ -1,6 +1,6 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.71";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.72";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
@@ -336,13 +336,14 @@ function frame(now){
   $("countdown").textContent=String(Math.max(1,Math.ceil(remaining/1000)));
   if(remaining<=0){phase="racing";$("countdown").hidden=true;activateControls(true);setStatus("CARRERA EN DIRECTO");}
  }
- if(phase==="racing"){
+ if(phase==="racing"&&!embedded){
   advanceCar(local,dt);
   if(local.done)activateControls(false);
   sendState(now);
   finishIfBoth();
  }
- updateStats();draw();requestAnimationFrame(frame);
+ if(!embedded){updateStats();draw();}
+ requestAnimationFrame(frame);
 }
 
 window.addEventListener("message",event=>{
