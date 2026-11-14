@@ -320,7 +320,9 @@ async function recoverPreviousRoom(){
    new Date(data.expires_at).getTime()<=Date.now())throw Error("Pista caducada o no autorizada");
   const recovered=restoredOnlinePhase(cache,data.state);
   if(!recovered)throw Error("No se pudo reconstruir esta pista");
-  room=data;role=cache.role;heat=cache.heat;phase=recovered;
+  room=data;role=cache.role;
+  heat=data.state==="heat2"?2:data.state==="heat1"?1:cache.heat;
+  phase=recovered;
   sharedTrack=cache.track||null;pendingTrack=null;
   guestTrackReady=false;peerCanContinue=false;localGameActive=false;
   if(Number.isFinite(cache.scores?.[1]?.host)&&Number.isFinite(cache.scores?.[1]?.guest)){
