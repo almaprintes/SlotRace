@@ -2989,7 +2989,7 @@ function startRealOnlineHeat({track,role,heat,startAt,opponent}){
  $("onlineRacingIndicator").hidden=false;
  $("onlineRacingIndicator").textContent="🏁 "+loan.name+" · "+state.sessionPlayerNick+
    " VS "+state.sessionOpponentNick+" · Manga "+heat+"/2";
- toast(loan.borrowed?"Pista prestada para esta carrera · no se guardará en tu colección.":"Pista online preparada.");
+ toast(role==="guest"?"Pista prestada para esta carrera · no se guardará en tu colección.":"Tu pista está preparada para competir online.");
 }
 function stopRealOnlineHeat(){
  if(!liveRace.active)return;
@@ -3035,7 +3035,8 @@ function handleOnlineMessage(event){
  if(!msg||typeof msg!=="object"||typeof msg.kind!=="string")return;
  try{
   if(msg.kind==="slotrace:online:requestTrack"){
-   postToLive("hostTrack",{track:ownLiveTrack()});
+   try{postToLive("hostTrack",{track:ownLiveTrack()});}
+   catch(err){postToLive("trackError",{error:err.message});}
   }else if(msg.kind==="slotrace:online:checkTrack"){
    const t=onlineTrackPreview(msg.track);
    postToLive("trackChecked",{ready:true,trackName:t.name});
