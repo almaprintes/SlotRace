@@ -5,8 +5,8 @@
 <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");</script>
 <meta name="theme-color" content="#091720">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>SlotRace · Pista de slot online BETA 0.15.71</title>
-<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.71">
+<title>SlotRace · Pista de slot online BETA 0.15.72</title>
+<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.72">
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ebf5f7;background:#07141e;--mint:#4ff0cb;--muted:#a8b9c7;--panel:#162634}
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#16404b,#07141e 55%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
@@ -56,10 +56,15 @@ html.embedded #setup h2{font-size:18px}
  html.embedded #trackCanvas{height:clamp(230px,39dvh,360px)}
  html.embedded button{font-size:13px}
 }
+html.embedded.heat-finished #trackCanvas,
+html.embedded.heat-finished #gasArea,
+html.embedded.heat-finished #countdown,
+html.embedded.heat-finished .stats{display:none!important}
+html.embedded.heat-finished #raceArea{background:#112e36}
 </style></head>
 <body>
 <header>
-<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.71</div></div>
+<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.72</div></div>
 <a href="./index.html">← Volver al juego</a>
 </header>
 <main>
@@ -67,7 +72,7 @@ html.embedded #setup h2{font-size:18px}
 <p>Dos móviles, dos carriles y un mismo óvalo. Tres vueltas por manga y cambio de carriles. Sin PT82 ni colisiones entre coches en esta primera prueba. Resultados no homologados.</p></div>
 <section id="setup" class="panel">
 <h2>👥 Prueba con un compañero</h2>
-<p style="margin:0 0 12px">Uno crea la pista y le dice el código al otro. Los dos debéis estar conectados con vuestra cuenta de CraftRace Studio.</p>
+<p style="margin:0 0 12px">Elige primero tu circuito en Competir. La pista se comparte solo para correr: tu compañero no necesita poseer las piezas ni las recibe en su inventario.</p>
 <p id="identity" class="muted">Comprobando cuenta CraftRace Studio…</p>
 <div class="row">
 <button id="createRoom" class="primary" disabled>Crear pista de slot</button>
@@ -79,6 +84,7 @@ html.embedded #setup h2{font-size:18px}
 <div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
 <p id="roomNames">Esperando al segundo piloto…</p>
 <p id="connectionStatus">Conectando…</p>
+<p id="trackSharedName" hidden class="tag">Comprobando la pista elegida…</p>
 <div class="row"><button id="startHeat" class="primary" disabled>Esperando rival</button></div>
 </div>
 <p id="notice" role="status" aria-live="polite"></p>
@@ -105,5 +111,5 @@ html.embedded #setup h2{font-size:18px}
 </section>
 </main>
 <footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
-<script type="module" src="./src/live-duel.mjs?v=0.15.71"></script>
+<script type="module" src="./src/live-duel.mjs?v=0.15.72"></script>
 </body></html>
