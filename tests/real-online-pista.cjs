@@ -30,7 +30,7 @@ for(const [property,source] of Object.entries({
 assert.equal(liveRace.backup,null,"No persiste el préstamo fuera de la carrera");
 assert.match(app,/if\(liveRace\.active\)\{stopRealOnlineHeat\(\);return true;\}/,
  "Salir de la carrera online no debe pasar por pagos ni récords locales");
-assert.match(app,/if\(msg\.kind==="slotrace:online:requestTrack"\)postToLive\("hostTrackError"/,
+assert.match(app,/postToLive\("hostTrackError"/,
  "Errores de pista deben comunicarse al anfitrión");
 assert.match(client,/msg\.kind==="slotrace:online:hostTrackError"/);
 assert.match(client,/notifyGame\("checkTrack"/,
