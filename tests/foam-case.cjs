@@ -49,7 +49,7 @@ const fs=require("node:fs"),path=require("node:path");
   return ra.radius-rb.radius||deg(a)-deg(b);
  });
  game.openWorkshop();
- assert.equal(game.version,"DEV 0.15.13");
+ assert.equal(game.version,"DEV 0.15.73");
  assert.equal(st.caseOpen,true,"Estante fijo visible por defecto");
  assert.equal(st.caseCategory,"straight","El estante comienza por Rectas");
  assert.equal(elements.get("caseStraights").attrs["aria-pressed"],"true");
