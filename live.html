@@ -90,6 +90,12 @@ html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoar
 .online-results-footnote{text-align:center;color:#91b0ba;font-size:11px;line-height:1.35;margin:0 0 2px}
 @media(max-width:380px){.online-results-hero{padding:16px 13px}.online-results-tile{padding:11px 8px}.online-results-grid{grid-template-columns:minmax(62px,.7fr) minmax(0,1fr) minmax(0,1fr)}}
 
+
+.online-results-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.online-results-actions button{min-height:49px;border:1px solid #4a7480;border-radius:13px;background:#223e4d;font-size:13px;font-weight:950;white-space:normal;padding:10px 8px}
+.online-results-actions button.primary{background:linear-gradient(120deg,#24cca1,#44e1c2);border-color:#6beecf;color:#072f2c}
+.online-results-actions button:first-child:not([hidden]){grid-column:1/-1}
+@media(min-width:650px){.online-results-actions{grid-template-columns:1.1fr 1fr 1fr}.online-results-actions button:first-child:not([hidden]){grid-column:auto}}
 </style></head>
 <body>
 <header>
@@ -136,7 +142,15 @@ html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoar
 <button id="gasButton" disabled>ACELERAR</button>
 </div>
 <p><small>Mantén pulsado ACELERAR y ajusta el porcentaje. En las curvas, demasiado gas puede provocar una salida de pista y una espera de 2,5 segundos.</small></p>
-<div id="finalBoard" class="online-results" hidden><h2 id="resultTitle" class="sr-only">Resultado provisional</h2><div id="scoreLines"></div></div>
+<div id="finalBoard" class="online-results" hidden>
+  <h2 id="resultTitle" class="sr-only">Resultado provisional</h2>
+  <div id="scoreLines"></div>
+  <div class="online-results-actions">
+    <button id="onlineResultRematch" class="primary" type="button" hidden>🔁 Revancha</button>
+    <button id="onlineResultChat" type="button">💬 Comentar carrera</button>
+    <button id="onlineResultBack" type="button">← Volver a Competir</button>
+  </div>
+</div>
 </section>
 </main>
 <footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
