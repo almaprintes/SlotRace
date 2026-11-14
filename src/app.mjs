@@ -1,18 +1,19 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.73";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.73";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.73";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.73";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.73";
+import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.74";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.74";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.74";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.74";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.74";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.74";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.73";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.73";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.73";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.73";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.73";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.73";
+import {duelSummary} from "./race-results.mjs?v=0.15.74";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.74";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.74";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.74";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.74";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.74";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2235,7 +2236,7 @@ function menuRace(){
 function openLiveDuels(){
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.73";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.74";
  return true;
 }
 function closeLiveDuels(){
@@ -2926,7 +2927,7 @@ function advanceRearDynamics(p,lane,dt){
 // No se contabiliza en récords ni en recompensas.
 
 const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
- remote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
+ remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
 function postToLive(kind,extra={}){
  const iframe=$("liveDuelFrame");
  if(iframe?.contentWindow&&iframe.src&&!iframe.src.endsWith("about:blank"))
@@ -2980,6 +2981,7 @@ function startRealOnlineHeat({track,role,heat,startAt,opponent}){
  liveRace.active=true;liveRace.role=role;liveRace.heat=heat;
  liveRace.startAt=startAt;liveRace.remote={distance:0,speed:0,lap:0,
   deslotFor:0,car:state.selectedCar==="spark"?"gripline":"spark",rearSlip:0};
+ liveRace.motion=createOnlineRivalMotion();liveRace.visualRemote=null;
  liveRace.laps=[];liveRace.done=false;liveRace.lastSent=0;
  state.flow="race";state.mode="race";state.run=false;state.raceStarted=false;
  state.gas=0;state.buttonGas=false;state.keyboardGas=false;
@@ -2999,7 +3001,8 @@ function stopRealOnlineHeat(){
  state.run=false;state.gas=0;state.keyboardGas=false;state.buttonGas=false;
  state.gamepadGas=0;state.raceStarted=false;
  cancelResumeCountdown();raceClock.reset();
- liveRace.active=false;liveRace.remote=null;liveRace.done=false;
+ liveRace.active=false;liveRace.remote=null;liveRace.motion=null;
+ liveRace.visualRemote=null;liveRace.done=false;
  $("onlineRacingIndicator").hidden=true;
  restoreLiveTrack();
  state.flow="race";state.mode="online";
@@ -3054,6 +3057,12 @@ function handleOnlineMessage(event){
    if(Number.isFinite(d.deslotFor))liveRace.remote.deslotFor=d.deslotFor;
    if(Number.isFinite(d.rearSlip))liveRace.remote.rearSlip=d.rearSlip;
    if(["spark","gripline"].includes(d.car))liveRace.remote.car=d.car;
+   // Solo el dibujo usa el colchón de muestras. Ni la física local ni
+   // los resultados reciben distancias inventadas/interpoladas.
+   const peerLane=1-state.lane;
+   const physicalLane=state.driveDirection===-1?1-peerLane:peerLane;
+   const length=state.track.lanes[physicalLane]?.total;
+   if(length)receiveOnlineRivalMotion(liveRace.motion,d,performance.now(),length);
   }else if(msg.kind==="slotrace:online:heatComplete"){
    if(liveRace.active&&msg.heat===liveRace.heat)stopRealOnlineHeat();
   }else if(msg.kind==="slotrace:online:networkError"){
@@ -3310,7 +3319,7 @@ function paintAiTest(ctx){
  ctx.restore();
 }
 function paintOnlineRival(ctx,onlyAbove=null){
- const peer=liveRace.remote;
+ const peer=liveRace.visualRemote||liveRace.remote;
  if(!peer||!state.track.valid)return;
  const lane=1-state.lane;
  const physical=state.driveDirection===-1?1-lane:lane;
@@ -6972,7 +6981,14 @@ function loop(now){
   ai:{lane:aiTest.lane,distance:aiTest.distance,deslot:!!aiTest.deslot}
  }:null;
  if(!justResumed){simulation(dt,now);advanceAiTest(dt,contactBefore);}
- if(liveRace.active)onlineSnapshot(now);
+ if(liveRace.active){
+  onlineSnapshot(now);
+  const opponent=1-state.lane;
+  const physical=state.driveDirection===-1?1-opponent:opponent;
+  const length=state.track.lanes[physical]?.total;
+  liveRace.visualRemote=length?
+   drawOnlineRivalMotion(liveRace.motion,now,length):null;
+ }
  if(state.run&&!justResumed){
   advanceLaneTransition(dt);
   for(const bumper of [state.bump,aiTest.bump])
@@ -6996,7 +7012,7 @@ aiTest.enabled=old?.aiEnabled===true;
 aiTest.level=AI_DIFFICULTIES[old?.aiLevel]?old.aiLevel:"easy";
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.73",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.74",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
