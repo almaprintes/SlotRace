@@ -3312,7 +3312,7 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  font-weight:900;line-height:1.45;padding:8px 11px;border-radius:12px;
  pointer-events:none;white-space:normal;text-shadow:0 1px 3px #001a1f}
 
-/* DEV 0.15.79 · Chat privado de pista, independiente de la física. */
+/* DEV 0.15.80 · Chat privado de pista, independiente de la física. */
 .online-chat-dock{position:fixed;z-index:180;right:max(12px,env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;color:#edfff9}
 .online-chat-dock[hidden],.online-chat-panel[hidden]{display:none!important}
 .online-chat-dock>*{pointer-events:auto}
@@ -3352,10 +3352,25 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .online-chat-dock.is-racing .online-chat-messages{display:none}
 @media(prefers-reduced-motion:reduce){.online-reaction-popup{animation:none}}
 
-/* DEV 0.15.79: permitir un segundo dedo en el chat mientras el primero
+/* DEV 0.15.80: permitir un segundo dedo en el chat mientras el primero
    mantiene la rueda del gas. Los botones no inician zoom/pan de Safari. */
 .online-chat-dock.is-racing,.online-chat-dock.is-racing button,
 .online-chat-dock.is-racing .online-chat-quick{touch-action:none;-webkit-user-select:none;user-select:none}
 .online-chat-dock.is-racing .online-chat-toggle{min-width:58px;min-height:58px}
 .online-chat-dock.is-racing .online-chat-panel{max-height:min(270px,45dvh)}
 .online-chat-dock.is-racing .online-chat-quick button{touch-action:none}
+
+
+/* Revancha online: aviso fijo y legible incluso al desplazarse por resultados. */
+.online-rematch-invite{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;background:#06151ccb;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);color:#effffb}
+.online-rematch-invite[hidden]{display:none!important}
+.online-rematch-card{width:min(420px,100%);padding:27px 20px 22px;border:2px solid #6df4c9;border-radius:22px;background:linear-gradient(145deg,#0d4745,#0b2433);box-shadow:0 18px 65px #000b;text-align:center}
+.online-rematch-symbol{display:block;font-size:55px;line-height:1.1}
+.online-rematch-card h2{margin:10px 0 12px;font:950 clamp(23px,6vw,31px)/1.15 system-ui,-apple-system,sans-serif;color:white}
+.online-rematch-card p{font:650 16px/1.5 system-ui,-apple-system,sans-serif;color:#d2e9e7;margin:0 0 24px;overflow-wrap:anywhere}
+.online-rematch-card p strong{color:#77ffdd}
+.online-rematch-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.online-rematch-actions button{min-width:0;min-height:54px;border-radius:13px;padding:11px 8px;font:900 14px/1.2 system-ui,-apple-system,sans-serif;white-space:normal;touch-action:manipulation}
+.online-rematch-accept{border:2px solid #5ff5bd;background:#1fc992;color:#07342c}
+.online-rematch-reject{border:1px solid #7e9ca4;background:#2c4955;color:white}
+@media(max-width:350px){.online-rematch-actions{grid-template-columns:1fr}.online-rematch-card{padding:22px 15px}}
