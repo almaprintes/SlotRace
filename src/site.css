@@ -3291,3 +3291,17 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .duel-table th,.duel-table td{overflow-wrap:anywhere;word-break:normal}
 .duel-table th{font-size:clamp(10px,2.6vw,13px)}
 .duel-caption{overflow-wrap:anywhere}
+
+/* DEV 0.15.71 · Multijugador experimental integrado en Competir */
+.race-live-cta{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;border:1px solid #54cdb8;border-radius:16px;padding:16px 17px;margin:3px 0 16px;text-align:left;background:linear-gradient(115deg,#093d3b,#146e65);color:#f1fffc;box-shadow:0 8px 20px #005f5352;min-height:70px}
+.race-live-cta>span:first-child{display:flex;flex-direction:column;gap:5px;line-height:1.2}
+.race-live-cta strong{font-size:clamp(16px,4vw,20px);font-weight:950}
+.race-live-cta small{font-size:11px;font-weight:750;color:#c4f5ea;line-height:1.4}
+.race-live-cta>span:last-child{font-size:31px}
+.online-duel-screen{min-width:0;min-height:0;background:#07141e;overflow:hidden}
+.online-duel-toolbar{flex:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:#112a36;color:#effffa;border-bottom:1px solid #406568}
+.online-duel-toolbar strong{font-size:12px;letter-spacing:.15px}
+.online-duel-toolbar small{font-weight:700;color:#6bffd7}
+.online-duel-toolbar button{min-height:40px;padding:7px 10px;border-radius:10px;border:1px solid #72919a;color:white;background:#214353;font-size:12px;font-weight:850;white-space:nowrap}
+.online-duel-iframe{border:0;width:100%;height:100%;flex:1;min-height:0;display:block;background:#07141e}
+@media(max-width:390px){.online-duel-toolbar strong{font-size:10px}.online-duel-toolbar button{font-size:11px;padding:7px}}
