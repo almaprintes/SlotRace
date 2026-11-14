@@ -1,5 +1,6 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
+import {cleanLiveChatText,validLiveChat} from "./online-chat-ui.mjs?v=0.15.76";
 import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.75";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
@@ -11,6 +12,7 @@ const embedded=new URLSearchParams(location.search).get("embedded")==="1";
 let sharedTrack=null,pendingTrack=null,guestTrackReady=false;
 let lastFrame=0,lastSend=0,roomPolling=false,refreshStamp=0,sequence=0,remoteSeq=0;
 const scores={1:{host:null,guest:null},2:{host:null,guest:null}};
+let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0;
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
 function notifyGame(kind,detail={}){
@@ -37,6 +39,26 @@ function activateControls(active){$("gasButton").disabled=!active;if(!active){$(
 function code(){const bytes=new Uint8Array(7);crypto.getRandomValues(bytes);return roomCode(bytes);}
 function safeError(error){return error?.message||String(error)||"Error de conexión";}
 function roleLabel(player){return player===role?" (tú)":"";}
+async function sendChat(text,kind="text"){
+ const cleaned=cleanLiveChatText(text);
+ if(!validLiveChat(cleaned,kind))return;
+ const now=Date.now();
+ if(now-lastChatAt<800){notifyGame("chatError",{message:"Espera un instante entre mensajes."});return;}
+ if(!connected||!channel||!room?.guest_id||!account){
+  notifyGame("chatError",{message:"Necesitas que ambos pilotos estén conectados."});return;
+ }
+ if(phase==="racing"&&kind!=="quick"){
+  notifyGame("chatError",{message:"Durante la carrera utiliza las reacciones rápidas."});return;
+ }
+ lastChatAt=now;
+ try{
+  const payload={roomId:room.id,userId:account.id,seq:++chatSequence,
+   text:cleaned,kind};
+  const result=await channel.send({type:"broadcast",event:"chat",payload});
+  if(result!=="ok")throw Error("Mensaje no confirmado por la conexión.");
+  notifyGame("chatMessage",{message:{...payload,nick:myNick()||account.nick,mine:true}});
+ }catch(error){notifyGame("chatError",{message:"No enviado: "+safeError(error)});}
+}
 function updateRoom(){
  if(!room)return;
  $("roomBox").hidden=false;$("roomCode").textContent=room.code;
@@ -106,6 +128,15 @@ async function subscribe(){
    guestTrackReady=payload?.ready===true;
    updateRoom();
   })
+  .on("broadcast",{event:"chat"},({payload})=>{
+   if(!room||!payload||payload.roomId!==room.id||
+     payload.userId!==(role==="host"?room.guest_id:room.host_id)||
+     !Number.isSafeInteger(payload.seq)||payload.seq<=lastPeerChatSeq||
+     !validLiveChat(payload.text,payload.kind))return;
+   lastPeerChatSeq=payload.seq;
+   notifyGame("chatMessage",{message:{roomId:room.id,kind:payload.kind,
+    text:cleanLiveChatText(payload.text),nick:peerNick()||"Rival",mine:false}});
+  })
   .on("broadcast",{event:"start"},({payload})=>{
    if(!payload||!Number.isFinite(payload.heat)||!Number.isFinite(payload.startAt))return;
    if(payload.heat!==heat+1)return;
@@ -136,6 +167,7 @@ async function subscribe(){
    try{await channel.track({userId:account.id,nick:account.nick});}
    catch(e){notice("No se pudo anunciar presencia: "+safeError(e),true);}
    notice("Conexión privada activada. Preparados para competir.");
+   notifyGame("chatReady",{roomId:room.id});
    await checkRoom();updatePresence();
    if(embedded){
     if(role==="host")notifyGame("requestTrack");
@@ -144,6 +176,7 @@ async function subscribe(){
   }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
    connected=false;peerOnline=false;activateControls(false);
    notice("Se perdió la conexión de la pista. Regresa a Competir y vuelve a entrar.",true);
+   notifyGame("chatClosed");
    notifyGame("networkError",{message:"Se perdió la conexión con el otro piloto"});
    updateRoom();
   }
@@ -153,6 +186,8 @@ async function enterRoom(next,playerRole){
  room=next;role=playerRole;phase="idle";heat=0;
  sharedTrack=null;pendingTrack=null;guestTrackReady=false;
  local=null;remote=null;sequence=0;remoteSeq=0;
+ chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;
+ notifyGame("chatReset",{roomId:next.id});
  updateRoom();notice("Conectando canal privado…");
  await subscribe();await checkRoom();
 }
@@ -352,7 +387,9 @@ window.addEventListener("message",event=>{
  if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
  const msg=event.data;
  if(!msg||typeof msg.kind!=="string")return;
- if(msg.kind==="slotrace:online:trackError"){
+ if(msg.kind==="slotrace:online:chatSend"&&embedded){
+  void sendChat(msg.text,msg.chatKind);
+ }else if(msg.kind==="slotrace:online:trackError"){
   notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
  }else if(msg.kind==="slotrace:online:hostTrackError"&&role==="host"){
   sharedTrack=null;guestTrackReady=false;
