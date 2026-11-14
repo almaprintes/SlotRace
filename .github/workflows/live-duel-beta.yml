@@ -25,6 +25,8 @@ jobs:
         run: node tests/ingame-live.cjs
       - name: Validar préstamo temporal de pistas sin propiedad de piezas
         run: node tests/live-track-loan.cjs
+      - name: Verificar retorno de la pista prestada y carrera integrada
+        run: node tests/real-online-pista.cjs
       - name: Verificar ovalo, carriles y vuelta local
         run: node tests/live-duel.cjs
       - name: Verificar menu multijugador dentro del juego
