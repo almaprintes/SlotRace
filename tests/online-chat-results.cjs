@@ -65,5 +65,15 @@ const fs=require("node:fs");
  assert.ok(results.includes("textContent=String(value)")&&
   !results.includes("innerHTML"),"Los nicks nunca pasan por innerHTML");
  assert.match(app,/onlineSnapshot\(now\)/,"El cronometraje sigue independiente del chat");
+ assert.match(iframe,/notifyGame\("rematchRequest"/,"La invitación debe llegar al juego principal");
+ assert.match(iframe,/event:"rematch-declined"/,"Se permite rechazar sin reenvíos");
+ assert.match(iframe,/rematchDeclined/,"No se repite el aviso de revancha tras rechazar");
+ assert.match(app,/showOnlineRematchInvite\(msg\.nick\)/);
+ assert.match(app,/postToLive\("rematchRespond",\{accept:true\}\)/);
+ assert.match(app,/postToLive\("rematchRespond",\{accept:false\}\)/);
+ assert.match(page,/id="onlineRematchInvite"[^>]+role="dialog"/);
+ assert.match(page,/id="onlineRematchAccept"/);
+ assert.match(page,/id="onlineRematchReject"/);
+ assert.match(css,/\.online-rematch-invite\{position:fixed/);
  console.log("SlotRace: 5s antispam, emojis temporales grandes, privacidad, ganador, margen, 2 mangas y render seguro OK");
 })().catch(e=>{console.error(e);process.exitCode=1});
