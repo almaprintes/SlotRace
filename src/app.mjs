@@ -11,7 +11,8 @@ import {duelSummary} from "./race-results.mjs?v=0.15.71";
 import {duelPresentation} from "./duel-presentation.mjs?v=0.15.71";
 import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.71";
 import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.71";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.71";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.72";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.72";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2903,6 +2904,144 @@ function advanceRearDynamics(p,lane,dt){
 }
 // Rival experimental: estado independiente y choques geométricos locales.
 // No se contabiliza en récords ni en recompensas.
+
+const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
+ remote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
+function postToLive(kind,extra={}){
+ const iframe=$("liveDuelFrame");
+ if(iframe?.contentWindow&&iframe.src&&!iframe.src.endsWith("about:blank"))
+  iframe.contentWindow.postMessage({kind:"slotrace:online:"+kind,...extra},location.origin);
+}
+function ownLiveTrack(){
+ if(!raceTrackReady())throw Error("Selecciona primero un circuito cerrado con una salida/meta en Competir.");
+ return prepareSlotTrackLoan({types:state.types,origin:state.origin,
+  raisedParts:state.bridgeParts,direction:state.driveDirection,name:circuitLabel()});
+}
+function restoreLiveTrack(){
+ const b=liveRace.backup;
+ if(!b)return;
+ state.types=b.types;state.origin=b.origin;state.bridgeParts=b.bridgeParts;
+ state.track=b.track;state.driveDirection=b.direction;state.circuitName=b.name;
+ state.workBoard=b.workBoard;state.sessionMode=b.sessionMode;state.targetLaps=b.targetLaps;
+ state.selectedCar=b.selectedCar;state.lane=b.lane;state.sessionLaps=b.sessionLaps;
+ state.twoLegPhase=b.twoLegPhase;
+ liveRace.backup=null;
+}
+function onlineTrackPreview(loan){
+ const parsed=openSlotTrackLoan(loan);
+ liveRace.loan=loan;liveRace.trackReady=true;
+ return parsed;
+}
+function startRealOnlineHeat({track,role,heat,startAt,opponent}){
+ if(!["host","guest"].includes(role)||![1,2].includes(heat)||
+  !Number.isFinite(startAt))throw Error("Salida online inválida");
+ const loan=onlineTrackPreview(track);
+ if(liveRace.active)return;
+ if(!liveRace.backup)liveRace.backup={
+  types:state.types,origin:state.origin,bridgeParts:state.bridgeParts,
+  track:state.track,direction:state.driveDirection,name:state.circuitName,
+  workBoard:state.workBoard,sessionMode:state.sessionMode,targetLaps:state.targetLaps,
+  selectedCar:state.selectedCar,lane:state.lane,sessionLaps:state.sessionLaps,
+  twoLegPhase:state.twoLegPhase
+ };
+ state.types=loan.types.slice();state.origin={...loan.origin};
+ state.bridgeParts=loan.raisedParts.slice();state.track=loan.track;
+ state.driveDirection=loan.direction;state.circuitName=loan.name;
+ state.workBoard={...loan.track.board};
+ state.sessionMode="lap_race";state.targetLaps=3;state.twoLegPhase=heat;
+ resetLap();
+ const laneA=laneAIndex();
+ state.lane=((role==="host"&&heat===1)||(role==="guest"&&heat===2))?laneA:1-laneA;
+ state.sessionLaps=[];state.sessionName=loan.name;
+ state.sessionPlayerNick=$("mastWelcomeNick")?.textContent?.trim()||"Piloto";
+ state.sessionOpponentNick=String(opponent||"Rival").slice(0,32);
+ state.sessionCar=state.selectedCar;
+ aiTest.active=false;
+ liveRace.active=true;liveRace.role=role;liveRace.heat=heat;
+ liveRace.startAt=startAt;liveRace.remote={distance:0,speed:0,lap:0,
+  deslotFor:0,car:state.selectedCar==="spark"?"gripline":"spark",rearSlip:0};
+ liveRace.laps=[];liveRace.done=false;liveRace.lastSent=0;
+ state.flow="race";state.mode="race";state.run=false;state.raceStarted=false;
+ state.gas=0;state.buttonGas=false;state.keyboardGas=false;
+ state.latest=performance.now();
+ updateUI();resize();resetFollowCamera();
+ $("raceResumeCountdown").hidden=false;
+ $("raceResumeCount").textContent="3";
+ $("raceResumeCountdown").querySelector("small").textContent="SALIDA ONLINE · PISTA DE SLOT";
+ $("raceResumeCountdown").querySelector("span").textContent="Tu rival corre en el otro carril";
+ $("onlineRacingIndicator").hidden=false;
+ $("onlineRacingIndicator").textContent="🏁 "+loan.name+" · "+state.sessionPlayerNick+
+   " VS "+state.sessionOpponentNick+" · Manga "+heat+"/2";
+ toast(loan.borrowed?"Pista prestada para esta carrera · no se guardará en tu colección.":"Pista online preparada.");
+}
+function stopRealOnlineHeat(){
+ if(!liveRace.active)return;
+ state.run=false;state.gas=0;state.keyboardGas=false;state.buttonGas=false;
+ state.gamepadGas=0;state.raceStarted=false;
+ cancelResumeCountdown();raceClock.reset();
+ liveRace.active=false;liveRace.remote=null;liveRace.done=false;
+ $("onlineRacingIndicator").hidden=true;
+ restoreLiveTrack();
+ state.flow="race";state.mode="online";
+ updateUI();resize();
+}
+function onlineFinishLap(crossingElapsedMs){
+ const seconds=state.seconds;
+ if(seconds<.05)return;
+ liveRace.laps.push(seconds);
+ state.sessionLaps.push({heat:liveRace.heat,number:liveRace.laps.length,
+  lane:state.lane,seconds});
+ state.seconds=0;state.lap++;
+ raceClock.nextLap(crossingElapsedMs);
+ if(liveRace.laps.length>=state.targetLaps){
+  liveRace.done=true;state.run=false;state.speed=0;state.gas=0;
+  raceClock.pause(performance.now(),{record:false});
+  toast("Has terminado esta manga. Esperando al otro piloto.");
+  liveRace.lastSent=0;
+ }else toast("Vuelta online "+liveRace.laps.length+" · "+format(seconds)+" s");
+}
+function onlineSnapshot(now){
+ if(!liveRace.active||!state.raceStarted)return;
+ if(now-liveRace.lastSent<105)return;
+ liveRace.lastSent=now;
+ const elapsed=liveRace.laps.reduce((a,b)=>a+b,0)+state.seconds;
+ postToLive("localState",{data:{
+  distance:state.distance,speed:state.speed,elapsed,
+  lap:liveRace.laps.length,lapTimes:liveRace.laps.slice(),
+  done:liveRace.done,deslotFor:state.penalty,
+  rearSlip:state.rearSlip,car:state.selectedCar
+ }});
+}
+function handleOnlineMessage(event){
+ if(event.origin!==location.origin||event.source!==$("liveDuelFrame")?.contentWindow)return;
+ const msg=event.data;
+ if(!msg||typeof msg!=="object"||typeof msg.kind!=="string")return;
+ try{
+  if(msg.kind==="slotrace:online:requestTrack"){
+   postToLive("hostTrack",{track:ownLiveTrack()});
+  }else if(msg.kind==="slotrace:online:checkTrack"){
+   const t=onlineTrackPreview(msg.track);
+   postToLive("trackChecked",{ready:true,trackName:t.name});
+  }else if(msg.kind==="slotrace:online:start"){
+   startRealOnlineHeat(msg);
+  }else if(msg.kind==="slotrace:online:remoteState"){
+   if(!liveRace.active||msg.heat!==liveRace.heat||!msg.data)return;
+   const d=msg.data;
+   if(Number.isFinite(d.distance)&&d.distance>=0)liveRace.remote.distance=d.distance;
+   if(Number.isFinite(d.speed)&&d.speed>=0)liveRace.remote.speed=d.speed;
+   if(Number.isFinite(d.lap))liveRace.remote.lap=d.lap;
+   if(Number.isFinite(d.deslotFor))liveRace.remote.deslotFor=d.deslotFor;
+   if(Number.isFinite(d.rearSlip))liveRace.remote.rearSlip=d.rearSlip;
+   if(["spark","gripline"].includes(d.car))liveRace.remote.car=d.car;
+  }else if(msg.kind==="slotrace:online:heatComplete"){
+   if(liveRace.active&&msg.heat===liveRace.heat)stopRealOnlineHeat();
+  }else if(msg.kind==="slotrace:online:networkError"){
+   toast(msg.message||"Problema de red; carrera no homologada.");
+  }
+ }catch(err){postToLive("trackChecked",{ready:false,error:err.message});toast(err.message);}
+}
+window.addEventListener("message",handleOnlineMessage);
+
 const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[]};
 // Arranque y cambio de manga comparten esta única regla.
 // El rival SIEMPRE ocupa el carril contrario al jugador; la guía física
