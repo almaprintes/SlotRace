@@ -96,6 +96,11 @@ export function initOnlineChat({send,isRacing}){
   opened=!opened;if(opened){unread=0;list.scrollTop=list.scrollHeight;}
   refresh();
  });
+ function openPanel(){
+  if(!active)return false;
+  opened=true;unread=0;list.scrollTop=list.scrollHeight;
+  refresh();return true;
+ }
  $("onlineChatClose").addEventListener("click",()=>{opened=false;refresh();});
  form.addEventListener("submit",event=>{
   event.preventDefault();
@@ -108,5 +113,5 @@ export function initOnlineChat({send,isRacing}){
   quick.append(button);
  }
  reset();
- return{ready,reset,receive,refresh,showError};
+ return{ready,reset,receive,refresh,showError,openPanel};
 }
