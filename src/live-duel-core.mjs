@@ -1,5 +1,5 @@
 // Piloto online aislado del cronometraje oficial y de las fisicas DEV.
-import {STARTER,START,buildTrack,positionAt} from "./track.mjs?v=0.15.70";
+import {STARTER,START,buildTrack,positionAt} from "./track.mjs?v=0.15.71";
 export const LIVE_LAPS=3;
 export const LIVE_TYPES=Object.freeze(STARTER.map((id,i)=>i===0?"START350":id));
 export const LIVE_TRACK=buildTrack(LIVE_TYPES,START,[]);
