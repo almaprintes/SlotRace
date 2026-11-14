@@ -10,7 +10,9 @@ const fs=require("node:fs");
  assert(src.includes('state.sessionPlayerNick'),"El resultado debe mantener el nick del usuario");
  const html=fs.readFileSync("index.html","utf8");
  assert(html.includes('id="resultsReward"'),"Debe mostrarse el motivo del abono o rechazo");
- assert(html.includes('href="./live.html"'),"El duelo online debe ser accesible desde el juego");
+ assert(html.includes('id="raceLiveDuel"'),"El duelo online debe tener acceso directo dentro de Competir");
+ assert(html.includes('id="onlineScreen"'),"El duelo debe abrir una pantalla interna");
+ assert(!html.includes('href="./live.html"'),"No deben salir enlaces externos al multijugador");
  const factory=new Function("state","walletActive","playerEconomy","playerEconomyClient",
   "playerModeRevision","storage","crypto","$","economyPanel","toast",
   src.slice(a,b)+"\nreturn awardLocalRaceCredits");
