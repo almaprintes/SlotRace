@@ -208,8 +208,13 @@ function updateStats(){
   (remote?.deslotFor>0?" · SALIDA DE PISTA":"");
 }
 function sendState(now){
- if(!connected||!channel||!local||phase!=="racing"||now-lastSend<115)return;
+ if(!connected||!channel||!local||phase!=="racing")return;
+ // Al cruzar meta se transmite el estado final inmediatamente, sin esperar el
+ // siguiente intervalo: el rival debe enterarse incluso si deja de moverse.
+ const interval=local.done?600:115;
+ if(now-lastSend<interval&&!(local.done&&!local.finalStateSent))return;
  lastSend=now;
+ if(local.done)local.finalStateSent=true;
  const data={distance:local.distance,speed:local.speed,elapsed:local.elapsed,
   lap:local.lap,lapTimes:local.lapTimes.slice(),done:local.done,deslotFor:local.deslotFor};
  void channel.send({type:"broadcast",event:"state",
