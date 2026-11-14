@@ -352,6 +352,11 @@ window.addEventListener("message",event=>{
  if(!msg||typeof msg.kind!=="string")return;
  if(msg.kind==="slotrace:online:trackError"){
   notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
+ }else if(msg.kind==="slotrace:online:hostTrackError"&&role==="host"){
+  sharedTrack=null;guestTrackReady=false;
+  notice("No se puede compartir esta pista: "+(msg.error||"circuito inválido")+
+   ". Vuelve a Competir, elige un circuito cerrado y crea una pista de slot.",true);
+  updateRoom();
  }else if(msg.kind==="slotrace:online:hostTrack"&&role==="host"&&msg.track){
   trackAccepted(msg.track);
   announceTrack();
