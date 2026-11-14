@@ -25,6 +25,7 @@ export function initOnlineChat({send,isRacing}){
   badge.hidden=!unread;
   badge.textContent=unread>9?"9+":String(unread);
   const racing=isRacing();
+  dock.classList.toggle("is-racing",racing);
   form.hidden=racing;
   quick.setAttribute("aria-label",racing?"Reacciones rápidas durante la carrera":"Mensajes rápidos");
  }
