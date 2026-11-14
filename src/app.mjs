@@ -3036,7 +3036,7 @@ function handleOnlineMessage(event){
  try{
   if(msg.kind==="slotrace:online:requestTrack"){
    try{postToLive("hostTrack",{track:ownLiveTrack()});}
-   catch(err){postToLive("trackError",{error:err.message});}
+   catch(err){postToLive("hostTrackError",{error:err.message});}
   }else if(msg.kind==="slotrace:online:checkTrack"){
    const t=onlineTrackPreview(msg.track);
    postToLive("trackChecked",{ready:true,trackName:t.name});
