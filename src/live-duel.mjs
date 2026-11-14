@@ -253,6 +253,13 @@ async function subscribe(){
    updateRoom();
    if(rematchRequested)void joinRematch(pendingRematchCode);
   })
+  .on("broadcast",{event:"earlier-scores"},({payload})=>{
+   if(role!=="guest"||heat!==2||payload?.roomId!==room?.id||
+    payload.userId!==room.host_id||payload.heat!==1||
+    !Number.isFinite(payload.scores?.host)||!Number.isFinite(payload.scores?.guest))return;
+   scores[1].host=payload.scores.host;scores[1].guest=payload.scores.guest;
+   saveLiveRecovery();
+  })
   .on("broadcast",{event:"interruption"},({payload})=>{
    if(!room||payload?.roomId!==room.id||
      payload.userId!==(role==="host"?room.guest_id:room.host_id)||
@@ -268,14 +275,17 @@ async function subscribe(){
     pauseForReconnect("El otro móvil ha vuelto a la pista. Preparando reanudación.");
    if(phase==="paused"){
     peerCanContinue=payload.canContinue===true;
+    peerGameReady=payload.gameReady===true;
     announceRejoinReady();
+    sendEarlierScores();
     updateRoom();
    }
   })
   .on("broadcast",{event:"reconnect-start"},({payload})=>{
    if(role!=="guest"||phase!=="paused"||
      payload?.roomId!==room?.id||payload.userId!==room.host_id||
-     payload.heat!==heat||!Number.isFinite(payload.startAt))return;
+     payload.heat!==heat||!Number.isFinite(payload.startAt)||
+    !localGameReady)return;
    if(payload.restart===true)prepareHeat(heat,payload.startAt,true);
    else resumeInterruptedHeat(payload.startAt);
   })
@@ -319,8 +329,8 @@ async function subscribe(){
    if(phase==="paused")announceRejoinReady();
   }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED"){
    pauseForReconnect("Se perdió la conexión de red. Reconectando la misma pista…");
-   connected=false;peerOnline=false;
-   notifyGame("chatError",{message:"Sin conexión · recuperando la pista"});
+   connected=false;peerOnline=false;peerGameReady=false;
+    notifyGame("chatError",{message:"Sin conexión · recuperando la pista"});
    updateRoom();
    if(reconnectTimer===null)reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;if(room&&!connected)void subscribe();
