@@ -88,14 +88,32 @@ export function initOnlineChat({send,isRacing}){
   if(remaining){showError("Espera "+Math.ceil(remaining/1000)+" s para enviar otro mensaje.");return false;}
   lastSentAt=now;
   status.textContent="";
+  // En el mismo toque que envía una reacción, despejar la pista.
+  // No esperar respuesta de Realtime para retirar la bandeja.
+  if(kind==="quick"){opened=false;unread=0;refresh();}
   send(value,kind);
   return true;
  }
- toggle.addEventListener("click",()=>{
+ function togglePanel(){
   if(!active)return;
   opened=!opened;if(opened){unread=0;list.scrollTop=list.scrollHeight;}
   refresh();
- });
+ }
+ function bindMultitouch(button,callback){
+  // iOS Safari puede suprimir click cuando el primer dedo mantiene el
+  // acelerador capturado. El segundo dedo usa su propio pointerdown.
+  button.addEventListener("pointerdown",event=>{
+   if(!isRacing()||event.pointerType!=="touch")return;
+   event.preventDefault();event.stopPropagation();
+   callback();
+  },{passive:false});
+  button.addEventListener("click",event=>{
+   if(isRacing()&&event.detail===0){callback();return;}
+   if(isRacing()&&event.pointerType==="touch")return;
+   callback();
+  });
+ }
+ bindMultitouch(toggle,togglePanel);
  function openPanel(){
   if(!active)return false;
   opened=true;unread=0;list.scrollTop=list.scrollHeight;
@@ -109,7 +127,7 @@ export function initOnlineChat({send,isRacing}){
  for(const preset of LIVE_CHAT_PRESETS){
   const button=document.createElement("button");
   button.type="button";button.textContent=preset;
-  button.addEventListener("click",()=>submit(preset,"quick"));
+  bindMultitouch(button,()=>submit(preset,"quick"));
   quick.append(button);
  }
  reset();

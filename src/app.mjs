@@ -1,20 +1,21 @@
-import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.76";
-import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.76";
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.76";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.76";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.76";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.76";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.76";
+import {createOnlineRivalMotion,receiveOnlineRivalMotion,drawOnlineRivalMotion} from "./online-rival-motion.mjs?v=0.15.77";
+import {initOnlineChat} from "./online-chat-ui.mjs?v=0.15.77";
+import {readOnlineRejoin,clearOnlineRejoin} from "./online-rejoin.mjs?v=0.15.77";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.77";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.77";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.77";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.77";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.77";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.76";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.76";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.76";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.76";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.76";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.76";
+import {duelSummary} from "./race-results.mjs?v=0.15.77";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.77";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.77";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.77";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.77";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.77";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -2150,6 +2151,8 @@ function advanceLaneTransition(dt){
  if(change.elapsed>=change.duration)state.laneTransition=null;
 }
 function openWorkshop(){
+ if((liveRace.active||state.mode==="online")&&typeof clearOnlineRejoin==="function")
+  clearOnlineRejoin(localStorage);
  if(liveRace.active||state.mode==="online")onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  cancelResumeCountdown();
@@ -2164,6 +2167,8 @@ function openWorkshop(){
 }
 function showHub(which){
  if(!hubScreens[which])return false;
+ if(which!=="online"&&typeof clearOnlineRejoin==="function")
+  clearOnlineRejoin(localStorage);
  if(which!=="online"&&(liveRace.active||state.mode==="online"))onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  // Desmontar la conexión experimental al salir. Nunca dejar un
@@ -2176,6 +2181,7 @@ function showHub(which){
  updateUI();return true;
 }
 function showMenu(){
+ if(typeof clearOnlineRejoin==="function")clearOnlineRejoin(localStorage);
  onlineChat.reset();
  if(liveRace.active)stopRealOnlineHeat();
  if(state.mode==="online")$("liveDuelFrame").src="about:blank";
@@ -2241,7 +2247,7 @@ function openLiveDuels(){
  onlineChat.reset();
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.76";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.77";
  return true;
 }
 function closeLiveDuels(){
@@ -2673,6 +2679,27 @@ function pause(){
 }
 function updateResumeCountdown(now){
  const overlay=$("raceResumeCountdown");
+ if(liveRace.active&&liveRace.hold){
+  const remaining=liveRace.resumeAt-Date.now();
+  if(liveRace.resumeAt>0&&remaining<=0){
+   liveRace.hold=false;liveRace.resumeAt=0;overlay.hidden=true;
+   state.latest=now;
+   if(state.raceStarted&&!liveRace.done){
+    state.run=true;raceClock.resume(now);primeMotorAudio();
+   }
+   onlineChat.refresh();toast("🏁 ¡Carrera online reanudada!");
+   return true;
+  }
+  overlay.hidden=false;
+  overlay.querySelector("small").textContent=liveRace.resumeAt?
+   "REANUDACIÓN ONLINE":"⏸ ESPERANDO RECONEXIÓN";
+  $("raceResumeCount").textContent=liveRace.resumeAt?
+   String(Math.max(1,Math.ceil(remaining/1000))):"⏸";
+  overlay.querySelector("span").textContent=liveRace.resumeAt?
+   "Ambos pilotos continúan en la misma posición":
+   "El crono está detenido · Esperando al otro piloto";
+  return true;
+ }
  if(liveRace.active&&!state.raceStarted){
   const remaining=liveRace.startAt-Date.now();
   if(remaining>0){
@@ -2932,12 +2959,13 @@ function advanceRearDynamics(p,lane,dt){
 // No se contabiliza en récords ni en recompensas.
 
 const liveRace={active:false,backup:null,loan:null,role:null,heat:0,startAt:0,
- remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false};
+ remote:null,motion:null,visualRemote:null,laps:[],done:false,lastSent:0,opponent:"",trackReady:false,
+ hold:false,resumeAt:0};
 // Los arneses de físicas que evalúan el motor sin importaciones usan un chat
 // inerte. En el navegador se inicializa siempre la interfaz real.
 const onlineChat=typeof initOnlineChat==="function"?initOnlineChat({
  send:(text,kind)=>postToLive("chatSend",{text,chatKind:kind}),
- isRacing:()=>liveRace.active&&state.mode==="race"
+ isRacing:()=>liveRace.active&&!liveRace.hold&&state.mode==="race"
 }):{reset(){},ready(){},refresh(){},receive(){},showError(){}};
 function postToLive(kind,extra={}){
  const iframe=$("liveDuelFrame");
@@ -2964,11 +2992,12 @@ function onlineTrackPreview(loan){
  liveRace.loan=loan;liveRace.trackReady=true;
  return parsed;
 }
-function startRealOnlineHeat({track,role,heat,startAt,opponent}){
+function startRealOnlineHeat({track,role,heat,startAt,opponent,restart=false}){
  if(!["host","guest"].includes(role)||![1,2].includes(heat)||
   !Number.isFinite(startAt))throw Error("Salida online inválida");
  const loan=onlineTrackPreview(track);
- if(liveRace.active)return;
+ if(liveRace.active&&restart)stopRealOnlineHeat();
+ else if(liveRace.active)return;
  if(!liveRace.backup)liveRace.backup={
   types:state.types,origin:state.origin,bridgeParts:state.bridgeParts,
   track:state.track,direction:state.driveDirection,name:state.circuitName,
@@ -2989,7 +3018,8 @@ function startRealOnlineHeat({track,role,heat,startAt,opponent}){
  state.sessionOpponentNick=String(opponent||"Rival").slice(0,32);
  state.sessionCar=state.selectedCar;
  aiTest.active=false;
- liveRace.active=true;liveRace.role=role;liveRace.heat=heat;
+ liveRace.active=true;liveRace.hold=false;liveRace.resumeAt=0;
+ liveRace.role=role;liveRace.heat=heat;
  liveRace.startAt=startAt;liveRace.remote={distance:0,speed:0,lap:0,
   deslotFor:0,car:state.selectedCar==="spark"?"gripline":"spark",rearSlip:0};
  liveRace.motion=createOnlineRivalMotion();liveRace.visualRemote=null;
@@ -3013,7 +3043,8 @@ function stopRealOnlineHeat(){
  state.run=false;state.gas=0;state.keyboardGas=false;state.buttonGas=false;
  state.gamepadGas=0;state.raceStarted=false;
  cancelResumeCountdown();raceClock.reset();
- liveRace.active=false;liveRace.remote=null;liveRace.motion=null;
+ liveRace.active=false;liveRace.hold=false;liveRace.resumeAt=0;
+ liveRace.remote=null;liveRace.motion=null;
  liveRace.visualRemote=null;liveRace.done=false;
  $("onlineRacingIndicator").hidden=true;
  restoreLiveTrack();
@@ -3036,7 +3067,7 @@ function onlineFinishLap(crossingElapsedMs){
  }else toast("Vuelta online "+liveRace.laps.length+" · "+format(seconds)+" s");
 }
 function onlineSnapshot(now){
- if(!liveRace.active||!state.raceStarted)return;
+ if(!liveRace.active||liveRace.hold||!state.raceStarted)return;
  // Una muestra local cada 230 ms: máximo aproximado 4,4 envíos/s.
  if(now-liveRace.lastSent<230)return;
  liveRace.lastSent=now;
@@ -3048,12 +3079,32 @@ function onlineSnapshot(now){
   rearSlip:state.rearSlip,car:state.selectedCar
  }});
 }
+function holdOnlineRace(reason){
+ if(!liveRace.active)return;
+ const now=performance.now();
+ if(!liveRace.hold&&raceClock.running)raceClock.pause(now,{record:false});
+ liveRace.hold=true;liveRace.resumeAt=0;state.run=false;state.latest=now;
+ state.gas=0;state.gamepadGas=0;state.keyboardGas=false;state.buttonGas=false;
+ state.triggerGesture=null;$("trigger").classList.remove("pressed");
+ const overlay=$("raceResumeCountdown");
+ overlay.hidden=false;
+ overlay.querySelector("small").textContent="⏸ PISTA ONLINE EN ESPERA";
+ overlay.querySelector("span").textContent=reason||"Esperando reconexión del otro piloto";
+ $("raceResumeCount").textContent="⏸";
+ onlineChat.refresh();updateHud();syncMotorAudio(now,true);
+}
 function handleOnlineMessage(event){
  if(event.origin!==location.origin||event.source!==$("liveDuelFrame")?.contentWindow)return;
  const msg=event.data;
  if(!msg||typeof msg!=="object"||typeof msg.kind!=="string")return;
  try{
-  if(msg.kind==="slotrace:online:chatReset"){
+  if(msg.kind==="slotrace:online:networkHold"){
+   holdOnlineRace(msg.reason);
+  }else if(msg.kind==="slotrace:online:networkResumeAt"){
+   if(liveRace.active&&liveRace.hold&&Number.isFinite(msg.startAt)){
+    liveRace.resumeAt=msg.startAt;onlineChat.refresh();
+   }
+  }else if(msg.kind==="slotrace:online:chatReset"){
    onlineChat.reset(msg.roomId);
   }else if(msg.kind==="slotrace:online:chatReady"){
    onlineChat.ready(msg.roomId);
@@ -3093,8 +3144,7 @@ function handleOnlineMessage(event){
   }else if(msg.kind==="slotrace:online:heatComplete"){
    if(liveRace.active&&msg.heat===liveRace.heat)stopRealOnlineHeat();
   }else if(msg.kind==="slotrace:online:networkError"){
-   if(liveRace.active)stopRealOnlineHeat();
-   toast(msg.message||"Problema de red; carrera no homologada.");
+   if(liveRace.active)holdOnlineRace(msg.message||"Conexión perdida. Esperando al rival.");
   }
  }catch(err){
   if(msg.kind==="slotrace:online:requestTrack")postToLive("hostTrackError",{error:err.message});
@@ -6983,6 +7033,11 @@ function initEvents(){
  });
  window.addEventListener("keyup",e=>{if(e.code==="Space"||e.code==="ArrowUp")state.keyboardGas=false;});
  const pauseBackground=()=>{const now=performance.now();
+ if(liveRace.active){
+  postToLive("localHold");
+  holdOnlineRace("Has cambiado de pantalla. Esperando reconexión de ambos.");
+  return;
+ }
  cancelResumeCountdown();
  state.buttonGas=false;state.keyboardGas=false;state.gas=0;state.triggerGesture=null;
  if(state.mode==="race"){raceClock.pause(now);state.run=false;}
@@ -7039,7 +7094,17 @@ aiTest.enabled=old?.aiEnabled===true;
 aiTest.level=AI_DIFFICULTIES[old?.aiLevel]?old.aiLevel:"easy";
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.76",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+ // Una PWA cerrada durante una carrera vuelve a la misma pista al abrirse.
+ // La manga interrumpida se reinicia si se perdió el motor local.
+ try{
+  if(typeof readOnlineRejoin==="function"){
+   const previous=readOnlineRejoin(localStorage);
+   if(previous&&["racing","paused","countdown","between"].includes(previous.phase))
+    requestAnimationFrame(()=>openLiveDuels());
+  }
+ }catch(_){}
+
+window.slotraceLab={version:"DEV 0.15.77",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
