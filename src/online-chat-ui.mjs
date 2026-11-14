@@ -14,6 +14,29 @@ export function validLiveChat(text,kind="text"){
  if(!clean)return false;
  return kind==="quick"?LIVE_CHAT_PRESETS.includes(clean):kind==="text"&&clean.length<=160;
 }
+// Un toque físico equivale siempre a una acción, incluso cuando Android
+// emite pointerdown(touch) seguido de click(mouse/undefined).
+// Mantiene el segundo dedo libre mientras el primero acelera.
+export function bindSingleChatTap(button,callback,isRacing,clock=()=>performance.now()){
+ let lastTouchAt=-Infinity;
+ button.addEventListener("pointerdown",event=>{
+  if(!isRacing()||event.pointerType!=="touch")return;
+  event.preventDefault();
+  event.stopPropagation();
+  lastTouchAt=clock();
+  callback();
+ },{passive:false});
+ button.addEventListener("click",event=>{
+  // No confiar en click.pointerType: Chrome Android puede informar
+  // mouse o no informar nada tras una pulsación touch.
+  if(clock()-lastTouchAt<750){
+   event.preventDefault();
+   event.stopPropagation();
+   return;
+  }
+  callback(); // ratón, teclado y accesibilidad: un único click normal
+ });
+}
 export function initOnlineChat({send,isRacing}){
  const $=id=>document.getElementById(id);
  const dock=$("onlineChatDock"),panel=$("onlineChatPanel"),toggle=$("onlineChatToggle");
@@ -99,21 +122,10 @@ export function initOnlineChat({send,isRacing}){
   opened=!opened;if(opened){unread=0;list.scrollTop=list.scrollHeight;}
   refresh();
  }
- function bindMultitouch(button,callback){
-  // iOS Safari puede suprimir click cuando el primer dedo mantiene el
-  // acelerador capturado. El segundo dedo usa su propio pointerdown.
-  button.addEventListener("pointerdown",event=>{
-   if(!isRacing()||event.pointerType!=="touch")return;
-   event.preventDefault();event.stopPropagation();
-   callback();
-  },{passive:false});
-  button.addEventListener("click",event=>{
-   if(isRacing()&&event.detail===0){callback();return;}
-   if(isRacing()&&event.pointerType==="touch")return;
-   callback();
-  });
- }
- bindMultitouch(toggle,togglePanel);
+ // La pulsación táctil ya se atiende en pointerdown; en Android
+ // puede llegar después un click sintético sin pointerType="touch".
+ // Registramos ese toque para consumir su click y evitar abrir+cerrar.
+ bindSingleChatTap(toggle,togglePanel,isRacing);
  function openPanel(){
   if(!active)return false;
   opened=true;unread=0;list.scrollTop=list.scrollHeight;
@@ -127,7 +139,7 @@ export function initOnlineChat({send,isRacing}){
  for(const preset of LIVE_CHAT_PRESETS){
   const button=document.createElement("button");
   button.type="button";button.textContent=preset;
-  bindMultitouch(button,()=>submit(preset,"quick"));
+  bindSingleChatTap(button,()=>submit(preset,"quick"),isRacing);
   quick.append(button);
  }
  reset();
