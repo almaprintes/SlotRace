@@ -57,7 +57,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>0},requestAnimationFrame,class{observe(){}},navigator,TestFile
  );
  const game=window.slotraceLab,st=game.state;
- assert.equal(game.version,"DEV 0.15.79");
+ assert.equal(game.version,"DEV 0.15.78");
  // Integración real: ejecuta raceClock desde app.mjs, no solo el módulo de eventos.
  game.raceClock.reset();
  game.raceClock.start(1000);
@@ -949,14 +949,7 @@ const path=require("node:path");
  const viewStart=game.camera.makeView(elements.get("raceCanvas"),"race");
  assert.equal(viewStart.cx,startPose.x);
  assert.equal(viewStart.cy,startPose.y);
- // La pista pudo cambiar desde el primer control de cámara. Comparar
- // con la vista general del MISMO circuito, no con un trazado anterior.
- const currentMode=st.cameraMode;
- st.cameraMode="general";
- const sameTrackGeneralView=game.camera.makeView(elements.get("raceCanvas"),"race");
- st.cameraMode=currentMode;
- assert.ok(Math.abs(viewStart.scale/sameTrackGeneralView.scale-2)<1e-9,
-  "Seguimiento mantiene el zoom 2× con el mismo circuito");
+ assert.ok(Math.abs(viewStart.scale/standardView.scale-2)<1e-9);
  game.camera.updateFollowCamera(.05);
  assert.equal(st.followCamera.x,startPose.x,
   "Parado dentro de la zona de tolerancia: la cámara no se mueve");
@@ -1097,8 +1090,7 @@ const path=require("node:path");
  game.showHub("settings");
  elements.get("settingsCameraGeneral").listeners.click[0]();
  assert.equal(st.cameraMode,"general");
- assert.ok(game.camera.makeView(elements.get("raceCanvas"),"race").scale>0,
-  "La cámara general calcula la escala de la pista actual");
+ assert.equal(game.camera.makeView(elements.get("raceCanvas"),"race").scale,standardView.scale);
  assert.equal(JSON.parse(saved.get("slotrace-lab-10")).cameraMode,"general",
   "La vista general vuelve a estar seleccionada y guardada");
 
@@ -1303,5 +1295,5 @@ const path=require("node:path");
   fn({target:{value:"qualifying"}});
  assert.equal(elements.get("raceTargetLapsRow").hidden,true);
  assert.equal(st.sessionMode,"qualifying");
- console.log("SlotRace DEV 0.15.79: orientación física, modo campeonato local y carreras de 3 vueltas OK");
+ console.log("SlotRace DEV 0.15.78: orientación física, modo campeonato local y carreras de 3 vueltas OK");
 })().catch(err=>{console.error(err);process.exitCode=1;});
