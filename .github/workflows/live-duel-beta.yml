@@ -2,7 +2,7 @@ name: SlotRace · beta multijugador y recompensas
 
 on:
   push:
-    branches: [main, feat/live-duel-beta-0.15.70]
+    branches: [main, feat/ingame-live-beta-0.15.71]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -23,6 +23,8 @@ jobs:
           node --check src/live-duel-core.mjs
       - name: Verificar ovalo, carriles y vuelta local
         run: node tests/live-duel.cjs
+      - name: Verificar menu multijugador dentro del juego
+        run: node tests/live-duel-ingame.cjs
       - name: Probar CR, nicks y casos sin recompensa
         run: node tests/trial-rewards.cjs
       - name: Comparativa y cronometro de dos mangas
