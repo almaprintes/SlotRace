@@ -350,7 +350,9 @@ window.addEventListener("message",event=>{
  if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
  const msg=event.data;
  if(!msg||typeof msg.kind!=="string")return;
- if(msg.kind==="slotrace:online:hostTrack"&&role==="host"&&msg.track){
+ if(msg.kind==="slotrace:online:trackError"){
+  notice("No se puede compartir tu pista: "+(msg.error||"revisa su cierre y meta"),true);
+ }else if(msg.kind==="slotrace:online:hostTrack"&&role==="host"&&msg.track){
   trackAccepted(msg.track);
   announceTrack();
  }else if(msg.kind==="slotrace:online:trackChecked"&&role==="guest"){
