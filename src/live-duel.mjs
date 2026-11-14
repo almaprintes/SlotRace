@@ -1,6 +1,6 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {cleanLiveChatText,validLiveChat} from "./online-chat-ui.mjs?v=0.15.76";
+import {cleanLiveChatText,validLiveChat,CHAT_COOLDOWN_MS,chatCooldownRemaining} from "./online-chat-ui.mjs?v=0.15.76";
 import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.75";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
@@ -12,7 +12,7 @@ const embedded=new URLSearchParams(location.search).get("embedded")==="1";
 let sharedTrack=null,pendingTrack=null,guestTrackReady=false;
 let lastFrame=0,lastSend=0,roomPolling=false,refreshStamp=0,sequence=0,remoteSeq=0;
 const scores={1:{host:null,guest:null},2:{host:null,guest:null}};
-let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0;
+let chatSequence=0,lastPeerChatSeq=0,lastChatAt=0,lastPeerChatAt=0;
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
 function notifyGame(kind,detail={}){
@@ -43,7 +43,8 @@ async function sendChat(text,kind="text"){
  const cleaned=cleanLiveChatText(text);
  if(!validLiveChat(cleaned,kind))return;
  const now=Date.now();
- if(now-lastChatAt<800){notifyGame("chatError",{message:"Espera un instante entre mensajes."});return;}
+ const remaining=chatCooldownRemaining(lastChatAt,now);
+ if(remaining){notifyGame("chatError",{message:"Espera "+Math.ceil(remaining/1000)+" segundos para enviar otro mensaje."});return;}
  if(!connected||!channel||!room?.guest_id||!account){
   notifyGame("chatError",{message:"Necesitas que ambos pilotos estén conectados."});return;
  }
@@ -133,6 +134,9 @@ async function subscribe(){
      payload.userId!==(role==="host"?room.guest_id:room.host_id)||
      !Number.isSafeInteger(payload.seq)||payload.seq<=lastPeerChatSeq||
      !validLiveChat(payload.text,payload.kind))return;
+   const now=Date.now();
+   if(chatCooldownRemaining(lastPeerChatAt,now))return;
+   lastPeerChatAt=now;
    lastPeerChatSeq=payload.seq;
    notifyGame("chatMessage",{message:{roomId:room.id,kind:payload.kind,
     text:cleanLiveChatText(payload.text),nick:peerNick()||"Rival",mine:false}});
@@ -186,7 +190,7 @@ async function enterRoom(next,playerRole){
  room=next;role=playerRole;phase="idle";heat=0;
  sharedTrack=null;pendingTrack=null;guestTrackReady=false;
  local=null;remote=null;sequence=0;remoteSeq=0;
- chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;
+ chatSequence=0;lastPeerChatSeq=0;lastChatAt=0;lastPeerChatAt=0;
  notifyGame("chatReset",{roomId:next.id});
  updateRoom();notice("Conectando canal privado…");
  await subscribe();await checkRoom();
