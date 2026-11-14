@@ -13,7 +13,7 @@ Dos pilotos humanos, cada uno en su dispositivo y con su cuenta CraftRace Studio
 
 ## Arquitectura propuesta
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
   A[SlotRace móvil del anfitrión] -->|Inputs numerados: gas y cambio de guía| S[Servicio de simulación autoritativa]
   B[SlotRace móvil del invitado] -->|Inputs numerados: gas y cambio de guía| S
@@ -23,38 +23,38 @@ flowchart TD
   B -->|Identidad y sala| C
   S -->|Resultado y hash de simulación| C
   C --> R[Historial, recompensas y competiciones]
-\`\`\`
+```
 
 ### 1. Identidad y salas
-- **Auth**: usuario real de \`auth.users.id\`; nick de \`public.craft_accounts.nickname\`; no usar datos editables de \`user_metadata\` como autorización.
-- Supabase \`slotrace_live_rooms\`: ID UUID, código corto, host, invitado, nicks de la sesión, estado, vencimiento y reglas.
-- Acceso privado mediante código; **RLS** y políticas en \`realtime.messages\`. Solo los dos miembros pueden observar o emitir eventos del canal privado. No enviar claves secretas al cliente.
-- Para la versión completa: persistir \`track_recipe_id\`, \`track_hash\`, \`direction\`, \`physics_version\`, \`timing_version\`, \`vehicle_class\`, \`target_laps\`, \`ruleset\` y \`created_at\`.
+- **Auth**: usuario real de `auth.users.id`; nick de `public.craft_accounts.nickname`; no usar datos editables de `user_metadata` como autorización.
+- Supabase `slotrace_live_rooms`: ID UUID, código corto, host, invitado, nicks de la sesión, estado, vencimiento y reglas.
+- Acceso privado mediante código; **RLS** y políticas en `realtime.messages`. Solo los dos miembros pueden observar o emitir eventos del canal privado. No enviar claves secretas al cliente.
+- Para la versión completa: persistir `track_recipe_id`, `track_hash`, `direction`, `physics_version`, `timing_version`, `vehicle_class`, `target_laps`, `ruleset` y `created_at`.
 - Validar la receta al crear la sala, y enviar al invitado exactamente la misma pista, sentido y elevaciones. No depender de que ambos hayan construido manualmente la misma geometría.
 
 ### 2. Conducción y latencia
-- Cliente emite **comandos de mando** (gatillo cuantizado 0–100%, cambios de carril permitidos, botones) con \`seq\`, número de tick y firma de sesión.
+- Cliente emite **comandos de mando** (gatillo cuantizado 0–100%, cambios de carril permitidos, botones) con `seq`, número de tick y firma de sesión.
 - Simulador central recibe inputs y avanza con paso fijo (propuesta: 60 Hz); es autoridad sobre posiciones, descarrilamientos, contactos, vueltas y sanciones.
 - Para suavidad: snapshots con tick/posición/velocidad/estado a 10–20 Hz, interpolación del rival con un búfer de 100–150 ms y predicción/reconciliación de la conducción propia.
 - Supabase Realtime sirve bien para **presencia, sala, chat/estado y prototipado**. No equivale por sí mismo a un servidor autoritativo de física con tick fijo y baja latencia. La autoridad definitiva requerirá un servicio de sesión persistente (WebSocket con simulador en proceso), evaluando coste y escalabilidad antes de desplegarlo.
-- No utilizar \`Date.now()\` de cada móvil para homologar la salida. Distribuir \`start_tick\` o sincronización de reloj calculada con servidor y medir con tiempo monotónico.
+- No utilizar `Date.now()` de cada móvil para homologar la salida. Distribuir `start_tick` o sincronización de reloj calculada con servidor y medir con tiempo monotónico.
 - Al perder conexión: detener los inputs; congelar o neutralizar ese coche según una política reproducible; reconexión por token de miembro y snapshot; cancelar/invalidar si la pérdida supera el plazo. Nunca continuar simulando con un mando permanentemente acelerado.
 
 ### 3. Reglamentación e integridad
-- Reusar los módulos existentes \`timing-core\`, \`rear-contact\`, \`recovery-core\`, \`track\` y el estado de físicas ya probado. **Extraer** la lógica física de \`src/app.mjs\` a un núcleo portable e independiente del DOM; no copiar y divergir dos motores.
+- Reusar los módulos existentes `timing-core`, `rear-contact`, `recovery-core`, `track` y el estado de físicas ya probado. **Extraer** la lógica física de `src/app.mjs` a un núcleo portable e independiente del DOM; no copiar y divergir dos motores.
 - Resolver PT82 desde el mismo estado de los dos coches en el mismo tick: choques compartidos solo si se cruzan desde guías distintas; alcance por detrás aunque estén sobre la PT82 usa regla de alcance.
 - Registrar inputs, eventos, hashes por tick y metadatos de la versión física. El servidor debe validar vueltas y resultados antes de conceder premios oficiales; nunca aceptar un total enviado unilateralmente por el cliente.
 - Resultado final inmutable e idempotente con los dos tiempos por manga, sanciones y estado de homologación.
 - Evitar pagos duplicados por reconexión, revanchas y múltiples pestañas.
 
 ### 4. Estados de sala definitivos
-\`created → waiting → ready → countdown → heat1 → intermission → countdown → heat2 → finished\`.
-Salidas excepcionales: \`disconnected → reconnecting\`, \`abandoned\`, \`expired\`, \`void\`. Solo el servidor puede avanzar el estado de carrera. Ambos deben estar listos para cada manga; el intercambio de carriles es obligatorio.
+`created → waiting → ready → countdown → heat1 → intermission → countdown → heat2 → finished`.
+Salidas excepcionales: `disconnected → reconnecting`, `abandoned`, `expired`, `void`. Solo el servidor puede avanzar el estado de carrera. Ambos deben estar listos para cada manga; el intercambio de carriles es obligatorio.
 
 ## Alcance de la beta DEV 0.15.70
 **Se trata únicamente de una prueba técnica entre dos móviles, no del multijugador definitivo**.
 
-Implementado en rama \`feat/live-duel-beta-0.15.70\`:
+Implementado en rama `feat/live-duel-beta-0.15.70`:
 - Cuentas existentes CraftRace Studio, salas privadas de dos usuarios, código y enlace de invitación, nicks.
 - Canal privado Supabase Realtime con presencia, estado y retransmisión del coche; anfitrión lanza cada manga.
 - Un **óvalo prefijado común**, sin PT82; tres vueltas por manga, dos mangas y cambio de carriles.
@@ -63,7 +63,7 @@ Implementado en rama \`feat/live-duel-beta-0.15.70\`:
 
 ### Prueba de dos dispositivos
 1. Ambos inician sesión con **cuentas diferentes** y nicks distintos.
-2. Anfitrión entra en \`live.html\`, crea sala y comparte código; invitado abre \`live.html?room=CODIGO\` e introduce o confirma.
+2. Anfitrión entra en `live.html`, crea sala y comparte código; invitado abre `live.html?room=CODIGO` e introduce o confirma.
 3. Deben verse ambos nicks y conexión activa en ambas pantallas. Intentar un tercer dispositivo y verificar rechazo del código.
 4. Anfitrión lanza primera manga. Verificar cuenta atrás, control individual, transmisión de posiciones, deslot individual y las tres vueltas de cada piloto.
 5. Terminar la manga en ambos móviles. Ejecutar intercambio A ↔ B y completar segunda manga.
