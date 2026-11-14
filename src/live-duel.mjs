@@ -24,7 +24,7 @@ function updateRoom(){
  $("roomBox").hidden=false;$("roomCode").textContent=room.code;
  $("roomNames").textContent=(room.host_nick||"Anfitrión")+
   " VS "+(room.guest_nick||"Esperando piloto");
- $("identity").textContent="Sesión: "+account.nick+" · Sala "+room.code;
+ $("identity").textContent="Sesión: "+account.nick+" · Pista "+room.code;
  $("copyInvite").disabled=false;
  const joined=Boolean(room.guest_id);
  $("connectionStatus").textContent=joined?
@@ -55,9 +55,9 @@ async function checkRoom(){
   if(data){
    room=data;updateRoom();
    if(phase==="idle"&&data.state!=="waiting"&&!connected)
-    notice("El duelo ya comenzó. Conecta de nuevo o crea una sala nueva.",true);
+    notice("La carrera ya comenzó. Conecta de nuevo o crea otra pista.",true);
   }
- }catch(e){notice("No se puede comprobar la sala: "+safeError(e),true);}
+ }catch(e){notice("No se puede comprobar la pista: "+safeError(e),true);}
  finally{roomPolling=false;}
 }
 function updatePresence(){
@@ -128,7 +128,7 @@ async function create(){
   }
   if(error)throw error;
   await enterRoom(data,"host");
- }catch(e){notice("No se pudo crear la sala: "+safeError(e),true);$("createRoom").disabled=false;}
+ }catch(e){notice("No se pudo crear la pista: "+safeError(e),true);$("createRoom").disabled=false;}
 }
 async function join(){
  const value=$("joinCode").value.replace(/[^A-Z2-9]/gi,"").toUpperCase();
@@ -173,7 +173,7 @@ function finishIfBoth(){
  activateControls(false);
  scores[heat][role]=lapTotal(local.lapTimes);
  scores[heat][other()]=lapTotal(remote.lapTimes);
- setStatus(heat===1?"MANGA 1 COMPLETADA":"DUELO COMPLETADO");
+ setStatus(heat===1?"MANGA 1 COMPLETADA":"CARRERA COMPLETADA");
  $("finalBoard").hidden=false;
  if(heat===1){
   $("resultTitle").textContent="Manga 1 completada · Cambio de carriles";
@@ -304,7 +304,7 @@ async function init(){
   if(!room?.code)return;
   try{
    if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(room.code);
-   else if(navigator.share)await navigator.share({title:"Duelo SlotRace",text:"Código para unirte desde SlotRace → Competir: "+room.code});
+   else if(navigator.share)await navigator.share({title:"Pista de slot",text:"Código para unirte desde SlotRace → Competir: "+room.code});
    else throw Error("Dile este código a tu compañero: "+room.code);
    notice("Código listo: "+room.code+" · Tu compañero lo escribe dentro de SlotRace.");
   }catch(e){
