@@ -57,7 +57,7 @@ const fs=require("node:fs");
  }
  const elements=Object.fromEntries(["resultsStats","resultsLaps","resultsSectionHeading","resultsSectionCaption"].map(id=>[id,makeNode("div")]));
  const document={createElement:makeNode};
- const sampleState={sessionLaps:player,targetLaps:5,twoLegPhase:2,sessionCar:"gripline",selectedCar:"gripline"};
+ const sampleState={sessionPlayerNick:"Juanfrikazo-dev",sessionOpponentNick:"IA",sessionLaps:player,targetLaps:5,twoLegPhase:2,sessionCar:"gripline",selectedCar:"gripline"};
  const sampleAi={sessionLaps:ai};
  const draw=new Function("document","state","aiTest","CAR_MODELS","format","$","duelPresentation",
    app.slice(a,b)+"\nreturn renderDuelResults;");
@@ -76,7 +76,7 @@ const fs=require("node:fs");
  assert.equal(tables.filter(n=>n.className.includes("duel-lap-table")).length,2);
  const headers=all.filter(n=>n.tag==="th");
  assert.ok(headers.some(n=>n.textContent==="Ventaja"));
- assert.ok(all.some(n=>n.textContent==="Tú +2,832 s"));
+ assert.ok(all.some(n=>n.textContent==="Juanfrikazo-dev +2,832 s"));
  assert.ok(all.some(n=>n.textContent==="3,124 s"&&n.className.includes("is-best")));
  assert.equal(elements.resultsSectionHeading.textContent,"Vuelta a vuelta");
  assert.equal(elements.resultsSectionCaption.textContent,"DOS MANGAS");
@@ -109,15 +109,15 @@ const fs=require("node:fs");
  sampleState.twoLegPhase=2;fn();
  assert.ok(elements.resultsStats.textContent.includes("34,322 s"));
  assert.ok(elements.resultsStats.textContent.includes("58,157 s"));
- assert.ok(elements.resultsStats.textContent.includes("Tú +23,835 s"));
- assert.ok(elements.resultsStats.textContent.includes("Tú +7,012 s"));
- assert.ok(elements.resultsLaps.textContent.includes("Tú +1,872 s"));
+ assert.ok(elements.resultsStats.textContent.includes("Juanfrikazo-dev +23,835 s"));
+ assert.ok(elements.resultsStats.textContent.includes("Juanfrikazo-dev +7,012 s"));
+ assert.ok(elements.resultsLaps.textContent.includes("Juanfrikazo-dev +1,872 s"));
  assert.ok(elements.resultsLaps.textContent.includes("IA +1,177 s"));
  // Una sesión intermedia no anuncia ganador ni inventa la manga pendiente.
  sampleState.sessionLaps=player.slice(0,5);sampleState.twoLegPhase=1;
  sampleAi.sessionLaps=ai.slice(0,5);
  fn();
  const interim=[];collect(elements.resultsStats);collect(elements.resultsLaps);
- assert.equal(elements.resultsStats.textContent.includes("¡HAS GANADO"),false);
+ assert.equal(elements.resultsStats.textContent.includes("¡VICTORIA DE"),false);
  console.log("Duel results responsive tables: 2 heats, 10 laps, winners, best laps, real DOM render, interim and missing data OK");
 })().catch(err=>{console.error(err);process.exitCode=1});

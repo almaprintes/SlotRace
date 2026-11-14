@@ -1,0 +1,31 @@
+name: SlotRace · beta multijugador y recompensas
+
+on:
+  push:
+    branches: [main, feat/live-duel-beta-0.15.70]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beta-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar sintaxis de los dos clientes
+        run: |
+          node --check src/app.mjs
+          node --check src/live-duel.mjs
+          node --check src/live-duel-core.mjs
+      - name: Verificar ovalo, carriles y vuelta local
+        run: node tests/live-duel.cjs
+      - name: Probar CR, nicks y casos sin recompensa
+        run: node tests/trial-rewards.cjs
+      - name: Comparativa y cronometro de dos mangas
+        run: node tests/duel-results.cjs
+      - name: Comprobar geometria de la PT82 sin regresiones
+        run: node tests/pt82.cjs
