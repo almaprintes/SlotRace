@@ -3134,7 +3134,7 @@ function handleOnlineMessage(event){
   }else if(msg.kind==="slotrace:online:openChat"){
    onlineChat.openPanel();
   }else if(msg.kind==="slotrace:online:goBack"){
-   hideOnlineRematchInvite();menuRace();
+   menuRace();hideOnlineRematchInvite();
   }else if(msg.kind==="slotrace:online:rematchRequest"){
    showOnlineRematchInvite(msg.nick);
   }else if(msg.kind==="slotrace:online:rematchDeclined"){
