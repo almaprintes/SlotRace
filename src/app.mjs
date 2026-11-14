@@ -3057,6 +3057,10 @@ function handleOnlineMessage(event){
    onlineChat.reset(msg.roomId);
   }else if(msg.kind==="slotrace:online:chatReady"){
    onlineChat.ready(msg.roomId);
+  }else if(msg.kind==="slotrace:online:openChat"){
+   onlineChat.openPanel();
+  }else if(msg.kind==="slotrace:online:goBack"){
+   closeLiveDuels();
   }else if(msg.kind==="slotrace:online:chatMessage"){
    onlineChat.receive(msg.message);
   }else if(msg.kind==="slotrace:online:chatError"){
