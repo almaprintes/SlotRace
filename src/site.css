@@ -3311,3 +3311,31 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  background:#083a39d9;border:1px solid #4de2c8;color:white;font-size:12px;
  font-weight:900;line-height:1.45;padding:8px 11px;border-radius:12px;
  pointer-events:none;white-space:normal;text-shadow:0 1px 3px #001a1f}
+
+/* DEV 0.15.76 · Chat privado de pista, independiente de la física. */
+.online-chat-dock{position:fixed;z-index:180;right:max(12px,env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;color:#edfff9}
+.online-chat-dock[hidden],.online-chat-panel[hidden]{display:none!important}
+.online-chat-dock>*{pointer-events:auto}
+.online-chat-dock.is-racing{top:clamp(88px,18dvh,165px);bottom:auto}
+.online-chat-toggle{display:flex;align-items:center;justify-content:center;gap:7px;position:relative;min-width:96px;min-height:46px;border-radius:24px;border:2px solid #69edc9;background:#12443f;color:#effffb;font-size:15px;font-weight:950;box-shadow:0 5px 22px #011015bb;touch-action:manipulation}
+.online-chat-toggle[aria-expanded=true]{background:#166954}
+.online-chat-unread{position:absolute;right:-6px;top:-8px;background:#e23056;color:white;border-radius:100px;padding:3px 7px;min-width:23px;font-size:11px;font-weight:950;line-height:1.4}
+.online-chat-panel{width:100%;display:flex;flex-direction:column;gap:9px;max-height:min(410px,65dvh);padding:12px;border-radius:17px;border:1px solid #63dabc;background:#0e232ff5;box-shadow:0 14px 38px #0009;overflow:hidden;backdrop-filter:blur(10px)}
+.online-chat-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid #ffffff24;padding-bottom:9px}
+.online-chat-heading strong{display:block;font-size:16px;font-weight:950;color:white}
+.online-chat-heading small{display:block;color:#9fb6c2;font-size:10px;line-height:1.35;margin-top:4px}
+.online-chat-heading button{padding:4px 8px;border:0;background:transparent;color:white;font-size:19px;min-height:28px;min-width:28px}
+.online-chat-messages{min-height:80px;max-height:200px;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:7px;padding:2px;-webkit-overflow-scrolling:touch}
+.online-chat-empty{color:#a1b8c5;font-size:12px;text-align:center;padding:20px 5px}
+.online-chat-item{max-width:90%;display:flex;align-items:flex-start;flex-direction:column;gap:3px;background:#2a3c4b;padding:8px 11px;border-radius:12px 12px 12px 3px;overflow-wrap:anywhere;font-size:13px;line-height:1.35}
+.online-chat-item strong{font-size:11px;color:#a6c8d6;font-weight:850}
+.online-chat-item.is-mine{align-self:flex-end;background:#136652;border-radius:12px 12px 3px 12px}
+.online-chat-item.is-mine strong{color:#b4ffe5}
+.online-chat-quick{display:flex;gap:6px;flex-wrap:wrap}
+.online-chat-quick button{min-height:35px;border-radius:9px;border:1px solid #4c7581;background:#244451;color:#effff9;padding:5px 9px;font-size:13px;font-weight:850;touch-action:manipulation}
+.online-chat-form{display:flex;align-items:center;gap:7px}
+.online-chat-form input{flex:1;min-width:0;min-height:41px;padding:9px 10px;background:#071b27;border:1px solid #4c6975;color:white;border-radius:10px;font:inherit;font-size:14px}
+.online-chat-form button{flex:none;border:0;border-radius:10px;background:#4bbd98;color:#092b26;min-height:41px;width:46px;font-size:19px;font-weight:950}
+.online-chat-status{display:block;min-height:0;color:#ffc4aa;font-size:11px;line-height:1.35}
+.online-chat-dock.is-racing .online-chat-panel{max-height:min(300px,45dvh)}
+@media(max-width:390px){.online-chat-dock{right:8px;width:min(340px,calc(100vw - 16px))}.online-chat-toggle{min-width:72px}.online-chat-panel{padding:10px}.online-chat-quick button{font-size:12px;padding:5px 8px}}
