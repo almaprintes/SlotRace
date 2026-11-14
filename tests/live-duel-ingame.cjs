@@ -14,7 +14,7 @@ assert.match(html,/id="onlineBack"/);
 assert.doesNotMatch(html,/href="\.\/live\.html"/,"El boton interno no debe llevar a una web externa");
 assert.match(app,/raceLobby:\$\("raceLobbyScreen"\),online:\$\("onlineScreen"\)/);
 assert.match(app,/function openLiveDuels\(\)[\s\S]*?showHub\("online"\)/);
-assert.match(app,/function openLiveDuels\(\)[\s\S]*?liveDuelFrame"\)\.src="\.\/live\.html\?embedded=1&v=0\.15\.73"/);
+assert.match(app,/function openLiveDuels\(\)[\s\S]*?liveDuelFrame"\)\.src="\.\/live\.html\?embedded=1&v=0\.15\.74"/);
 assert.match(app,/function closeLiveDuels\(\)/);
 assert.match(app,/\$\("raceLiveDuel"\)\.addEventListener\("click",openLiveDuels\)/);
 assert.match(app,/\$\("onlineBack"\)\.addEventListener\("click",closeLiveDuels\)/);
