@@ -949,7 +949,14 @@ const path=require("node:path");
  const viewStart=game.camera.makeView(elements.get("raceCanvas"),"race");
  assert.equal(viewStart.cx,startPose.x);
  assert.equal(viewStart.cy,startPose.y);
- assert.ok(Math.abs(viewStart.scale/standardView.scale-2)<1e-9);
+ // La pista pudo cambiar desde el primer control de cámara. Comparar
+ // con la vista general del MISMO circuito, no con un trazado anterior.
+ const currentMode=st.cameraMode;
+ st.cameraMode="general";
+ const sameTrackGeneralView=game.camera.makeView(elements.get("raceCanvas"),"race");
+ st.cameraMode=currentMode;
+ assert.ok(Math.abs(viewStart.scale/sameTrackGeneralView.scale-2)<1e-9,
+  "Seguimiento mantiene el zoom 2× con el mismo circuito");
  game.camera.updateFollowCamera(.05);
  assert.equal(st.followCamera.x,startPose.x,
   "Parado dentro de la zona de tolerancia: la cámara no se mueve");
