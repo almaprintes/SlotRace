@@ -34,7 +34,7 @@ const path=require("node:path");
   ...values,document,window,localStorage,{now:()=>clock},requestAnimationFrame,class{observe(){}}
  );
  const game=window.slotraceLab;
- assert.equal(game.version,"DEV 0.15.13");
+ assert.equal(game.version,"DEV 0.15.73");
  const r1Oval=["S350","S350",...Array(4).fill("R1_45R"),
   "S350","S350",...Array(4).fill("R1_45R")];
  game.openWorkshop();
