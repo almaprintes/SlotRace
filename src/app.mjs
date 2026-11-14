@@ -2374,30 +2374,45 @@ function archiveTestRace(){
  if(didSave!==null){state.sessionReportSaved=true;state.lastSessionReport=report;}
 }
 async function awardLocalRaceCredits(){
- if(!walletActive||!playerEconomy?.serverBacked||!playerEconomyClient||!state.lastSessionReport)return;
  const report=state.lastSessionReport;
- if(report.mode!=="lap_race"||state.track.laneChangerIndex>=0||
-    state.twoLegPhase!==2||report.laps.length!==state.targetLaps*2)return;
- const a=report.laps.filter(l=>l.lane===laneAIndex()).length;
- const b=report.laps.length-a;
- if(a!==state.targetLaps||b!==state.targetLaps)return;
+ const label=$("resultsReward");
+ if(!report)return;
+ if(!walletActive||!playerEconomy?.serverBacked||!playerEconomyClient){
+  if(label)label.textContent="Sin abono: inicia sesión con tu cuenta CraftRace Studio para recibir CR.";
+  return;
+ }
+ const pt82=state.track.laneChangerIndex>=0;
+ const twoHeats=report.mode==="lap_race"&&!pt82&&
+  state.twoLegPhase===2&&report.laps.length===state.targetLaps*2;
+ if(report.mode==="lap_race"&&!pt82&&!twoHeats){
+  if(label)label.textContent="Completa las dos mangas antes de reclamar la recompensa.";
+  return;
+ }
+ if(!report.laps.length)return;
+ // Idempotencia del informe: repetir una petición nunca genera otro premio.
  const claimKey="slotrace-test-reward:"+report.id;
  let raceId=storage(claimKey);
  if(!raceId){raceId=crypto.randomUUID();storage(claimKey,raceId);}
  const revision=playerModeRevision,creditsBefore=playerEconomy.credits;
  try{
-  const {data,error}=await playerEconomyClient.rpc("slotrace_claim_test_race",{
-   p_race:raceId,p_laps:state.targetLaps,p_lane_a:a,p_lane_b:b
+  const {data,error}=await playerEconomyClient.rpc("slotrace_claim_trial_session",{
+   p_race:raceId,p_mode:report.mode,p_laps:report.laps.length,
+   p_elapsed_ms:Math.max(0,Math.round(report.elapsedMs)),p_two_heats:twoHeats
   });
   if(error)throw error;
   if(revision!==playerModeRevision||!walletActive)return;
   playerEconomy={credits:data.credits,pieces:data.pieces,serverBacked:true};
   economyPanel();
   const earned=Math.max(0,data.credits-creditsBefore);
-  const rewardLabel=$("resultsReward");if(rewardLabel)rewardLabel.textContent=earned?"🏁 +"+earned+" CR de pruebas · Nuevo saldo: "+data.credits+" CR":"🏁 Recompensa de esta carrera ya registrada · Saldo: "+data.credits+" CR";
-  toast(earned?"🏁 Carrera completada: +"+earned+" CR de pruebas · Saldo "+data.credits+" CR":"Recompensa de esta carrera ya registrada.");
- }catch(error){const label=$("resultsReward");if(label)label.textContent="⚠ Recompensa no concedida: "+error.message;
-  toast("Carrera registrada; recompensa pendiente: "+error.message);}
+  if(label)label.textContent=earned?
+   "🏁 +"+earned+" CR de pruebas · Nuevo saldo: "+data.credits+" CR":
+   "🏁 Recompensa de esta sesión ya registrada · Saldo: "+data.credits+" CR";
+  toast(earned?"🏁 Carrera completada: +"+earned+" CR · Saldo "+data.credits+" CR":
+   "Recompensa de esta sesión ya registrada.");
+ }catch(error){
+  if(label)label.textContent="⚠ Recompensa no concedida: "+error.message;
+  toast("Carrera registrada; recompensa pendiente: "+error.message);
+ }
 }
 function endSession(target="menu"){
  cancelResumeCountdown();
@@ -2503,7 +2518,8 @@ function renderSessionSummary(){
  $("resultsSectionHeading").textContent="Progreso vuelta a vuelta";
  $("resultsSectionCaption").textContent="TODAS TUS VUELTAS";
  const rewardLabel=$("resultsReward");
- if(rewardLabel){rewardLabel.textContent=state.sessionMode==="lap_race"&&state.twoLegPhase===2&&state.track.laneChangerIndex<0?"Comprobando recompensa de 20 CR de pruebas (máximo cinco al día y diez minutos entre premios)…":"Recompensas de prueba: completar dos mangas de carrera sin PT82 · cuenta conectada";}
+ if(rewardLabel){const finalRace=state.sessionMode==="lap_race"&&state.twoLegPhase===2&&state.track.laneChangerIndex<0;
+  rewardLabel.textContent=state.lastSessionReport?"Comprobando recompensa de "+(finalRace?20:10)+" CR de pruebas…":"Recompensas de prueba · 20 CR por duelo completo o 10 CR por sesión válida · máximo cinco al día y diez minutos entre premios";}
  const pendingSecond=state.sessionMode==="lap_race"&&state.twoLegPhase===1&&state.track.laneChangerIndex<0&&state.sessionLaps.length>=state.targetLaps;
  $("resultsTimingAudit").dataset.phase=pendingSecond?"intermediate":"final";
  $("resultsAgain").textContent=pendingSecond?"🏁 Segunda manga · "+laneLabel(1-state.lane):"🏁 Otra sesión";
