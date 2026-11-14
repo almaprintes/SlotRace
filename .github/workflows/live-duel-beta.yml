@@ -33,6 +33,8 @@ jobs:
         run: node tests/online-rival-motion.cjs
       - name: Reconexión de pilotos, espera conjunta y reacciones multitáctiles
         run: node tests/online-rejoin.cjs
+      - name: Android · un toque de chat, una sola acción
+        run: node tests/android-chat-tap.cjs
       - name: Validar chat antispam, emojis grandes y marcador multijugador
         run: node tests/online-chat-results.cjs
       - name: Verificar menu multijugador dentro del juego
