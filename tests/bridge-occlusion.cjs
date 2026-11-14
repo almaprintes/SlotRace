@@ -59,7 +59,20 @@ const path=require("node:path");
  let now=0;const frames=[];
  const storage=new Map();
  const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
- const keys=[...Object.keys(geo),...Object.keys(blueprint),...Object.keys(clockCore)],values=keys.map(k=>Object.hasOwn(geo,k)?geo[k]:Object.hasOwn(blueprint,k)?blueprint[k]:clockCore[k]);
+ // El arnés ejecuta app.mjs sin sus importaciones; aportar todos los
+ // módulos reales para no producir ReferenceError ajenos al puente.
+ const modules=await Promise.all([
+  "kerbs.mjs","runoffs.mjs","online-rival-motion.mjs",
+  "online-chat-ui.mjs","online-rejoin.mjs","player-economy.mjs",
+  "box-factory.mjs","box-art.mjs","economy-catalog.mjs",
+  "race-results.mjs","duel-presentation.mjs","rear-contact.mjs",
+  "recovery-core.mjs","closure-guide.mjs","live-track-loan.mjs"
+ ].map(name=>import("../src/"+name)));
+ const available=new Map();
+ for(const mod of [geo,blueprint,clockCore,...modules])
+  for(const [name,value] of Object.entries(mod))
+   if(!available.has(name))available.set(name,value);
+ const keys=[...available.keys()],values=[...available.values()];
  new Function(...keys,"document","window","localStorage","performance","requestAnimationFrame","ResizeObserver",source)(
   ...values,document,window,localStorage,{now:()=>now},fn=>frames.push(fn),class{observe(){}}
  );
