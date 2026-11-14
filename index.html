@@ -790,6 +790,17 @@
     <button id="onlineChatToggle" class="online-chat-toggle" type="button" aria-expanded="false" aria-controls="onlineChatPanel" aria-label="Abrir chat de pista">💬 <span class="online-chat-toggle-label">Chat</span>
       <span id="onlineChatUnread" class="online-chat-unread" hidden>0</span></button>
   </aside>
+  <section id="onlineRematchInvite" class="online-rematch-invite" role="dialog" aria-modal="true" aria-labelledby="onlineRematchTitle" aria-describedby="onlineRematchDesc" hidden>
+    <div class="online-rematch-card">
+      <span class="online-rematch-symbol" aria-hidden="true">🏁</span>
+      <h2 id="onlineRematchTitle">¡Te han retado a una revancha!</h2>
+      <p id="onlineRematchDesc"><strong id="onlineRematchNick">Tu rival</strong> quiere volver a competir contigo en una nueva pista de slot.</p>
+      <div class="online-rematch-actions">
+        <button id="onlineRematchAccept" class="online-rematch-accept" type="button">✓ Aceptar revancha</button>
+        <button id="onlineRematchReject" class="online-rematch-reject" type="button">Ahora no</button>
+      </div>
+    </div>
+  </section>
   <div id="toast" role="status" aria-live="polite"></div>
 </div>
 <script>
