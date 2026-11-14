@@ -7,10 +7,28 @@ const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
 const $=id=>document.getElementById(id);
 let api=null,account=null,room=null,role=null,channel=null,connected=false;
 let peerOnline=false,phase="idle",heat=0,startAt=0,local=null,remote=null;
+const embedded=new URLSearchParams(location.search).get("embedded")==="1";
+let sharedTrack=null,pendingTrack=null,guestTrackReady=false;
 let lastFrame=0,lastSend=0,roomPolling=false,refreshStamp=0,sequence=0,remoteSeq=0;
 const scores={1:{host:null,guest:null},2:{host:null,guest:null}};
 const fmt=x=>(Number(x)||0).toFixed(3).replace(".",",");
 const other=()=>role==="host"?"guest":"host";
+function notifyGame(kind,detail={}){
+ if(embedded&&window.parent!==window)
+  window.parent.postMessage({kind:"slotrace:online:"+kind,...detail},location.origin);
+}
+function announceTrack(){
+ if(role!=="host"||!connected||!sharedTrack||!channel)return;
+ void channel.send({type:"broadcast",event:"track",
+  payload:{track:sharedTrack}}).catch(e=>notice("No se pudo compartir la pista: "+safeError(e),true));
+}
+function trackAccepted(loan){
+ sharedTrack=loan;
+ $("trackSharedName").textContent="Pista compartida: "+loan.name+
+  " · "+loan.types.length+" piezas"+(role==="guest"?" · Prestada para esta carrera":"");
+ $("trackSharedName").hidden=false;
+ updateRoom();
+}
 const myNick=()=>role==="host"?room?.host_nick:room?.guest_nick;
 const peerNick=()=>role==="host"?room?.guest_nick:room?.host_nick;
 function notice(msg,error=false){$("notice").textContent=msg;$("notice").classList.toggle("error",error);}
@@ -33,7 +51,7 @@ function updateRoom(){
  const btn=$("startHeat");
  btn.hidden=role!=="host";
  if(role==="host"){
-  const ready=joined&&connected&&peerOnline&&
+  const ready=joined&&connected&&peerOnline&&Boolean(sharedTrack)&&guestTrackReady&&
    ((heat===0&&room.state==="waiting")||
     (heat===1&&phase==="between"&&room.state==="heat1"&&
       local?.done&&remote?.done));
@@ -75,9 +93,23 @@ async function subscribe(){
  const topic="slotrace-live:"+room.id;
  channel=api.channel(topic,{config:{private:true,broadcast:{self:false,ack:true},presence:{key:account.id}}})
   .on("presence",{event:"sync"},updatePresence)
+  .on("broadcast",{event:"track-request"},()=>{
+   if(role==="host"){if(sharedTrack)announceTrack();else notifyGame("requestTrack");}
+  })
+  .on("broadcast",{event:"track"},({payload})=>{
+   if(role!=="guest"||!payload?.track||phase!=="idle")return;
+   guestTrackReady=false;pendingTrack=payload.track;
+   notifyGame("checkTrack",{track:payload.track});
+  })
+  .on("broadcast",{event:"track-ready"},({payload})=>{
+   if(role!=="host")return;
+   guestTrackReady=payload?.ready===true;
+   updateRoom();
+  })
   .on("broadcast",{event:"start"},({payload})=>{
    if(!payload||!Number.isFinite(payload.heat)||!Number.isFinite(payload.startAt))return;
    if(payload.heat!==heat+1)return;
+   if(!payload.track||!sharedTrack)return;
    prepareHeat(payload.heat,payload.startAt);
   })
   .on("broadcast",{event:"state"},({payload})=>{
@@ -93,6 +125,7 @@ async function subscribe(){
    remote.deslotFor=Number(d.deslotFor)||0;
    remote.done=Boolean(d.done);remote.lap=Math.min(LIVE_LAPS,Math.max(0,Number(d.lap)||0));
    remote.lapTimes=Array.isArray(d.lapTimes)?d.lapTimes.slice(0,LIVE_LAPS).filter(x=>Number.isFinite(x)&&x>0):[];
+   if(embedded)notifyGame("remoteState",{heat,data:d});
    if(remote.done&&remote.lapTimes.length===LIVE_LAPS)
     scores[heat][other()]=lapTotal(remote.lapTimes);
    finishIfBoth();
@@ -104,15 +137,21 @@ async function subscribe(){
    catch(e){notice("No se pudo anunciar presencia: "+safeError(e),true);}
    notice("Conexión privada activada. Preparados para competir.");
    await checkRoom();updatePresence();
+   if(embedded){
+    if(role==="host")notifyGame("requestTrack");
+    else if(role==="guest")void channel.send({type:"broadcast",event:"track-request",payload:{}}).catch(()=>{});
+   }
   }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
    connected=false;peerOnline=false;activateControls(false);
-   notice("Se perdió el canal online. Recarga para volver a conectarte.",true);
+   notice("Se perdió la conexión de la pista. Regresa a Competir y vuelve a entrar.",true);
+   notifyGame("networkError",{message:"Se perdió la conexión con el otro piloto"});
    updateRoom();
   }
  });
 }
 async function enterRoom(next,playerRole){
  room=next;role=playerRole;phase="idle";heat=0;
+ sharedTrack=null;pendingTrack=null;guestTrackReady=false;
  local=null;remote=null;sequence=0;remoteSeq=0;
  updateRoom();notice("Conectando canal privado…");
  await subscribe();await checkRoom();
@@ -141,7 +180,7 @@ async function join(){
  }catch(e){notice("No se pudo entrar: "+safeError(e),true);$("joinRoom").disabled=false;}
 }
 async function startHeat(){
- if(role!=="host"||!room||!peerOnline||!connected||heat>=2)return;
+ if(role!=="host"||!room||!peerOnline||!connected||!sharedTrack||!guestTrackReady||heat>=2)return;
  const next=heat+1;
  if(next===2&&(!local?.done||!remote?.done))return;
  $("startHeat").disabled=true;
@@ -151,17 +190,22 @@ async function startHeat(){
   room=data;
   const at=Date.now()+4000;
   const sent=await channel.send({type:"broadcast",event:"start",
-   payload:{heat:next,startAt:at}});
+   payload:{heat:next,startAt:at,track:sharedTrack}});
   if(sent!=="ok")throw Error("No se pudo enviar la salida al otro piloto");
   prepareHeat(next,at);
   notice("Salida de manga "+next+" programada para ambos móviles.");
  }catch(e){notice("No se pudo iniciar: "+safeError(e),true);await checkRoom();}
 }
 function prepareHeat(next,when){
+ if(embedded){
+  if(!sharedTrack){notice("Falta el plano de la pista del anfitrión.",true);return;}
+  notifyGame("start",{track:sharedTrack,role,heat:next,startAt:when,opponent:peerNick()});
+ }
  heat=next;startAt=when;phase="countdown";sequence=0;remoteSeq=0;
+ document.documentElement.classList.remove("heat-finished");
  local=makeCar(laneFor(role,heat));
  remote=makeCar(laneFor(other(),heat));
- $("raceArea").hidden=false;$("finalBoard").hidden=true;
+ $("raceArea").hidden=embedded;$("finalBoard").hidden=true;
  $("heatLabel").textContent="Manga "+heat+" de 2 · "+
   (heat===1?"Primera salida":"Carriles intercambiados");
  setStatus("CUENTA ATRÁS");activateControls(false);
@@ -196,6 +240,11 @@ function finishIfBoth(){
   lines.push("<div class='scoreline'><span>TOTAL</span><strong>"+fmt(host)+"s</strong><strong>"+fmt(guest)+"s</strong></div>");
  }
  $("scoreLines").innerHTML="<small>"+room.host_nick+" / "+room.guest_nick+"</small>"+lines.join("");
+ if(embedded){
+  $("raceArea").hidden=false;
+  document.documentElement.classList.add("heat-finished");
+  notifyGame("heatComplete",{heat});
+ }
  if(role==="host"&&heat===1)updateRoom();
 }
 function updateStats(){
@@ -295,6 +344,38 @@ function frame(now){
  }
  updateStats();draw();requestAnimationFrame(frame);
 }
+
+window.addEventListener("message",event=>{
+ if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
+ const msg=event.data;
+ if(!msg||typeof msg.kind!=="string")return;
+ if(msg.kind==="slotrace:online:hostTrack"&&role==="host"&&msg.track){
+  trackAccepted(msg.track);
+  announceTrack();
+ }else if(msg.kind==="slotrace:online:trackChecked"&&role==="guest"){
+  if(msg.ready){
+   const track=sharedTrack||pendingTrack;
+   if(track)trackAccepted(track);
+   guestTrackReady=true;
+   notice("Pista prestada lista. No necesitas comprar las piezas.");
+   void channel?.send({type:"broadcast",event:"track-ready",
+    payload:{ready:true}}).catch(()=>{});
+  }else{
+   notice("No se puede correr en esa pista: "+(msg.error||"plano inválido"),true);
+  }
+ }else if(msg.kind==="slotrace:online:localState"&&embedded&&local){
+  if(phase==="countdown"&&Date.now()>=startAt)phase="racing";
+  if(phase!=="racing")return;
+  const d=msg.data;
+  if(!d||!Number.isFinite(d.distance)||!Number.isFinite(d.elapsed))return;
+  local.distance=d.distance;local.speed=d.speed;local.elapsed=d.elapsed;
+  local.lap=d.lap;local.deslotFor=d.deslotFor;
+  local.lapTimes=Array.isArray(d.lapTimes)?d.lapTimes.slice(0,LIVE_LAPS):[];
+  local.done=Boolean(d.done);local.rearSlip=d.rearSlip;local.car=d.car;
+  sendState(performance.now());finishIfBoth();
+ }
+});
+
 async function init(){
  setupGas();requestAnimationFrame(frame);
  $("createRoom").addEventListener("click",create);
