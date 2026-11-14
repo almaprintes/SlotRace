@@ -1,18 +1,18 @@
-import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.72";
-import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.72";
-import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.72";
-import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.72";
-import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.72";
+import {TABLE,START,TRACK_WIDTH,LANE_OFFSET,CATALOG,CURVE_FAMILIES,STARTER,FIGURE_EIGHT,buildTrack,positionAt,nearestPiece,freeStock,allowed,UNLIMITED_DEVELOPMENT_STOCK,positionOnPiece,findLegalClosure,findStraightRebalance,carTrackLevel,carsBeyondCollision,elevationAt,gapAnalysis,laneAIndexAtFinish,circuitWinding,travelDirectionLabel,directionFromPreference,preferenceFromDirection} from "./track.mjs?v=0.15.73";
+import {buildRecipe,blueprintReferenceMap,slugName} from "./blueprint.mjs?v=0.15.73";
+import {buildCurveKerbs,selectCurveKerbs,KERB_STYLE} from "./kerbs.mjs?v=0.15.73";
+import {buildSmartRunoffs,RUNOFF_STYLE} from "./runoffs.mjs?v=0.15.73";
+import {advanceElapsedMonotonic,interpolateCrossingElapsed} from "./timing-core.mjs?v=0.15.73";
 import {initialPlayerEconomy,buyPiece,raceReward} from "./player-economy.mjs";
 import {createSlotRaceBox,validateBoxRecipe} from "./box-factory.mjs";
 import {renderSlotRaceBoxArt} from "./box-art.mjs";
 import {PRICE_BY_PIECE} from "./economy-catalog.mjs";
-import {duelSummary} from "./race-results.mjs?v=0.15.72";
-import {duelPresentation} from "./duel-presentation.mjs?v=0.15.72";
-import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.72";
-import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.72";
-import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.72";
-import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.72";
+import {duelSummary} from "./race-results.mjs?v=0.15.73";
+import {duelPresentation} from "./duel-presentation.mjs?v=0.15.73";
+import {REAR_CONTACT,forwardGap,rearContact,sweptRearContact,placeRearBehind,followTarget,reentrySafe} from "./rear-contact.mjs?v=0.15.73";
+import {advanceRecovery,recoveryVisualPose} from "./recovery-core.mjs?v=0.15.73";
+import {proposeClosures,closureBudget} from "./closure-guide.mjs?v=0.15.73";
+import {prepareSlotTrackLoan,openSlotTrackLoan} from "./live-track-loan.mjs?v=0.15.73";
 const $=id=>document.getElementById(id);
 let playerEconomy=null,playerEconomyKey=null,playerMode=false,walletActive=false,playerEconomyClient=null,playerWalletBusy=false,playerModeRevision=0;
 const usedPieces=()=>[...state.types,...state.loose.map(p=>p.id)];
@@ -301,7 +301,8 @@ function save(){if(liveRace.active)return;storage(KEY,JSON.stringify({types:stat
  tableTheme:state.tableTheme,
  gridEnabled:state.gridEnabled,xRayEnabled:state.xRayEnabled,clicksEnabled:state.clicksEnabled,motorEnabled:state.motorEnabled,caseOpen:state.caseOpen,caseCurveDirection:state.caseCurveDirection,
  driveDirection:state.driveDirection,pendingDesiredDirection:state.pendingDesiredDirection,selectedCar:state.selectedCar,cameraMode:state.cameraMode,followZoom:state.followZoom,
-  sessionMode:state.sessionMode,targetLaps:state.targetLaps}));}
+  sessionMode:state.sessionMode,targetLaps:state.targetLaps,
+  aiEnabled:aiTest.enabled,aiLevel:aiTest.level}));}
 // Permite que el exportador capture también la última preferencia cambiada.
 if(typeof window!=="undefined")
  window.addEventListener("slotrace:flush-save",()=>save());
@@ -2234,7 +2235,7 @@ function menuRace(){
 function openLiveDuels(){
  state.flow="race";
  if(!showHub("online"))return false;
- $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.72";
+ $("liveDuelFrame").src="./live.html?embedded=1&v=0.15.73";
  return true;
 }
 function closeLiveDuels(){
@@ -2287,6 +2288,8 @@ function renderRaceLobby(){
   state.track.valid?"Falta una pieza SALIDA / META (obligatoria)":"Circuito abierto · hay que cerrar el recorrido";
  $("raceMode").value=state.sessionMode;
  $("raceAiEnabled").checked=aiTest.enabled;
+ $("raceAiLevel").value=aiTest.level;
+ $("raceAiLevelRow").hidden=!aiTest.enabled;
  $("raceTargetLaps").value=String(state.targetLaps);
  $("raceTargetLapsRow").hidden=state.sessionMode!=="lap_race";
  $("raceStart").disabled=!valid;
@@ -2375,7 +2378,7 @@ function archiveTestRace(){
   elapsedMs:Math.round(clock.elapsedMs),pauseCount:clock.pauseCount,
   pausedMs:Math.round(clock.pausedMs),flags:clock.flags,
   ...(isDuelRace()?{
-   rival:"ai-easy",aiLaps:aiTest.sessionLaps.map(l=>({
+   rival:"ai-"+aiTest.level,aiLaps:aiTest.sessionLaps.map(l=>({
     heat:l.heat,number:l.number,lane:l.lane,lapMs:Math.round(l.seconds*1000)
    })),
    duel:duelSummary(state.sessionLaps,aiTest.sessionLaps,
@@ -2453,7 +2456,7 @@ function renderDuelResults(){
  const data=view.summary,player=CAR_MODELS[state.sessionCar||state.selectedCar].name;
  const rival=CAR_MODELS[state.selectedCar==="spark"?"gripline":"spark"].name;
  const playerNick=state.sessionPlayerNick||$("mastWelcomeNick")?.textContent?.trim()||"Piloto";
- const rivalNick=state.sessionOpponentNick||"IA";
+ const rivalNick=state.sessionOpponentNick||("IA "+(AI_DIFFICULTIES[aiTest.level]||AI_DIFFICULTIES.easy).label);
  const scores=$("resultsStats"),list=$("resultsLaps");
  scores.textContent="";list.textContent="";
  const add=(tag,cls,text,parent)=>{
@@ -3065,7 +3068,41 @@ function handleOnlineMessage(event){
 }
 window.addEventListener("message",handleOnlineMessage);
 
-const aiTest={enabled:false,active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[]};
+const aiTest={enabled:false,level:"easy",active:false,lane:1,distance:0,speed:0,lap:0,penalty:0,armed:true,laneTransition:null,collisions:0,collisionCooldown:0,awaitingSeparation:false,deslot:null,bump:null,heatLapCount:0,heatComplete:false,lastCrossingMs:0,sessionLaps:[]};
+
+const AI_DIFFICULTIES=Object.freeze({
+ easy:Object.freeze({label:"Fácil",straight:.74,curve:.42,reserve:1,lookAheadMm:0,approachRate:0,acceleration:2.1,braking:9}),
+ medium:Object.freeze({label:"Media",straight:.90,curve:.72,reserve:.92,lookAheadMm:480,approachRate:.62,acceleration:2.25,braking:9}),
+ hard:Object.freeze({label:"Difícil",straight:1,curve:.91,reserve:.96,lookAheadMm:640,approachRate:.90,acceleration:2.25,braking:9})
+});
+// La IA nunca supera DRIVE.topSpeed. En niveles superiores limita la
+// velocidad por radio, adherencia y margen de estabilidad de la guía.
+// La dificultad se consigue anticipando y dosificando, no con boosts.
+function aiCruiseTarget(lane){
+ const profile=AI_DIFFICULTIES[aiTest.level]||AI_DIFFICULTIES.easy;
+ const backwards=state.driveDirection===-1;
+ const physical=backwards?1-aiTest.lane:aiTest.lane;
+ const sample=ahead=>positionAt(lane,(backwards?-1:1)*(aiTest.distance+ahead));
+ function atPose(p){
+  if(!p?.curve)return DRIVE.topSpeed*profile.straight;
+  if(aiTest.level==="easy")return DRIVE.topSpeed*profile.curve;
+  const offset=physical===0?-LANE_OFFSET:LANE_OFFSET;
+  const radius=Math.max(70,(Number.isFinite(p.radius)?p.radius:70)-offset*p.curve);
+  const grip=VEHICLE_DYNAMICS[state.selectedCar]?.gripG||.97;
+  const limit=Math.min(Math.sqrt(grip*DRIVE.gravity*1000*radius),
+   DRIVE.fullThrottleSlipAt*DRIVE.topSpeed);
+  return Math.min(DRIVE.topSpeed*profile.curve,limit*profile.reserve);
+ }
+ let target=atPose(sample(0));
+ if(profile.lookAheadMm){
+  for(let ahead=80;ahead<=profile.lookAheadMm;ahead+=80){
+   const p=sample(ahead);
+   if(p?.curve)target=Math.min(target,atPose(p)+ahead*profile.approachRate);
+  }
+ }
+ return Math.max(0,Math.min(DRIVE.topSpeed,target));
+}
+
 // Arranque y cambio de manga comparten esta única regla.
 // El rival SIEMPRE ocupa el carril contrario al jugador; la guía física
 // se resuelve después con driveDirection, también en sentido inverso.
@@ -3102,15 +3139,15 @@ function advanceAiTest(dt,contactBefore=null){
   return;
  }
  const lane=state.track.lanes[state.driveDirection===-1?1-aiTest.lane:aiTest.lane];
- const pose=aiTestPose();
- let target=DRIVE.topSpeed*(pose&&pose.curve?0.42:0.74);
+ let target=aiCruiseTarget(lane);
  if(!state.deslot&&state.lane===aiTest.lane){
   const gap=forwardGap(aiTest.distance,state.distance,lane.total);
   // IA tradicional: no atraviesa al rival ni cambia de carril para adelantar.
   // Si este se sale en una curva, deja de bloquear y se puede superar.
   target=followTarget(gap,state.speed,target);
  }
- const response=target<aiTest.speed?9:2.1;
+ const profile=AI_DIFFICULTIES[aiTest.level]||AI_DIFFICULTIES.easy;
+ const response=target<aiTest.speed?profile.braking:profile.acceleration;
  aiTest.speed+=(target-aiTest.speed)*(1-Math.exp(-response*dt));
  const travel=aiTest.speed*dt;
  const idx=state.track.laneChangerIndex;
@@ -6817,7 +6854,11 @@ function initEvents(){
   if(!["practice","qualifying","lap_race"].includes(e.target.value))return;
   state.sessionMode=e.target.value;save();renderRaceLobby();
  });
- $("raceAiEnabled").addEventListener("change",e=>{aiTest.enabled=e.target.checked;renderRaceLobby();});
+ $("raceAiEnabled").addEventListener("change",e=>{aiTest.enabled=e.target.checked;save();renderRaceLobby();});
+ $("raceAiLevel").addEventListener("change",e=>{
+  if(!AI_DIFFICULTIES[e.target.value])return;
+  aiTest.level=e.target.value;save();renderRaceLobby();
+ });
  $("raceTargetLaps").addEventListener("change",e=>{
   const n=Number(e.target.value);if(![3,5,10,20].includes(n))return;
   state.targetLaps=n;save();renderRaceLobby();
@@ -6951,9 +6992,11 @@ function loop(now){
  if(state.noticeUntil&&now>state.noticeUntil){$("toast").classList.remove("show");state.noticeUntil=0;}
  requestAnimationFrame(loop);
 }
+aiTest.enabled=old?.aiEnabled===true;
+aiTest.level=AI_DIFFICULTIES[old?.aiLevel]?old.aiLevel:"easy";
 protectOrphanDraft();palette();initEvents();updateUI();resize();
  loadReferenceForState();requestAnimationFrame(loop);
-window.slotraceLab={version:"DEV 0.15.72",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
+window.slotraceLab={version:"DEV 0.15.73",state,raceClock,raceReports:readTestRaceReports,curve90Presets:CURVE_90_PRESETS,curve90Parts:shelfParts,curveFamilies:CURVE_FAMILIES,
  template:{validReference,referenceStorage,loadReferenceForState,openTemplatePanel,
   templateLoadFile,templateFit,templateSet,templateRotateQuarter,templateToggleMove,
   templateToggleVisibility,templateRemove,paintReference,updateTemplateUI},
@@ -6963,7 +7006,7 @@ window.slotraceLab={version:"DEV 0.15.72",state,raceClock,raceReports:readTestRa
 rendering:{elevatedDeckRuns,groundDeckRuns,elevationJoins,crossingClipPolygons,paintBridgeSelection,traceXRayCarBody,strokeXRayLine,xRayDeckPolygons,clipXRayDeck,xRayGroundGuides,paintXRaySilhouette,paintXRayOverlay,paintGroundTrack,paintFinishLine,finishLaneMarkings,paintLaneStencils,paintElevatedDeck,paintVerifiedCrossings,paintOpaqueRibbon,paintContinuousTrack,renderScene},
 puzzle:{measureOpenGap,nearestOpenGap,presentGapDiagnostic,paintGapDiagnostic,openGroups,loopFromLooseGroup,closeLooseLoop,closeExactly,openClosureGuide,applyClosureGuide,closeClosureGuide,closureGuideSource,detachConnected,startSelectedPiece,selectBridgeRelative,markBridgeRangeStart,applyBridgeRange,bridgeRangeIndices,selectMainAtCrossing,scatterLoose,snapLoose,loosePaintGroups,looseOverpasses,paintLoose,installBridgeKit,paintSupportKit,paintBridgeRampProfile,rotateGestureToSteps,rotateSelection,flipSelectedCurve,toggleCaseCurveDirection,screenToWorld,canvasPointerDown,canvasPointerMove,canvasPointerEnd,
  looseMembers,looseGroup,bestMagnet,selectByTap,workshopVisibleCenter,promoteLooseGroup,detachLooseMember},
- ai:{state:aiTest,pose:aiTestPose,advance:advanceAiTest,resetForOpponentLane:resetAiForOpponentLane,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
+ ai:{state:aiTest,difficulties:AI_DIFFICULTIES,cruiseTarget:aiCruiseTarget,pose:aiTestPose,advance:advanceAiTest,resetForOpponentLane:resetAiForOpponentLane,physicalSwitchPose,rearContact,followTarget,reentrySafe},physics:{DRIVE,VEHICLE_DYNAMICS,curveRadius,curvePhase,curveStressEnvelope,cornerForces,curveLimit,advanceRearDynamics,visualCarPose,simulationStep:simulation}};
 // La pantalla de carga sólo se oculta después de que la mesa y sus piezas
 // hayan superado la inicialización y se haya pintado el primer fotograma.
 requestAnimationFrame(()=>{
