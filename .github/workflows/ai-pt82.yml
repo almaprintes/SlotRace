@@ -25,6 +25,8 @@ jobs:
         run: node tests/pt82.cjs
       - name: Verificar IA, animación y sentido horario y antihorario
         run: node tests/ai-pt82.cjs
+      - name: Validar niveles de IA, anticipación, límites de agarre y selector
+        run: node tests/ai-difficulty.cjs
       - name: Validar contactos leves, moderados, fuertes y paso libre
         run: node tests/rear-contact.cjs
       - name: Validar impactos en el motor real y adelantamiento tras salida
