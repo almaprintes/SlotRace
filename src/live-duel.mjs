@@ -1,6 +1,6 @@
 // Top Down RACE: SlotRace · enlace privado entre dos móviles.
 // Beta técnica independiente: resultados sin homologación y sin CR.
-import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.72";
+import {LIVE_TRACK,LIVE_LAPS,roomCode,laneFor,carPose,makeCar,advanceCar,lapTotal} from "./live-duel-core.mjs?v=0.15.74";
 const URL="https://juukbnkjboiazqggqcyv.supabase.co";
 const KEY="sb_publishable_l5cHUHrGHoFzGqmUyfQKSA_d3VjWksB";
 const SDK="https://esm.sh/@supabase/supabase-js@2.119.0?target=es2022";
@@ -260,7 +260,7 @@ function sendState(now){
  if(!connected||!channel||!local||phase!=="racing")return;
  // Al cruzar meta se transmite el estado final inmediatamente, sin esperar el
  // siguiente intervalo: el rival debe enterarse incluso si deja de moverse.
- const interval=local.done?600:115;
+ const interval=local.done?600:(embedded?80:115);
  if(now-lastSend<interval&&!(local.done&&!local.finalStateSent))return;
  lastSend=now;
  if(local.done)local.finalStateSent=true;
