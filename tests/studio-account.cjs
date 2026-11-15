@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const src=fs.readFileSync("src/account.mjs","utf8");
 const html=fs.readFileSync("index.html","utf8");
-const version="0.15.80";
+const version="0.15.81";
 assert.match(html,new RegExp('src/account\\.mjs\\?v='+version.replaceAll(".","\\.")));
 assert.match(src,/auth\.linkIdentity\(/,"Must link identities under existing UUID");
 assert.match(src,/user\.id!==accountUser\?\.id/,"Must verify current UUID before link");
@@ -158,6 +158,42 @@ const instance=construct(doc,loc,localStorage,sessionStorage,queueMicrotask,sdk)
  assert.equal(get("entryGate").hidden,false,
   "No saltar automáticamente al menú tras haber mostrado Entrar con mi cuenta");
  assert.equal(get("entryActions").hidden,false);
+
+ // Regresión iPhone: un primer getUser fallido dejó la puerta en needs-auth.
+ // Cuando luego se verifica la cuenta, se ve el perfil pero no avanza.
+ assert.equal(get("accountConnected").hidden,false);
+ assert.equal(get("accountEnterGame").hidden,false,
+  "Si la sesión se verifica después de mostrar la puerta, hay salida manual");
+ get("accountEnterGame").listeners.click[0]();
+ assert.equal(get("entryGate").hidden,true,
+  "Entrar al juego desde Mi cuenta cierra la puerta cuando el usuario está verificado");
+ assert.equal(get("accountModal").hidden,true,
+  "La salida manual debe cerrar el modal de cuenta");
+
+ // Reproducir el escenario real: pulsar Entrar con mi cuenta cuando la
+ // sesión ya es válida no debe exigir un segundo login ni quedar atascado.
+ auth.getSession=async()=>({data:{session:null},error:null});
+ await instance.refresh();
+ assert.equal(get("entryGate").hidden,false);
+ auth.getSession=previousGetSession;
+ await instance.refresh({background:true});
+ assert.equal(get("entryGate").hidden,false);
+ get("entryLogin").listeners.click[0]();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(get("entryGate").hidden,true,
+  "La pulsación inicial Entrar con mi cuenta habilita el menú con sesión válida");
+ assert.equal(get("accountModal").hidden,true,
+  "Tras entrar no debe quedar el modal cubriendo el juego");
+ assert.equal(JSON.parse(localStorage.getItem("slotrace-circuit-library-v1")).length,3,
+  "Los circuitos locales siguen inalterados después de reparar el acceso");
+
+ // Preservar el control existente: no entrar automáticamente si no hubo clic.
+ auth.getSession=async()=>({data:{session:null},error:null});
+ await instance.refresh();
+ auth.getSession=previousGetSession;
+ await instance.refresh({background:true});
+ assert.equal(get("entryGate").hidden,false,
+  "La recuperación en segundo plano no cuenta como consentimiento");
  // Un login explícito sí puede desbloquear la entrada.
  await instance.social("google");
  await instance.refresh({background:true});
