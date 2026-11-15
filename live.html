@@ -105,25 +105,62 @@ html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoar
 <main>
 <div class="live-intro"><div class="tag">PRUEBA TÉCNICA · DOS PILOTOS REALES</div><h1>Pista de slot online 🏁</h1>
 <p>El anfitrión comparte su circuito montado. Dos móviles, dos carriles, tres vueltas por manga e intercambio de carriles. Sin PT82 ni colisiones entre coches en esta beta. Resultados todavía no homologados.</p></div>
-<section id="setup" class="panel">
-<h2>👥 Prueba con un compañero</h2>
-<p style="margin:0 0 12px">Elige primero tu circuito en Competir. La pista se comparte solo para correr: tu compañero no necesita poseer las piezas ni las recibe en su inventario.</p>
-<p id="identity" class="muted">Comprobando cuenta CraftRace Studio…</p>
-<div class="row">
-<button id="createRoom" class="primary" disabled>Crear pista de slot</button>
-<input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código de pista" spellcheck="false" autocomplete="off">
-<button id="joinRoom" disabled>Unirse a pista de slot</button>
-</div>
-<div id="roomBox" hidden>
-<small>Dile este código a tu compañero:</small>
-<div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
-<p id="roomNames">Esperando al segundo piloto…</p>
-<p id="connectionStatus">Conectando…</p>
-<p id="trackSharedName" hidden class="tag">Comprobando la pista elegida…</p>
-<div class="row"><button id="startHeat" class="primary" disabled>Esperando rival</button></div>
-</div>
-<p id="notice" role="status" aria-live="polite"></p>
-<p><small>Tu compañero abre SlotRace en su móvil, entra en Competir → Pistas de slot online e introduce tu código. Si no tiene cuenta, primero debe registrarse en SlotRace.</small></p>
+<section id="setup" class="panel online-lobby">
+  <div class="online-lobby-hero">
+    <div class="online-hero-meta"><span class="online-studio-label">TOP DOWN RACE / SLOTRACE</span><span class="online-live-pill"><span aria-hidden="true"></span> MULTIJUGADOR · BETA</span></div>
+    <div class="online-hero-heading">
+      <span class="online-hero-kicker">EL PADDOCK ONLINE</span>
+      <h2>Tu pista.<br><em>Su desafío.</em></h2>
+      <p>Dos pilotos. Dos carriles. Una victoria.</p>
+    </div>
+    <div class="online-hero-cars" aria-hidden="true">
+      <img class="online-hero-car online-hero-car-avenir" src="./assets/cars/avenir_gripline_threequarter.webp" alt="" loading="eager">
+      <img class="online-hero-car online-hero-car-spark" src="./assets/cars/helix_spark_threequarter.webp" alt="" loading="eager">
+    </div>
+    <div class="online-checker" aria-hidden="true"></div>
+  </div>
+  <div class="online-lobby-body">
+    <div class="online-section-heading">
+      <div><span class="online-section-step">01 / 02 · PREPARACIÓN</span><h3>Entra a competir</h3></div>
+      <span class="online-section-icon" aria-hidden="true">🏁</span>
+    </div>
+    <p class="online-lobby-lead">Elige un circuito en Competir y compártelo para correr. Tu rival no necesita tener las piezas ni las recibe en su inventario.</p>
+    <p id="identity" class="online-account-status muted">Comprobando cuenta CraftRace Studio…</p>
+    <div class="online-entry-grid">
+      <div class="online-entry-card online-entry-create">
+        <div class="online-entry-number">01 · ANFITRIÓN</div>
+        <div class="online-entry-icon" aria-hidden="true">✦</div>
+        <h4>Abre tu pista</h4>
+        <p>Invita a otro piloto a competir en tu circuito.</p>
+        <button id="createRoom" class="primary" disabled>Crear pista de slot</button>
+      </div>
+      <div class="online-entry-card online-entry-join">
+        <div class="online-entry-number">02 · INVITADO</div>
+        <div class="online-entry-icon" aria-hidden="true">↗</div>
+        <h4>Acepta el reto</h4>
+        <p>Introduce el código de siete caracteres.</p>
+        <label for="joinCode" class="online-code-label">CÓDIGO DE PISTA</label>
+        <input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código de pista" spellcheck="false" autocomplete="off">
+        <button id="joinRoom" disabled>Unirse a pista de slot</button>
+      </div>
+    </div>
+    <div id="roomBox" class="online-room-card" hidden>
+      <div class="online-room-top"><div><span class="online-section-step">02 / 02 · PISTA COMPARTIDA</span><h3>Parrilla de salida</h3></div><span class="online-room-label">LIVE GRID</span></div>
+      <div class="online-invite-card">
+        <small>Tu código de invitación</small>
+        <div class="online-invite-row"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
+      </div>
+      <div class="online-room-pilots">
+        <span class="online-room-pilots-label">PILOTOS EN PISTA</span>
+        <p id="roomNames">Esperando al segundo piloto…</p>
+        <p id="connectionStatus">Conectando…</p>
+      </div>
+      <p id="trackSharedName" hidden class="tag online-track-shared">Comprobando la pista elegida…</p>
+      <button id="startHeat" class="primary online-start-button" disabled>Esperando rival</button>
+    </div>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <p class="online-lobby-help"><small>Tu compañero abre SlotRace en su móvil, entra en Competir → Pistas de slot online e introduce tu código. Si no tiene cuenta, primero debe registrarse en SlotRace.</small></p>
+  </div>
 </section>
 <section id="raceArea" class="panel" hidden>
 <div class="row" style="justify-content:space-between">
