@@ -5,8 +5,8 @@
 <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");else location.replace("./index.html");</script>
 <meta name="theme-color" content="#091720">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>SlotRace · Pista de slot online BETA 0.15.81</title>
-<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.81">
+<title>SlotRace · Pista de slot online BETA 0.15.82</title>
+<link rel="icon" href="./assets/ui/slotrace-icon-192.png?v=0.15.82">
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ebf5f7;background:#07141e;--mint:#4ff0cb;--muted:#a8b9c7;--panel:#162634}
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#16404b,#07141e 55%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
@@ -96,34 +96,163 @@ html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoar
 .online-results-actions button.primary{background:linear-gradient(120deg,#24cca1,#44e1c2);border-color:#6beecf;color:#072f2c}
 .online-results-actions button:first-child:not([hidden]){grid-column:1/-1}
 @media(min-width:650px){.online-results-actions{grid-template-columns:1.1fr 1fr 1fr}.online-results-actions button:first-child:not([hidden]){grid-column:auto}}
+
+/* DEV 0.15.82 · PITLANE: mismo lenguaje premium del menú principal. */
+/* Diseño exclusivo del lobby: no altera cronómetro, circuito, chat ni resultados. */
+#setup.online-lobby{padding:0;border:1px solid #dbe2e9;border-radius:21px;background:#f6f8fb;color:#172532;box-shadow:0 10px 27px #00000037;overflow:hidden}
+html.embedded #setup.online-lobby{padding:0}
+#setup .online-lobby-hero{position:relative;isolation:isolate;min-height:205px;padding:16px 17px 23px;overflow:hidden;background:linear-gradient(112deg,#17232f 0%,#233441 49%,#4c1c31 100%);color:#fff}
+#setup .online-lobby-hero:before{content:"";position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 78% 72%,#e3284f40,transparent 56%),repeating-linear-gradient(115deg,transparent 0 70px,#ffffff06 71px 73px)}
+#setup .online-hero-meta{position:relative;z-index:4;display:flex;justify-content:space-between;align-items:center;gap:9px}
+#setup .online-studio-label{font:900 9px/1.2 system-ui,-apple-system,sans-serif;letter-spacing:1.8px;color:#ffbfc9}
+#setup .online-live-pill{display:inline-flex;align-items:center;gap:6px;max-width:55%;font-size:9px;line-height:1.2;font-weight:950;letter-spacing:.4px;color:#eafff5;background:#244a4a;border:1px solid #5fdec39e;border-radius:99px;padding:7px 9px;white-space:nowrap}
+#setup .online-live-pill span{width:7px;height:7px;flex:none;border-radius:100%;background:#4bffc6;box-shadow:0 0 10px #4bffc6}
+#setup .online-hero-heading{position:relative;z-index:3;margin-top:27px;max-width:70%;text-shadow:0 2px 8px #0009}
+#setup .online-hero-kicker{display:block;font-size:9px;letter-spacing:2.3px;font-weight:950;color:#9de7d9;margin-bottom:5px}
+#setup .online-hero-heading h2{margin:0;font-weight:1000;line-height:1.02;letter-spacing:-1.5px;font-style:italic;font-size:clamp(30px,7.9vw,51px);color:white}
+#setup .online-hero-heading h2 em{font-style:italic;color:#ff5573;white-space:nowrap}
+#setup .online-hero-heading p{margin:11px 0 0;color:#f3e9eb;font-size:clamp(10px,2.8vw,12px);font-weight:800;line-height:1.3}
+#setup .online-hero-cars{position:absolute;z-index:2;right:-15px;bottom:-16px;width:49%;height:172px;pointer-events:none}
+#setup .online-hero-car{position:absolute;display:block;object-fit:contain;height:auto;filter:drop-shadow(0 11px 9px #0008)}
+#setup .online-hero-car-avenir{width:100%;right:12%;bottom:0;transform:rotate(-12deg)}
+#setup .online-hero-car-spark{width:88%;right:-19%;bottom:23%;transform:rotate(13deg)}
+#setup .online-checker{position:absolute;z-index:5;left:-3%;right:-3%;bottom:0;height:9px;background:repeating-linear-gradient(105deg,#da143c 0 24px,#f9fafc 24px 48px);box-shadow:0 -3px 10px #0004;transform:skewX(-12deg)}
+#setup .online-lobby-body{padding:17px;display:flex;flex-direction:column;gap:11px}
+#setup .online-section-heading{display:flex;justify-content:space-between;gap:10px;align-items:center}
+#setup .online-section-step{display:block;font-size:9px;letter-spacing:1.8px;color:#bd1837;font-weight:950}
+#setup .online-section-heading h3,#setup .online-room-top h3{font-size:23px;font-style:italic;font-weight:1000;line-height:1.1;letter-spacing:-.7px;color:#172532;margin:5px 0 0}
+#setup .online-section-icon{display:grid;place-items:center;background:#fce6eb;color:#bc1032;border:1px solid #f3c4cf;border-radius:11px;width:43px;height:43px;font-size:24px;flex:none}
+#setup .online-lobby-lead{font-size:12px;line-height:1.5;font-weight:650;color:#526579;margin:0}
+#setup .online-account-status{margin:0;display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid #d4e7e4;background:#eaf7f4;border-radius:10px;color:#146c60;font-size:11px;font-weight:850;overflow-wrap:anywhere}
+#setup .online-account-status:before{content:"●";color:#209b76;flex:none}
+#setup .online-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+#setup .online-entry-card{position:relative;display:flex;flex-direction:column;min-width:0;gap:8px;border:1px solid #d7dfe8;border-radius:15px;background:linear-gradient(145deg,#fff,#f1f4f7);padding:12px;box-shadow:0 3px 10px #1725320b}
+#setup .online-entry-card.online-entry-create{border-top:3px solid #df153e}
+#setup .online-entry-card.online-entry-join{border-top:3px solid #244b61}
+#setup .online-entry-number{color:#bd1537;font-size:9px;letter-spacing:1px;font-weight:950}
+#setup .online-entry-join .online-entry-number{color:#386278}
+#setup .online-entry-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#fff0f3;color:#c41235;font-size:20px;font-weight:900}
+#setup .online-entry-join .online-entry-icon{background:#e8f2f8;color:#245c74}
+#setup .online-entry-card h4{margin:0;font-size:clamp(14px,3.9vw,18px);font-weight:950;letter-spacing:-.45px;line-height:1.12;color:#132435}
+#setup .online-entry-card p{margin:0;color:#627486;font-size:11px;line-height:1.4;flex:1}
+#setup .online-entry-card button{width:100%;margin-top:auto;min-height:48px;border-radius:10px;padding:9px 6px;font-size:clamp(10px,2.9vw,13px);line-height:1.2;font-weight:950;white-space:normal}
+#setup button.primary{background:linear-gradient(125deg,#ef2852,#b8052a);border:1px solid #ec4965;color:#fff;box-shadow:0 4px 12px #a7072a33}
+#setup button.primary:disabled{opacity:.52;box-shadow:none}
+#setup .online-entry-join button{background:#243d51;border:1px solid #43657a}
+#setup .online-code-label{color:#607283;font-size:9px;font-weight:950;letter-spacing:.8px}
+#setup #joinCode{width:100%;height:45px;min-width:0;padding:10px 7px;letter-spacing:clamp(.7px,1vw,2px);font-size:clamp(12px,3.3vw,17px);border-radius:9px;background:#fff;color:#1e3548;border:1px solid #b8c8d5;text-align:center}
+#setup #roomBox.online-room-card{display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid #d5dee7;border-radius:15px;padding:14px;margin-top:3px;box-shadow:0 4px 16px #091e300b}
+#setup .online-room-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#setup .online-room-top h3{font-size:20px}
+#setup .online-room-label{font-size:9px;letter-spacing:.7px;font-weight:950;white-space:nowrap;color:#0b7761;background:#dcfaf2;border:1px solid #a8edcf;padding:7px;border-radius:8px}
+#setup .online-invite-card{padding:13px;border-radius:13px;border:1px solid #cae7de;background:linear-gradient(125deg,#e7f9f2,#f4fbfb)}
+#setup .online-invite-card>small{color:#25715d;font-size:10px;font-weight:850}
+#setup .online-invite-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:5px}
+#setup #roomCode{font-size:clamp(21px,6vw,32px);color:#095d4e;letter-spacing:clamp(1px,.65vw,3px);font-weight:1000;font-variant-numeric:tabular-nums}
+#setup #copyInvite{background:#fff;color:#1e504b;border:1px solid #a6d4c8;border-radius:9px;min-height:40px;padding:7px 11px;font-size:12px;font-weight:950}
+#setup .online-room-pilots{border:1px solid #dbe4ed;border-radius:12px;padding:12px;background:#f7f9fb}
+#setup .online-room-pilots-label{color:#768492;letter-spacing:1.1px;font-size:9px;font-weight:950}
+#setup #roomNames{margin:7px 0;color:#1b3140;font-size:clamp(14px,4.2vw,19px);font-weight:1000;line-height:1.3;overflow-wrap:anywhere}
+#setup #connectionStatus{margin:8px 0 0;color:#0e866e;font-size:12px;font-weight:900}
+#setup #trackSharedName.online-track-shared{display:block;margin:0;padding:10px;border-radius:10px;border:1px solid #c6e9db;background:#eafbf4;color:#146c57;letter-spacing:0;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+#setup #startHeat.online-start-button{width:100%;min-height:53px;font-size:14px}
+#setup #notice{font-size:12px;font-weight:750;color:#087a66;min-height:0;margin:0;line-height:1.5;overflow-wrap:anywhere}
+#setup #notice:empty{display:none}
+#setup #notice.error{color:#bc193e}
+#setup .online-lobby-help{margin:0;padding:11px 12px;background:#edf1f5;border:1px solid #dde4eb;border-radius:10px;line-height:1.45}
+#setup .online-lobby-help small{color:#667889;font-size:11px}
+#setup:has(#roomBox:not([hidden])) .online-entry-grid{display:none}
+#setup:has(#roomBox:not([hidden])) .online-lobby-hero{min-height:140px;padding-bottom:16px}
+#setup:has(#roomBox:not([hidden])) .online-hero-heading{margin-top:15px}
+#setup:has(#roomBox:not([hidden])) .online-hero-heading h2{font-size:clamp(25px,6vw,36px)}
+#setup:has(#roomBox:not([hidden])) .online-hero-cars{height:105px;width:39%;right:0}
+html.embedded.heat-finished #setup .online-lobby-hero,
+html.embedded.heat-finished #setup .online-lobby-lead,
+html.embedded.heat-finished #setup .online-lobby-help{display:none}
+html.embedded.heat-finished #setup .online-section-heading{display:none}
+@media(max-width:390px){
+ #setup .online-lobby-hero{min-height:191px;padding:13px 12px 19px}
+ #setup .online-hero-heading{margin-top:23px;max-width:74%}
+ #setup .online-hero-cars{width:49%;height:135px}
+ #setup .online-studio-label{font-size:8px;letter-spacing:1.2px}
+ #setup .online-live-pill{font-size:8px;padding:6px}
+ #setup .online-lobby-body{padding:12px;gap:9px}
+ #setup .online-entry-grid{gap:7px}
+ #setup .online-entry-card{padding:10px 8px;gap:7px}
+ #setup .online-section-heading h3{font-size:21px}
+ #setup #roomBox.online-room-card{padding:11px}
+}
+@media(max-width:320px){#setup .online-entry-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:no-preference){
+ #setup button:not(:disabled){transition:filter .15s ease,transform .15s ease}
+ #setup button:not(:disabled):active{transform:translateY(1px);filter:brightness(.95)}
+}
+
 </style></head>
 <body>
 <header>
-<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.81</div></div>
+<div><div class="brand">Top Down RACE: <b>SlotRace</b></div><div class="sub">PISTA DE SLOT ONLINE · BETA 0.15.82</div></div>
 <a href="./index.html">← Volver al juego</a>
 </header>
 <main>
 <div class="live-intro"><div class="tag">PRUEBA TÉCNICA · DOS PILOTOS REALES</div><h1>Pista de slot online 🏁</h1>
 <p>El anfitrión comparte su circuito montado. Dos móviles, dos carriles, tres vueltas por manga e intercambio de carriles. Sin PT82 ni colisiones entre coches en esta beta. Resultados todavía no homologados.</p></div>
-<section id="setup" class="panel">
-<h2>👥 Prueba con un compañero</h2>
-<p style="margin:0 0 12px">Elige primero tu circuito en Competir. La pista se comparte solo para correr: tu compañero no necesita poseer las piezas ni las recibe en su inventario.</p>
-<p id="identity" class="muted">Comprobando cuenta CraftRace Studio…</p>
-<div class="row">
-<button id="createRoom" class="primary" disabled>Crear pista de slot</button>
-<input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código de pista" spellcheck="false" autocomplete="off">
-<button id="joinRoom" disabled>Unirse a pista de slot</button>
-</div>
-<div id="roomBox" hidden>
-<small>Dile este código a tu compañero:</small>
-<div class="row" style="justify-content:space-between"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
-<p id="roomNames">Esperando al segundo piloto…</p>
-<p id="connectionStatus">Conectando…</p>
-<p id="trackSharedName" hidden class="tag">Comprobando la pista elegida…</p>
-<div class="row"><button id="startHeat" class="primary" disabled>Esperando rival</button></div>
-</div>
-<p id="notice" role="status" aria-live="polite"></p>
-<p><small>Tu compañero abre SlotRace en su móvil, entra en Competir → Pistas de slot online e introduce tu código. Si no tiene cuenta, primero debe registrarse en SlotRace.</small></p>
+<section id="setup" class="panel online-lobby">
+  <div class="online-lobby-hero">
+    <div class="online-hero-meta"><span class="online-studio-label">TOP DOWN RACE / SLOTRACE</span><span class="online-live-pill"><span aria-hidden="true"></span> MULTIJUGADOR · BETA</span></div>
+    <div class="online-hero-heading">
+      <span class="online-hero-kicker">EL PADDOCK ONLINE</span>
+      <h2>Tu pista.<br><em>Su desafío.</em></h2>
+      <p>Dos pilotos. Dos carriles. Una victoria.</p>
+    </div>
+    <div class="online-hero-cars" aria-hidden="true">
+      <img class="online-hero-car online-hero-car-avenir" src="./assets/cars/avenir_gripline_threequarter.webp" alt="" loading="eager">
+      <img class="online-hero-car online-hero-car-spark" src="./assets/cars/helix_spark_threequarter.webp" alt="" loading="eager">
+    </div>
+    <div class="online-checker" aria-hidden="true"></div>
+  </div>
+  <div class="online-lobby-body">
+    <div class="online-section-heading">
+      <div><span class="online-section-step">01 / 02 · PREPARACIÓN</span><h3>Entra a competir</h3></div>
+      <span class="online-section-icon" aria-hidden="true">🏁</span>
+    </div>
+    <p class="online-lobby-lead">Elige un circuito en Competir y compártelo para correr. Tu rival no necesita tener las piezas ni las recibe en su inventario.</p>
+    <p id="identity" class="online-account-status muted">Comprobando cuenta CraftRace Studio…</p>
+    <div class="online-entry-grid">
+      <div class="online-entry-card online-entry-create">
+        <div class="online-entry-number">01 · ANFITRIÓN</div>
+        <div class="online-entry-icon" aria-hidden="true">✦</div>
+        <h4>Abre tu pista</h4>
+        <p>Invita a otro piloto a competir en tu circuito.</p>
+        <button id="createRoom" class="primary" disabled>Crear pista de slot</button>
+      </div>
+      <div class="online-entry-card online-entry-join">
+        <div class="online-entry-number">02 · INVITADO</div>
+        <div class="online-entry-icon" aria-hidden="true">↗</div>
+        <h4>Acepta el reto</h4>
+        <p>Introduce el código de siete caracteres.</p>
+        <label for="joinCode" class="online-code-label">CÓDIGO DE PISTA</label>
+        <input id="joinCode" type="text" minlength="7" maxlength="7" placeholder="CÓDIGO" aria-label="Código de pista" spellcheck="false" autocomplete="off">
+        <button id="joinRoom" disabled>Unirse a pista de slot</button>
+      </div>
+    </div>
+    <div id="roomBox" class="online-room-card" hidden>
+      <div class="online-room-top"><div><span class="online-section-step">02 / 02 · PISTA COMPARTIDA</span><h3>Parrilla de salida</h3></div><span class="online-room-label">LIVE GRID</span></div>
+      <div class="online-invite-card">
+        <small>Tu código de invitación</small>
+        <div class="online-invite-row"><div id="roomCode">—</div><button id="copyInvite" class="secondary">Copiar código</button></div>
+      </div>
+      <div class="online-room-pilots">
+        <span class="online-room-pilots-label">PILOTOS EN PISTA</span>
+        <p id="roomNames">Esperando al segundo piloto…</p>
+        <p id="connectionStatus">Conectando…</p>
+      </div>
+      <p id="trackSharedName" hidden class="tag online-track-shared">Comprobando la pista elegida…</p>
+      <button id="startHeat" class="primary online-start-button" disabled>Esperando rival</button>
+    </div>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <p class="online-lobby-help"><small>Tu compañero abre SlotRace en su móvil, entra en Competir → Pistas de slot online e introduce tu código. Si no tiene cuenta, primero debe registrarse en SlotRace.</small></p>
+  </div>
 </section>
 <section id="raceArea" class="panel" hidden>
 <div class="row" style="justify-content:space-between">
@@ -154,5 +283,5 @@ html.embedded.heat-finished #raceArea>.row,html.embedded.heat-finished #raceBoar
 </section>
 </main>
 <footer>CraftRace Studio · Multijugador experimental · La conexión y la cronometría no están homologadas para torneos.</footer>
-<script type="module" src="./src/live-duel.mjs?v=0.15.81"></script>
+<script type="module" src="./src/live-duel.mjs?v=0.15.82"></script>
 </body></html>

@@ -55,6 +55,21 @@ const fs=require("node:fs");
  assert.match(iframe,/\$\("onlineResultBack"\)\.addEventListener\("click"/);
  assert.match(iframe,/\$\("onlineResultRematch"\)\.addEventListener\("click"/);
  assert.match(iframe,/\$\("onlineResultChat"\)\.addEventListener\("click"/);
+ // El rediseño del lobby mantiene el contrato de acciones reales.
+ assert.match(liveHtml,/id="setup" class="panel online-lobby"/);
+ assert.match(liveHtml,/class="online-lobby-hero"/);
+ assert.match(liveHtml,/class="online-entry-grid"/);
+ assert.match(liveHtml,/class="online-room-card"/);
+ assert.match(liveHtml,/#setup:has\(#roomBox:not\(\[hidden\]\)\) \.online-entry-grid\{display:none\}/);
+ assert.match(liveHtml,/class="online-checker"/);
+ for(const id of ["createRoom","joinRoom","joinCode","roomBox","roomCode",
+  "copyInvite","roomNames","connectionStatus","trackSharedName","startHeat",
+  "notice","identity","raceArea","trackCanvas","finalBoard"]){
+  const count=[...liveHtml.matchAll(new RegExp('id="'+id+'"',"g"))].length;
+  assert.equal(count,1,"Un único elemento "+id+" después del rediseño");
+ }
+ assert.match(liveHtml,/<button id="createRoom"[^>]*>Crear pista de slot<\/button>/);
+ assert.match(liveHtml,/<button id="joinRoom"[^>]*>Unirse a pista de slot<\/button>/);
  assert.match(iframe,/event:"rematch-invite"/);
  assert.match(app,/msg\.kind==="slotrace:online:goBack"\)\{\s*menuRace\(\);/,"Volver atrás sale sin confirmación al terminar");
 
