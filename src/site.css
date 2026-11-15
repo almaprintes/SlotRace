@@ -3312,7 +3312,7 @@ html:has(#accountModal:not([hidden])){background:#06121d}
  font-weight:900;line-height:1.45;padding:8px 11px;border-radius:12px;
  pointer-events:none;white-space:normal;text-shadow:0 1px 3px #001a1f}
 
-/* DEV 0.15.81 · Chat privado de pista, independiente de la física. */
+/* DEV 0.15.82 · Chat privado de pista, independiente de la física. */
 .online-chat-dock{position:fixed;z-index:180;right:max(12px,env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;color:#edfff9}
 .online-chat-dock[hidden],.online-chat-panel[hidden]{display:none!important}
 .online-chat-dock>*{pointer-events:auto}
@@ -3352,7 +3352,7 @@ html:has(#accountModal:not([hidden])){background:#06121d}
 .online-chat-dock.is-racing .online-chat-messages{display:none}
 @media(prefers-reduced-motion:reduce){.online-reaction-popup{animation:none}}
 
-/* DEV 0.15.81: permitir un segundo dedo en el chat mientras el primero
+/* DEV 0.15.82: permitir un segundo dedo en el chat mientras el primero
    mantiene la rueda del gas. Los botones no inician zoom/pan de Safari. */
 .online-chat-dock.is-racing,.online-chat-dock.is-racing button,
 .online-chat-dock.is-racing .online-chat-quick{touch-action:none;-webkit-user-select:none;user-select:none}
