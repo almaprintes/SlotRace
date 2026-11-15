@@ -155,6 +155,7 @@ function notice(text,failed=false){
 }
 function showStage(stage){
  for(const [name,el] of Object.entries(stages))el.hidden=name!==stage;
+ if(stage!=="connected")get("accountEnterGame").hidden=true;
 }
 function failure(error){
  if(!error)return "No se pudo completar la operación.";
@@ -256,7 +257,10 @@ async function refresh({background=false}={}){
   get("accountLinkApple").hidden=providers.has("apple");
   showStage("connected");
   notice("Cuenta conectada. Tus circuitos locales siguen en este dispositivo.");
-  enterLauncher(account.nickname);
+  // Cuenta verificada pero puerta bloqueada por una comprobación previa fallida:
+  // ofrecer un botón explícito sin modificar ninguna partida ni su sesión.
+  const advanced=enterLauncher(account.nickname);
+  get("accountEnterGame").hidden=advanced||entryGate.hidden;
   // No automatic user uploads: Studio avatars are selected from the staff catalog.
  }catch(error){
   if(!guestMode)entryMessage("No se pudo comprobar la sesión. Puedes entrar, registrarte o seguir en modo local.");
@@ -473,7 +477,12 @@ async function signOut(){
  entryMessage("Sesión cerrada. Entra o crea una cuenta. Tus circuitos locales están intactos.");
  notice("Sesión cerrada. Todos tus circuitos siguen guardados en este navegador.");
 }
-get("entryLogin").addEventListener("click",()=>{void open("login");});
+get("entryLogin").addEventListener("click",()=>{
+ // Pulsar Entrar con mi cuenta es intención explícita, aunque la sesión
+ // persistida ya exista y no haga falta volver a escribir credenciales.
+ if(!entryGate.hidden)authIntent=true;
+ void open("login");
+});
 get("entryRegister").addEventListener("click",()=>{void open("register");});
 get("entryGuest").addEventListener("click",()=>{
  guestMode=true;modal.hidden=true;enterLauncher(null,{userInitiated:true});
@@ -521,6 +530,11 @@ for(const [imgId,letterId] of [
  img.hidden=true;get(letterId).hidden=false;
 });
 get("accountRetry").addEventListener("click",()=>{void run(refresh);});
+get("accountEnterGame").addEventListener("click",()=>{
+ if(!accountUser||!accountNick)return;
+ if(enterLauncher(accountNick,{userInitiated:true}))
+  get("accountEnterGame").hidden=true;
+});
 // Al arrancar SOLO se ve el comprobador. Los botones aparecen cuando
 // se confirma que no hay sesión. Nunca avanzar automáticamente después.
 showEntryButtons(false);
